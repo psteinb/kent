@@ -5590,12 +5590,6 @@ if (viewString != NULL)
     safef(option, sizeof option, "%s.%s.%s", name, viewString, MAF_DOT_VAR);
 else
     safef(option, sizeof option, "%s.%s", name, MAF_DOT_VAR);
-cgiMakeCheckBox(option, cartCgiUsualBoolean(cart, option, FALSE));
-
-if (isWigMafProt)
-    puts("Display amino acids identical to reference as dots<BR>" );
-else
-    puts("Display bases identical to reference as dots<BR>" );
 
 boolean dots = FALSE;
 if (cartVarExists(cart,option)) 
@@ -5610,6 +5604,11 @@ else
         }
     }
 cgiMakeCheckBox(option, dots);
+
+if (isWigMafProt)
+    puts("Display amino acids identical to reference as dots<BR>" );
+else
+    puts("Display bases identical to reference as dots<BR>" );
 
 if (viewString != NULL)
     safef(option, sizeof option, "%s.%s.%s", name, viewString, MAF_CHAIN_VAR);
