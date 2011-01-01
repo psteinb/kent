@@ -147,6 +147,9 @@ utils-alpha: libs
 
 DIRS = ameme blat cdnaAli index reformat xenoAli \
        dnaDust protDust idbQuery scanIntrons tracks weblet \
-       aladdin getgene primeMate wormAli fuse
+       aladdin getgene primeMate wormAli
+# disable at stanford for now
+#fuse
+
 
 
