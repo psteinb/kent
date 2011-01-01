@@ -138,6 +138,7 @@ if (!testName)
 pl = pipelineOpen1(getDecompressor(fileName), pipelineRead, fileName, NULL);
 lf = lineFileAttach(fileName, zTerm, pipelineFd(pl));
 lf->pl = pl;
+freez(&testName);
 return lf;
 }
 
@@ -165,6 +166,7 @@ if (fileName==NULL)
 pl = pipelineOpenMem1(getDecompressor(fileName), pipelineRead, mem, size, STDERR_FILENO);
 lf = lineFileAttach(fileName, zTerm, pipelineFd(pl));
 lf->pl = pl;
+freez(&fileName);
 return lf;
 }
 
@@ -515,10 +517,10 @@ if ((lf = *pLf) != NULL)
         pipelineFree(&lf->pl);
         }
     else if (lf->fd > 0 && lf->fd != fileno(stdin))
-	{
-	close(lf->fd);
-	freeMem(lf->buf);
-	}
+        {
+        close(lf->fd);
+	    }
+    freeMem(lf->buf);
     freeMem(lf->fileName);
     metaDataFree(lf);
     freez(pLf);
