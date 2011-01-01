@@ -28,18 +28,18 @@ use HgRemoteScript;
 use HgStepManager;
 
 # Hardcoded paths/command sequences:
+
+print "BIN: $Bin\n";
 my $getFileServer = '/cluster/bin/scripts/fileServer';
 my $blastzRunUcsc = "$Bin/blastz-run-ucsc";
 my $partition = "$Bin/partitionSequence.pl";
-my $clusterLocal = '/scratch/hg';
-my $clusterSortaLocal = '/iscratch/i';
-my @clusterNAS = ('/cluster/bluearc', '/san/sanvol1');
+my $clusterLocal = '/cluster/u/hillerm/doBlastzChainNet_tmp';
+my $clusterSortaLocal = '/cluster/u/hillerm/doBlastzChainNet_tmp';
+my @clusterNAS = ('/cluster/u/hillerm/doBlastzChainNet_tmp');
 my $clusterNAS = join('/... or ', @clusterNAS) . '/...';
-my @clusterNoNo = ('/cluster/home', '/projects');
+my @clusterNoNo = ('/afs');
 my @fileServerNoNo = ('kkhome', 'kks00');
-my @fileServerNoLogin = ('kkusr01', '10.1.1.3', '10.1.10.11',
-			 'sanhead1', 'sanhead2', 'sanhead3', 'sanhead4',
-			 'sanhead5', 'sanhead6', 'sanhead7', 'sanhead8');
+my @fileServerNoLogin = ('hoxa-mds-1');
 
 # Option variable names, both common and peculiar to doBlastz:
 use vars @HgAutomate::commonOptionVars;
@@ -76,10 +76,10 @@ my $stepper = new HgStepManager(
 			       );
 
 # Option defaults:
-my $bigClusterHub = 'swarm';
-my $smallClusterHub = 'memk';
-my $dbHost = 'hgwdev';
-my $workhorse = 'hgwdev';
+my $bigClusterHub = 'hoxa';
+my $smallClusterHub = 'hoxa';
+my $dbHost = 'dev';
+my $workhorse = 'dev';
 my $defaultChainLinearGap = "loose";
 my $defaultChainMinScore = "1000";	# from axtChain itself
 my $defaultTRepeats = "";		# for netClass option tRepeats
@@ -125,7 +125,7 @@ _EOF_
   ;
 print STDERR &HgAutomate::getCommonOptionHelp('dbHost' => $dbHost,
 				      'workhorse' => $workhorse,
-				      'fileServer' => '',
+				      'fileServer' => 'hoxa',
 				      'bigClusterHub' => $bigClusterHub,
 				      'smallClusterHub' => $smallClusterHub);
 print STDERR "
@@ -364,6 +364,13 @@ sub loadDef {
     }
   }
   close($fh);
+  
+  # test if TMPDIR in DEF exists; if not create it
+  if (exists $defVars{TMPDIR} && ! -e $defVars{TMPDIR}) {
+  		print STDERR "create $defVars{TMPDIR}\n";
+		system "mkdir -p $defVars{TMPDIR}";
+  }
+  
 }
 
 sub loadSeqSizes {
@@ -1190,6 +1197,7 @@ alignment coordinates were adjusted) using the restore_rpts program from
 Penn State.";
     }
   }
+
   my $desc = $isSelf ? 
 "This directory contains alignments of $tGenome ($tDb, $tDate,
 $tSource) to itself." :
@@ -1562,7 +1570,11 @@ if (! -e "$buildDir/DEF") {
   &HgAutomate::run("cp $DEF $buildDir/DEF");
 }
 
-$fileServer = &HgAutomate::chooseFileServer($opt_swap ? $swapDir : $buildDir);
+#$fileServer = &HgAutomate::chooseFileServer($opt_swap ? $swapDir : $buildDir);
+# overwrite --> always take hoxa (otherwise you get hoxa5 or hoxa28, etc and then it fails because your /afs/ home is not valid 
+$fileServer = "hoxa";
+print "FILESERVER: $fileServer\n";
+
 
 # When running -swap, swapGlobals() happens at the end of the chainMerge step.
 # However, if we also use -continue with some step later than chainMerge, we

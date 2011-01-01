@@ -107,7 +107,7 @@ sub choosePermanentStorage {
     }
   }
   if (! defined $bestRaid) {
-    $bestRaid = "/hive/data/genomes";
+    $bestRaid = "/cluster/u/hillerm/doBlastzChainNet_tmp";
   }
   confess "Could not df any /cluster/store's" if (! defined $bestRaid);
   return $bestRaid;
@@ -167,7 +167,7 @@ sub getWarnClusters {
     if ($isInput) {
       return @allClusters;
     } else {
-      return ('memk');
+      return ('hoxa');
     }
   }
 }
@@ -376,7 +376,7 @@ sub chooseFilesystemsForCluster {
       push @filesystems, $fsInfo->{'root'} if (-d $fsInfo->{'root'});
     }
   }
-  push @filesystems, '/hive/data/genomes' if (scalar(@filesystems)<1);
+  push @filesystems, '/cluster/u/hillerm/doBlastzChainNet_tmp' if (scalar(@filesystems)<1);
   return @filesystems;
 }
 
