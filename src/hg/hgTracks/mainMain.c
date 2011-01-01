@@ -42,6 +42,8 @@ char *excludeVars[] = { "submit", "Submit", "hgt.reset",
 	    "hgt.jump", "hgt.refresh",
 	    "hgt.trackImgOnly", "hgt.ideogramToo", "hgt.trackNameFilter", "hgt.imageV1",
              TRACK_SEARCH,         TRACK_SEARCH_ADD_ROW,     TRACK_SEARCH_DEL_ROW, TRACK_SEARCH_PAGER,
+            // stanford additions
+            "hgt.out4", "hgt.out5", "hgt.to1", "hgt.to2", "hgt.to3", "hgt.to4", "hgt.to5",
             NULL };
 
 int main(int argc, char *argv[])
