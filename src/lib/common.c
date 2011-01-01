@@ -778,7 +778,6 @@ struct slName *el;
 int elCount = 0;
 int len = 0;
 char del[2];
-//char *s;
 
 del[0] = delimiter;
 del[1] = '\0';
@@ -786,18 +785,6 @@ del[1] = '\0';
 for (el = list; el != NULL; el = el->next, elCount++)
 	len += strlen(el->name);
 len += elCount;
-
-/*
-AllocArray(s, len);
-
-for (el = list; el != NULL; el = el->next)
-	{
-	strcat(s, el->name);
-	if (el->next != NULL)
-		strcat(s, del);
-	}
-return s;
-*/
 
 struct dyString* dy = newDyString(len);
 
