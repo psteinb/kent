@@ -26,6 +26,12 @@ struct phyloTree
     void *priv;
 };
 
+extern void freePhyloTree(struct phyloTree **pTree);
+/* Free a dynamically allocated phyloTree. */
+
+extern void freePhyloName(struct phyloName **pName);
+/* Free a dynamically allocated phyloName. */
+
 extern struct phyloTree *phyloOpenTree(char *fileName);
 /* opens an NH tree file */
 
