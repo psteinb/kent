@@ -1,7 +1,7 @@
 /* catUncomment - Concatenate input removing lines that start with '#'. */
 #include "common.h"
 #include "linefile.h"
-+ #include "options.h"
+#include "options.h"
 
 static char const rcsid[] = "$Id: catUncomment.c,v 1.2 2003/05/06 07:41:04 kate Exp $";
 
@@ -9,11 +9,12 @@ static char const rcsid[] = "$Id: catUncomment.c,v 1.2 2003/05/06 07:41:04 kate 
 static struct optionSpec optionSpecs[] =
 {
     {"outFile", OPTION_STRING},
-
+    {"append", OPTION_BOOLEAN},
     {NULL, 0},
 };
 
 static char *outFile;
+static boolean append;
 
 id usage()
 /* Explain usage and exit. */
@@ -25,7 +26,8 @@ errAbort(
   "   catUncomment [options] file(s)\n"
   "\n"
   "options:\n"
-  "   -outFile=s   Output file (DEFAULT: stdout)\n");
+  "   -outFile=s   Output file (DEFAULT: stdout)\n"
+  "   -append      Append to outFile instead of overwriting\n");
 }
 
 void catUncomment(int inCount, char *inNames[])
@@ -37,7 +39,10 @@ char *line;
 int i, lineSize;
 FILE *fOut;
 
-fOut = mustOpen(outFile, "w");
+if (append)
+    fOut = mustOpen(outFile, "a");
+else
+    fOut = mustOpen(outFile, "w");
 
 for (i=0; i<inCount; ++i)
     {
@@ -59,6 +64,7 @@ if (argc < 2)
     usage();
 
 outFile = optionVal("outFile", "stdout");
+append = optionExists("append");
 catUncomment(argc-1, argv+1);
 
 /* Free dynamically allocated resources. */
