@@ -4828,7 +4828,10 @@ if (!hideControls)
 		    freeMem(url);
 		    freeMem(longLabel);
 		    }
-		hPrintf(" %s", track->shortLabel);
+	        if (startsWith("Bej ", track->shortLabel))
+                    hPrintf(" <font color=red>Bej </font>%s", track->shortLabel + 4);
+                else
+                    hPrintf(" %s", track->shortLabel);
 		if (tdbIsSuper(track->tdb))
 		    hPrintf("...");
 		hPrintf("<BR> ");
