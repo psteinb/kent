@@ -100,6 +100,7 @@ if (trix != NULL)
     freeMem(trix->ixx);
     hashTraverseVals(trix->wordHitHash, freeHitCallback);
     hashFree(&trix->wordHitHash);	/* Need to free items? */
+    lineFileClose(&(trix->lf));
     freez(pTrix);
     }
 }
