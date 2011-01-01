@@ -9,6 +9,7 @@
 #include "portable.h"
 #include "linefile.h"
 #include "hash.h"
+#include "dystring.h"
 
 static char const rcsid[] = "$Id: common.c,v 1.151 2010/06/02 19:06:41 tdreszer Exp $";
 
@@ -777,7 +778,7 @@ struct slName *el;
 int elCount = 0;
 int len = 0;
 char del[2];
-char *s;
+//char *s;
 
 del[0] = delimiter;
 del[1] = '\0';
@@ -786,6 +787,7 @@ for (el = list; el != NULL; el = el->next, elCount++)
 	len += strlen(el->name);
 len += elCount;
 
+/*
 AllocArray(s, len);
 
 for (el = list; el != NULL; el = el->next)
@@ -795,6 +797,17 @@ for (el = list; el != NULL; el = el->next)
 		strcat(s, del);
 	}
 return s;
+*/
+
+struct dyString* dy = newDyString(len);
+
+for (el = list; el != NULL; el = el->next)
+	{
+	dyStringAppend(dy, el->name);
+	if (el->next != NULL)
+		dyStringAppend(dy, del);
+	}
+return dyStringCannibalize(&dy);
 }
 
 struct slName *slNameLoadReal(char *fileName)
