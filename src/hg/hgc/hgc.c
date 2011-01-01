@@ -5473,12 +5473,12 @@ struct dyString *dy = newDyString(1024);
 struct sqlConnection *conn = hAllocConn(database);
 struct sqlResult *sr;
 char **row;
-char *type, *source, *sourceTaxId, *humanMRCA, *commonName;
+char *type, *source, *sourceTaxId, *humanMRCA, *commonName, *testOrg;
 int rank, numHomologs, score;
 float seqIdent, js, entropy;
 
 dyStringAppend(dy,
-			   "select source, sourceTaxId, type, humanMRCA, commonName");
+			   "select source, sourceTaxId, type, humanMRCA, commonName, testOrganism");
 dyStringPrintf(dy,
 			   " from bejsaEnhancerNames natural join bejsaEnhancerOrganisms"
 			   " where fullName='%s'",
@@ -5489,7 +5489,7 @@ row = sqlNextRow(sr);
 /* Print enhancer info. */
 if (row != NULL)
 	{
-	source=row[0];sourceTaxId=row[1];type=row[2];humanMRCA=row[3];commonName=row[4];
+	source=row[0];sourceTaxId=row[1];type=row[2];humanMRCA=row[3];commonName=row[4];testOrg=row[5];
 
 	/* Now we have all the info out of the database and into nicely named
 	 * local variables.  */
@@ -5504,6 +5504,13 @@ if (row != NULL)
 	printf("<A href=\"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name=%s&lvl=0&srchmode=1\" TARGET=_blank>",
 	   cgiEncode(commonName));
 	printf("%s</A><BR>\n", commonName);
+	printf("<B>Organism/cell line tested in:</B> ");
+
+	printf("<A href=\"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name=%s&lvl=0&srchmode=1\" TARGET=_blank>",
+		   cgiEncode(testOrg));
+	printf("%s</A><BR>\n", testOrg);
+
+
 	printf("<B>Nearest clade to human:</B> %s<BR>\n", humanMRCA);
 	printf("<B>Test result for enhancer activity:</B> %s<BR>\n", type);
 	printf("<B>Original enhancer length:</B> %d<BR>\n", psl->qSize);
@@ -5511,6 +5518,13 @@ if (row != NULL)
 
 sqlFreeResult(&sr);
 freeDyString(&dy);
+
+if (containsStringNoCase(tdb->table, "liftover"))
+{
+	hFreeConn(&conn);
+	return;
+}
+
 
 dy = newDyString(1024);
 
@@ -5632,11 +5646,14 @@ if (pslList == NULL)
 /* Print enahncer info */
 printEnhancerInfo(tdb, acc, pslList, start);
 
-htmlHorizontalLine();
-printf("<H3>%s/Genomic Alignments</H3>", type);
-slSort(&pslList, pslCmpScoreDesc);
 
-printAlignments(pslList, start, "htcCdnaAli", table, acc);
+if (!containsStringNoCase(tdb->table, "liftover"))
+	{
+	htmlHorizontalLine();
+	printf("<H3>%s/Genomic Alignments</H3>", type);
+	slSort(&pslList, pslCmpScoreDesc);
+	printAlignments(pslList, start, "htcCdnaAli", table, acc);
+}
 
 printTrackHtml(tdb);
 hFreeConn(&conn);
