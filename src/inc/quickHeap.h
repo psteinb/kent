@@ -12,6 +12,9 @@
  *
  */
 
+#ifndef QUICKHEAP_H
+#define QUICKHEAP_H
+
 struct quickHeap 
 /* A quick array heap. */
     {
@@ -51,3 +54,4 @@ void *removeQuickHeapTop(struct quickHeap *h);
  * which will be NULL if heap is empty.
  * Then that top element if found is removed. */
 
+#endif
