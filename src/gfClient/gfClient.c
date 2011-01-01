@@ -61,7 +61,7 @@ printf(
   "   -prot       Synonymous with -d=prot -q=prot\n"
   "   -dots=N   Output a dot every N query sequences\n"
   "   -nohead   Suppresses psl five line header\n"
-  "   -minScore=N sets minimum score.  This is twice the matches minus the \n"
+  "   -minScore=N sets minimum score.  This is the matches minus the \n"
   "               mismatches minus some sort of gap penalty.  Default is 30\n"
   "   -minIdentity=N Sets minimum sequence identity (in percent).  Default is\n"
   "               90 for nucleotide searches, 25 for protein or translated\n"
