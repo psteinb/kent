@@ -680,7 +680,15 @@ void indelEnabled(struct cart *cart, struct trackDb *tdb, float basesPerPixel,
 #define ZOOM_1PT5X      "1.5x"
 #define ZOOM_3X         "3x"
 #define ZOOM_10X        "10x"
+#define ZOOM_100X       "100x"
+#define ZOOM_1000X      "1000x"
 #define ZOOM_BASE       "base"
+
+#define ZOOM_1K         "1K"
+#define ZOOM_10K        "10K"
+#define ZOOM_100K       "100K"
+#define ZOOM_1M         "1M"
+#define ZOOM_10M        "10M"
 
 void zoomRadioButtons(char *var, char *curVal);
 /* Make a list of radio buttons for all zoom options */

@@ -3915,17 +3915,17 @@ void topButton(char *var, char *label)
  * 3 chars wide for odd-length labels, 4 for even length.
  * Pad with spaces so label is centered */
 {
-char paddedLabel[5] = "    ";
+char paddedLabel[6] = "     ";
 int len = strlen(label);
-if (len > 4)
+if (len > 5)
     {
     /* truncate */
     /* or maybe errabort ? */
-    label[3] = 0;
-    len = 4;
+    label[5] = 0;
+    len = 5;
     }
 if (len % 2 != 0)
-    paddedLabel[3] = 0;
+    paddedLabel[5] = 0;
 if (len == strlen(paddedLabel))
     strcpy(paddedLabel, label);
 else
@@ -4515,6 +4515,14 @@ if (!hideControls)
     topButton("hgt.out1", ZOOM_1PT5X);
     topButton("hgt.out2", ZOOM_3X);
     topButton("hgt.out3", ZOOM_10X);
+    topButton("hgt.out4", ZOOM_100X);
+    topButton("hgt.out5", ZOOM_1000X);
+    hWrites(" zoom to ");
+    topButton("hgt.to1", ZOOM_1K);
+    topButton("hgt.to2", ZOOM_10K);
+    topButton("hgt.to3", ZOOM_100K);
+    topButton("hgt.to4", ZOOM_1M);
+    topButton("hgt.to5", ZOOM_10M);
     hWrites("<BR>\n");
 #endif//ndef USE_NAVIGATION_LINKS
 
@@ -5228,6 +5236,20 @@ else if (cgiVarExists("hgt.out2"))
     zoomAroundCenter(3.0);
 else if (cgiVarExists("hgt.out3"))
     zoomAroundCenter(10.0);
+else if (cgiVarExists("hgt.out4"))
+    zoomAroundCenter(100.0);
+else if (cgiVarExists("hgt.out5"))
+    zoomAroundCenter(1000.0);
+else if (cgiVarExists("hgt.to1"))
+    zoomToSize(1000);
+else if (cgiVarExists("hgt.to2"))
+    zoomToSize(10000);
+else if (cgiVarExists("hgt.to3"))
+    zoomToSize(100000);
+else if (cgiVarExists("hgt.to4"))
+    zoomToSize(1000000);
+else if (cgiVarExists("hgt.to5"))
+    zoomToSize(10000000);
 else if (cgiVarExists("hgt.dinkLL"))
     dinkWindow(TRUE, -dinkSize("dinkL"));
 else if (cgiVarExists("hgt.dinkLR"))
