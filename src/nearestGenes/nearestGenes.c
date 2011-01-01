@@ -295,9 +295,17 @@ void print_track(struct chromnode *chrom, char *bedfilename)
       // chrom[i].from[j] is the start of the jth gene on chrom i
       for (j=0; j<chrom[i].size; j++)
 		{
+		  // note: bp is here the element length if it intersects
 		  bp = min(chrom[i].to[j],to)-max(chrom[i].from[j],from); //intersection?
 		  if (bp>0)
 			{
+			   bp = from-chrom[i].from[j]; // real distance to the genes TSS
+				if (TSS) {
+					if (chrom[i].feature[j] == '-') {
+						bp = chrom[i].to[j] - to; // real distance to the genes TSS
+					}
+				}
+				fprintf(stderr,"%s intersects with gene  %s  %d  - %d.\n",ivalbuf,chrom[i].name[j],chrom[i].from[j],chrom[i].to[j]);
 			  if(!hw2)
 			    {
 			    if (bp1>0)
