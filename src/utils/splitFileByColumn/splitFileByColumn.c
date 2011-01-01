@@ -13,11 +13,18 @@ char *tailerText = NULL;
 boolean chromDirs = FALSE;
 char *ending = NULL;
 boolean tab = FALSE;
+int maxFiles = 64;
 
 /* Make this global since we will need it when traversing a hash: */
 char *outDirName = NULL;
 
 #define MAX_COL_OFFSET 32
+
+/* The file pool. */
+struct hash *filePoolHash;
+struct hash *createdFilesHash;
+FILE **filePool;
+char **filePoolName;
 
 void usage()
 /* Explain usage and exit. */
@@ -35,11 +42,13 @@ errAbort(
 "   -ending=XXX - Use XXX as the dot-suffix of split files (default: taken\n"
 "                 from source).\n"
 "   -tab        - Split by tab characters instead of whitespace.\n"
+"   -maxFiles=N - Maximum number of output files to open at one time (default: %d)\n"
 "Split source into multiple files in outDir, with each filename determined\n"
 "by values from a column of whitespace-separated input in source.\n"
 "If source begins with a header, you should pipe \"tail +N source\" to this\n"
 "program where N is number of header lines plus 1, or use some similar\n"
-"method to strip the header from the input.\n"
+"method to strip the header from the input.\n",
+maxFiles
 );
 }
 
@@ -50,6 +59,7 @@ static struct optionSpec options[] = {
     {"chromDirs", OPTION_BOOLEAN},
     {"ending", OPTION_STRING},
     {"tab", OPTION_BOOLEAN},
+    {"maxFiles", OPTION_INT},
     {NULL, 0},
 };
 
@@ -76,98 +86,102 @@ dyStringPrintf(dy, "%s%s", baseName, ending);
 return dyStringCannibalize(&dy);
 }
 
-
-FILE *getFp(struct hash *chromFpHash, char *baseName)
-/* Return an open file pointer for file baseName. */
+void allocFilePool()
+/* Allocate the file pool. */
 {
-/* Assume that the input will usually contain contiguous chunks of rows 
- * destined for the same output file, so we won't waste too much time if
- * we close and open a file each time baseName changes.  Having only one 
- * open file pointer, instead of keeping all files open, prevents us from 
- * running into the operating system limit on open file pointers. */
-static char *prevBaseName = NULL;
-static int fileCount = 0;
-FILE *f = NULL;
-struct hashEl *hel = hashLookup(chromFpHash, baseName);
-struct hashEl *prevHel = NULL;
-
-if (hel == NULL)
-    {
-    /* Brand new baseName - close prevFile, open new file and store in hash. */
-    char *outFileName = getFileName(baseName);
-    if (prevBaseName != NULL)
-	{
-	prevHel = hashLookup(chromFpHash, prevBaseName);
-	if (prevHel != NULL)
-	    carefulClose((FILE **)&(prevHel->val));
-	}
-    verbose(1, "Creating %s\n", outFileName);
-    if (fileCount == 1001)
-	warn("Warning: greater than 1000 files have been created in %s",
-	     outDirName);
-    f = mustOpen(outFileName, "w");
-    if (headerText != NULL)
-	fprintf(f, "%s", headerText);
-    hashAdd(chromFpHash, baseName, f);
-    freez(&outFileName);
-    fileCount++;
-    }
-else if (hel->val == NULL)
-    {
-    /* File has been opened before but is closed -- close prevFile, append. */
-    char *outFileName = getFileName(baseName);
-    if (prevBaseName != NULL)
-	{
-	prevHel = hashLookup(chromFpHash, prevBaseName);
-	if (prevHel != NULL)
-	    carefulClose((FILE **)&(prevHel->val));
-	}
-    f = mustOpen(outFileName, "a");
-    hel->val = f;
-    freez(&outFileName);
-    }
-else if (!sameString(baseName, prevBaseName))
-    {
-    errAbort("program error: a cached file pointer is open but baseName (%s)"
-	     " != prevBaseName (%s)", baseName, prevBaseName);
-    }
-else
-    {
-    /* Write to open file pointer. */
-    f = hel->val;
-    }
-
-if (prevBaseName == NULL || !sameString(baseName, prevBaseName))
-    {
-    freez(&prevBaseName);
-    prevBaseName = cloneString(baseName);
-    }
-
-return f;
+filePoolHash = hashNew(0);
+createdFilesHash = hashNew(0);
+AllocArray(filePool, maxFiles);
+AllocArray(filePoolName, maxFiles);
 }
 
-
-void addTailAndClose(struct hashEl *hel)
-/* Given an element of chromFpHash, add tailerText if specified (which may
- * require reopening the file) and close the file pointer. */
+void freeFilePool()
+/* Free the file pool. */
 {
+freez(&filePool);
+freez(&filePoolName);
+hashFree(&filePoolHash);
+hashFree(&createdFilesHash);
+}
+
+FILE *openFileFromPool(char *baseName)
+/* Open a file using one of the pool of file pointers
+   to ensure not to exceed the OS limit of open files.
+   
+   If the file is already opened, then just return it.
+   If it is not yet open, then grab a file pointer and open it. */
+{
+FILE *result;
+static int fileCount = 0;
+char *fileName;
+int poolIx;
+
+result = hashFindVal(filePoolHash, baseName);
+if (result == NULL) /* not yet open */
+    {
+    fileName = getFileName(baseName);
+    if (fileCount >= maxFiles) /* all file pointers are used */
+        {
+        /* Choose a random file to evict. */
+        poolIx = (rand() % maxFiles);
+
+        verbose(3, "Temporarily closing %s.\n", filePoolName[poolIx]);
+        carefulClose(&(filePool[poolIx]));
+        hashRemove(filePoolHash, filePoolName[poolIx]);
+        }
+    else
+        poolIx = fileCount;
+
+    /* Determine whether to open the file for write (if its the
+       first time its been opened) or append. */
+    struct hashEl *hel = hashLookup(createdFilesHash, baseName);
+    if (hel == NULL)
+        {
+        verbose(2, "Creating %s.\n", baseName);
+        result = mustOpen(fileName, "w");
+        fileCount++;
+        if (fileCount >= 1000)
+            warn("Created more than 1000 output files.\n");
+        hel = hashAddInt(createdFilesHash, baseName, 1);
+        }
+    else
+        {
+        verbose(3, "Reopening %s.\n", filePoolName[poolIx]);
+        result = mustOpen(fileName, "a");
+        }
+
+    /* Record that the file is open and in the pool. */
+    filePool[poolIx] = result;
+    filePoolName[poolIx] = hel->name;
+    hashAdd(filePoolHash, filePoolName[poolIx], result);
+
+    freez(&fileName);
+    }
+
+return result;
+}
+
+void addTailsAndClose()
+/* Add the tail to each file and close all open files. */
+{
+struct hashCookie cookie;
+struct hashEl *hel;
+FILE *f;
+int i;
+
+/* Write the tail to each file, if appropriate. */
 if (tailerText != NULL)
     {
-    FILE *f = (FILE *)(hel->val);
-    if (f == NULL)
-	{
-	char *outFileName = getFileName(hel->name);
-	hel->val = f = mustOpen(outFileName, "a");
-	fprintf(f, "%s", tailerText);
-	}
+    cookie = hashFirst(createdFilesHash);
+    while ((hel = hashNext(&cookie)) != NULL)
+        {
+        f = openFileFromPool(hel->name);
+        fprintf(f, "%s", tailerText);
+        }
     }
-carefulClose((FILE **)&(hel->val));
-}
 
-void closeFiles(struct hash *chromFpHash)
-/* Apply addTailAndClose to all items in chromFpHash. */
-{
-hashTraverseEls(chromFpHash, addTailAndClose);
+for (i = 0; i < maxFiles; i++)
+    carefulClose(&(filePool[i]));
 }
 
 
@@ -175,7 +189,6 @@ void splitFileByColumn(char *inFileName)
 /* splitFileByColumn - Split text input into files named by column value. */
 {
 struct lineFile *lf = lineFileOpen(inFileName, TRUE);
-struct hash *chromFpHash = hashNew(10);
 char *line = NULL;
 
 if (ending == NULL)
@@ -199,6 +212,7 @@ else if (ending[0] != '.')
     }
 
 makeDirs(outDirName);
+allocFilePool();
 while (lineFileNext(lf, &line, NULL))
     {
     char *lineClone = cloneString(line);
@@ -216,12 +230,14 @@ while (lineFileNext(lf, &line, NULL))
 		 lf->lineIx, lf->fileName, wordCount, col);
 
     colVal = words[col-1];
-    f = getFp(chromFpHash, colVal);
+    f = openFileFromPool(colVal);
     fprintf(f, "%s\n", line);
     freeMem(lineClone);
     }
 lineFileClose(&lf);
-closeFiles(chromFpHash);
+addTailsAndClose();
+freeFilePool();
+freez(&ending);
 }
 
 int main(int argc, char *argv[])
@@ -235,6 +251,9 @@ tailFileName = optionVal("tail", tailFileName);
 chromDirs = optionExists("chromDirs");
 ending = optionVal("ending", ending);
 tab = optionExists("tab");
+maxFiles = optionInt("maxFiles", maxFiles);
+if (maxFiles <= 0)
+    errAbort("-maxFiles must be a positive integer: \"%d\"", maxFiles);
 if (headFileName != NULL)
     {
     readInGulp(headFileName, &headerText, NULL);
@@ -250,5 +269,6 @@ if (col > MAX_COL_OFFSET)
 	     MAX_COL_OFFSET);
 outDirName = argv[2];
 splitFileByColumn(argv[1]);
+optionFree();
 return 0;
 }
