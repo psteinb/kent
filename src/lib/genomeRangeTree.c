@@ -121,6 +121,26 @@ struct rbTree *t;
 return (t=genomeRangeTreeFindRangeTree(tree,chrom)) ? rangeTreeOverlapSize(t, start, end) : 0;
 }
 
+long genomeRangeTreeOverlapTotalSize(struct genomeRangeTree *tree)
+/* Return the total size of all ranges in all range trees.
+ * Sadly not thread-safe. 
+ * On 32 bit machines be careful since each rangeTree returns
+ * its total overlap as an int, so that could be subject to overflow in
+ * its range of end or total size return value. */
+{
+long totalSize = 0;
+char *chrom;
+struct rbTree *chromTree;
+struct hashCookie cookie = hashFirst(tree->hash);
+while ((chrom = hashNextName(&cookie)) != NULL)
+    {
+    chromTree = genomeRangeTreeFindRangeTree(tree, chrom);
+    totalSize += rangeTreeOverlapTotalSize(chromTree);
+    }
+return totalSize;
+}
+
+
 struct range *genomeRangeTreeFindEnclosing(struct genomeRangeTree *tree, char *chrom, int start, int end)
 /* Find item in range tree that encloses range between start and end 
  * if there is any such item. */
