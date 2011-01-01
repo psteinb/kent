@@ -5199,8 +5199,8 @@ winBaseCount = winEnd - winStart;
  * zooming and dinking routines. */
 setLayoutGlobals();
 
-baseShowPos = cartUsualBoolean(cart, BASE_SHOWPOS, FALSE);
-baseShowAsm = cartUsualBoolean(cart, BASE_SHOWASM, FALSE);
+baseShowPos = cartUsualBoolean(cart, BASE_SHOWPOS, TRUE);
+baseShowAsm = cartUsualBoolean(cart, BASE_SHOWASM, TRUE);
 baseShowScaleBar = cartUsualBoolean(cart, BASE_SCALE_BAR, TRUE);
 baseShowRuler = cartUsualBoolean(cart, BASE_SHOWRULER, TRUE);
 safef(titleVar,sizeof(titleVar),"%s_%s", BASE_TITLE, database);

@@ -5597,6 +5597,20 @@ if (isWigMafProt)
 else
     puts("Display bases identical to reference as dots<BR>" );
 
+boolean dots = FALSE;
+if (cartVarExists(cart,option)) 
+    dots = cartCgiUsualBoolean(cart, option, FALSE);
+else
+    {
+    char *dotString = trackDbSetting(tdb, MAF_DOT_VAR);
+    if (dotString && sameString(dotString, "on"))
+        {
+	dots = TRUE;
+	cartSetBoolean(cart, option, TRUE);
+        }
+    }
+cgiMakeCheckBox(option, dots);
+
 if (viewString != NULL)
     safef(option, sizeof option, "%s.%s.%s", name, viewString, MAF_CHAIN_VAR);
 else

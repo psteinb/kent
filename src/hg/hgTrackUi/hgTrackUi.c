@@ -1704,8 +1704,8 @@ void rulerUi(struct trackDb *tdb)
 boolean showScaleBar = cartUsualBoolean(cart, BASE_SCALE_BAR, TRUE);
 boolean showRuler = cartUsualBoolean(cart, BASE_SHOWRULER, TRUE);
 boolean complementsToo = cartUsualBoolean(cart, MOTIF_COMPLEMENT, FALSE);
-boolean showPos = cartUsualBoolean(cart, BASE_SHOWPOS, FALSE);
-boolean showAsm = cartUsualBoolean(cart, BASE_SHOWASM, FALSE);
+boolean showPos = cartUsualBoolean(cart, BASE_SHOWPOS, TRUE);
+boolean showAsm = cartUsualBoolean(cart, BASE_SHOWASM, TRUE);
 /* title var is assembly-specific */
 char titleVar[256];
 char *title = NULL;
