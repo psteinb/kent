@@ -278,6 +278,8 @@ for (bl = blList; bl != NULL; bl = bl->next)
 	}
     }
 fclose(f);
+
+bedLineFreeList(&blList);
 }
 
 struct bed *bedLoad3(char **row)
