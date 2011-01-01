@@ -389,7 +389,7 @@ nodeNames(tree, ds);
 
 ds->string[ds->stringSize-1]=0;
 
-return ds->string;
+return dyStringCannibalize(&ds);
 }
 
 
