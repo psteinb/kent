@@ -16,7 +16,7 @@ static struct optionSpec optionSpecs[] =
 static char *outFile;
 static boolean append;
 
-id usage()
+void usage()
 /* Explain usage and exit. */
 {
 errAbort(
