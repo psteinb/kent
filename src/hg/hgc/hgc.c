@@ -5465,6 +5465,187 @@ printTrackHtml(tdb);
 hFreeConn(&conn);
 }
 
+
+
+static void printEnhancerInfo(struct trackDb *tdb, char *acc, struct psl *psl, int start)
+{
+struct dyString *dy = newDyString(1024);
+struct sqlConnection *conn = hAllocConn(database);
+struct sqlResult *sr;
+char **row;
+char *type, *source, *sourceTaxId, *humanMRCA, *commonName;
+int rank, numHomologs, score;
+float seqIdent, js, entropy;
+
+dyStringAppend(dy,
+			   "select source, sourceTaxId, type, humanMRCA, commonName");
+dyStringPrintf(dy,
+			   " from bejsaEnhancerNames natural join bejsaEnhancerOrganisms"
+			   " where fullName='%s'",
+			   acc);
+sr = sqlMustGetResult(conn, dy->string);
+row = sqlNextRow(sr);
+
+/* Print enhancer info. */
+if (row != NULL)
+	{
+	source=row[0];sourceTaxId=row[1];type=row[2];humanMRCA=row[3];commonName=row[4];
+
+	/* Now we have all the info out of the database and into nicely named
+	 * local variables.  */
+	printf("<H2>Information on %s <A HREF=\"http://dev.stanford.edu/cgi-bin/redirect.py?name=%s\">%s</A></H2>\n", "tested enhancer", acc, acc);
+	printf("<BR><H3>Element information</H3>");
+	printf("<B>Source:</B> %s<BR>\n", source);
+	printf("<B>Source Organism Tax Id:</B> ");
+	printf("<A href=\"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=%s\" TARGET=_blank>",
+	   cgiEncode(sourceTaxId));
+	printf("%s</A><BR>\n", sourceTaxId);
+	printf("<B>Source Organism Common Name:</B> ");
+	printf("<A href=\"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name=%s&lvl=0&srchmode=1\" TARGET=_blank>",
+	   cgiEncode(commonName));
+	printf("%s</A><BR>\n", commonName);
+	printf("<B>Nearest clade to human:</B> %s<BR>\n", humanMRCA);
+	printf("<B>Test result for enhancer activity:</B> %s<BR>\n", type);
+	printf("<B>Original enhancer length:</B> %d<BR>\n", psl->qSize);
+	}
+
+sqlFreeResult(&sr);
+freeDyString(&dy);
+
+dy = newDyString(1024);
+
+if (containsStringNoCase(tdb->table, "lastz"))
+	{
+
+	dyStringAppend(dy,
+				   "select score, seqIdent, entropy, js");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerLastzAlignments"
+				   " where qName='%s' and tName='%s' and tStart=%d",
+				   acc, seqName, start+1);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		score=sqlUnsigned(row[0]);seqIdent=sqlFloat(row[1]);entropy=sqlFloat(row[2]);js=sqlFloat(row[3]);
+		}
+
+
+	sqlFreeResult(&sr);
+	freeDyString(&dy);
+
+	dy = newDyString(1024);
+
+	dyStringAppend(dy,
+				   "select count(*)");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerLastzAlignments where qName='%s'", acc);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		numHomologs=sqlUnsigned(row[0]);
+		}
+
+	sqlFreeResult(&sr);
+	freeDyString(&dy);
+
+	dy = newDyString(1024);
+	dyStringAppend(dy,
+				   "select count(*)");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerLastzAlignments where qName='%s' and score > %d", acc, score);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		rank=sqlUnsigned(row[0]) + 1;
+		}
+
+	}
+else
+	{
+	dyStringAppend(dy,
+				   "select score, seqIdent");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerNames natural join bejsaEnhancerBLATAlignments"
+				   " where fullName='%s'",
+				   acc);
+
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		score=sqlUnsigned(row[0]);seqIdent=sqlFloat(row[1]);
+		}
+
+	}
+
+sqlFreeResult(&sr);
+freeDyString(&dy);
+
+/* Print alignment info. */
+printf("<H3>Alignment information</H3>");
+printf("<B>BLAT/lastz score:</B> %d<BR>\n", score);
+printf("<B>Sequence identity:</B> %0.1f<BR>\n", seqIdent);
+
+
+if (containsStringNoCase(tdb->table, "lastz"))
+	{
+	printf("<B>Entropy:</B> %0.2f<BR>\n", entropy);
+	printf("<B>J-S divergence:</B> %0.4f<BR>\n", js);
+	printf("<B>Rank:</B> %d<BR>\n", rank);
+	printf("<B>No. of homologs:</B> %d<BR>\n", numHomologs);
+	}
+
+hFreeConn(&conn);
+}
+
+
+void doEnhancerTrack(struct trackDb *tdb, char *acc)
+/* Click on an individual enhancer. */
+{
+//char *track = tdb->track;
+char *table = tdb->table;
+struct sqlConnection *conn = hAllocConn(database);
+char *type;
+int start = cartInt(cart, "o");
+struct psl *pslList = NULL;
+
+type = "Enhancer";
+
+/* Print non-sequence info. */
+cartWebStart(cart, database, "%s", acc);
+
+/* Get alignment info. */
+pslList = getAlignments(conn, table, acc);
+if (pslList == NULL)
+    {
+    /* this was not actually a click on an aligned item -- we just
+     * want to display RNA info, so leave here */
+    hFreeConn(&conn);
+    htmlHorizontalLine();
+    printf("Enhancer %s alignment does not meet minimum alignment criteria on this assembly.", acc);
+    return;
+    }
+
+/* Print enahncer info */
+printEnhancerInfo(tdb, acc, pslList, start);
+
+htmlHorizontalLine();
+printf("<H3>%s/Genomic Alignments</H3>", type);
+slSort(&pslList, pslCmpScoreDesc);
+
+printAlignments(pslList, start, "htcCdnaAli", table, acc);
+
+printTrackHtml(tdb);
+hFreeConn(&conn);
+}
+
+
+
+
+
 void printPslFormat(struct sqlConnection *conn, struct trackDb *tdb, char *item, int start, char *subType)
 /* Handles click in affyU95 or affyU133 tracks */
 {
@@ -22856,6 +23037,10 @@ else if (sameWord(table, "mrna") || sameWord(table, "mrna2") ||
     {
     doHgRna(tdb, item);
     }
+else if (startsWith("bejsaEnhancer", table))
+	{
+	doEnhancerTrack(tdb, item);
+	}
 else if (startsWith("pseudoMrna",table ) || startsWith("pseudoGeneLink",table )
         || sameWord("pseudoUcsc",table))
     {
