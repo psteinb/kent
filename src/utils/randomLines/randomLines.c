@@ -8,6 +8,7 @@
 static char const rcsid[] = "$Id: randomLines.c,v 1.6 2008/10/24 01:09:24 kent Exp $";
 
 int seed;
+int salt;
 
 void usage()
 /* Explain usage and exit. */
@@ -18,13 +19,15 @@ errAbort(
   "   randomLines inFile count outFile\n"
   "options:\n"
   "   -seed=N - Set seed used for randomizing, useful for debugging.\n"
-  "   -decomment - remove blank lines and those starting with \n"
+  "   -decomment - remove blank lines and those starting with #\n"
+  "   -salt=N - Add this amount of salt to the random number seed (useful for cluster runs)\n"
   );
 }
 
 static struct optionSpec options[] = {
    {"seed", OPTION_INT},
    {"decomment", OPTION_BOOLEAN},
+   {"salt", OPTION_INT},
    {NULL, 0},
 };
 
@@ -33,39 +36,59 @@ boolean decomment = FALSE;
 void randomLines(char *inName, int count, char *outName)
 /* randomLines - Pick out random lines from file. */
 {
-srand(seed);
+srand(seed+salt);
 
 /* Read all lines of input and put into an array. */
 struct slName *slPt, *slList= readAllLines(inName);
 int lineCount = slCount(slList);
 char **lineArray;
 AllocArray(lineArray, lineCount);
-int i;
-for (i=0, slPt=slList; i<lineCount; ++i, slPt = slPt->next)
-    lineArray[i] = slPt->name;
+int i = 0, validLineCount = 0;
+for (slPt=slList; slPt != NULL; slPt = slPt->next)
+    {
+	if (!decomment && slPt->name)
+        {
+        lineArray[i++] = slPt->name;
+        ++validLineCount;
+        }
+    else
+        {
+        // Only add non-blank and non-comment lines
+        char *s, c;
+        s = skipLeadingSpaces(slPt->name);
+        c = s[0];
+        if (c != 0 && c != '#')
+            {
+            lineArray[i++] = slPt->name;
+            ++validLineCount;
+            }
+        }
+    }
 
-/* Avoid an infinite, or very long loop by not letting them ask for all
- * the lines except in the small case. */
-int maxCount = lineCount/2;
-if (maxCount < 1000)
-    maxCount = lineCount;
+int maxCount = validLineCount;
 if (count > maxCount)
-    errAbort("%s has %d lines.  Random lines will only output %d or less lines\n"
-             "on a file this size. You asked for %d. Sorry.",
-    	inName, lineCount, maxCount, count);
+    errAbort("%s has %d eligible lines within its %d total lines.\n"
+             "You asked for %d. Sorry.",
+    	inName, maxCount, lineCount, count);
 
 FILE *f = mustOpen(outName, "w");
 int outCount = 0;
+char *tmp;
 while (outCount < count)
     {
-    int randomIx = rand()%lineCount;
-    char *line = lineArray[randomIx];
-    if (line)
-	{
-        fprintf(f, "%s\n", line);
-	++outCount;
-	lineArray[randomIx] = NULL;
-	}
+    // Randomize in place only the number of elements you need to print,
+    // using the method from CLRS 2001 pg. 103
+    int randomIx = outCount + rand()%(validLineCount-outCount);
+    tmp = lineArray[outCount];
+    lineArray[outCount] = lineArray[randomIx];
+    lineArray[randomIx] = tmp;
+    ++outCount;
+    }
+
+// print out randomized results
+for (outCount = 0; outCount < count; outCount++)
+    {
+    fprintf(f, "%s\n", lineArray[outCount]);
     }
 }
 
@@ -76,6 +99,7 @@ optionInit(&argc, argv, options);
 if (argc != 4 || !isdigit(argv[2][0]))
     usage();
 seed = optionInt("seed", (int)time(NULL));
+salt = optionInt("salt", 0);
 decomment = optionExists("decomment");
 randomLines(argv[1], atoi(argv[2]), argv[3]);
 return 0;
