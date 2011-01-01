@@ -515,12 +515,13 @@ if ((lf = *pLf) != NULL)
         {
         pipelineWait(lf->pl);
         pipelineFree(&lf->pl);
+        freeMem(lf->buf);
         }
     else if (lf->fd > 0 && lf->fd != fileno(stdin))
         {
         close(lf->fd);
+        freeMem(lf->buf);
 	    }
-    freeMem(lf->buf);
     freeMem(lf->fileName);
     metaDataFree(lf);
     freez(pLf);
