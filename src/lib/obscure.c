@@ -623,8 +623,7 @@ if (count > 1)
     array = needLargeMem(count * sizeof(*array));
     for (el = list, i=0; el != NULL; el = el->next, i++)
         array[i] = el;
-    for (i=0; i<4; ++i)
-        shuffleArrayOfPointers(array, count, shuffleCount);
+    shuffleArrayOfPointers(array, count, shuffleCount);
     list = NULL;
     for (i=0; i<count; ++i)
         {
