@@ -453,10 +453,10 @@ void wigStatsTableHeading(FILE * fh, boolean htmlOut);
 
 /*	verbose level guidelines	*/
 #define	VERBOSE_ALWAYS_ON	1
-#define VERBOSE_CHR_LEVEL	2
-#define VERBOSE_SQL_ROW_LEVEL	3
-#define VERBOSE_PER_VALUE_LEVEL	4
-#define VERBOSE_HIGHEST		5
+#define VERBOSE_CHR_LEVEL	10
+#define VERBOSE_SQL_ROW_LEVEL	15
+#define VERBOSE_PER_VALUE_LEVEL	20
+#define VERBOSE_HIGHEST		100
 
 /*	in lib/wiggleUtils.c	*/
 void printHistoGram(struct histoResult *histoResults, boolean html);
