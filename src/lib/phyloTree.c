@@ -5,6 +5,38 @@
 
 static char const rcsid[] = "$Id: phyloTree.c,v 1.11 2009/06/24 03:25:31 galt Exp $";
 
+void freePhyloTree(struct phyloTree **pTree)
+/* Free a dynamically allocated phyloTree. */
+{
+struct phyloTree *tree = *pTree;
+
+if (tree == NULL)
+    return;
+
+/* Free all child nodes. */
+int i;
+for (i = 0; i < tree->numEdges; i++)
+    freePhyloTree(&(tree->edges[i]));
+freeMem(tree->edges);
+
+/* Free the phyloName. */
+freePhyloName(&(tree->ident));
+
+/* Free the tree itself. */
+freez(pTree);
+}
+
+void freePhyloName(struct phyloName **pName)
+/* Free a dynamically allocated phyloName. */
+{
+struct phyloName *name = *pName;
+
+if (name == NULL)
+    return;
+freeMem(name->name);
+freez(pName);
+}
+
 struct phyloTree *phyloReadTree(struct lineFile *lf)
 /* reads a phyloTree from lineFile (first line only) */
 {
