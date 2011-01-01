@@ -198,9 +198,9 @@ if (ending == NULL)
 	ptr--;
     ptr = strchr(ptr, '.');
     if (ptr == NULL)
-	ending = "";
+	ending = cloneString("");
     else
-	ending = ptr;
+	ending = cloneString(ptr);
     }
 else if (ending[0] != '.')
     {
