@@ -5475,7 +5475,7 @@ struct sqlResult *sr;
 char **row;
 char *type, *source, *sourceTaxId, *humanMRCA, *commonName, *testOrg;
 int rank, numHomologs, score;
-float seqIdent, js, entropy;
+float seqIdent, js, entropy, repeatOverlap;
 
 dyStringAppend(dy,
 			   "select source, sourceTaxId, type, humanMRCA, commonName, testOrganism");
@@ -5532,7 +5532,7 @@ if (containsStringNoCase(tdb->table, "lastz"))
 	{
 
 	dyStringAppend(dy,
-				   "select score, seqIdent, entropy, js");
+				   "select score, seqIdent, entropy, js, repeatOverlap");
 	dyStringPrintf(dy,
 				   " from bejsaEnhancerLastzAlignments"
 				   " where qName='%s' and tName='%s' and tStart=%d",
@@ -5541,7 +5541,7 @@ if (containsStringNoCase(tdb->table, "lastz"))
 	row = sqlNextRow(sr);
 	if (row != NULL)
 		{
-		score=sqlUnsigned(row[0]);seqIdent=sqlFloat(row[1]);entropy=sqlFloat(row[2]);js=sqlFloat(row[3]);
+		score=sqlUnsigned(row[0]);seqIdent=sqlFloat(row[1]);entropy=sqlFloat(row[2]);js=sqlFloat(row[3]);repeatOverlap=sqlFloat(row[4]);
 		}
 
 
@@ -5608,6 +5608,7 @@ if (containsStringNoCase(tdb->table, "lastz"))
 	{
 	printf("<B>Entropy:</B> %0.2f<BR>\n", entropy);
 	printf("<B>J-S divergence:</B> %0.4f<BR>\n", js);
+	printf("<B>Percentage of overlap with a single repeat:</B> %0.2f<BR>\n", repeatOverlap);
 	printf("<B>Rank:</B> %d<BR>\n", rank);
 	printf("<B>No. of homologs:</B> %d<BR>\n", numHomologs);
 	}
@@ -5653,7 +5654,7 @@ if (!containsStringNoCase(tdb->table, "liftover"))
 	printf("<H3>%s/Genomic Alignments</H3>", type);
 	slSort(&pslList, pslCmpScoreDesc);
 	printAlignments(pslList, start, "htcCdnaAli", table, acc);
-}
+	}
 
 printTrackHtml(tdb);
 hFreeConn(&conn);
