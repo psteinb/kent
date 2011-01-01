@@ -123,6 +123,7 @@ else if (hel->val == NULL)
 	    carefulClose((FILE **)&(prevHel->val));
 	}
     f = mustOpen(outFileName, "a");
+    hel->val = f;
     freez(&outFileName);
     }
 else if (!sameString(baseName, prevBaseName))
