@@ -70,7 +70,7 @@ my @allClusters = (keys %cluster);
 
 %clusterFilesystem =
     ( 'scratch' =>
-        { root => '/scratch/data', clusterLocality => 1.0,
+        { root => '/cluster/tmp', clusterLocality => 1.0,
 	  distrHost => [], distrCommand => '',
 	  inputFor => \@allClusters, outputFor => [], },
       'hive' =>
@@ -107,7 +107,7 @@ sub choosePermanentStorage {
     }
   }
   if (! defined $bestRaid) {
-    $bestRaid = "/cluster/u/hillerm/doBlastzChainNet_tmp";
+    $bestRaid = "/cluster/tmp";
   }
   confess "Could not df any /cluster/store's" if (! defined $bestRaid);
   return $bestRaid;
@@ -376,7 +376,7 @@ sub chooseFilesystemsForCluster {
       push @filesystems, $fsInfo->{'root'} if (-d $fsInfo->{'root'});
     }
   }
-  push @filesystems, '/cluster/u/hillerm/doBlastzChainNet_tmp' if (scalar(@filesystems)<1);
+  push @filesystems, '/cluster/tmp' if (scalar(@filesystems)<1);
   return @filesystems;
 }
 
@@ -500,12 +500,12 @@ $paraRun = ("$para make jobList\n" .
 $centralDbSql = "hgsql -h genome-testdb -A -N hgcentraltest";
 $git = "/usr/bin/git";
 
-$clusterData = '/hive/data/genomes';
+$clusterData = '/cluster/gbdb-bej';
 $trackBuild = 'bed';
 my $apacheRoot = '/usr/local/apache';
 $goldenPath = "$apacheRoot/htdocs-hgdownload/goldenPath";
 $images = "$apacheRoot/htdocs/images";
-$gbdb = '/gbdb';
+$gbdb = '/cluster/gbdb-bej';
 
 # This is the max number of sequences in an assembly that we will consider
 # "chrom-based" (allow split tables; per-seq files can fit in one directory)
