@@ -103,7 +103,7 @@ print """
                         </td>
                       </tr>
                       <tr>
-                        <td>Browser code in the SVN repository:</td><td width="5"/>
+                        <td>Browser code in the GIT repository:</td><td width="5"/>
                         <td><tt>%s</tt></td>
                       </tr>
                       <tr>
@@ -121,7 +121,7 @@ if isUserBrowser:
     if oldBrowser:
         print """
                       <tr>
-                        <td colspan="3"><i><font color="red">%s is out-of-date compared to the SVN repository!</font></i></td>
+                        <td colspan="3"><i><font color="red">%s is out-of-date compared to the GIT repository!</font></i></td>
                       </tr>
         """ % (server)
 print """
