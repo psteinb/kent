@@ -7,18 +7,31 @@ include wgEncodeUwAffyExonArray.ra
 include wgEncodeSunyAlbanyGeneSt.ra
 include wgEncodeSunyAlbanyTiling.ra
 include wgEncodeSunySwitchgear.ra
-include wgEncodeHaibMethylRrbs.ra
 include wgEncodeHaibTfbs.ra
 include wgEncodeSydhTfbs.ra
 include wgEncodeSydhHistone.ra
-include wgEncodeBroadHistone.ra
 include wgEncodeOpenChromChip.ra
 include wgEncodeOpenChromDnase.ra
 include wgEncodeOpenChromFaire.ra
+include wgEncodeOpenChromSynth.ra
 include wgEncodeDukeAffyExon.ra
 include wgEncodeUwHistone.ra
-include wgEncodeUwDgf.ra
-include wgEncodeUwDnase.ra
+
+#Methyl RRBS (wrangler: Venkat)
+include wgEncodeHaibMethylRrbs.ra beta,public
+include wgEncodeHaibMethylRrbs.new.ra alpha
+
+#Broad Histone (wrangler: Tim)
+include wgEncodeBroadHistone.ra alpha,beta
+
+#UW DNase DGF (wrangler: Venkat)
+include wgEncodeUwDgf.ra beta,public
+include wgEncodeUwDgf.new.ra alpha
+
+#Uw Dnase-Seq (wrangler: Venkat
+include wgEncodeUwDnase.ra beta,public
+include wgEncodeUwDnase.new.ra alpha
+
 include wgEncodeHaibMethylSeq.ra
 include wgEncodeHaibMethylArray.ra
 include wgEncodeGisRnaSeq.ra
@@ -29,6 +42,7 @@ include wgEncodeUwTfbs.ra
 include wgEncodeCshlLongRnaSeq.ra
 include wgEncodeCaltechRnaSeq.ra
 include wgEncodeYaleRnaSeq.ra
+include wgEncodeBuOrchid.ra
 
 track wgEncodeMapability
 compositeTrack on
@@ -235,4 +249,8 @@ include wgEncodeGencodeV5.ra alpha
 include wgEncodeRikenCage.ra
 
 # CSHL Small RNA (wrangler: cricket)
-include wgEncodeCshlShortRnaSeq.ra
+include wgEncodeCshlShortRnaSeq.ra beta,public
+include wgEncodeCshlShortRnaSeq.new.ra alpha
+
+# UNC/BSU Proteogenomics (wrangler: cline)
+include wgEncodeUncBsuProt.ra alpha

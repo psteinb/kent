@@ -733,7 +733,8 @@ if (npu.byteRangeStart != -1)
 	}
     }
 
-safef(cmd,sizeof(cmd),"RETR %s\r\n", npu.file);
+/* RETR for files, LIST for directories ending in / */
+safef(cmd,sizeof(cmd),"%s %s\r\n",((npu.file[strlen(npu.file)-1]) == '/') ? "LIST" : "RETR", npu.file);
 sendFtpCommandOnly(sd, cmd);
 
 int sdata = netConnect(npu.host, parsePasvPort(rs->string));
@@ -979,14 +980,20 @@ int netUrlOpenSockets(char *url, int *retCtrlSocket)
  * or -1 if error. 
  * If retCtrlSocket is non-NULL and url is FTP, set *retCtrlSocket
  * to the FTP control socket which is left open for a persistent connection.
- * close(result) (and close(*retCtrlSocket) if applicable) when done. */
+ * close(result) (and close(*retCtrlSocket) if applicable) when done. 
+ * If url is missing :// then it's just treated as a file. */
 {
-if (startsWith("http://",url) || startsWith("https://",url) || (stringIn("://", url) == NULL))
-    return netGetOpenHttp(url);
-else if (startsWith("ftp://",url))
-    return netGetOpenFtpSockets(url, retCtrlSocket);
-else    
-    errAbort("Sorry, can only netUrlOpen http, https and ftp currently, not '%s'", url);
+if (stringIn("://", url) == NULL)
+    return open(url, O_RDONLY);
+else
+    {
+    if (startsWith("http://",url) || startsWith("https://",url))
+	return netGetOpenHttp(url);
+    else if (startsWith("ftp://",url))
+	return netGetOpenFtpSockets(url, retCtrlSocket);
+    else    
+	errAbort("Sorry, can only netUrlOpen http, https and ftp currently, not '%s'", url);
+    }
 return -1;    
 }
 

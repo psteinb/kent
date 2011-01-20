@@ -11541,3 +11541,27 @@ hgsql -e 'select distinct(class) from pseudoYale60Class;' mm9
 # Added the classes to:
 # ~/kentJuly2010/kent/src/hg/makeDb/trackDb/tagTypes.tab
 # e.g. gClass_Processed genePred
+
+#########################################################################
+# Refresh mm9.knownToVisiGene
+#
+# After we fixed another issue on hgwdev and rebuilt knownToVisiGene
+# it picked up the new mm9 ucsc genes.  Because that has not
+# yet been released to RR, I remade it on hgwbeta.
+ssh hgwbeta
+knownToVisiGene mm9
+
+#########################################################################
+# SEGMENTAL DUPLICATIONS (DONE 1/11/2011 Fan)
+    # File indicated by email from T. Louie <tinlouie@u.washington.edu>
+    mkdir /cluster/data/mm9/bed/genomicSuperDups
+    cd /cluster/data/mm9/bed/genomicSuperDups
+    wget --timestamping 'http://staff.washington.edu/tinlouie/mm9genomicSuperDups.tab.gz'
+    
+    awk '($3 - $2) >= 1000 && ($9 - $8) >= 1000 {print;}' mm9genomicSuperDups.tab \
+    | hgLoadBed mm9 genomicSuperDups stdin \
+      -tab -sqlTable=$HOME/kent/src/hg/lib/genomicSuperDups.sql
+    # 8/29/07 Gak!  Kayla found that the strand values were "+" and "_" -- fix:
+    hgsql mm9 -e 'update genomicSuperDups set strand = "-" where strand = "_";'
+
+#####################################################################

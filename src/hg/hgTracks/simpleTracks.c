@@ -9228,8 +9228,11 @@ if (!tg->limitedVisSet)
             struct track *subtrack;
             int subCnt = subtrackCount(tg->subtracks);
             maxHeight = maxHeight * max(subCnt,1);
-            for (subtrack = tg->subtracks;  subtrack != NULL; subtrack = subtrack->next)
-                limitVisibility(subtrack);
+	    if (!tg->syncChildVisToSelf)
+		{
+		for (subtrack = tg->subtracks;  subtrack != NULL; subtrack = subtrack->next)
+		    limitVisibility(subtrack);
+		}
             }
         while((h = tg->totalHeight(tg, vis)) > maxHeight && vis != tvDense)
             {
@@ -9243,6 +9246,16 @@ if (!tg->limitedVisSet)
         tg->height = h;
         tg->limitedVis = vis;
         }
+    if (tg->syncChildVisToSelf)
+        {
+	struct track *subtrack;
+	for (subtrack = tg->subtracks;  subtrack != NULL; subtrack = subtrack->next)
+	    {
+	    subtrack->visibility = tg->visibility;
+	    subtrack->limitedVis = tg->limitedVis;
+	    subtrack->limitedVisSet = tg->limitedVisSet;
+	    }
+	}
     }
 return tg->limitedVis;
 }
@@ -12019,6 +12032,9 @@ registerTrackHandler("snp131Composite", snp125Methods);
 registerTrackHandler("snp131Clinical", snp125Methods);
 registerTrackHandler("snp131NonClinical", snp125Methods);
 registerTrackHandler("snp132", snp125Methods);
+registerTrackHandler("snp132Common", snp125Methods);
+registerTrackHandler("snp132Patient", snp125Methods);
+registerTrackHandler("snp132NonUnique", snp125Methods);
 registerTrackHandler("ld", ldMethods);
 registerTrackHandler("cnpSharp", cnpSharpMethods);
 registerTrackHandler("cnpSharp2", cnpSharp2Methods);

@@ -198,8 +198,8 @@ printf("<B>Statistics on:</B> %s <B>items covering</B> %s bases (%4.2f%% coverag
 printf("<B>Average item spans</B> %4.2f <B>bases.</B> ", (double)iTotalSize/iCount);
 if (biggestSize != smallestSize)
     {
-    sprintLongWithCommas(num1Buf, biggestSize);
-    sprintLongWithCommas(num2Buf, smallestSize);
+    sprintLongWithCommas(num1Buf, smallestSize);
+    sprintLongWithCommas(num2Buf, biggestSize);
     printf("<B>Minimum span</B> %s <B>maximum span</B> %s", num1Buf, num2Buf);
     }
 printf("<BR>\n");
@@ -259,11 +259,15 @@ void genericBigWigClick(struct sqlConnection *conn, struct trackDb *tdb,
 	char *item, int start)
 /* Display details for BigWig built in tracks. */
 {
-char query[256];
-safef(query, sizeof(query), "select fileName from %s", tdb->table);
-char *fileName = sqlQuickString(conn, query);
+char *fileName = trackDbSetting(tdb, "bigDataUrl");
 if (fileName == NULL)
-    errAbort("Missing fileName in %s table", tdb->table);
+    {
+    char query[256];
+    safef(query, sizeof(query), "select fileName from %s", tdb->table);
+    fileName = sqlQuickString(conn, query);
+    if (fileName == NULL)
+	errAbort("Missing fileName in %s table", tdb->table);
+    }
 bigWigClick(tdb, fileName);
 }
 

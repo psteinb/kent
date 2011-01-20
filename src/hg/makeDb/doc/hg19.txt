@@ -7806,6 +7806,9 @@ done
     # trim unwanted chip-prefix to be backwards compatible with hg17 and hg18
     hgsql hg19 -e 'update knownToU133 set value=substring(value,7)'
 
+    # remove the trailing ";" from the value field (redmine #1685)
+    hgsql hg19 -e 'update knownToU133 set value=trim(trailing ";" from value);'
+
 ##########################################################################
 # GNF ATLAS 2 (Done - 2009-09-30 - Jim)
     # Align probes from GNF1H chip.
@@ -13024,10 +13027,11 @@ hgLoadBed hg19 darned allChroms.bed
     # once this has been QAed, will auto-update from genbank scripts
 
 #############################################################################
-# NEW SNP132 (DONE 12/17/10 angie)
-
-    mkdir -p /hive/data/outside/dbSNP/132test/human
-    cd /hive/data/outside/dbSNP/132test/human
+# NEW SNP132 (DONE 1/5/11 angie)
+    # New table type snp132Ext, with same columns as snp125 plus exceptions,
+    # allele freqs, and submitter handles, using new script doDbSnp.pl.
+    mkdir -p /hive/data/outside/dbSNP/132/human
+    cd /hive/data/outside/dbSNP/132/human
     # Look at the directory listing of ftp://ftp.ncbi.nih.gov/snp/database/organism_data/
     # to find the subdir name to use as orgDir below (human_9606 in this case).
     # Then click into that directory and look for file names like 
@@ -13041,8 +13045,7 @@ build 132
 buildAssembly 37_1
 liftUp /hive/data/genomes/hg19/jkStuff/liftContigs.lft
 EOF
-    ~/kent/src/hg/utils/automation/doDbSnp.pl config.ra \
-      -buildDir /hive/data/outside/dbSNP/132test >& do.log & tail -f do.log
+    ~/kent/src/hg/utils/automation/doDbSnp.pl config.ra >& do.log & tail -f do.log
 # *** This release contains more than one assembly label.
 # *** Please examine this list in case we need to exclude any of these:
 #
@@ -13062,20 +13065,7 @@ EOF
 
     # Try again with updated config:
     ~/kent/src/hg/utils/automation/doDbSnp.pl config.ra \
-      -buildDir /hive/data/outside/dbSNP/132test \
       -continue=loadDbSnp >>& do.log &
-    tail -f do.log
-
-    # Needed to tweak hg19-specific liftOver awk; run again from bigJoin but don't load:
-    ~/kent/src/hg/utils/automation/doDbSnp.pl config.ra \
-      -buildDir /hive/data/outside/dbSNP/132test \
-      -continue bigJoin -stop translate >>& do.log &
-    tail -f do.log
-
-    # Load it up with new columns!
-    ~/kent/src/hg/utils/automation/doDbSnp.pl config.ra \
-      -buildDir /hive/data/outside/dbSNP/132test \
-      -continue bigJoin >>& do.log &
     tail -f do.log
 
 
@@ -13411,9 +13401,8 @@ wc -l {decipher,rgdQtl,rgdRatQtl}/hg1{8,9}.bed
 ## This isn't very good.  In each case, the unmapped % is over 2%.
 ## DECIPHER: 95.8%, RGD QTL: 88.6%, RGD RAT QTL: 96.2%
 ## update for rgdQtl:
-hgsql hg19 -e "create table rgdQtlLink select * from hg18.rgdQtlLink"
-hgsql hg19 -e "create table rgdRatQtlLink select * from hg18.rgdRatQtlLink"
-
+hgsqldump hg18 rgdQtlLink | hgsql hg19 
+hgsqldump hg18 rgdRatQtlLink | hgsql hg19
 
 #############################################################################
 # FISH CLONES LIFT (DONE, Andy 2010-12-14)
@@ -13703,6 +13692,12 @@ wc -l *.fep.bed
 #  384442 hg19.fosEndPairs.fep.bed
 ## 99.6% lifted
 
+## Now we need the sequences from all_fosends to be loaded into the seq table in hg19
+
+mkdir /gbdb/hg19/fosends
+ln -s /gbdb/hg18/fosends/fosEnds.fa /gbdb/hg19/fosEnds.fromHg18.fa 
+hgLoadSeq hg19 /gbdb/hg19/fosends/fosEnds.fromHg18.fa
+
 #############################################################################
 # DECIPHER LIFT FORM HG18 (DONE 2010-12-27, Andy)
 
@@ -13775,8 +13770,8 @@ hgsql hg18 --skip-column-names -e "select * from HInvGeneMrna" | cut -f2- > hg18
 liftOver -pslT hg18.HInvGeneMrna.psl /gbdb/hg18/liftOver/hg18ToHg19.over.chain.gz hg19.HInvGeneMrna.{psl,unmapped}
 hgLoadPsl -table=HInvGeneMrna hg19 hg19.HInvGeneMrna.psl
 ## A couple non-positional tables too:
-hgsql hg19 -e "create table knownToHInv select * from hg18.knownToHInv"
-hgsql hg19 -e "create table HInv select * from hg18.HInv"
+hgsqldump hg18 knownToHInv | hgsql hg19
+hgsqldump hg18 HInv | hgsql hg19
 
 #############################################################################
 # SIB ALT-SPLICING LIFT (DONE 2010-12-30, Andy)
@@ -13811,7 +13806,7 @@ cd /hive/data/genomes/hg19/bed/hg18MassiveLift
 mkdir illuminaProbes
 cd illuminaProbes/
 ## Just copy the seq table to hg19
-hgsql hg19 -e "create table illuminaProbesSeq select * from hg18.illuminaProbesSeq"
+hgsqldump hg18 illuminaProbesSeq | hgsql hg19
 ## Two tables: a PSL and a BED:
 hgsql hg18 --skip-column-names -e "select * from illuminaProbes" | cut -f2- > hg18.illuminaProbes.bed
 hgsql hg18 --skip-column-names -e "select * from illuminaProbesAlign" | cut -f2- > hg18.illuminaProbesAlign.psl
@@ -13861,8 +13856,8 @@ hgsql hg18 --skip-column-names -e "select * from oreganno" | cut -f2- > hg18.ore
 liftOver -bedPlus=3 -tab hg18.oreganno.bed3p /gbdb/hg18/liftOver/hg18ToHg19.over.chain.gz hg19.oreganno.{bed3p,unmapped}
 cp ~/kent/src/hg/lib/oreganno.sql .
 hgLoadBed -tab -sqlTable=oreganno.sql hg19 oreganno hg19.oreganno.bed3p
-hgsql hg19 -e "create table oregannoLink select * from hg18.oregannoLink"
-hgsql hg19 -e "create table oregannoAttr select * from hg18.oregannoAttr"
+hgsqldump hg18 oregannoLink | hgsql hg19
+hgsqldump hg18 oregannoAttr | hgsql hg19
 wc -l *.bed3p
 #  23130 hg18.oreganno.bed3p
 #  23118 hg19.oreganno.bed3p
@@ -13961,6 +13956,16 @@ done
 
 for f in *; do gzip $f; echo $f zipped; done
 
+## One more thing: remove overlapping items in lifted bedGraphs:
+
+for f in hg19*.bg.gz; do 
+    pre=${f%.bg.gz};
+    tab=${pre#hg19.};
+    echo $tab;
+    gunzip -c $f | sort -k1,1 -k2,2n | bedGraphLegalize -report=${pre}.bad.txt stdin stdout | gzip -c > ${pre}.legal.bg.gz
+    hgLoadBed -bedGraph=4 hg19 $tab ${pre}.legal.bg.gz
+done
+
 #############################################################################
 # SNP ARRAYS LIFT TO HG19 (DONE 2010-12-31, Andy)
 
@@ -14029,5 +14034,234 @@ for tab in `echo show tables like "'snpArray%Raw'" | hgsql hg18 | tail -n +2`; d
   hgsqldump --no-data --compact hg18 $table | sed '/^SET/d;s/ENGINE.*//' > hg18.${table}.sql
   hgLoadSqlTab hg19 $table hg18.${table}.sql hg19.${table}.txt
 done
+
+
+
+############################################################################
+# INDEL-BASED CONSERVATION TRACK liftOver to hg19 (DONE - 2010-12-21 - Chin )
+# Data from the Gerton Lunter (gerton.lunter at anat.ox.ac.uk), MRC
+# Functional Genetics Unit, University of Oxford, United Kingdom.
+# Data is from the paper:
+# Lunter G, Ponting CP and Hein J Genome-wide identification of human
+# functional DNA using a neutral indel model. PLoS Comput Biol. 2006
+# Jan;2(1):e5.
+    mkdir -p /hive/data/genomes/hg19/bed/consIndels/data
+    cd /hive/data/genomes/hg19/bed/consIndels
+    cp /hive/data/genomes/hg18/bed/consIndels/README.indels .
+    cp /hive/data/genomes/hg18/bed/consIndels/igs-hg18mm8cf2.zip .
+    # 38 Mb zip file in GFF format. This contains data for hg18
+    # comparing it to mm8 and cf2 (canFam2).
+    unzip igs-hg18mm8cf2.zip
+    mv *.gff ./data/
+    cd /hive/data/genomes/hg19/bed/consIndels/data    
+
+    for f in *.gff
+    do
+       echo processing $f
+       grep -v "track" $f >> ../allNoHeader.tmp
+    done
+
+    cd /hive/data/genomes/hg19/bed/consIndels/	
+    cat allNoHeader.tmp | \
+    awk '{print $1,$4,$5,$6,$9,$10,$11}' > consIndels.bed7p       
+
+    liftOver -bedPlus=3 consIndels.bed7p \
+      /hive/data/genomes/hg18/bed/liftOver/hg18ToHg19.over.chain.gz \
+      consIndelsHg19Mm8CanFam2.bed7p unMapped
+
+    wc -l *.bed7p
+    #  2603017 consIndels.bed7p
+    #  2602701 consIndelsHg19Mm8CanFam2.bed7p
+    grep -i split unMapped | wc -l
+    # 41
+    grep -i partially unMapped | wc -l
+    # 66
+    rm allNoHeader.tmp
+    rm consIndels.bed7p
+   
+    # strip off the end of the name e.g. IGS0001.1:p=.74; FDR 0.27
+    # so that the name displayed is short - IGS0001.1. The score field
+    # is used to determine colouring and this is calculated from FDR
+    cd /cluster/data/hg19/bed/consIndels
+    cat  consIndelsHg19Mm8CanFam2.bed7p | 
+      awk '{print $1,$2, $3, $5, $4}' | 
+      sed -e 's/:p[=<]\.[0-9][0-9]*;//' \
+       > consIndelsHg19Mm8CanFam2.bed
+
+    # load data
+    cd /hive/data/genomes/hg19/bed/consIndels
+    hgLoadBed hg19 consIndelsHgMmCanFam consIndelsHg19Mm8CanFam2.bed
+    # Reading consIndelsHg19Mm8CanFam2.bed
+    # Loaded 2602701 elements of size 5
+    # Sorted
+    # Creating table definition for consIndelsHgMmCanFam
+    # Saving bed.tab
+    # Loading hg19
+
+    # Get the IDs, posterior probabilities (p) for the segment being
+    # neutral,
+    # and the FDR from the original GFFs for a separate table. Some
+    # items
+    # have p<.001. Can not do Table Browser queries restricting
+    # p to <, =, or > a specified value unless all values are floats.
+    # Contacted the data contributor, Gerton Lunter, and he said it
+    # would be
+    # ok to change all p<.001 to p=0.0005
+    cd /hive/data/genomes/hg19/bed/consIndels/
+    cat consIndelsHg19Mm8CanFam2.bed7p \
+      | awk 'BEGIN {FS="\t"} {print $5, $6, $7}'  \
+      | sed -e 's/:/\t/' \
+      | sed -e 's/p=\./0\./' | sed -e 's/p<\.001/0\.0005/' \
+      | sed -e 's/;\sFDR/\t/' > consIndelsHg19Mm8CanFam2Conf.txt
+
+    # there are no GFF files for the haplotype chroms
+    # Reuse $HOME/kent/src/hg/lib/itemConf.* for the table of identifier,
+    # posterior probability and false discovery rate (FDR).
+    
+    cd /hive/data/genomes/hg19/bed/consIndels
+    hgLoadSqlTab hg19 consIndelsHgMmCanFamConf \
+         $HOME/kent/src/hg/lib/itemConf.sql \
+         consIndelsHg19Mm8CanFam2Conf.txt
+
+    # check that all itesm are in this table.
+    hgsql -N -e 'select distinct(name) from consIndelsHgMmCanFam;' hg19 \
+         | sort > consIndels.names.sort
+    hgsql -N -e 'select distinct(id) from consIndelsHgMmCanFamConf;' hg19 \
+         | sort > consIndels.idsfromConf.sort
+    wc -l *.sort
+    # 2602701 consIndels.idsfromConf.sort
+    # 2602701 consIndels.names.sort
+
+    comm -12 consIndels.names.sort consIndels.idsfromConf.sort | wc -l
+    # 2602701
+    # so all element IDs are in both tables.
+    # cleanup
+    rm ./data/*.bak *.sort
+
+    # add trackDb/human/hg19/trackDb.ra entry and add description that
+    # was written by the data contributor. Add code to hgc.c to display
+    # the posterior probability and the FDR on the details page for
+    # track elements. Gerton Lunter provided a description for the data
+    # on 2007-09-12.
+    # Add hg19 to the "identifier consIndelsId" in all.joiner.
+
+
+############################################################################
+# POLYA_DB TRACK (DONE 2011-01-04 - Chin)
+#
+
+    # Data files and program:
+    # "Bin Tian" <btian@umdnj.edu> provided the following two 
+    # data files at /hive/data/outside/polyA:
+    #   hg18.polyadb.bed  hg19.polyadb.bed
+    # Andy found the SVM program he used before, and in here:
+    #  /hive/data/genomes/hg18/bed/polyaDB/polya_svm_2.2.tar.gz
+    # Copy it to /hive/data/outside/polyA. Unzip the program to 
+    # polya_svm_2.2
+
+    mkdir /hive/data/genomes/hg19/bed/polyaDB
+    cd /hive/data/genomes/hg19/bed/polyaDB
+    cp /hive/data/outside/polyA/hg19.polyadb.bed .
+    hgLoadBed hg19 polyaDb hg19.polyadb.bed
+    # add trackDb entry in human/hg19
+    # polyA.html is at top human level 
+
+    # since hg19.polyadb.bed provided is lifted over from hg18.polyadb.bed,
+    # it it safe to lift polyaPredict table from hg18 to hg19 without re-run
+    # the svm.
+    hgsql -N -e "select * from polyaPredict;" hg18 | \
+      cut -f2-9 > hg18.polyaPredict.bed
+    wc -l hg18.polyaPredict.bed
+    # 52182 hg18.polyaPredict.bed
+
+    liftOver -bedPlus=8 hg18.polyaPredict.bed \
+      /hive/data/genomes/hg18/bed/liftOver/hg18ToHg19.over.chain.gz \
+      hg19.polyaPredict.bed unMapped.polyaPrdict
+    wc -l hg19.polyaPredict.bed
+    # 52169 hg19.polyaPredict.bed
+    hgLoadBed hg19 polyaPredict hg19.polyaPredict.bed
+    # Reading hg19.polyaPredict.bed
+    # Loaded 52169 elements of size 8
+    # Sorted
+    # Creating table definition for polyaPredict
+    # Saving bed.tab
+    # Loading hg19
+
+
+#############################################################################
+# FILTER SNP132 (DONE 1/14/11 angie)
+    # Make several tracks that are filtered subsets of snp132:
+    # First, filter out the multiply-aligned and/or weight >1 SNPs [any other exceptions?]
+    cd /hive/data/outside/dbSNP/132/human
+    zcat snp132.bed.gz \
+    | perl -we \
+      'open($unique, "| gzip -c > snp132Unique.bed.gz") || die; \
+       open($nonUnique, "| gzip -c > snp132NonUnique.bed.gz") || die; \
+       while (<>) { \
+         @w = split("\t"); \
+         if ($w[16] > 1 || $w[17] =~ /MultipleAlignments/) { \
+           print $nonUnique $_; \
+         } else { \
+           print $unique $_; \
+         } \
+       } \
+       close($unique);  close($nonUnique);'
+    zcat snp132NonUnique.bed.gz | wc -l
+#3644436
+    zcat snp132Unique.bed.gz | wc -l
+#29381685
+
+    # Next, filter out Common SNPs from the uniquely mapped set.
+    # SNP is common if alleleCount >= 2 && total2N >= 4 && maxAlleleFreq <= 99% and !MultAli
+    zcat snp132Unique.bed.gz \
+    | perl -we \
+      'open($common, "| gzip -c > snp132Common.bed.gz") || die; \
+       open($unCommon, "| gzip -c > snp132UnCommon.bed.gz") || die; \
+       while (<>) { \
+         @w = split("\t"); \
+         my ($alleleFreqCount, $nStr, $freqStr) = ($w[20], $w[22], $w[23]); \
+         my @alNs = split(",", $nStr);      die unless scalar(@alNs) == $alleleFreqCount; \
+         my @freqs = split(",", $freqStr);  die unless scalar(@freqs) == $alleleFreqCount; \
+         my ($total2N, $maxAlleleFreq) = (0, 0); \
+         for (my $i = 0;  $i < $alleleFreqCount;  $i++) { \
+           $total2N += $alNs[$i]; \
+           $maxAlleleFreq = $freqs[$i] if ($freqs[$i] > $maxAlleleFreq); \
+         } \
+         if ($alleleFreqCount >= 2 && $total2N >= 4 && $maxAlleleFreq <= 0.99) { \
+           print $common $_; \
+         } else { \
+           print $unCommon $_; \
+         } \
+       } \
+       close($common);  close($unCommon);'
+    zcat snp132Common.bed.gz | wc -l
+#14009545
+    zcat snp132UnCommon.bed.gz | wc -l
+#15372140
+
+    # Then, filter out Patient SNPs (clinical bit but not common) from the unique non-common SNPs:
+    zcat snp132UnCommon.bed.gz \
+    | perl -we \
+      'open($patient, "| gzip -c > snp132Patient.bed.gz") || die; \
+       open($misc, "| gzip -c > snp132Misc.bed.gz") || die; \
+       while (<>) { \
+         if (/clinically-assoc/) { \
+           print $patient $_; \
+         } else { \
+           print $misc $_; \
+         } \
+       } \
+       close($patient);  close($misc);'
+    zcat snp132Patient.bed.gz | wc -l
+#18084
+    zcat snp132Misc.bed.gz | wc -l
+#15354056
+
+    # Load tables
+    foreach subset (NonUnique Common Patient)
+      hgLoadBed -tab -onServer -tmpDir=/data/tmp -allowStartEqualEnd -renameSqlTable \
+        hg19 snp132$subset -sqlTable=snp132.sql snp132$subset.bed.gz
+    end
+
 
 #############################################################################

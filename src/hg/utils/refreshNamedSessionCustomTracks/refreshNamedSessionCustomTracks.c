@@ -10,6 +10,10 @@
 #include "customFactory.h"
 #include "hui.h"
 
+// #include "hgConfig.h"
+// #include <sys/wait.h>
+// #include "errCatch.h"
+
 static char const rcsid[] = "$Id: refreshNamedSessionCustomTracks.c,v 1.11 2010/01/13 17:27:35 angie Exp $";
 
 #define savedSessionTable "namedSessionDb"
@@ -40,13 +44,16 @@ errAbort(
 /* Options: */
 static struct optionSpec options[] = {
     {"atime",    OPTION_INT},
-    {"workDir",    OPTION_STRING},
+    {"workDir",  OPTION_STRING},
     {"hardcore", OPTION_BOOLEAN}, /* Intentionally omitted from usage(). */
     {NULL, 0},
 };
 
-char *scanSettingsForCT(char *userName, char *sessionName, char *contents,
-			int *pLiveCount, int *pExpiredCount)
+int CFTEcalls = 0;  // DEBUG REMOVE
+int numUpdates = 0;  // DEBUG REMOVE
+
+static void scanSettingsForCT(char *userName, char *sessionName,
+		int *pLiveCount, int *pExpiredCount, struct sqlConnection *conn)
 /* Parse the CGI-encoded session contents into {var,val} pairs and search
  * for custom tracks.  If found, refresh the custom track.  Parsing code 
  * taken from cartParseOverHash. 
@@ -54,12 +61,21 @@ char *scanSettingsForCT(char *userName, char *sessionName, char *contents,
  * command that will remove those from this session.  We can't just do 
  * the update here because that messes up the caller's query. */
 {
+char query[512];
+
+safef(query, sizeof(query),
+	  "select contents from %s "
+	  "where userName='%s' and sessionName = '%s'", savedSessionTable, userName, sessionName);
+char *contents = sqlQuickString(conn, query);
+if (!contents)
+    return;
+
 int contentLength = strlen(contents);
 struct dyString *newContents = dyStringNew(contentLength+1);
 struct dyString *oneSetting = dyStringNew(contentLength / 4);
-char *updateIfAny = NULL;
 char *contentsToChop = cloneString(contents);
 char *namePt = contentsToChop;
+
 verbose(3, "Scanning %s %s\n", userName, sessionName);
 while (isNotEmpty(namePt))
     {
@@ -92,10 +108,13 @@ while (isNotEmpty(namePt))
 	    }
 	else
 	    {
-	    char *db = namePt + strlen(CT_FILE_VAR_PREFIX);
 	    dyStringAppend(newContents, oneSetting->string);
-	    customFactoryTestExistence(db, dataPt,
-				       &thisGotLiveCT, &thisGotExpiredCT);
+	    char *db = namePt + strlen(CT_FILE_VAR_PREFIX);
+
+	    customFactoryTestExistence(db, dataPt, &thisGotLiveCT, &thisGotExpiredCT);
+
+            //verbose(1,"called CFTE, got live=%d expired=%d\n", thisGotLiveCT, thisGotExpiredCT);  // DEBUG REMOVE
+	    ++CFTEcalls;  // DEBUG REMOVE
 	    }
 	if (thisGotLiveCT && pLiveCount != NULL)
 	    (*pLiveCount)++;
@@ -116,7 +135,9 @@ while (isNotEmpty(namePt))
 	dyStringAppend(newContents, oneSetting->string);
     namePt = nextNamePt;
     }
-if (newContents->stringSize != contentLength)
+if (newContents->stringSize != contentLength) 
+    ++numUpdates;
+if (optionExists("hardcore") && newContents->stringSize != contentLength)  // almost never used
     {
     struct dyString *update = dyStringNew(contentLength*2);
     if (newContents->stringSize > contentLength)
@@ -131,12 +152,15 @@ if (newContents->stringSize != contentLength)
 	    "(original length %d, now %d)\n", 
 	    userName, sessionName,
 	    contentLength, newContents->stringSize);
-    updateIfAny = dyStringCannibalize(&update);
+    sqlUpdate(conn, update->string);
+    dyStringFree(&update);
     }
 dyStringFree(&oneSetting);
 dyStringFree(&newContents);
 freeMem(contentsToChop);
-return updateIfAny;
+freeMem(contents);
+return;
+
 }
 
 struct sessionInfo
@@ -144,15 +168,15 @@ struct sessionInfo
     struct sessionInfo *next;
     char userName[256];
     char sessionName[256];
-    char *contents;
+    char *contents;  // keep or remove?
     };
 
 void refreshNamedSessionCustomTracks(char *centralDbName)
 /* refreshNamedSessionCustomTracks -- cron robot for keeping alive custom 
  * tracks that are referenced by saved sessions. */
 {
+
 struct sqlConnection *conn = hConnectCentral();
-struct slPair *updateList = NULL, *update;
 char *actualDbName = sqlGetDatabase(conn);
 int liveCount=0, expiredCount=0;
 
@@ -173,14 +197,14 @@ if (atime > 0)
     threshold = now - ((long long)atime * 24 * 60 * 60);
     }
 
+struct sessionInfo *sessionList = NULL, *si, *siNext;
 if (sqlTableExists(conn, savedSessionTable))
     {
-    struct sessionInfo *sessionList = NULL, *si;
     struct sqlResult *sr = NULL;
     char **row = NULL;
     char query[512];
     safef(query, sizeof(query),
-	  "select userName,sessionName,UNIX_TIMESTAMP(lastUse),contents from %s "
+	  "select userName,sessionName,UNIX_TIMESTAMP(lastUse) from %s "
 	  "order by userName,sessionName", savedSessionTable);
     sr = sqlGetResult(conn, query);
     // Slurp results into memory instead of processing row by row,
@@ -200,30 +224,23 @@ if (sqlTableExists(conn, savedSessionTable))
 	AllocVar(si);
 	safecpy(si->userName, sizeof(si->userName), row[0]);
 	safecpy(si->sessionName, sizeof(si->sessionName), row[1]);
-	si->contents = cloneString(row[3]);
 	slAddHead(&sessionList, si);
 	}
     sqlFreeResult(&sr);
-    for (si = sessionList;  si != NULL;  si = si->next)
-	{
-	char *updateIfAny = scanSettingsForCT(si->userName, si->sessionName, si->contents,
-					      &liveCount, &expiredCount);
-	if (updateIfAny)
-	    {
-	    AllocVar(update);
-	    update->name = updateIfAny;
-	    slAddHead(&updateList, update);
-	    }
-	}
     }
 
-/* Now that we're done reading from savedSessionTable, we can modify it: */
-if (optionExists("hardcore"))
+for (siNext = NULL, si = sessionList;  si != NULL;  si = siNext)
     {
-    for (update = updateList;  update != NULL;  update = update->next)
-	sqlUpdate(conn, update->name);
+    scanSettingsForCT(si->userName, si->sessionName, &liveCount, &expiredCount, conn);
+    siNext = si->next;
+    freeMem(si);
     }
 hDisconnectCentral(&conn);
+
+//DEBUG REMOVE
+verbose(1, "# of updates found: %d\n", numUpdates);
+verbose(1, "# of CustomFactoryTextExistence calls done: %d\n", CFTEcalls);
+
 verbose(1, "Found %d live and %d expired custom tracks in %s.\n",
 	liveCount, expiredCount, centralDbName);
 }
@@ -232,12 +249,21 @@ verbose(1, "Found %d live and %d expired custom tracks in %s.\n",
 int main(int argc, char *argv[])
 /* Process command line. */
 {
+int ret = 0;
+
 optionInit(&argc, argv, options);
 if (argc != 2)
     usage();
 char *workDir = optionVal("workDir", CGI_BIN);
 setCurrentDir(workDir);
-refreshNamedSessionCustomTracks(argv[1]);
-return 0;
-}
 
+refreshNamedSessionCustomTracks(argv[1]);
+
+// DEBUG check out ram usage
+pid_t pid = getpid();
+char temp[256];
+safef(temp, sizeof(temp), "grep VmPeak /proc/%d/status", (int) pid);
+ret = system(temp);
+
+return ret;
+}

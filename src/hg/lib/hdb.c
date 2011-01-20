@@ -3378,12 +3378,19 @@ trackDbAddTableField(tdbList);
 return tdbList;
 }
 
+static boolean trackDataAccessible(char *database, struct trackDb *tdb)
+/* Return TRUE if data accessible - meaning either it has a bigDataUrl, or the
+ * table exists. */
+{
+return trackDbSetting(tdb, "bigDataUrl") != NULL || hTableForTrack(database, tdb->table) != NULL;
+}
+
 static void addTrackIfDataAccessible(char *database, struct trackDb *tdb,
 	       boolean privateHost, struct trackDb **tdbRetList)
 /* check if a trackDb entry should be included in display, and if so
  * add it to the list, otherwise free it */
 {
-if ((!tdb->private || privateHost) && hTableForTrack(database, tdb->table) != NULL)
+if ((!tdb->private || privateHost) && trackDataAccessible(database, tdb))
     slAddHead(tdbRetList, tdb);
 else if (sameWord(tdb->type,"downloadsOnly"))
     {
@@ -3559,6 +3566,17 @@ else
 }
 #endif /* DEBUG */
 
+struct trackDb *trackDbPolishAfterLinkup(struct trackDb *tdbList, char *db)
+/* Do various massaging that can only be done after parent/child
+ * relationships are established. */
+{
+tdbList = pruneEmpties(tdbList, db, hIsPrivateHost(), 0);
+trackDbContainerMarkup(NULL, tdbList);
+rInheritFields(tdbList);
+slSort(&tdbList, trackDbCmp);
+return tdbList;
+}
+
 struct trackDb *hTrackDb(char *db)
 /* Load tracks associated with current db.
  * Supertracks are loaded as a trackDb, but are not in the returned list,
@@ -3576,12 +3594,9 @@ struct trackDb *tdbList = NULL;
 //    {
     tdbList = loadTrackDb(db, NULL);
     tdbList = trackDbLinkUpGenerations(tdbList);
+    tdbList = trackDbPolishAfterLinkup(tdbList, db);
 //    freeMem(existingDb);
 //    existingDb = cloneString(db);
-    tdbList = pruneEmpties(tdbList, db, hIsPrivateHost(), 0);
-    trackDbContainerMarkup(NULL, tdbList);
-    rInheritFields(tdbList);
-    slSort(&tdbList, trackDbCmp);
 //    }
 return tdbList;
 }
@@ -3657,7 +3672,6 @@ struct trackDb *hTrackDbForTrackAndAncestors(char *db, char *track)
  * is actually faster if being called on lots of tracks.  This function
  * though is faster on one or two tracks. */
 {
-uglyf("hTrackDbForTrackAndAncestors(%s,%s)\n", db, track);
 struct sqlConnection *conn = hAllocConn(db);
 struct trackDb *tdb = loadTrackDbForTrack(conn, track);
 struct trackDb *ancestor = tdb;
@@ -3677,7 +3691,6 @@ for (;;)
 	}
 
     /* If no parent we're done. */
-    uglyf("parentTrack = %s\n", parentTrack);
     if (parentTrack == NULL)
         break;
 
@@ -4866,6 +4879,21 @@ boolean hIsBigBed(char *database, char *table, struct trackDb *parent, struct cu
  */
 {
 return trackIsType(database, table, parent, "bigBed", ctLookupName);
+}
+
+char *bbiNameFromSettingOrTable(struct trackDb *tdb, struct sqlConnection *conn, char *table)
+/* Return file name from bigDataUrl or little table. */
+{
+char *fileName = cloneString(trackDbSetting(tdb, "bigDataUrl"));
+if (fileName == NULL)
+    {
+    char query[256];
+    safef(query, sizeof(query), "select fileName from %s", table);
+    fileName = sqlQuickString(conn, query);
+    if (fileName == NULL)
+	errAbort("Missing fileName in %s table", table);
+    }
+return fileName;
 }
 
 

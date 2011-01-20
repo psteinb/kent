@@ -17,17 +17,6 @@
 #include "bigWig.h"
 #include "bigBed.h"
 
-char *bbiNameFromTable(struct sqlConnection *conn, char *table)
-/* Return file name from little table. */
-{
-char query[256];
-safef(query, sizeof(query), "select fileName from %s", table);
-char *fileName = sqlQuickString(conn, query);
-if (fileName == NULL)
-    errAbort("Missing fileName in %s table", table);
-return fileName;
-}
-
 static struct bbiFile *fetchBbiForTrack(struct track *track)
 /* Fetch bbiFile from track, opening it if it is not already open. */
 {
@@ -35,7 +24,7 @@ struct bbiFile *bbi = track->bbiFile;
 if (bbi == NULL)
     {
     struct sqlConnection *conn = hAllocConnTrack(database, track->tdb);
-    char *fileName = bbiNameFromTable(conn, track->table);
+    char *fileName = bbiNameFromSettingOrTable(track->tdb, conn, track->table);
     hFreeConn(&conn);
     bbi = track->bbiFile = bigBedFileOpen(fileName);
     }

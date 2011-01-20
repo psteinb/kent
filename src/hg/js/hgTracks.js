@@ -24,6 +24,7 @@ var selectedMenuItem;       // currently choosen context menu item (via context 
 var browser;                // browser ("msie", "safari" etc.)
 var mapIsUpdateable = true;
 var currentMapItem;
+var floatingMenuItem;
 var visibilityStrsOrder = new Array("hide", "dense", "full", "pack", "squish");     // map browser numeric visibility codes to strings
 
 function initVars(img)
@@ -355,32 +356,10 @@ function toggleTrackGroupVisibility(button, prefix)
 {
 // toggle visibility of a track group; prefix is the prefix of all the id's of tr's in the
 // relevant group. This code also modifies the corresponding hidden fields and the gif of the +/- img tag.
-    var retval = true;
-    var hidden = $("input[name='hgtgroup_"+prefix+"_close']");
-    var newVal=1; // we're going - => +
-    if($(button) != undefined && $(hidden) != undefined && $(hidden).length > 0) {
-        var oldSrc = $(button).attr("src");
         if(arguments.length > 2)
-            newVal = arguments[2] ? 0 : 1;
+	return setTableRowVisibility(button, prefix, "hgtgroup", "group", false, arguments[2]);
         else
-            newVal = oldSrc.indexOf("/remove") > 0 ? 1 : 0;
-
-        var newSrc;
-        if(newVal == 1) {
-            newSrc = oldSrc.replace("/remove", "/add");
-            $(button).attr('title','Expand this group');
-            $("tr[id^='"+prefix+"-']").hide();
-        } else {
-            newSrc = oldSrc.replace("/add", "/remove");
-            $(button).attr('title','Collapse this group');
-            $("tr[id^='"+prefix+"-']").show();
-        }
-        $(button).attr("src",newSrc);
-        $(hidden).val(newVal);
-        // setCartVar("hgtgroup_" + prefix + "_close", newVal);
-        retval = false;
-    }
-    return retval;
+	return setTableRowVisibility(button, prefix, "hgtgroup", "group", false);
 }
 
 function setAllTrackGroupVisibility(newState)
@@ -423,7 +402,7 @@ this.each(function(){
         else {
             hiliteSetup();
 
-            $('.cytoBand').mousedown( function(e)
+            $('area.cytoBand').mousedown( function(e)
             {   // mousedown on chrom portion of image only (map items)
                 updateImgOffsets();
                 pxDown = e.clientX - img.scrolledLeft;
@@ -524,7 +503,7 @@ this.each(function(){
                     //    dontAsk = true;
                     if(dontAsk || confirm("Jump to new position:\n\n"+chr.name+":"+commify(selRange.beg)+"-"+commify(selRange.end)+" size:"+commify(selRange.width)) ) {
                         setPositionByCoordinates(chr.name, selRange.beg, selRange.end)
-                        $('.cytoBand').mousedown( function(e) { return false; }); // Stop the presses :0)
+                        $('area.cytoBand').mousedown( function(e) { return false; }); // Stop the presses :0)
                         document.TrackHeaderForm.submit();
                         return true; // Make sure the setTimeout below is not called.
                     }
@@ -560,48 +539,46 @@ this.each(function(){
     function findDimensions()
     {   // Called at init: determine the dimensions of chrom from 'cytoband' map items
         var lastX = -1;
-        $('.cytoBand').each(function(ix) {
-            if(this.coords) {
-                var loc = this.coords.split(",");
-                if(loc.length == 4) {
-                    var myLeft  = parseInt(loc[0]);
-                    var myRight = parseInt(loc[2]);
-                    if( chr.top == -1) {
-                        chr.left   = myLeft;
-                        chr.right  = myRight;
-                        chr.top    = parseInt(loc[1]);
-                        chr.bottom = parseInt(loc[3]);
-                    } else {
-                        if( chr.left  > myLeft)
-                            chr.left  = myLeft;
-                        if( chr.right < parseInt(loc[2]))
-                            chr.right = parseInt(loc[2]);
-                    }
-    
-                    var range = this.title.substr(this.title.lastIndexOf(':')+1)
-                    var pos = range.split('-');
-                    if(pos.length == 2) {
-                        if( chr.name.length == 0) {
-                            chr.beg = parseInt(pos[0]);
-                            //chr.end = parseInt(pos[1]);
-                            chr.name = this.title.substring(this.title.lastIndexOf(' ')+1,this.title.lastIndexOf(':'))
-                        } else {
-                            if( chr.beg > parseInt(pos[0]))
-                                chr.beg = parseInt(pos[0]);
-                        }
-                        if( chr.end < parseInt(pos[1])) {
-                            chr.end = parseInt(pos[1]);
-                            if(lastX == -1)
-                                lastX = myRight;
-                            else if(lastX > myRight)
-                                chr.reverse = true;  // end is advancing, but X is not, so reverse
-                        } else if(lastX != -1 && lastX < myRight)
-                            chr.reverse = true;      // end is not advancing, but X is, so reverse
-    
-                    }
-                    $(this).css( 'cursor', 'text');
-                    $(this).attr("href","");
+        $('area.cytoBand').each(function(ix) {
+            var loc = this.coords.split(",");
+            if(loc.length == 4) {
+                var myLeft  = parseInt(loc[0]);
+                var myRight = parseInt(loc[2]);
+                if( chr.top == -1) {
+                    chr.left   = myLeft;
+                    chr.right  = myRight;
+                    chr.top    = parseInt(loc[1]);
+                    chr.bottom = parseInt(loc[3]);
+                } else {
+                    if( chr.left  > myLeft)
+                        chr.left  = myLeft;
+                    if( chr.right < parseInt(loc[2]))
+                        chr.right = parseInt(loc[2]);
                 }
+
+                var range = this.title.substr(this.title.lastIndexOf(':')+1)
+                var pos = range.split('-');
+                if(pos.length == 2) {
+                    if( chr.name.length == 0) {
+                        chr.beg = parseInt(pos[0]);
+                        //chr.end = parseInt(pos[1]);
+                        chr.name = this.title.substring(this.title.lastIndexOf(' ')+1,this.title.lastIndexOf(':'))
+                    } else {
+                        if( chr.beg > parseInt(pos[0]))
+                            chr.beg = parseInt(pos[0]);
+                    }
+                    if( chr.end < parseInt(pos[1])) {
+                        chr.end = parseInt(pos[1]);
+                        if(lastX == -1)
+                            lastX = myRight;
+                        else if(lastX > myRight)
+                            chr.reverse = true;  // end is advancing, but X is not, so reverse
+                    } else if(lastX != -1 && lastX < myRight)
+                        chr.reverse = true;      // end is not advancing, but X is, so reverse
+
+                }
+                $(this).css( 'cursor', 'text');
+                $(this).attr("href","");
             }
         });
         chr.size  = (chr.end   - chr.beg );
@@ -611,7 +588,7 @@ this.each(function(){
     function findCytoBand(pxDown,pxUp)
     {   // Called when mouseup and ctrl: Find the bounding cytoband dimensions, both in pix and bases
         var cyto = { left: -1, right: -1, beg: -1, end: -1 };
-        $('.cytoBand').each(function(ix) {
+        $('area.cytoBand').each(function(ix) {
             var loc = this.coords.split(",");
             if(loc.length == 4) {
                 var myLeft  = parseInt(loc[0]);
@@ -1314,7 +1291,7 @@ $(document).ready(function()
         }
     }
     if($('img#chrom').length == 1) {
-        if($('.cytoBand').length > 1) {
+        if($('area.cytoBand').length > 1) {
             $('img#chrom').chromDrag();
         }
     }
@@ -1330,6 +1307,18 @@ $(document).ready(function()
                             select: function(event, ui) {
                                 if( ui.panel.id == 'simpleTab' && $('div#found').length < 1) {
                                     setTimeout("$('input#simpleSearch').focus();",20); // delay necessary, since select event not afterSelect event
+                                }
+                                if( $('div#filesFound').length == 1) {
+                                    if( ui.panel.id == 'filesTab')
+                                        $('div#filesFound').show();
+                                    else
+                                        $('div#filesFound').hide();
+                                }
+                                if( $('div#found').length == 1) {
+                                    if( ui.panel.id != 'filesTab')
+                                        $('div#found').show();
+                                    else
+                                        $('div#found').hide();
                                 }
                             }
                         });
@@ -1632,20 +1621,39 @@ function contextMenuHitFinish(menuItemClicked, menuObject, cmd)
                    cmd: cmd,
                    cache: false
                });
-    } else if (cmd == 'openLink') {
-        // Remove hgsid to force a new session (see redmine ticket 1333).
-        var href = removeHgsid(selectedMenuItem.href);
+    } else if (cmd == 'openLink' || cmd == 'followLink') {
+        var href = selectedMenuItem.href;
         var chrom = $("input[name=chromName]").val();
         if(chrom && href.indexOf("c=" + chrom) == -1) {
             // make sure the link contains chrom info (necessary b/c we are stripping hgsid)
             href = href + "&c=" + chrom;
         }
-        if(window.open(href) == null) {
-            windowOpenFailedMsg();
+        if(cmd == 'followLink') {
+            // XXXX This is blocked by Safari's popup blocker (without any warning message).
+            location.assign(href);
+        } else {
+            // Remove hgsid to force a new session (see redmine ticket 1333).
+            href = removeHgsid(href);
+            if(window.open(href) == null) {
+                windowOpenFailedMsg();
+            }
         }
-    } else if (cmd == 'followLink') {
-        // XXXX This is blocked by Safari's popup blocker (without any warning message).
-        location.assign(selectedMenuItem.href);
+    } else if (cmd == 'float') {
+        var id = selectedMenuItem.id;
+        if(floatingMenuItem && floatingMenuItem == id) {
+            $.floatMgr.FOArray = new Array();
+            floatingMenuItem = null;
+        } else {
+            if(floatingMenuItem) {
+                // This doesn't work.
+                $('#img_data_' + floatingMenuItem).parent().restartFloat();
+                // This does work
+                $.floatMgr.FOArray = new Array();
+            }
+            floatingMenuItem = id;
+            reloadFloatingItem();
+            updateTrackImg(id, "hgt.transparentImage=0", "");
+        }
     } else {   // if( cmd in 'hide','dense','squish','pack','full','show' )
         // Change visibility settings:
         //
@@ -1659,8 +1667,10 @@ function contextMenuHitFinish(menuItemClicked, menuObject, cmd)
         {
             // Hide local display of this track and update server side cart.
             // Subtracks controlled by 2 settings so del vis and set sel=0.  Others, just set vis hide.
-            if(rec.parentTrack != undefined)
-                setCartVars( [ id, id+"_sel" ], [ 'hide', 0 ] ); // Don't set '_sel" to [] because default gets used, but we are explicitly hiding this!
+            if(tdbIsSubtrack(rec))
+                setCartVars( [ id, id+"_sel" ], [ '[]', 0 ] ); // Remove subtrack level vis and explicitly uncheck.
+            else if(tdbIsFolderContent(rec))
+                setCartVars( [ id, id+"_sel" ], [ 'hide', 0 ] ); // supertrack children need to have _sel set to trigger superttrack reshaping
             else
                 setCartVar(id, 'hide' );
             $('#tr_' + id).remove();
@@ -1781,9 +1791,19 @@ function loadContextMenu(img)
                     var any = false;
                     if(isGene || isHgc) {
                         var title = selectedMenuItem.title || "feature";
-                        if(rec && !(rec.type.indexOf("wig") == 0 || rec.type.indexOf("bigWig") == 0)) {
-                        o[makeImgTag("magnify.png") + " Zoom to " +  title] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "selectWholeGene"); return true; }};
-                        o[makeImgTag("dnaIcon.png") + " Get DNA for " +  title] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "getDna"); return true; }};
+                        var displayItemFunctions = false;
+                        if(rec) {
+                            if(rec.type.indexOf("wig") == 0 || rec.type.indexOf("bigWig") == 0) {
+                                displayItemFunctions = false;
+                            } else if(rec.type.indexOf("expRatio") == 0) {
+                                displayItemFunctions = title != "zoomInMore";
+                            } else {
+                                displayItemFunctions = true;
+                            }
+                        }
+                        if(displayItemFunctions) {
+                            o[makeImgTag("magnify.png") + " Zoom to " +  title] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "selectWholeGene"); return true; }};
+                            o[makeImgTag("dnaIcon.png") + " Get DNA for " +  title] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "getDna"); return true; }};
                         }
                         o[makeImgTag("bookOut.png") + " Open details page in new window..."] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "openLink"); return true; }};
                         any = true;
@@ -1798,6 +1818,9 @@ function loadContextMenu(img)
                         } else {
                             if(str.indexOf("display density") != -1)
                                 str = makeImgTag("toggle.png") + str;
+                            else if(str == "zoomInMore")
+                                // avoid showing menu item that says "Show details for zoomInMore..." (redmine 2447)
+                                str = makeImgTag("toggle.png") + " Show details...";
                             else
                                 str = makeImgTag("book.png") + " Show details for " + str + "...";
                             o[str] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "followLink"); return true; }};
@@ -1843,6 +1866,9 @@ function loadContextMenu(img)
                         o[makeImgTag("folderWrench.png") + " Configure " + rec.parentLabel + " track set..."] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "hgTrackUi_follow"); return true; }};
                 } else
                     o[makeImgTag("folderWrench.png") + " Configure " + rec.shortLabel + " track set..."] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "hgTrackUi_follow"); return true; }};
+                if(jQuery.floatMgr) {
+                    o[(selectedMenuItem.id == floatingMenuItem ? selectedImg : blankImg) + " float"] = {onclick: function(menuItemClicked, menuObject) { contextMenuHit(menuItemClicked, menuObject, "float"); return true; }};
+                }
                 menu.push($.contextMenu.separator);
                 menu.push(o);
             }
@@ -2103,6 +2129,7 @@ function handleUpdateTrackMap(response, status)
                // loadContextMenu($('#tr_' + id));
                if(trackImgTbl.tableDnDUpdate)
                    trackImgTbl.tableDnDUpdate();
+               reloadFloatingItem();
                // NOTE: Want to examine the png? Uncomment:
                //var img = $('#tr_' + id).find("img[id^='img_data_']").attr('src');
                //warn("Just parsed image:<BR>"+img);
@@ -2607,6 +2634,7 @@ function updateVisibility(track, visibility)
     var rec = trackDbJson[track];
     var selectUpdated = false;
     $("select[name=" + track + "]").each(function(t) {
+                                          $(this).attr('class', visibility == 'hide' ? 'hiddenText' : 'normalText');
                                           $(this).val(visibility);
                                           selectUpdated = true;
                                       });
@@ -2614,4 +2642,12 @@ function updateVisibility(track, visibility)
         rec.localVisibility = visibility;
     }
     return selectUpdated;
+}
+
+function reloadFloatingItem()
+{
+// currently dead (experimental code)
+    if(floatingMenuItem) {
+        $('#img_data_' + floatingMenuItem).parent().makeFloat({x:"current",y:"current", speed: 'fast', alwaysVisible: true, alwaysTop: true});
+    }
 }
