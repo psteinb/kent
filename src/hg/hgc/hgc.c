@@ -5663,6 +5663,108 @@ printTrackHtml(tdb);
 hFreeConn(&conn);
 }
 
+void doValidatedBindingSitesTrack(struct trackDb *tdb, char *acc)
+{
+struct sqlConnection *conn = hAllocConn(database);
+
+//char query[256];
+struct sqlResult *sr;
+char **row;
+//struct agpGap gap;
+
+int start = cartInt(cart, "o");
+int end = cartInt(cart, "t");
+int i;
+struct dyString *dy = newDyString(1024);
+//boolean hasBin;
+//char splitTable[64];
+
+cartWebStart(cart, database, "Validated TF Binding Site");
+//hFindSplitTable(database, seqName, tdb->table, splitTable, &hasBin);
+
+dyStringAppend(dy, "select *");
+dyStringPrintf(dy, " from bejjcValidatedTfbsData where name ='%s' and chrom='%s' and chromStart=%d and chromEnd =%d", acc, seqName, start, end);
+sr = sqlMustGetResult(conn, dy->string);
+row = sqlNextRow(sr);
+
+if (row == NULL)
+    errAbort("Couldn't find binding site at %s:%d-%d", seqName, start, end);
+
+
+/*
+agpGapStaticLoad(row+hasBin, &gap);
+
+printf("<B>Gap Type:</B> %s<BR>\n", gap.type);
+printf("<B>Bridged:</B> %s<BR>\n", gap.bridge);
+printPos(gap.chrom, gap.chromStart, gap.chromEnd, NULL, FALSE, NULL);
+*/
+printf("<b>Name:</b> %s<br>\n", acc);
+
+//print source
+if (sameWord(row[1], "T")) {
+	printf("<b>Source:</b> Transfac (<a href=\"https://portal.biobase-international.com/cgi-bin/build_ghptywl/idb/1.0/pageview.cgi?view=SiteReport&site_acc=%s\">%s</a>)<br>\n", row[2], row[2]);
+	printf("<b>Bound TF(s):</b> %s ", row[8]);
+}
+if (sameWord(row[1], "G")) {
+	printf("<b>Source:</b> Genomatix (%s)<br>\n", row[2]);
+	printf("<b>Bound TF(s):</b> %s family ", row[8]);
+}
+if (sameWord(row[1], "L")) {
+	printf("<b>Source:</b> Literature (<a href=\"http://www.ncbi.nlm.nih.gov/pubmed?term=%s\">%s</a>)<br>\n", row[2], row[2]);
+	printf("<b>Bount TF(s):</b> %s ", row[8]);
+}
+if (sameString("hg18", database)) {
+	//print bound tfs
+	char *tfs[20];
+	int tfCount = chopCommas(row[9], tfs);
+	if (tfCount > 0) {
+		printf("(");
+		for (i = 0; i < tfCount; i++) {
+			if (i == tfCount-1 ) printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Human&db=hg18&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", tfs[i], tfs[i]);
+			else printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Human&db=hg18&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>, ", tfs[i], tfs[i]);
+		}
+	}
+	else printf("<br>\n");
+
+	//print target gene
+	printf("<b>Target Gene:</b> %s (<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Human&db=hg18&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", row[3], row[4], row[4]);
+}
+
+if (sameString("mm9", database)) {
+    //print bound tfs
+    char *tfs[20];
+    int tfCount = chopCommas(row[9], tfs);
+    if (tfCount > 0) {
+        printf("(");
+        for (i = 0; i < tfCount; i++) {
+            if (i == tfCount-1 ) printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Mouse&db=mm9&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", tfs[i], tfs[i]);
+            else printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Mouse&db=mm9&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>, ", tfs[i], tfs[i]);
+        }
+    }
+
+    //print target gene
+    printf("<b>Target Gene:</b> %s (<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Mouse&db=mm9&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", row[3], row[4], row[4]);
+}
+
+//print score
+if (sameWord(row[1], "T") || sameWord(row[1], "L")) printf("<b>Score:</b> %s<br>\n", row[10]);
+if (sameWord(row[1], "G")) printf("<b>Score:</b> n/a<br>\n");
+
+
+printf("<b>PMID:</b> ");
+char *pmids[20];
+int pmidCount = chopCommas(row[11], pmids);
+for (i=0; i < pmidCount; i++) {
+	if (i == pmidCount-1) printf("<a href=\"http://www.ncbi.nlm.nih.gov/pubmed?term=%s\">%s</a><br>\n", pmids[i], pmids[i]);
+	else printf("<a href=\"http://www.ncbi.nlm.nih.gov/pubmed?term=%s\">%s</a>, ", pmids[i], pmids[i]);
+}
+sqlFreeResult(&sr);
+freeDyString(&dy);
+
+printTrackHtml(tdb);
+hFreeConn(&conn);
+}
+
 
 
 
@@ -23225,6 +23327,10 @@ else if (sameWord(table, "mrna") || sameWord(table, "mrna2") ||
 else if (startsWith("bejsaEnhancer", table))
 	{
 	doEnhancerTrack(tdb, item);
+	}
+else if (sameWord("bejjcValidatedTfBindingSites", table))
+	{
+	doValidatedBindingSitesTrack(tdb, item);
 	}
 else if (startsWith("pseudoMrna",table ) || startsWith("pseudoGeneLink",table )
         || sameWord("pseudoUcsc",table))
