@@ -11,6 +11,7 @@ static char const rcsid[] = "$Id: ixIxx.c,v 1.4 2006/10/30 17:15:59 angie Exp $"
 /* Variables that can be set from command line. */
 int prefixSize = trixPrefixSize;
 int binSize = 64*1024;
+char *extraMiddleChars = NULL;
 
 void usage()
 /* Explain usage and exit. */
@@ -24,12 +25,14 @@ errAbort(
   "options:\n"
   "   -prefixSize=N Size of prefix to index on in ixx.  Default is 5.\n"
   "   -binSize=N Size of bins in ixx.  Default is 64k.\n"
+  "   -middleChars=S Non-alphanumeric characters (in addition to '._-') allowed in the middle of a word.\n"
   );
 }
 
 static struct optionSpec options[] = {
    {"prefixSize", OPTION_INT},
    {"binSize", OPTION_INT},
+   {"middleChars", OPTION_STRING},
    {NULL, 0},
 };
 
@@ -46,6 +49,10 @@ for (c=0; c<256; ++c)
 wordBeginChars['_'] = wordMiddleChars['_'] = TRUE;
 wordMiddleChars['.'] = TRUE;
 wordMiddleChars['-'] = TRUE;
+int i;
+if (extraMiddleChars != NULL)
+    for (i = 0; i < strlen(extraMiddleChars); i++)
+        wordMiddleChars[(int) extraMiddleChars[i]] = TRUE;
 }
 
 
@@ -255,6 +262,7 @@ int main(int argc, char *argv[])
 optionInit(&argc, argv, options);
 prefixSize = optionInt("prefixSize", prefixSize);
 binSize = optionInt("binSize", binSize);
+extraMiddleChars = optionVal("middleChars", NULL);
 if (argc != 4)
     usage();
 ixIxx(argv[1], argv[2], argv[3]);
