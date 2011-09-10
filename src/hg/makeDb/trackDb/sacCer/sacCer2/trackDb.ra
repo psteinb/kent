@@ -2,6 +2,7 @@
 # Local declaration so that local gap.html is picked up.
 track gap override
 visibility hide
+chromosomes none
 
 track testSgdGene
 shortLabel test SGD Gene
@@ -51,6 +52,3 @@ visibility hide
 
 track sgdOther override
 noScoreFilter .
-
-track ensGene override
-longLabel Ensembl Gene Predictions (lifted to sacCer2 from Ensembl version EF 2)

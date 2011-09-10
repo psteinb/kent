@@ -23,8 +23,6 @@
 #include "hgMaf.h"
 #include "hui.h"
 
-static char const rcsid[] = "$Id: cart.c,v 1.120 2010/05/20 03:15:51 kent Exp $";
-
 static char *sessionVar = "hgsid";	/* Name of cgi variable session is stored in. */
 static char *positionCgiName = "position";
 
@@ -368,6 +366,7 @@ for (cv = cvList; cv != NULL; cv = cv->next)
 	if (! cgiVarExists(multVar))
 	    {
 	    storeInOldVars(cart, oldVars, multVar);
+	    storeInOldVars(cart, oldVars, cv->name);
 	    cartRemove(cart, multVar);
 	    }
 	}
@@ -520,15 +519,6 @@ cartCopyCustomTracks(cart, oldVars);
 
 if (isNotEmpty(actionVar))
     cartRemove(cart, actionVar);
-}
-
-char *_cartVarDbName(char *db, char *var)
-/* generate cart variable name that is local to an assembly database.
- * Only for use inside of cart.h.  WARNING: static return */
-{
-static char buf[PATH_LEN]; // something rather big
-safef(buf, sizeof(buf), "%s_%s", var, db);
-return buf;
 }
 
 static char *now()
@@ -770,7 +760,16 @@ unsigned int cartUserId(struct cart *cart)
 return cart->userInfo->id;
 }
 
-static int cartRemoveAndCount(struct cart *cart, char *var)
+static char *cartMultShadowVar(struct cart *cart, char *var)
+/* Return a pointer to the list variable shadow variable name for var.
+ * Don't modify or free result. */
+{
+static char multShadowVar[PATH_LEN];
+safef(multShadowVar, sizeof(multShadowVar), "%s%s", cgiMultListShadowPrefix(), var);
+return multShadowVar;
+}
+
+static int cartRemoveAndCountNoShadow(struct cart *cart, char *var)
 /* Remove variable from cart, returning count of removed vars. */
 {
 int removed = 0;
@@ -786,17 +785,18 @@ while (hel != NULL)
 return removed;
 }
 
+static int cartRemoveAndCount(struct cart *cart, char *var)
+/* Remove variable from cart, returning count of removed vars. */
+{
+int removed = cartRemoveAndCountNoShadow(cart, var);
+(void)cartRemoveAndCountNoShadow(cart, cartMultShadowVar(cart, var));
+return removed;
+}
+
 void cartRemove(struct cart *cart, char *var)
 /* Remove variable from cart. */
 {
-struct hashEl *hel = hashLookup(cart->hash, var);
-while (hel != NULL)
-    {
-    struct hashEl *nextHel = hashLookupNext(hel);
-    freez(&hel->val);
-    hashRemove(cart->hash, var);
-    hel = nextHel;
-    }
+(void)cartRemoveAndCount(cart, var);
 }
 
 void cartRemoveExcept(struct cart *cart, char **except)
@@ -858,6 +858,32 @@ hashElFreeList(&elList);
 return cartVars;
 }
 
+struct slPair *cartVarsWithPrefixLm(struct cart *cart, char *prefix, struct lm *lm)
+/* Return list of cart vars that begin with prefix allocated in local memory.
+ * Quite a lot faster than cartVarsWithPrefix. */
+{
+struct slPair *cartVars = NULL;
+struct hash *hash = cart->hash;
+int hashSize = hash->size;
+struct hashEl *hel;
+int i;
+for (i=0; i<hashSize; ++i)
+    {
+    for (hel = hash->table[i]; hel != NULL; hel = hel->next)
+        {
+	if (startsWith(prefix, hel->name))
+	    {
+	    struct slPair *pair;
+	    lmAllocVar(lm, pair);
+	    pair->name = lmCloneString(lm, hel->name);
+	    pair->val = lmCloneString(lm, hel->val);
+	    slAddHead(&cartVars, pair);
+	    }
+	}
+    }
+return cartVars;
+}
+
 void cartRemoveLike(struct cart *cart, char *wildCard)
 /* Remove all variable from cart that match wildCard. */
 {
@@ -891,17 +917,7 @@ return hashFindVal(cart->hash, var) != NULL;
 boolean cartListVarExists(struct cart *cart, char *var)
 /* Return TRUE if a list variable is in cart (list may still be empty). */
 {
-static int bufSize = 0;
-static char *buf = NULL;
-char *multShadow = cgiMultListShadowPrefix();
-int len = strlen(multShadow) + strlen(var) + 1;
-if (bufSize < len)
-    {
-    buf = needMoreMem(buf, 0, len*2);
-    bufSize = len*2;
-    }
-safef(buf, bufSize, "%s%s", multShadow, var);
-return cartVarExists(cart, buf);
+return cartVarExists(cart, cartMultShadowVar(cart, var));
 }
 
 char *cartString(struct cart *cart, char *var)
@@ -1963,7 +1979,7 @@ if (sameString(oldValue,CART_VAR_EMPTY))
 return (differentString(newValue,oldValue));
 }
 
-int cartNamesPruneChanged(struct cart *newCart,struct hash *oldVars,
+static int cartNamesPruneChanged(struct cart *newCart,struct hash *oldVars,
                           struct slPair **cartNames,boolean ignoreRemoved,boolean unChanged)
 /* Prunes a list of cartNames if the settings have changed between new and old cart.
    Returns pruned count */
@@ -1979,7 +1995,6 @@ while ((oneName = slPopHead(&oldList)) != NULL)
         slAddHead(&newList,oneName);
     else
         {
-        freeMem(oneName);
         pruned++;
         }
     }
@@ -2272,14 +2287,13 @@ else // If no views then composite is not set to fuul but to max of subtracks
 hashFree(&subVisHash);
 
 // If reshaped, be sure to set flag to stop composite cleanup
-#define RESHAPED_COMPOSITE "reshaped"
 if (count > 0)
-    tdbExtrasAddOrUpdate(tdbContainer,RESHAPED_COMPOSITE,(void *)(long)TRUE); // Exists for the life of the cgi only
+    tdbExtrasReshapedCompositeSet(tdbContainer);
 
 return TRUE;
 }
 
-boolean cartTdbTreeCleanupOverrides(struct trackDb *tdb,struct cart *newCart,struct hash *oldVars)
+boolean cartTdbTreeCleanupOverrides(struct trackDb *tdb,struct cart *newCart,struct hash *oldVars, struct lm *lm)
 /* When container or composite/view settings changes, remove subtrack specific settings
    Returns TRUE if any cart vars are removed */
 {
@@ -2288,7 +2302,7 @@ if (!tdbIsContainer(tdb))
     return anythingChanged;
 
 // If composite has been reshaped then don't clean it up
-if ((boolean)(long)tdbExtrasGetOrDefault(tdb,RESHAPED_COMPOSITE,(void *)(long)FALSE))
+if (tdbExtrasReshapedComposite(tdb))
     return anythingChanged;
 
 // vis is a special additive case! composite or view level changes then remove subtrack vis
@@ -2311,7 +2325,7 @@ char setting[512];
 safef(setting,sizeof(setting),"%s.",tdb->track);
 char * view = NULL;
 boolean hasViews = FALSE;
-struct slPair *changedSettings = cartVarsWithPrefix(newCart, setting);
+struct slPair *changedSettings = cartVarsWithPrefixLm(newCart, setting, lm);
 for (tdbView = tdb->subtracks;tdbView != NULL; tdbView = tdbView->next)
     {
     if (!tdbIsView(tdbView,&view))
@@ -2319,7 +2333,7 @@ for (tdbView = tdb->subtracks;tdbView != NULL; tdbView = tdbView->next)
     hasViews = TRUE;
     safef(setting,sizeof(setting),"%s.",tdbView->track);          // unfortunatly setting name could be viewTrackName.???
     //safef(setting,   sizeof(setting),"%s.%s.",tdb->track,view); // or containerName.Sig.???   HOWEVER: this are picked up by containerName prefix
-    struct slPair *changeViewSettings = cartVarsWithPrefix(newCart, setting);
+    struct slPair *changeViewSettings = cartVarsWithPrefixLm(newCart, setting, lm);
     changedSettings = slCat(changedSettings, changeViewSettings);
     }
 if (changedSettings == NULL && !containerVisChanged)
@@ -2366,7 +2380,6 @@ if (hasViews)
             else if (cartRemoveOldFromTdbTree(newCart,oldVars,tdbView,suffix,oneName->val,TRUE) > 0)
                     clensed++;
 
-            freeMem(oneName);
             }
         if (viewVisChanged)
             {
@@ -2395,7 +2408,6 @@ while ((oneName = slPopHead(&changedSettings)) != NULL)
     suffix = oneName->name + strlen(tdb->track) + 1;
     if (cartRemoveOldFromTdbTree(newCart,oldVars,tdb,suffix,oneName->val,TRUE) > 0)
         clensed++;
-    freeMem(oneName);
     }
 if  (containerVisChanged && !hasViews)
     { // vis is a special additive case!

@@ -34,7 +34,6 @@ void loadSimpleBed(struct track *tg)
 {
 struct bed *(*loader)(char **row);
 struct bed *bed, *list = NULL;
-struct sqlConnection *conn = hAllocConnTrack(database, tg->tdb);
 char **row;
 int rowOffset;
 char *words[3];
@@ -82,30 +81,28 @@ if ((setting = trackDbSettingClosestToHome(tg->tdb, "filterTopScorers")) != NULL
 
 /* Get list of items */
 if (tg->isBigBed)
-    {
+    { // avoid opening an unneeded db connection for bigBed; required not to use mysql for parallel fetch tracks
     char *scoreFilter = cartOrTdbString(cart, tg->tdb, "scoreFilter", NULL);
-    if (scoreFilter != NULL || tg->visibility != tvDense)
-	{
-	struct lm *lm = lmInit(0);
-	struct bigBedInterval *bb, *bbList = bigBedSelectRange(tg, chromName, winStart, winEnd, lm);
-	char *bedRow[32];
-	char startBuf[16], endBuf[16];
-	int minScore = 0;
-	if (scoreFilter)
-	    minScore = atoi(scoreFilter);
+    struct lm *lm = lmInit(0);
+    struct bigBedInterval *bb, *bbList = bigBedSelectRange(tg, chromName, winStart, winEnd, lm);
+    char *bedRow[32];
+    char startBuf[16], endBuf[16];
+    int minScore = 0;
+    if (scoreFilter)
+	minScore = atoi(scoreFilter);
 
-	for (bb = bbList; bb != NULL; bb = bb->next)
-	    {
-	    bigBedIntervalToRow(bb, chromName, startBuf, endBuf, bedRow, ArraySize(bedRow));
-	    bed = loader(bedRow);
-	    if (scoreFilter == NULL || bed->score >= minScore)
-		slAddHead(&list, bed);
-	    }
-	lmCleanup(&lm);
+    for (bb = bbList; bb != NULL; bb = bb->next)
+	{
+	bigBedIntervalToRow(bb, chromName, startBuf, endBuf, bedRow, ArraySize(bedRow));
+	bed = loader(bedRow);
+	if (scoreFilter == NULL || bed->score >= minScore)
+	    slAddHead(&list, bed);
 	}
+    lmCleanup(&lm);
     }
 else
     {
+    struct sqlConnection *conn = hAllocConnTrack(database, tg->tdb);
     struct sqlResult *sr = NULL;
     /* limit to items above a specified score */
     char *scoreFilterClause = getScoreFilterClause(cart, tg->tdb,NULL);
@@ -131,6 +128,7 @@ else
 	slAddHead(&list, bed);
 	}
     sqlFreeResult(&sr);
+    hFreeConn(&conn);
     }
 
 if (doScoreCtFilter)
@@ -140,7 +138,6 @@ if (doScoreCtFilter)
     list = newList;
     }
 slReverse(&list);
-hFreeConn(&conn);
 tg->items = list;
 }
 
@@ -186,7 +183,6 @@ void loadBed9(struct track *tg)
 /* Convert bed 9 info in window to linked feature.  (to handle itemRgb)*/
 {
 struct trackDb *tdb = tg->tdb;
-struct sqlConnection *conn = hAllocConnTrack(database, tdb);
 struct bed *bed;
 struct linkedFeatures *lfList = NULL, *lf;
 int scoreMin = atoi(trackDbSettingClosestToHomeOrDefault(tdb, "scoreMin", "0"));
@@ -196,12 +192,13 @@ boolean useItemRgb = FALSE;
 useItemRgb = bedItemRgb(tdb);
 
 if (tg->isBigBed)
-    {
+    { // avoid opening an unneeded db connection for bigBed; required not to use mysql for parallel fetch tracks
     bigBedAddLinkedFeaturesFrom(tg, chromName, winStart, winEnd,
           scoreMin, scoreMax, useItemRgb, 9, &lfList);
     }
 else
     {
+    struct sqlConnection *conn = hAllocConnTrack(database, tdb);
     struct sqlResult *sr;
     char **row;
     int rowOffset;
@@ -224,8 +221,8 @@ else
 	slAddHead(&lfList, lf);
 	}
     sqlFreeResult(&sr);
+    hFreeConn(&conn);
     }
-hFreeConn(&conn);
 slReverse(&lfList);
 slSort(&lfList, linkedFeaturesCmp);
 tg->items = lfList;
@@ -235,7 +232,6 @@ tg->items = lfList;
 void loadBed8(struct track *tg)
 /* Convert bed 8 info in window to linked feature. */
 {
-struct sqlConnection *conn = hAllocConn(database);
 struct bed *bed;
 struct linkedFeatures *lfList = NULL, *lf;
 struct trackDb *tdb = tg->tdb;
@@ -246,12 +242,13 @@ boolean useItemRgb = FALSE;
 useItemRgb = bedItemRgb(tdb);
 
 if (tg->isBigBed)
-    {
+    { // avoid opening an unneeded db connection for bigBed; required not to use mysql for parallel fetch tracks
     bigBedAddLinkedFeaturesFrom(tg, chromName, winStart, winEnd,
           scoreMin, scoreMax, useItemRgb, 8, &lfList);
     }
 else
     {
+    struct sqlConnection *conn = hAllocConn(database);
     struct sqlResult *sr;
     char **row;
     int rowOffset;
@@ -274,8 +271,8 @@ else
 	slAddHead(&lfList, lf);
 	}
     sqlFreeResult(&sr);
+    hFreeConn(&conn);
     }
-hFreeConn(&conn);
 slReverse(&lfList);
 slSort(&lfList, linkedFeaturesCmp);
 tg->items = lfList;
@@ -433,7 +430,6 @@ for (fil = mud->filterList; fil != NULL; fil = fil->next)
 void loadGappedBed(struct track *tg)
 /* Convert bed info in window to linked feature. */
 {
-struct sqlConnection *conn = hAllocConn(database);
 struct sqlResult *sr;
 char **row;
 int rowOffset;
@@ -447,7 +443,7 @@ boolean useItemRgb = FALSE;
 useItemRgb = bedItemRgb(tdb);
 
 if (tg->isBigBed)
-    {
+    { // avoid opening an unneeded db connection for bigBed; required not to use mysql for parallel fetch tracks
     bigBedAddLinkedFeaturesFrom(tg, chromName, winStart, winEnd,
           scoreMin, scoreMax, useItemRgb, 12, &lfList);
     }
@@ -455,6 +451,7 @@ else
     {
     /* Use tg->tdb->track because subtracks inherit composite track's tdb
      * by default, and the variable is named after the composite track. */
+    struct sqlConnection *conn = hAllocConn(database);
     char *scoreFilterClause = getScoreFilterClause(cart, tg->tdb,NULL);
     if (scoreFilterClause != NULL)
 	{
@@ -479,8 +476,8 @@ else
 	bedFree(&bed);
 	}
     sqlFreeResult(&sr);
+    hFreeConn(&conn);
     }
-hFreeConn(&conn);
 slReverse(&lfList);
 if(tg->extraUiData)
     filterBed(tg, &lfList);
@@ -495,9 +492,14 @@ void bedDrawSimpleAt(struct track *tg, void *item,
 {
 struct bed *bed = item;
 int heightPer = tg->heightPer;
-int x1 = round((double)((int)bed->chromStart-winStart)*scale) + xOff;
-int x2 = round((double)((int)bed->chromEnd-winStart)*scale) + xOff;
-int w;
+int s = max(bed->chromStart, winStart), e = min(bed->chromEnd, winEnd);
+if (s > e)
+    return;
+int x1 = round((s-winStart)*scale) + xOff;
+int x2 = round((e-winStart)*scale) + xOff;
+int w = x2 - x1;
+if (w < 1)
+    w = 1;
 struct trackDb *tdb = tg->tdb;
 int scoreMin = atoi(trackDbSettingClosestToHomeOrDefault(tdb, "scoreMin", "0"));
 int scoreMax = atoi(trackDbSettingClosestToHomeOrDefault(tdb, "scoreMax", "1000"));
@@ -514,9 +516,6 @@ else if (tg->colorShades)
     adjustBedScoreGrayLevel(tdb, bed, scoreMin, scoreMax);
     color = tg->colorShades[grayInRange(bed->score, scoreMin, scoreMax)];
     }
-w = x2-x1;
-if (w < 1)
-    w = 1;
 /*	Keep the item at least 4 pixels wide at all viewpoints */
 if (thickDrawItem && (w < 4))
     {
@@ -605,6 +604,36 @@ void freeSimpleBed(struct track *tg)
 bedFreeList(((struct bed **)(&tg->items)));
 }
 
+void simpleBedNextPrevEdge(struct track *tg, struct hvGfx *hvg, void *item, int x, int y, int w,
+			   int h, boolean next)
+/* Like linkedFeaturesNextPrevItem, but for simple bed which has no block structure so
+ * this simply zaps us to the right/left edge of the feature.  Arrows have already been
+ * drawn; here we figure out coords and draw a mapBox. */
+{
+struct bed4 *bed = item;
+char *mouseOverText = NULL;
+if (next)
+    mouseOverText = trackDbSettingClosestToHomeOrDefault(tg->tdb, "nextExonText",
+							 revCmplDisp ? "Left Edge" : "Right Edge");
+else
+    mouseOverText = trackDbSettingClosestToHomeOrDefault(tg->tdb, "prevExonText",
+							 revCmplDisp ? "Right Edge" : "Left Edge");
+int winSize = winEnd - winStart;
+int bufferToEdge = 0.05 * winSize;
+int newWinStart, newWinEnd;
+if (next)
+    {
+    newWinEnd = bed->chromEnd + bufferToEdge;
+    newWinStart = newWinEnd - winSize;
+    }
+else
+    {
+    newWinStart = bed->chromStart - bufferToEdge;
+    newWinEnd = newWinStart + winSize;
+    }
+mapBoxJumpTo(hvg, x, y, w, h, tg, chromName, newWinStart, newWinEnd, mouseOverText);
+}
+
 void bedMethods(struct track *tg)
 /* Fill in methods for (simple) bed tracks. */
 {
@@ -616,6 +645,10 @@ tg->totalHeight = tgFixedTotalHeightNoOverflow;
 tg->itemHeight = tgFixedItemHeight;
 tg->itemStart = bedItemStart;
 tg->itemEnd = bedItemEnd;
+// Adding "tg->nextPrevExon = simpleBedNextPrevEdge;" opened a can of worms: too many
+// bed-based tracks have their own drawItems methods that don't hook into nextItem stuff,
+// or drawItemAt methods that draw mapboxes but tg->mapsSelf is not set...
+// So, set tg->nextPrevExon = simpleBedNextPrevEdge case-by-case.
 tg->nextPrevItem = linkedFeaturesLabelNextPrevItem;
 tg->freeItems = freeSimpleBed;
 }
@@ -791,8 +824,8 @@ if (wordCount > 1)
 track->bedSize = fieldCount;
 track->isBigBed = isBigBed;
 
-if (track->isBigBed)
-    track->nextItemButtonable = FALSE;
+//if (track->isBigBed)
+    //track->nextItemButtonable = FALSE;
 
 if (fieldCount < 8)
     {
@@ -830,6 +863,10 @@ else if (fieldCount < 12)
     {
     linkedFeaturesMethods(track);
     track->loadItems = loadBed8;
+    if (trackDbSetting(tdb, "colorByStrand"))
+	{
+	track->itemColor = lfItemColorByStrand;
+	}
     }
 else
     {

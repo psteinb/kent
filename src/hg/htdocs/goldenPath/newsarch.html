@@ -21,9 +21,7 @@
 	<TABLE BGCOLOR="fffee8" WIDTH=100% CELLPADDING=0><TH HEIGHT=10></TH><TR><TD WIDTH=10></TD><TD>
 
 <UL>
-<!--
 <LI><A CLASS="toc" HREF="#2011">2011 News</A></LI>
--->
 <LI><A CLASS="toc" HREF="#2010">2010 News</A></LI>
 <LI><A CLASS="toc" HREF="#2009">2009 News</A></LI>
 <LI><A CLASS="toc" HREF="#2008">2008 News</A></LI>
@@ -35,14 +33,611 @@
 <LI><A CLASS="toc" HREF="#2002">2002 News</A></LI>
 <LI><A CLASS="toc" HREF="#2001">2001 News</A></LI>
 </UL>
+<HR>
 
 <!--------------- 2011 archived news --------------->
 <A NAME="2011"></A>
 
+<A NAME="090811"></A>
+            <!-- New javascript features  -->
+		    <P>
+                    <FONT COLOR="#006666" SIZE="4"><B>8 September 2011 
+                       - New Navigation and Display Features</B></FONT>
+		    </P><P>
+		    We've added several new features to the Genome Browser 
+		    that make it easier to quickly configure and navigate 
+		    around in the browser's annotation tracks window.
+		    <P>
+		    <B>Automatic image resizing:</B> The first time the annotation 
+		    track window is displayed, or after the Genome Browser has
+		    been reset, the size of the track window is now set by 
+		    default to the width that best fits your Internet browser 
+		    window. If you subsequently resize your browser window, 
+		    you can automatically adjust the annotation track image 
+		    size to the new width by clicking the <em>resize</em> button
+		    under the track image. The default width can still be 
+		    manually overridden on the Track Configuration page. 
+		    <P>
+		    <B>Scrolling left or right in the track window:</B> You can now 
+		    scroll (pan) horizontally through the tracks image by clicking 
+		    on the image, dragging the cursor to the left or right, 
+		    then releasing the mouse button. The view may be scrolled 
+		    by up to one image width.
+		    <P>
+		    <B>Improved drag-zoom navigation:</B>  The browser's 
+		    &quot;drag-and-zoom&quot; feature lets you quickly zoom to a
+		    specific region of interest on the annotation tracks image.
+		    To define the region you wish to zoom to, click-and-hold 
+		    the mouse button on one edge of the desired zoom area
+		    (which can be anywhere in the tracks window), depress the 
+		    shift key, drag the mouse right or left to highlight the 
+		    selection area, then release the mouse button.
+		    The annotation tracks image will automatically zoom to
+		    the new region. The Genome Browser still supports the 
+		    earlier implementation of this feature, which restricted
+		    the click-drag to the Base Position track area of the image,
+		    but did not require the shift key to be pressed. 
+		    <P>
+		    <B>Reordering groups of tracks:</B> 
+		    You can now vertically reposition an entire group of 
+		    associated tracks in the tracks image (such as all the 
+		    displayed subtracks in a composite track) by clicking and 
+		    holding the gray bar to the left of the tracks,
+		    dragging the group to the new position, then releasing
+		    the mouse button. To move a single track up or down, click 
+		    and hold the mouse button on the side label, drag the 
+		    highlighted track to the new position, then release the 
+		    mouse button.
+		    <P>
+		    If you haven't yet tried the browser's right-click 
+		    menu for quick access to frequently used track 
+		    configuration features and functionality, read more
+		    <A HREF="newsarch.html#011011">here</A>.
+		    </P>
+		    <HR>
+
+<A NAME="081811"></A>
+            <!-- Data Hubs  -->
+		    <P>
+                    <FONT COLOR="#006666" SIZE="4"><B>18 August 2011 
+                       - New Feature: Track Data Hubs </B></FONT>
+		    </P>
+                    <P>We are pleased to announce a new feature in the UCSC Genome Browser:
+                        Track Data Hubs. Track hubs are web-accessible directories of genomic data
+                        that can be viewed on the UCSC Genome Browser alongside native annotation
+                        tracks. The Track Hub utility allows efficient access to data sets from around
+                        the world through the familiar Genome Browser interface. Browser users
+                        can display tracks from any public track hub that has been registered
+                        with UCSC. Additionally, users can import data from unlisted hubs or can
+                        set up, display, and share their own track hubs.
+                    </P>
+                    <P>The data underlying the tracks in a hub reside on the remote server of
+                        the data provider rather than at UCSC. The data are stored in compressed
+                        binary indexed files in bigBed, bigWig or BAM format that contain the
+                        data at several resolutions. When a hub track is displayed in the Genome
+                        Browser, only the relevant data needed to support the view of the
+                        current genomic region are transmitted rather than the entire file. The
+                        transmitted data are cached on the UCSC server to expedite future
+                        access. This on-demand transfer mechanism eliminates the need to                        transmit large data sets across the Internet, thereby minimizing upload
+                        time into the browser.
+                    </P>
+                    <P>To check out some track data hubs that are already available, most
+                        notably those from the NIH Roadmap Epigenomics Mapping Consortium, press
+                        the "track hubs" button in the genome browser, or follow this link:
+                        <A HREF="/cgi-bin/hgHubConnect">http://genome.ucsc.edu/cgi-bin/hgHubConnect</A>
+                    </P>
+                    <P>To read about using hubs, or creating your own, see the
+                        <A HREF="http://genome.ucsc.edu/goldenPath/help/hgTrackHubHelp.html">User's Guide
+</A>.
+                    </P>
+                    <HR>
+
+<A NAME="061611"></A>
+            <!-- OMIM release  -->
+		    <P>
+                    <FONT COLOR="#006666" SIZE="4"><B>16 June 2011 
+                       - Re-engineered OMIM Tracks Released </B></FONT>
+		    </P>
+		    <P>
+
+                    We announce today the release of our newly re-engineered OMIM 
+                    (Online Mendelian Inheritance in Man) tracks for both hg18 and 
+                    hg19. With the kind assistance of Ada Hamosh (director), 
+                    Joanna Amberger and Francois Schiettecatte of the OMIM project, 
+                    we have divided the OMIM records into three separate tracks:
+                    </P>
+                    <P>
+                    <B>OMIM Allelic Variant SNPs</B>
+                    <BR> &nbsp; &nbsp; &nbsp; &nbsp;
+                      Variants in the OMIM database that have associated dbSNP identifiers.
+                    </P>
+
+                    <P>
+                    <B>OMIM Genes</B>
+                    <BR> &nbsp; &nbsp; &nbsp; &nbsp;
+                      The genomic positions of gene entries in the OMIM database. 
+                      The coloring indicates the associated OMIM phenotype class.
+                    </P>
+
+                    <P>
+                    <B>OMIM Phenotypes - Gene Unknown</B>
+                    <BR> &nbsp; &nbsp; &nbsp; &nbsp;
+                      Regions known to be associated with a phenotype, but for which no 
+                      specific gene is known to be causative. This track also includes 
+                      known multi-gene syndromes.
+                    </P>
+
+                    <P>
+                    The new tracks can be found in the Phenotype and Disease Associations
+                    track group below the browser graphic
+                    and are searchable by OMIM number. In most cases,
+                    simply typing the 6-digit MIM number into the position/search box 
+                    on the Browser will take you to the record.
+                    </P>
+
+                    <P>
+                    The OMIM data are the property of Johns Hopkins University and 
+                    will not be available for download from UCSC. Please contact the 
+                    OMIM project at <A HREF = "http://omim.org/downloads" 
+                    TARGET = _BLANK>omim.org</A> for download information.
+                    </P>
+
+                    <P>
+                    UCSC thanks engineers Fan Hsu, Brooke Rhead and Robert Kuhn for 
+                    this release.
+                    </P>
+                    <HR>
+
+<A NAME="060911"></A>
+            <!-- Preview Browser release  -->
+		    <P>
+                    <font color="#006666" size="4"><b>9 June 2011 - UCSC Preview Browser Available</B></FONT>
+		    </P>
+		    <P>
+                    Early access to ENCODE and other UCSC browser data tracks under
+                    construction is now available from the new UCSC Preview Browser site:
+                    <A HREF="http://genome-preview.ucsc.edu">http://genome-preview.ucsc.edu</A></P>
+
+                    This site is a weekly mirror of our internal development server for
+                    public access. Data and tools there are under construction, have not
+                    been quality reviewed, and are subject to change at any time. We provide
+                    this site for early access, with the warning that it is less available
+                    and stable than our public site. For high-quality reviewed annotations
+                    on our production server, visit our public website:
+                    <A HREF="http://genome.ucsc.edu">http://genome.ucsc.edu</A>.
+		    </P>
+		    <HR>
+
+<A NAME="060711"></A>
+            <!-- Updated Lizard Assembly release  -->
+		    <P>
+                    <font color="#006666" size="4"><b>7 June 2011 - Updated Lizard Browser Available</B></FONT>
+		    </P>
+		    <P>
+                    We have released a Genome Browser for the May 2010
+                    genome assembly of the green anole lizard, <em>Anolis 
+                    carolinensis</em> (Broad
+                    version AnoCar2.0, UCSC version anoCar2). This assembly,
+                    which has been sequenced to 7.1X coverage, was produced by
+                    the <A HREF="http://www.broad.mit.edu/" 
+                    TARGET=_blank>Broad Institute</A>, Cambridge, MA.
+                    </P>
+                    <P>
+                    Bulk downloads of the sequence and annotation data are
+                    available via the Genome Browser
+                    <A HREF="ftp://hgdownload.cse.ucsc.edu/goldenPath/anoCar2/">FTP server</A>
+                    or the
+                    <A HREF="http://hgdownload.cse.ucsc.edu/downloads.html#lizard">Downloads</A>
+                    page.  These data have
+                    <A HREF="credits.html#lizard_use">specific
+                    conditions for use</A>.
+                    <P>
+                    We'd like to thank the Broad Institute for providing this
+                    assembly. The lizard Genome Browser and annotation
+                    tracks were produced by Hiram Clawson, Brian Raney, and
+                    Luvina Guruvadoo. See the
+                    <A HREF="credits.html#lizard_credits">Credits</A>
+                    page for a detailed list of the organizations and
+                    individuals who contributed to this release.
+		    </P>
+		    <HR>
+
+<A NAME="052611"></A>
+		    <P>
+                    <font color="#006666" size="4"><b>26 May 2011 - New Release of UCSC Genes for Mouse</B></FONT>
+		    </P>
+		    <P>
+		    We've released an updated set of UCSC Genes for the mm9 
+		    (NCBI Build 37) mouse Genome Browser. This version of the 
+		    gene set was generated using the same computational 
+		    pipeline as the previous mm9 UCSC Genes, but is based on 
+		    more recent GenBank data.
+		    <P>
+		    The new release has 55,419 total transcripts, compared with 
+		    49,409 in the previous version. The total number of canonical
+		    genes has increased from 27,389 to 28,661.
+		    Comparing the new gene set with the previous version:
+		    <UL>
+		    <LI>33,977 transcripts did not change between versions
+		    <LI>69 transcripts were not carried forward to the new version
+		    <LI>13,701 transcripts are &quot;compatible&quot; with those
+		    in the previous set
+		    <LI>1,662 transcripts overlap with those in the previous set
+		    </UL>
+		    </P>
+                    <HR>  
+
+<A NAME="051311"></A>
+            <!-- OpenHelix Webinar  -->
+		    <P>
+                    <font color="#006666" size="4"><b>13 May 2011 
+                     - Free Browser Training 
+                     Webinar from OpenHelix </B></FONT>
+		    </P>
+                    <P>
+                  The UCSC Bioinformatics Group announces two free webinars 
+                  on the UCSC Genome Browser. The 
+                  webinars will be conducted by OpenHelix, a provider of 
+                  training on many free, publicly accessible bioinformatics 
+                  and genomics resources. 
+                  </P>
+                  <P>
+                  The webinars (one hour and 15 minutes long) will cover the 
+                  topics needed to effectively use the Genome Browser.  The 
+                  first webinar, to be held Tuesday, May 24, 11:00-12:15 PM PDT,  
+                  <B>Introduction to the UCSC Genome Browser</B>, is designed 
+                  for new users of the UCSC Genome Browser, and those who want 
+                  to improve their skills at basic navigation and display.
+                  </P>
+                  <P>
+                  The second webinar, <B>UCSC Genome Browser: Custom Tracks 
+                  and Table Browser</B>, will be held Thursday, May 26, 1:00-2:15 PM PDT.   
+                  </P>
+                  <P>Signup required.  For details see 
+                   <A HREF = "http://blog.openhelix.eu/?p=8359" TARGET = _BLANK>Open Helix</A>.
+		    </P>
+                    <HR>  
+
+<A NAME="050111"></A>
+            <!-- ENCODE usability survey -->
+		    <P>
+                    <font color="#006666" size="4"><b>1 May 2011 - ENCODE User's Guide and 
+                        Usability Survey</B></FONT>
+		    </P>
+                    <P>
+                  The ENCODE project has just published an overview of their ongoing large-scale
+                  efforts to interpret the human genome sequence in the journal PLoS Biology.
+                  <a target=_blank href="http://www.plosbiology.org/article/info:doi/10.1371/journal.pbio.1001046 ">
+                  A Users Guide to the Encyclopedia of DNA Elements</a>,
+                  highlights the scope of data production, and provides guidance for locating 
+                  and using the data.  With the vast amount of data now available, the ENCODE Data Coordination Center
+                  at UCSC continues to focus on improving the accessiblity and usability of this valuable resource.
+                  We invite all current and prospective users of ENCODE data to participate in the 
+                    <a target=_blank href="http://www.surveymonkey.com/s/5YYTRWQ">2011 ENCODE Usability Survey</a>. 
+                    Your input will help us to make this data more accessible to the scientific community. Thank you!
+		    </P>
+                    <HR>  
+
+<a name="041811.2"></a>
+            <!-- hg19 snp132 release -->
+		    <p>
+                    <font color="#006666" size="4"><b>18 April 2011 - dbSNP 132 Available for hg19</b></font>
+
+                    <FONT FACE="courier" SIZE="3"><B></B></FONT>
+		    </p>
+                    <p>
+                    We are pleased to announce the release of four tracks derived from
+                    <a href="http://www.ncbi.nlm.nih.gov/projects/SNP/" target=_blank>dbSNP</a>
+                    build 132, available on the human assembly (GRCh37/hg19).
+                    dbSNP build 132 is available at NCBI. The new tracks contain
+                    additional annotation data not included in previous dbSNP tracks, 
+                    with corresponding coloring and filtering options in the Genome
+                    Browser.
+                    </p>
+                    <p>
+                    As for prior builds of dbSNP, there is a track that contains all
+                    mappings of reference SNPs to the human assembly; it is now labeled
+                    &quot;All SNPs (132)&quot;.  Three new tracks have been added to show
+                    interesting and easily defined subsets of dbSNP:
+                    </p>
+                    <ul>
+                    <li> Common SNPs (132): uniquely mapped variants that appear in at
+                    least 1% of the population</li>
+
+                    <li>Flagged SNPs (132): uniquely mapped variants, excluding Common
+                    SNPs, that have been flagged by dbSNP as &quot;clinically associated&quot;</li>
+
+                    <li>Mult. SNPs (132): variants that have been mapped to more than one
+                    genomic location</li>
+                    </ul>
+                    <p>
+                    By default, only the Common SNPs (132) are visible; other tracks must
+                    be made visible using the track controls.
+                    </p>
+                    <p>
+                    The counts of distinct reference SNPs and their mappings to hg19
+                    differ greatly among the tracks:
+                    </p>
+                    <BLOCKQUOTE>
+                    <table border="1" cellpadding="3">
+                      <tr>
+                        <th>Track</th>
+                        <th>Reference SNPs</th>
+                        <th>Mappings to hg19</th>
+                      </tr>
+                      <tr>
+                        <td>Common SNPs (132)</td>
+                        <td>13,842,381</td>
+                        <td>14,024,295 *</td>
+                      </tr>
+                      <tr>
+                        <td>Flagged SNPs (132)</td>
+                        <td>17,899</td>
+                        <td>18,084 *</td>
+                      </tr>
+                      <tr>
+                        <td>Mult. SNPs (132)</td>
+                        <td>1,114,599</td>
+                        <td>3,568,988</td>
+                      </tr>
+                      <tr>
+                        <td>All SNPs (132)</td>
+                        <td>30,030,754</td>
+                        <td>33,026,121</td>
+                      </tr>
+                    </table>
+                    </BLOCKQUOTE>
+                    <p>
+
+                    * The Common and Flagged tracks have more mappings than SNPs due to the
+                    alternate haplotype sequences and the pseudoautosomal regions on X and Y.
+                    SNPs are considered uniquely mapped if they map only once to a haploid
+                    reference genome.  These regions add non-haploid sequence to the reference
+                    genome; therefore, multiple mappings involving these regions are still 
+                    considered unique.
+		    </p>
+                    <p>
+                    You will find the four SNPs (132) tracks on the Human Feb. 2009
+                    (GRCh37/hg19) browser in the &quot;Variation and Repeats&quot; group.
+		    </p>
+                    <p>
+                    Many thanks to dbSNP at NCBI for the data, and to 
+                    <a href="http://www.gs.washington.edu/faculty/king.htm"
+                       target=_blank>Mary-Claire King</a>                    
+                    at the University of Washington for helpful comments that motivated
+                    us to enhance our dbSNP annotations. The tracks were produced at UCSC
+                    by Angie Hinrichs, Brooke Rhead, Bob Kuhn, and Jim Kent.
+		    </p>
+                    <hr>
+
+<a name="041811.1"></a>
+			<!-- SHEEP BROWSER RELEASE -->
+			<p>
+             <font color="#006666" size="4"><b>18 April 2011 - Sheep Browser Released</b></font>
+		    </p>
+		    
+		    <p>We are happy to announce a Genome Browser for
+		    the initial release of sheep (<em>Ovis aries</em>) genome. The Feb. 2010 <em>Ovis
+			aries</em> draft assembly (NCBI project <a
+			href="http://www.ncbi.nlm.nih.gov/sites/entrez?Db=genomeprj&cmd=ShowDetailView&TermToSearch=10709"
+			target=_blank>10709</a>, <a
+			href="ftp://ftp.ncbi.nlm.nih.gov/genbank/genomes/Eukaryotes/vertebrates_mammals/Ovis_aries/
+			Ovis_aries_1.0/" target=_blank>GCA_000005525.1</a>) was produced by the <a
+			href="http://www.sheephapmap.org/" target=_blank>International Sheep Genomics Consortium (ISGC)
+			sequencing center</a>. The mitochondrial genome was sequenced by <a href="http://www.uni-giessen.de/cms/"
+			target=_blank>Justus-Liebig-University</a>.</p>
+		    
+		    <p>There are 27 chromosomes: chr1 - chr26, chrX, plus the mitochondrial sequence chrM from
+			genbank accession NC_001941, for a total sequence length of 2,860,512,983 bases. There are
+			1,659,241,706 'N' bases in gaps, leaving 1,201,271,277 ACGT bases.</p>
+			
+			<p>The genome has been sequenced using 454 FLX sequencing to 3X coverage (DNA derived from
+			six female sheep each sequenced with 0.5X coverage). Contigs were assembled based on alignment to
+			the bovine genome and ordered into ovine chromosomes using BAC-end sequences and the virtual sheep
+			genome.</p>
+			
+			<p>We'd like to thank the International Sheep Genomics Consortium (ISGC)
+			sequencing center and Justus-Liebig-University for providing this assembly.
+		    We'd also like to acknowledge the UCSC team who worked on 
+		    this release: Chin Li, Greg Roe, and Luvina Guruvadoo. 
+		    The sheep browser annotation tracks were generated by 
+		    UCSC and collaborators worldwide.</p>
+		    
+		    <hr> 
+		    
+<A NAME="030411"></A>
+		    <P>
+                    <FONT SIZE=4 COLOR="#006666"><B>04 March 2011 - The Meaning of Red: Consensus on color scheme for CNVs</B></FONT>
+		    </P>
+		    <P>
+		    Consensus was reached on color standards to represent CNV loss (red) 
+		    and gain (blue) in genomics databases by DGV, NCBI, DECIPHER, UCSC and ISCA 
+		    during the 1st annual ISCA Scientific Conference.
+		    </P>
+		    <P>
+		    At the recent ISCA Scientific Conference in Atlanta, GA, Nigel Carter, 
+		    representing DECIPHER, made a plea for a standardized color scheme for 
+		    representation of CNV loss (deletion) or gain (duplication). Discussions 
+		    in person and by email with leaders of major CNV/genomic databases (including 
+		    DGV, dbVar, ISCA, and the UCSC Genome Browser) resulted in the recommendation 
+		    to utilize red to represent loss/deletion (consistent with the original 
+		    convention for CGH on metaphase chromosomes) and blue to represent 
+		    gain/duplication (avoiding green which is difficult for color-blind 
+		    individuals to discriminate from red).
+		    </P>
+		    <P>
+		    Announcememnt reprinted from the website for the International Standards for
+		    Cytogenomic Arrays (<A HREF = "http://iscaconsortium.org" TARGET = _BLANK>ISCA</A>) 
+		    Consortium.  The UCSC Genome Browser is now conforming to this standard for the 
+		    DECIPHER track and the DGV track on human assemblies (which was released today) and 
+		    on any future tracks derived from dbVar.
+		    </P>
+		    <P>
+		    Thanks to Nigel Carter, Steve Scherer, Deanna Church, Angie Hinrichs, Fan Hsu,
+		    Pauline Fujita and Robert Kuhn.
+		    </P>
+		    <P>
+		    <HR>
+		    </P>
+
+<A NAME="030111"></A>
+		    <P>
+                    <FONT SIZE=4 COLOR="#006666"><B>01 March 2011 - Updated Chimpanzee Browser Released</B></FONT>
+		    </P>
+		    <P>
+		    We are happy to announce the release of a Genome Browser for
+		    the latest release of the chimpanzee (<em>Pan 
+		    troglodytes</em>) genome. The Oct. 2010 assembly -- CGSC 
+		    v2.1.3, UCSC version panTro3 -- was produced by the 
+		    <A HREF="http://genome.wustl.edu/genome.cgi?GENOME=Pan%20troglodytes&SECTION=collaborators"
+		    TARGET=_BLANK>Chimpanzee Sequencing and Analysis 
+		    Consortium</A>.</P>
+		    <P>
+		    This assembly covers about 97 percent of the genome and is 
+		    based on 6X sequence coverage. It comprises 192,898 contigs 
+		    with an N50 length of 44 kb and 33,990 supercontigs with an
+		    N50 length of 8.4 Mb.  
+		    Improvements introduced with the 2.1.3 assembly include the 
+		    addition of over 300,000 finishing reads and the merging in 
+		    of 640 finished BACS. Approximately 49,000 additional merges
+		    were made in this assembly as compared with the 2.1 
+		    assembly.
+		    <P>
+		    The whole genome shotgun data were derived primarily from 
+		    the donor Clint, a captive-born male chimpanzee from the 
+		    Yerkes Primate Research Center in Atlanta, GA, USA. 
+		    The sequence data were assembled and organized by the 
+		    Washington University Genome Center. The underlying whole 
+		    genome shotgun data were generated at the Washington 
+		    University School of Medicine and the Broad Institute. 
+		    For detailed information about the assembly 
+		    process, see the sequencing and analysis discussion in the 
+		    <A HREF="http://www.ncbi.nlm.nih.gov/nuccore/AACZ00000000"
+		    TARGET=_blank>GenBank accession record</A>.
+		    </P>
+		    <P>
+		    Bulk downloads of the sequence and annotation data are 
+		    available via the Genome Browser 
+		    <A HREF="ftp://hgdownload.cse.ucsc.edu/goldenPath/panTro3/">FTP
+		    server</A> or the 
+		    <A HREF="http://hgdownload.cse.ucsc.edu/downloads.html#chimp">Downloads</A> 
+		    page. The complete set of sequence reads is available at the
+
+		    <A HREF="http://www.ncbi.nlm.nih.gov/Traces" 
+		    TARGET=_blank>NCBI trace archive</A>. These data have 
+		    <A HREF="goldenPath/credits.html#chimp_use">specific
+		    conditions for use</A>.</P>
+		    <P>
+		    We'd like to thank the International Chimpanzee 
+		    Sequencing and Analysis Consortium, Washington 
+		    University at St. Louis School of Medicine Genome Sequencing
+		    Center, and the Broad Institute for providing this assembly.
+		    We'd also like to acknowledge the UCSC team who worked on 
+		    this release: Hiram Clawson, Greg Roe, and Donna Karolchik. 
+		    The chimpanzee browser annotation tracks were generated by 
+		    UCSC and collaborators worldwide. </P>
+		    <P>
+		    <HR>
+
+<A NAME="011911"></A>
+                    <FONT SIZE=4 COLOR="#006666"><B>19 January 2011 - Browser Released for Zebrafish Zv9 Assembly</B></FONT>
+		    <P>
+                    The most recent zebrafish assembly -- Zv9 (UCSC version
+                    danRer7, Jul. 2010) -- is now available in the UCSC
+                    Genome Browser. This assembly was produced by
+                    <A HREF="http://www.sanger.ac.uk/"
+		    TARGET=_blank>The Wellcome Trust Sanger Institute</A>, UK.
+                    </P>
+                    <P>
+		    The Zv9 assembly comprises a sequence length of 1.4 Gb in 
+		    26 chromosomes and 1,107 scaffolds. This assembly is based 
+		    on a clone path sorted with 
+		    the high-density meiotic map SATMAP (Clark et al., in 
+		    preparation). The data freeze was taken on 1 April 2010. 
+		    The remaining gaps were filled with sequence from WGS31, a 
+		    combined Illumina and capillary assembly. The assembly 
+		    integration process involved sequence alignemnts as well as 
+		    cDNA, marker and BAC/Fosmid end sequence placements. 
+		    The zebrafish mitochondrial sequence is also available in 
+		    the Genome Browser as the virtual chromosome, chrM. For 
+		    more details about the Zv9 assembly, see the Sanger 
+		    Institute page for the 
+		    <A HREF="http://www.sanger.ac.uk/Projects/D_rerio/Zv9_assembly_information.shtml" 
+		    TARGET=_blank><em>Danio rerio</em> Sequencing Project</A>. 
+		    </P>
+
+                    <P>
+                    The danRer7 sequence and annotation data can be
+                    downloaded from the UCSC Genome Browser
+                    <A HREF="ftp://hgdownload.cse.ucsc.edu/goldenPath/danRer7/">FTP server</A>
+                    or
+                    <A HREF="http://hgdownload.cse.ucsc.edu/downloads.html#zebrafish">downloads</A>
+                    page. Please review the Sanger Institute
+                    <A HREF="http://www.sanger.ac.uk/legal/"
+                    TARGET=_blank>guidelines</A> for using these data.
+                    <P>
+                    We'd like to thank the Wellcome Trust Sanger Institute
+                    for providing this assembly.
+                    The UCSC zebrafish Genome Browser
+                    was produced by Hiram Clawson, Greg Roe, Mary Goldman,
+                    Brian Raney and Donna Karolchik. See the
+                    <A HREF="credits.html#zebrafish_credits">credits</A>
+                    page for a detailed list of the organizations and
+                    individuals who contributed to this release.</P>
+		    <P>
+		    <HR>
+
+<A NAME="011011"></A>
+                    <FONT SIZE=4 COLOR="#006666"><B>10 January 2011 - Introducing Genome Browser Right-click Navigation</B></FONT>
+		    <P>
+		    Several of the common display and navigation operations 
+		    offered on the Genome Browser tracks page may now be quickly
+		    accessed by right-clicking on a feature on the tracks image 
+		    and selecting an option from the displayed menu. Depending 
+		    on context, the right-click feature will let you 
+		    change the track display mode, zoom in or out to the exact 
+		    position coordinates of the feature, open the &quot;Get 
+		    DNA&quot; window at the feature's coordinates, display 
+		    details about the feature, open a popup window to configure 
+		    the track's display, or display the entire tracks image in 
+		    a separate window for inclusion in spreadsheets or other 
+		    documents. (Note that the &quot;PDF/PS&quot; option in the 
+		    Genome Browser top navigation bar can also be used to 
+		    generate a high-quality annotation tracks image suitable 
+		    for printing.)
+		    <BR><BR>
+                    <img style="border: 2px solid black; margin-left:auto; 
+		    margin-right:auto; display: block;" 
+		    src="../images/rightclick.png"
+                    alt="Right-click screenshot">
+		    <BR>
+		    <P>
+		    To use the right-click feature, make sure the &quot;Enable 
+		    advanced javascript features&quot; option on the 
+		    <A
+HREF="../../cgi-bin/hgTracks?hgTracksConfigPage=configure+tracks+and+display">tracks 
+		    configuration page</A> is checked, and configure your 
+		    internet browser to allow the display of popup windows from 
+		    <em>genome.ucsc.edu</em>. When enabled, the right-click 
+		    navigation feature replaces the default contextual menu 
+		    typically displayed by your internet browser when you 
+		    right-click on the tracks image. A few combinations of the 
+		    Mozilla Firefox browser on Mac OS do not support the 
+		    right-click menu functionality using secondary click; in 
+		    these instances, you must use the explicit ctrl-click action
+		    to display the menu. 
+		    <P>
+	 	    Credit goes to Larry Meyer and Brooke Rhead for doing the
+		    lion's share of the design, development and testing of this 
+		    feature, with engineering support from Tim Dreszer and 
+		    additional testing by several others on the QA team.
+		    <HR>
+
+
 <!--------------- 2010 archived news --------------->
 <A NAME="2010"></A>
 
-<HR>
+
 <A NAME="120210"></A>
                     <FONT SIZE=4 COLOR="#006666"><B>2 December 2010 - Searching for Tracks Just Got Easier!</B></FONT>
 		    <P>

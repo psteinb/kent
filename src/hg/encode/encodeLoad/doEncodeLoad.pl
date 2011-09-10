@@ -184,7 +184,11 @@ sub loadBedFromSchema
 	    $fillInArg .= "-minScore=500 " if $tableName =~ /^wgEncodeUwDnaseSeq/;
         }
         my $catCmd = makeCatCmd("loadBedFromSchema", $fileList);
-        my @cmds = ($catCmd, "egrep -v '^track|browser'", "/cluster/bin/x86_64/hgLoadBed -noNameIx $assembly $tableName stdin -tmpDir=$tempDir -sqlTable=$Encode::sqlCreate/${sqlTable}.sql -renameSqlTable $fillInArg");
+	my $dotCouldBeNull = "";
+	if ($sqlTable =~ /bedRnaElements/) {
+	    $dotCouldBeNull = "-dotIsNull=7";
+	}
+        my @cmds = ($catCmd, "egrep -v '^track|browser'", "/cluster/bin/x86_64/hgLoadBed $dotCouldBeNull -noNameIx $assembly $tableName stdin -tmpDir=$tempDir -sqlTable=$Encode::sqlCreate/${sqlTable}.sql -renameSqlTable $fillInArg");
         HgAutomate::verbose(2, "loadBedFromSchema cmds [".join(" ; ",@cmds)."]\n");
         my $safe = SafePipe->new(CMDS => \@cmds, STDOUT => "/dev/null", DEBUG => $opt_verbose > 2);
 
@@ -445,74 +449,79 @@ for my $key (keys %ra) {
     $hgdownload = @files;
 
     if(!$opt_skipDownload and $hgdownload) {
-        # hard link file(s) into download dir - gzip files as appropriate
-        my $target;
-        if (($type eq "bam") || ($type eq "bigWig"))  {
-            $target = "$downloadDir/$tablename.$type";
-        }
-        else {
-            my $fileType = $type;
-            $fileType = "bed" if ($type =~ /^bed /);
-            $target = "$downloadDir/$tablename.$fileType.gz";
-        }
-        $target =~ s/ //g;  # removes space in ".bed 5.gz" for example
-        #if(-e $target) {     # The validator is supposed to protect us from overwrites and allow them if -allowReloads
-        #    die "Cannot load $target on top of existing copy";
-        #} else
-        {
-            unlink($target);
-            if ($type eq "bam") {
-                my $baiFile = $target . ".bai";
-                #if(-e $baiFile) {
-                #    die "Cannot load $baiFile on top of existing copy";
-                #} else
-                {
-                    unlink($baiFile);
-                }
-            }
-        }
-        HgAutomate::verbose(2, "unlink($target)\n");
+        my $targetFile = $downloadDir . "/" . $h->{targetFile};
+        # NOTE: The validator is supposed to protect us from overwrites and allow them if -allowReloads.  Loader always loads
 
-        if(@files == 1) {
+        # hard link file(s) into download dir - gzip files as appropriate
+
+        # Removes any file in the way:
+        unlink($targetFile);
+        if ($type eq "bam") {
+            my $baiFile = $targetFile . ".bai";
+            unlink($targetFile);
+        }
+        HgAutomate::verbose(2, "unlink($targetFile)\n");
+
+        if (@files == 1) {
             my $srcFile = "$submitPath/$files[0]";
             HgAutomate::verbose(2, "One file: srcFile=[$srcFile]\n");
             if ($type eq "bam") {
-                HgAutomate::verbose(2, "hard-linking $srcFile => $target\n");
-                !system("/bin/ln $srcFile $target") || die "link failed: $?\n";
-                HgAutomate::verbose(2, "hard-linking $srcFile.bai => $target.bai\n");
-                !system("/bin/ln $srcFile.bai $target.bai") || die "link failed: $?\n";
-            } elsif(Encode::isZipped($srcFile) || ($type eq "bigWig") || ($type eq "bigBed")) {
-                HgAutomate::verbose(2, "hard-linking $srcFile => $target\n");
-                !system("/bin/ln $srcFile $target") || die "link failed: $?\n";
+                HgAutomate::verbose(2, "hard-linking $srcFile => $targetFile\n");
+                !system("/bin/ln $srcFile $targetFile") || die "link failed: $?\n";
+                HgAutomate::verbose(2, "hard-linking $srcFile.bai => $targetFile.bai\n");
+                !system("/bin/ln $srcFile.bai $targetFile.bai") || die "link failed: $?\n";
+            } elsif(Encode::isZipped($srcFile) || Encode::isTarZipped($srcFile) || ($type eq "bigWig") || ($type eq "bigBed")) {
+                HgAutomate::verbose(2, "hard-linking $srcFile => $targetFile\n");
+                !system("/bin/ln $srcFile $targetFile") || die "link failed: $?\n";
             } else {
-                HgAutomate::verbose(2, "copying/zipping $srcFile => $target\n");
-                !system("/usr/bin/pigz -c $srcFile > $target") || die "gzip: $?\n";
+                HgAutomate::verbose(2, "copying/zipping $srcFile => $targetFile\n");
+                !system("/usr/bin/pigz -c $srcFile > $targetFile") || die "gzip: $?\n";
             }
-        } else {
-            if ($type eq "bam") {
-                die "Cannot concatenate BAM files";
+        } elsif (@files > 1) {
+            if (($type eq "bam") || ($type eq "bigWig") || ($type eq "bigBed")) {
+                die "Cannot concatenate '$type' files";
             }
 
-            # make a concatenated copy of multiple files
-            my $fileType = $type;
-            $fileType = "bed" if ($type =~ /^bed /);
-            my $zippedTarget = "$downloadDir/$tablename.$fileType.gz";
-            unlink($zippedTarget);
-            !system("cat /dev/null > $zippedTarget") || die "gzip failed: $?\n";
-            HgAutomate::verbose(2, "Zero or multiple files: files=[@files] unlink($zippedTarget)\n");
-            for my $file (@files) {
-                $file = "$submitPath/$file";
-                my $cmd;
-                if(Encode::isZipped($file)) {
-                    $cmd = "/bin/cat $file >> $zippedTarget";
-                } else {
-                    $cmd = "/usr/bin/pigz -c $file >> $zippedTarget";
+            # Two possibilities: cat then gz or tgz
+            if (($type eq "fastq") || ($type eq "doc")) {
+                if ( ! Encode::isTarZipped($targetFile) ) {
+                    die "Target $targetFile of multiple $type files must be tgz";
                 }
-                HgAutomate::verbose(2, "appending gzip of $file to $target\n");
+
+                # Now lets tgz all the sources
+                my $cmd = "cd $submitPath ; /bin/tar -c";
+
+                for my $file (@files) {
+                    $cmd .= " $file";
+                }
+                $cmd .= " | /usr/bin/pigz -c > $targetFile";  # pigz will parallelize and is faster!
+
+                HgAutomate::verbose(2, "creating gzipped tar $targetFile of multiple files: [@files].\n");
                 !system($cmd) || die "system '$cmd' failed: $?\n";
+
+            } else {
+                if ( ! Encode::isZipped($targetFile) ) {
+                    die "Target $targetFile of multiple $type files must be gz";
+                }
+
+                # Create empty target then cat gz'd files together
+                !system("cat /dev/null > $targetFile") || die "gzip failed: $?\n";
+                HgAutomate::verbose(2, "Begin gzip and cat of multiple files: [@files] to $targetFile\n");
+                for my $file (@files) {
+                    my $cmd;
+                    if(Encode::isZipped($file) || Encode::isTarZipped($file)) { # This doesn't seem right.  Should tar these!!!
+                        $cmd = "/bin/cat $submitPath/$file >> $targetFile";
+                    } else {
+                        $cmd = "/usr/bin/pigz -c $submitPath/$file >> $targetFile";
+                    }
+                    HgAutomate::verbose(2, "appending gzip of $file to $targetFile\n");
+                    !system($cmd) || die "system '$cmd' failed: $?\n";
+                }
             }
+        } else {
+            die "No source files requested"; # assertable
         }
-        push(@{$pushQ->{FILES}}, $target);
+        push(@{$pushQ->{FILES}}, $targetFile);
         # XXXX add to FILES list and then copy files to unloadFiles.txt
     }
 
@@ -542,6 +551,41 @@ for my $key (keys %ra) {
     }
 }
 
+#modification to put in README.txt if not already there in download directory.
+my $readme = "$downloadDir/README.txt";
+unless (-e $readme){
+	my @template;
+	open TEMPLATE, "$configPath/downloadsReadmeTemplate.txt";
+	while (<TEMPLATE>){
+	
+		my $line = $_;
+		chomp $line;
+		#skip commented lines
+		if ($line =~ m/^\s*#/){next}
+		push @template, $line;
+		
+	}
+	my $assm = $daf->{assembly};
+	open README, ">$readme" or die "Can't open README file to write in directory $downloadDir\n";
+	
+	foreach my $line (@template){
+		#interpolate in the name of the DB and composite name
+		if ($line =~ m/\+\+/){
+			$line =~ s/\+\+db\+\+/$assm/;
+			$line =~ s/\+\+composite\+\+/$compositeTrack/;
+			print README "$line\n";
+		}
+		else {
+			print README "$line\n";
+		}
+	}
+	close README;
+}
+
+
+
+
+
 if(!$opt_skipDownload and !$opt_skipLoad) {
     # Send "data is ready" email to email contact assigned to $daf{lab}
     if($email) {
@@ -564,9 +608,9 @@ if($email && $email =~ /([^@]+)/) {
 my $tables = join("\\n", @{$pushQ->{TABLES}});
 push(@{$pushQ->{FILES}}, "/usr/local/apache/cgi-bin/encode/cv.ra");
 my $files = join("\\n", @{$pushQ->{FILES}});
-my $preambleFile = "$downloadDir/preamble.html";
+#my $preambleFile = "$downloadDir/preamble.html";
 push(@{$pushQ->{FILES}}, "$downloadDir/index.html");
-push(@{$pushQ->{FILES}}, "$downloadDir/preamble.html");
+#push(@{$pushQ->{FILES}}, "$downloadDir/preamble.html");
 
 my ($shortLabel, $longLabel);
 my $sth = $db->execute("select shortLabel, longLabel from trackDb where tableName = ?", $compositeTrack);
@@ -595,26 +639,26 @@ UNLOCK TABLES;
 _EOF_
 close(PUSHQ);
 
-if(! -e $preambleFile ) {
-    open(PREAMBLE, ">$preambleFile") || die "SYS ERROR: Can't write '$preambleFile' file; error: $!\n";
-
+#if(! -e $preambleFile ) {
+#    open(PREAMBLE, ">$preambleFile") || die "SYS ERROR: Can't write '$preambleFile' file; error: $!\n";
+#
     # NOTE: can remove the CHANGE-ME comment if we switch to SSI for the hostname
-    print PREAMBLE <<END;
-<p>This directory contains data generated by the $daf->{grant}/$daf->{lab} lab as part of the ENCODE project.
-Further information is available in the
-<!-- CHANGE-ME to genome.ucsc.edu at releaase time -->
-<A TARGET=_BLANK HREF="http://genome-test.cse.ucsc.edu/cgi-bin/hgTrackUi?db=$daf->{assembly}&g=$compositeTrack">
-<em>$daf->{lab}  $daf->{dataType}</em></A> track description. </p>
-
-<p><B>Data is <A HREF="http://genome.ucsc.edu/ENCODE/terms.html">RESTRICTED FROM USE</a>
-in publication  until the restriction date noted for the given data file.</B></p>
-<p>
-There are two files within this directory that contain information about the downloads:
-<LI><A HREF="files.txt">files.txt</A> which is a tab-separated file with the name and metadata for each download.</LI>
-<LI><A HREF="md5sum.txt">md5sum.txt</A> which is a list of the md5sum output for
- each download.</LI>
- <HR>
-END
-}
+#    print PREAMBLE <<END;
+#<p>This directory contains data generated by the $daf->{grant}/$daf->{lab} lab as part of the ENCODE project.
+#Further information is available in the
+#<!-- CHANGE-ME to genome.ucsc.edu at releaase time -->
+#<A TARGET=_BLANK HREF="http://<!--#echo var="BROWSER_HOST"-->/cgi-bin/hgTrackUi?db=$daf->{assembly}&g=$compositeTrack">
+#<em>$daf->{lab}  $daf->{dataType}</em></A> track description. </p>
+#
+#<p><B>Data is <A HREF="http://genome.ucsc.edu/ENCODE/terms.html">RESTRICTED FROM USE</a>
+#in publication  until the restriction date noted for the given data file.</B></p>
+#<p>
+#There are two files within this directory that contain information about the downloads:
+#<LI><A HREF="files.txt">files.txt</A> which is a tab-separated file with the name and metadata for each download.</LI>
+#<LI><A HREF="md5sum.txt">md5sum.txt</A> which is a list of the md5sum output for
+# each download.</LI>
+# <HR>
+#END
+#}
 
 exit(0);

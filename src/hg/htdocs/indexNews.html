@@ -8,7 +8,7 @@
                     <!--cheap trick to get background on row to be continuous-->
                     <TABLE CELLPADDING=0 CELLSPACING=0 WIDTH="100%">
                         <TR><TD ALIGN="left">
-                          <FONT SIZE="4"><A NAME="TOC"></A><B>&nbsp; News</B></FONT></TD>
+                         <font size="4"><a name="TOC"></a><b>&nbsp; News</b></font><a href="http://www.twitter.com/GenomeBrowser" target="_blank"><img src="http://twitter-badges.s3.amazonaws.com/t_small-a.png" alt="Follow GenomeBrowser on Twitter" style="vertical-align:text-bottom; margin-left: 15px;"></a></TD>
                         <TD ALIGN="right"><A HREF="goldenPath/newsarch.html"><IMG 
                         SRC="images/news.jpg" ALT="" ALIGN="right" BORDER=0></A>
                     </TD></TR></TABLE>
@@ -24,117 +24,75 @@
                     <A HREF="https://lists.soe.ucsc.edu/mailman/listinfo/genome-announce" 
                     TARGET=_blank>genome-announce</A> mailing list.</P>
 
-                    <!-- start news -->
+            
+            <!-- start news -->
+            <!-- New javascript features -->
 		    <P>
-                    <FONT FACE="courier" SIZE="3"><B>19 January 2011 -
-Browser Released for Zebrafish Zv9 Assembly</B></FONT>
+                    <FONT FACE="courier" SIZE="3"><B>8 September 2011 -
+New Navigation and Display Features  </B></FONT>
 		    <P>
-                    The most recent zebrafish assembly -- Zv9 (UCSC version
-                    danRer7, Jul. 2010) -- is now available in the UCSC
-                    Genome Browser. This assembly was produced by
-                    <A HREF="http://www.sanger.ac.uk/"
-		    TARGET=_blank>The Wellcome Trust Sanger Institute</A>, UK.
-                    </P>
-                    <P>
-		    The Zv9 assembly comprises a sequence length of 1.4 Gb in 
-		    26 chromosomes and 1,107 scaffolds. This assembly is based 
-		    on a clone path sorted with 
-		    the high-density meiotic map SATMAP (Clark et al., in 
-		    preparation). The data freeze was taken on 1 April 2010. 
-		    The remaining gaps were filled with sequence from WGS31, a 
-		    combined Illumina and capillary assembly. The assembly 
-		    integration process involved sequence alignemnts as well as 
-		    cDNA, marker and BAC/Fosmid end sequence placements. 
-		    The zebrafish mitochondrial sequence is also available in 
-		    the Genome Browser as the virtual chromosome, chrM. For 
-		    more details about the Zv9 assembly, see the Sanger 
-		    Institute page for the 
-		    <A HREF="http://www.sanger.ac.uk/Projects/D_rerio/Zv9_assembly_information.shtml" 
-		    TARGET=_blank><em>Danio rerio</em> Sequencing Project</A>. 
+		    We've added several new features to the Genome Browser 
+		    that make it easier to quickly configure and navigate 
+		    around in the browser's annotation tracks window.
+		    <P>
+		    <B>Automatic image resizing:</B> The first time the annotation 
+		    track window is displayed, or after the Genome Browser has
+		    been reset, the size of the track window is now set by 
+		    default to the width that best fits your Internet browser 
+		    window. If you subsequently resize your browser window, 
+		    you can automatically adjust the annotation track image 
+		    size to the new width by clicking the <em>resize</em> button
+		    under the track image. The default width can still be 
+		    manually overridden on the Track Configuration page. 
+		    <P>
+		    <B>Scrolling left or right in the track window:</B> You can now 
+		    scroll (pan) horizontally through the tracks image by clicking 
+		    on the image, dragging the cursor to the left or right, 
+		    then releasing the mouse button. The view may be scrolled 
+		    by up to one image width.
+		    <P>
+		    <B>Improved drag-zoom navigation:</B>  The browser's 
+		    &quot;drag-and-zoom&quot; feature lets you quickly zoom to a
+		    specific region of interest on the annotation tracks image.
+		    To define the region you wish to zoom to, click-and-hold 
+		    the mouse button on one edge of the desired zoom area
+		    (which can be anywhere in the tracks window), depress the 
+		    shift key, drag the mouse right or left to highlight the 
+		    selection area, then release the mouse button.
+		    The annotation tracks image will automatically zoom to
+		    the new region. The Genome Browser still supports the 
+		    earlier implementation of this feature, which restricted
+		    the click-drag to the Base Position track area of the image,
+		    but did not require the shift key to be pressed. 
+		    <P>
+		    <B>Reordering groups of tracks:</B> 
+		    You can now vertically reposition an entire group of 
+		    associated tracks in the tracks image (such as all the 
+		    displayed subtracks in a composite track) by clicking and 
+		    holding the gray bar to the left of the tracks,
+		    dragging the group to the new position, then releasing
+		    the mouse button. To move a single track up or down, click 
+		    and hold the mouse button on the side label, drag the 
+		    highlighted track to the new position, then release the 
+		    mouse button.
+		    <P>
+		    If you haven't yet tried the browser's right-click 
+		    menu for quick access to frequently used track 
+		    configuration features and functionality, read more
+		    <A HREF="goldenPath/newsarch.html#011011">here</A>.
+		    <HR>
+
+            <!-- data hubs release  -->
+		    <P>
+                    <FONT FACE="courier" SIZE="3"><B>18 August 2011 -
+New Feature: Track Data Hubs:  </B></FONT>
+                    We are pleased to announce a new feature in the UCSC Genome Browser: Track Data Hubs. Track hubs are web-accessible directories of genomic data 
+			that can be viewed on the UCSC Genome Browser alongside native annotation 
+			tracks. 
+		    <A HREF="goldenPath/newsarch.html#081811">Read more</A>.
 		    </P>
 
-                    <P>
-                    The danRer7 sequence and annotation data can be
-                    downloaded from the UCSC Genome Browser
-                    <A HREF="ftp://hgdownload.cse.ucsc.edu/goldenPath/danRer7/">FTP server</A>
-                    or
-                    <A HREF="http://hgdownload.cse.ucsc.edu/downloads.html#zebrafish">downloads</A>
-                    page. Please review the Sanger Institute
-                    <A HREF="http://www.sanger.ac.uk/legal/"
-                    TARGET=_blank>guidelines</A> for using these data.
-                    <P>
-                    We'd like to thank the Wellcome Trust Sanger Institute
-                    for providing this assembly.
-                    The UCSC zebrafish Genome Browser
-                    was produced by Hiram Clawson, Greg Roe, Mary Goldman,
-                    Brian Raney and Donna Karolchik. See the
-                    <A HREF="goldenPath/credits.html#zebrafish_credits">credits</A>
-                    page for a detailed list of the organizations and
-                    individuals who contributed to this release.</P>
-		    <P>
-		    <HR>
-                    <FONT FACE="courier" SIZE="3"><B>10 January 2011 - Introducing Genome Browser Right-click Navigation</B></FONT>
-		    <P>
-		    Several of the common display and navigation operations 
-		    offered on the Genome Browser tracks page may now be quickly
-		    accessed by right-clicking on a feature on the tracks image 
-		    and selecting an option from the displayed menu. Depending 
-		    on context, the right-click feature will let you 
-		    change the track display mode, zoom in or out to the exact 
-		    position coordinates of the feature, open the &quot;Get 
-		    DNA&quot; window at the feature's coordinates, display 
-		    details about the feature, open a popup window to configure 
-		    the track's display, or display the entire tracks image in 
-		    a separate window for inclusion in spreadsheets or other 
-		    documents. (Note that the &quot;PDF/PS&quot; option in the 
-		    Genome Browser top navigation bar can also be used to 
-		    generate a high-quality annotation tracks image suitable 
-		    for printing.)
-		    <BR><BR>
-                    <img style="border: 2px solid black; margin-left:auto; 
-		    margin-right:auto; display: block;" 
-		    src="/images/rightclick.png"
-                    alt="Right-click screenshot">
-		    <BR>
-		    <P>
-		    To use the right-click feature, make sure the &quot;Enable 
-		    advanced javascript features&quot; option on the 
-		    <A
-HREF="../cgi-bin/hgTracks?hgTracksConfigPage=configure+tracks+and+display">tracks 
-		    configuration page</A> is checked, and configure your 
-		    internet browser to allow the display of popup windows from 
-		    <em>genome.ucsc.edu</em>. When enabled, the right-click 
-		    navigation feature replaces the default contextual menu 
-		    typically displayed by your internet browser when you 
-		    right-click on the tracks image. A few combinations of the 
-		    Mozilla Firefox browser on Mac OS do not support the 
-		    right-click menu functionality using secondary click; in 
-		    these instances, you must use the explicit ctrl-click action
-		    to display the menu. 
-		    <P>
-	 	    Credit goes to Larry Meyer and Brooke Rhead for doing the
-		    lion's share of the design, development and testing of this 
-		    feature, with engineering support from Tim Dreszer and 
-		    additional testing by several others on the QA team.
-		    <HR>
-                    <FONT FACE="courier" SIZE="3"><B>2 December 2010 -
-Searching for Tracks Just Got Easier!</B></FONT>
-		    <P>
-		    The number of genome assemblies and annotation
-		    tracks in the UCSC Genome Browser has increased 
-		    exponentially over the past few years. Along with this 
-		    growth, it has become more difficult for browser users to 
-		    sort through the many tracks to find the data they're 
-		    interested in.
-		    <P>
-		    With our latest Genome Browser release, we've introduced a 
-		    new track search feature that will help you to quickly and 
-		    easily find and display specific annotation data sets. The 
-		    search feature is available via the "track search" button 
-		    on the browser gateway and tracks display pages.
-		    <A HREF="goldenPath/newsarch.html#120210">Read
-more</A>.
-		    </P>
+==> <a href="goldenPath/newsarch.html">News Archives</a>
 
                     </TD><TD WIDTH=15>
                  </TD></TR></TABLE>

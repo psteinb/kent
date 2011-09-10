@@ -1,496 +1,7 @@
-metaObject wgEncodeAffyRnaChipFiltRawSignalGm12878CellTotal
-objType table
-cell GM12878
+metaObject wgEncodeAffyRnaChip
+objType composite
 composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-03-10
-dateUnrestricted 2009-12-10
-fileName wgEncodeAffyRnaChipFiltRawSignalGm12878CellTotal.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalGm12878CellTotal
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalGm12878CytosolLongnonpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-12-09
-dateUnrestricted 2009-09-09
-fileName wgEncodeAffyRnaChipFiltRawSignalGm12878CytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalGm12878CytosolLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalGm12878CytosolLongpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-21
-dateUnrestricted 2009-08-21
-fileName wgEncodeAffyRnaChipFiltRawSignalGm12878CytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalGm12878CytosolLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalGm12878NucleolusTotal
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Sep 2009 Freeze
-dateSubmitted 2009-08-27
-dateUnrestricted 2010-05-27
-fileName wgEncodeAffyRnaChipFiltRawSignalGm12878NucleolusTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleolus
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalGm12878NucleolusTotal
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalGm12878NucleusLongnonpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-21
-dateUnrestricted 2009-08-21
-fileName wgEncodeAffyRnaChipFiltRawSignalGm12878NucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalGm12878NucleusLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalGm12878NucleusLongpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-04-01
-dateUnrestricted 2010-01-01
-fileName wgEncodeAffyRnaChipFiltRawSignalGm12878NucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalGm12878NucleusLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalHepg2CytosolLongnonpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipFiltRawSignalHepg2CytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalHepg2CytosolLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalHepg2CytosolLongpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipFiltRawSignalHepg2CytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalHepg2CytosolLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalHepg2NucleolusTotal
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Sep 2009 Freeze
-dateSubmitted 2009-08-27
-dateUnrestricted 2010-05-27
-fileName wgEncodeAffyRnaChipFiltRawSignalHepg2NucleolusTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleolus
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalHepg2NucleolusTotal
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalHepg2NucleusLongnonpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-07-17
-dateUnrestricted 2010-04-17
-fileName wgEncodeAffyRnaChipFiltRawSignalHepg2NucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalHepg2NucleusLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalHepg2NucleusLongpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-07-17
-dateUnrestricted 2010-04-17
-fileName wgEncodeAffyRnaChipFiltRawSignalHepg2NucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalHepg2NucleusLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562CellTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-25
-dateUnrestricted 2009-08-25
-fileName wgEncodeAffyRnaChipFiltRawSignalK562CellTotal.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562CellTotal
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562ChromatinTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-01-09
-dateUnrestricted 2009-10-09
-fileName wgEncodeAffyRnaChipFiltRawSignalK562ChromatinTotal.wig.gz
-grant Gingeras
-lab Affy
-localization chromatin
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562ChromatinTotal
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562CytosolLongnonpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipFiltRawSignalK562CytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562CytosolLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562CytosolLongpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipFiltRawSignalK562CytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562CytosolLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562NucleolusTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-02-04
-dateUnrestricted 2009-11-04
-fileName wgEncodeAffyRnaChipFiltRawSignalK562NucleolusTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleolus
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562NucleolusTotal
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562NucleoplasmTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-03-10
-dateUnrestricted 2009-12-10
-fileName wgEncodeAffyRnaChipFiltRawSignalK562NucleoplasmTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleoplasm
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562NucleoplasmTotal
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562NucleusLongnonpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipFiltRawSignalK562NucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562NucleusLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562NucleusLongpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipFiltRawSignalK562NucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562NucleusLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalK562PolysomeLongnonpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-21
-dateUnrestricted 2009-08-21
-fileName wgEncodeAffyRnaChipFiltRawSignalK562PolysomeLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization polysome
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalK562PolysomeLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalKeratinocyteCytosolLongnonpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteCytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteCytosolLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalKeratinocyteCytosolLongpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteCytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteCytosolLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalKeratinocyteNucleusLongnonpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-06-12
-dateUnrestricted 2010-03-12
-fileName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteNucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteNucleusLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalKeratinocyteNucleusLongpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-06-12
-dateUnrestricted 2010-03-12
-fileName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteNucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalKeratinocyteNucleusLongpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalProstateCellLongnonpolya
-objType table
-cell prostate
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-24
-dateUnrestricted 2009-08-24
-fileName wgEncodeAffyRnaChipFiltRawSignalProstateCellLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalProstateCellLongnonpolya
-view FiltRawSignal
-
-metaObject wgEncodeAffyRnaChipFiltRawSignalProstateCellLongpolya
-objType table
-cell prostate
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-24
-dateUnrestricted 2009-08-24
-fileName wgEncodeAffyRnaChipFiltRawSignalProstateCellLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipFiltRawSignalProstateCellLongpolya
-view FiltRawSignal
+expVars lab,dataType,cell,localization,rnaExtract
 
 metaObject wgEncodeAffyRnaChipFiltTransfragsGm12878CellTotal
 objType table
@@ -500,10 +11,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-03-10
 dateUnrestricted 2009-12-10
+dccAccession wgEncodeEH000016
+expId 16
 fileName wgEncodeAffyRnaChipFiltTransfragsGm12878CellTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum c4049a3cfbb6b3e74cb776ee4e4309f9
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -519,10 +33,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-12-09
 dateUnrestricted 2009-09-09
+dccAccession wgEncodeEH000012
+expId 12
 fileName wgEncodeAffyRnaChipFiltTransfragsGm12878CytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 08d5feb7211a40c99a5ce374c6d0a169
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -538,10 +55,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-21
 dateUnrestricted 2009-08-21
+dccAccession wgEncodeEH000002
+expId 2
 fileName wgEncodeAffyRnaChipFiltTransfragsGm12878CytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 9cb30fe0ff4c6c6d9bf9add1957a77f5
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -557,10 +77,13 @@ dataType RnaChip
 dataVersion ENCODE Sep 2009 Freeze
 dateSubmitted 2009-08-27
 dateUnrestricted 2010-05-27
+dccAccession wgEncodeEH000026
+expId 26
 fileName wgEncodeAffyRnaChipFiltTransfragsGm12878NucleolusTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleolus
+md5sum 86fa269224f528b52bf15faa387af12d
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -576,10 +99,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-21
 dateUnrestricted 2009-08-21
+dccAccession wgEncodeEH000003
+expId 3
 fileName wgEncodeAffyRnaChipFiltTransfragsGm12878NucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum c8d8604e208bcec85075a97e2d855c71
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -595,10 +121,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-04-01
 dateUnrestricted 2010-01-01
+dccAccession wgEncodeEH000017
+expId 17
 fileName wgEncodeAffyRnaChipFiltTransfragsGm12878NucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum e59db684bc92f9e33587c70d4e93de39
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -614,10 +143,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000018
+expId 18
 fileName wgEncodeAffyRnaChipFiltTransfragsHepg2CytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum c63550ce1c70b8698ff1ebe8c45006a4
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -633,10 +165,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000019
+expId 19
 fileName wgEncodeAffyRnaChipFiltTransfragsHepg2CytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum dd5884e11508353026efa46e8abf7547
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -652,10 +187,13 @@ dataType RnaChip
 dataVersion ENCODE Sep 2009 Freeze
 dateSubmitted 2009-08-27
 dateUnrestricted 2010-05-27
+dccAccession wgEncodeEH000027
+expId 27
 fileName wgEncodeAffyRnaChipFiltTransfragsHepg2NucleolusTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleolus
+md5sum 0695013271cc3de1ed2ad9e939ba99a9
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -671,10 +209,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-07-17
 dateUnrestricted 2010-04-17
+dccAccession wgEncodeEH000024
+expId 24
 fileName wgEncodeAffyRnaChipFiltTransfragsHepg2NucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum 85a8b1587c51918a570d1f524c4c195f
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -690,10 +231,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-07-17
 dateUnrestricted 2010-04-17
+dccAccession wgEncodeEH000025
+expId 25
 fileName wgEncodeAffyRnaChipFiltTransfragsHepg2NucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum 3fe85744838e14970ec0621c28c4828e
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -709,10 +253,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-25
 dateUnrestricted 2009-08-25
+dccAccession wgEncodeEH000011
+expId 11
 fileName wgEncodeAffyRnaChipFiltTransfragsK562CellTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum c645fad30a8748c849f6dac1f00bf931
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -728,10 +275,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-01-09
 dateUnrestricted 2009-10-09
+dccAccession wgEncodeEH000013
+expId 13
 fileName wgEncodeAffyRnaChipFiltTransfragsK562ChromatinTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization chromatin
+md5sum 2e5244e92ca93bb5ba90b9b4e4dc1480
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -747,10 +297,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000005
+expId 5
 fileName wgEncodeAffyRnaChipFiltTransfragsK562CytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum d582665155a5db18ed91a57ff4d15992
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -766,10 +319,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000006
+expId 6
 fileName wgEncodeAffyRnaChipFiltTransfragsK562CytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 810da4f173e79e82f403a07fb3ea4902
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -785,10 +341,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-02-04
 dateUnrestricted 2009-11-04
+dccAccession wgEncodeEH000015
+expId 15
 fileName wgEncodeAffyRnaChipFiltTransfragsK562NucleolusTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleolus
+md5sum 109ab65845fae7e2e19db72dab50002e
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -804,10 +363,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-03-10
 dateUnrestricted 2009-12-10
+dccAccession wgEncodeEH000014
+expId 14
 fileName wgEncodeAffyRnaChipFiltTransfragsK562NucleoplasmTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleoplasm
+md5sum fd6f6dcd00c2277fa0443821f8556ed5
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -823,10 +385,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000007
+expId 7
 fileName wgEncodeAffyRnaChipFiltTransfragsK562NucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum c16924a6cf2bc9041b07c18e694be644
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -842,10 +407,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000008
+expId 8
 fileName wgEncodeAffyRnaChipFiltTransfragsK562NucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum 742c9665456540b9fbfc33e51e19d821
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -861,10 +429,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-21
 dateUnrestricted 2009-08-21
+dccAccession wgEncodeEH000004
+expId 4
 fileName wgEncodeAffyRnaChipFiltTransfragsK562PolysomeLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization polysome
+md5sum d57d5720f14e3c4b575424aa545751ce
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -880,10 +451,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000020
+expId 20
 fileName wgEncodeAffyRnaChipFiltTransfragsKeratinocyteCytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum c46d346e80f589a89ee12ca04a09962b
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -899,10 +473,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000021
+expId 21
 fileName wgEncodeAffyRnaChipFiltTransfragsKeratinocyteCytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum cbcae473510f24a89b58f5fd0748f0d0
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -918,10 +495,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-06-12
 dateUnrestricted 2010-03-12
+dccAccession wgEncodeEH000022
+expId 22
 fileName wgEncodeAffyRnaChipFiltTransfragsKeratinocyteNucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum a1510035a5cafd55dd694644180264f7
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -937,10 +517,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-06-12
 dateUnrestricted 2010-03-12
+dccAccession wgEncodeEH000023
+expId 23
 fileName wgEncodeAffyRnaChipFiltTransfragsKeratinocyteNucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum bc9a229fbf65ef9e65d4c338e24f09ad
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -956,10 +539,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-24
 dateUnrestricted 2009-08-24
+dccAccession wgEncodeEH000009
+expId 9
 fileName wgEncodeAffyRnaChipFiltTransfragsProstateCellLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum b60ed0bd591017e410692def40cdb32c
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -975,510 +561,19 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-24
 dateUnrestricted 2009-08-24
+dccAccession wgEncodeEH000010
+expId 10
 fileName wgEncodeAffyRnaChipFiltTransfragsProstateCellLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum 0bc9c8a72e3c8f99cd8a4076009a027e
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
 subId 2121
 tableName wgEncodeAffyRnaChipFiltTransfragsProstateCellLongpolya
 view FiltTransfrags
-
-metaObject wgEncodeAffyRnaChipRawSignalGm12878CellTotal
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-03-10
-dateUnrestricted 2009-12-10
-fileName wgEncodeAffyRnaChipRawSignalGm12878CellTotal.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalGm12878CellTotal
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalGm12878CytosolLongnonpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-12-09
-dateUnrestricted 2009-09-09
-fileName wgEncodeAffyRnaChipRawSignalGm12878CytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalGm12878CytosolLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalGm12878CytosolLongpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-21
-dateUnrestricted 2009-08-21
-fileName wgEncodeAffyRnaChipRawSignalGm12878CytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalGm12878CytosolLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalGm12878NucleolusTotal
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Sep 2009 Freeze
-dateSubmitted 2009-08-27
-dateUnrestricted 2010-05-27
-fileName wgEncodeAffyRnaChipRawSignalGm12878NucleolusTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleolus
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalGm12878NucleolusTotal
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalGm12878NucleusLongnonpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-21
-dateUnrestricted 2009-08-21
-fileName wgEncodeAffyRnaChipRawSignalGm12878NucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalGm12878NucleusLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalGm12878NucleusLongpolya
-objType table
-cell GM12878
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-04-01
-dateUnrestricted 2010-01-01
-fileName wgEncodeAffyRnaChipRawSignalGm12878NucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalGm12878NucleusLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalHepg2CytosolLongnonpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipRawSignalHepg2CytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalHepg2CytosolLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalHepg2CytosolLongpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipRawSignalHepg2CytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalHepg2CytosolLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalHepg2NucleolusTotal
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Sep 2009 Freeze
-dateSubmitted 2009-08-27
-dateUnrestricted 2010-05-27
-fileName wgEncodeAffyRnaChipRawSignalHepg2NucleolusTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleolus
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalHepg2NucleolusTotal
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalHepg2NucleusLongnonpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-07-17
-dateUnrestricted 2010-04-17
-fileName wgEncodeAffyRnaChipRawSignalHepg2NucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalHepg2NucleusLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalHepg2NucleusLongpolya
-objType table
-cell HepG2
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-07-17
-dateUnrestricted 2010-04-17
-fileName wgEncodeAffyRnaChipRawSignalHepg2NucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalHepg2NucleusLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562CellTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-25
-dateUnrestricted 2009-08-25
-fileName wgEncodeAffyRnaChipRawSignalK562CellTotal.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562CellTotal
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562ChromatinTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-02-04
-dateUnrestricted 2009-11-04
-fileName wgEncodeAffyRnaChipRawSignalK562ChromatinTotal.wig.gz
-grant Gingeras
-lab Affy
-localization chromatin
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562ChromatinTotal
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562CytosolLongnonpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipRawSignalK562CytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562CytosolLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562CytosolLongpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipRawSignalK562CytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562CytosolLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562NucleolusTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-02-04
-dateUnrestricted 2009-11-04
-fileName wgEncodeAffyRnaChipRawSignalK562NucleolusTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleolus
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562NucleolusTotal
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562NucleoplasmTotal
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Feb 2009 Freeze
-dateSubmitted 2009-01-09
-dateUnrestricted 2009-10-09
-fileName wgEncodeAffyRnaChipRawSignalK562NucleoplasmTotal.wig.gz
-grant Gingeras
-lab Affy
-localization nucleoplasm
-origAssembly hg18
-project wgEncode
-rnaExtract total
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562NucleoplasmTotal
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562NucleusLongnonpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipRawSignalK562NucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562NucleusLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562NucleusLongpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-22
-dateUnrestricted 2009-08-22
-fileName wgEncodeAffyRnaChipRawSignalK562NucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562NucleusLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalK562PolysomeLongnonpolya
-objType table
-cell K562
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-21
-dateUnrestricted 2009-08-21
-fileName wgEncodeAffyRnaChipRawSignalK562PolysomeLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization polysome
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalK562PolysomeLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalKeratinocyteCytosolLongnonpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipRawSignalKeratinocyteCytosolLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalKeratinocyteCytosolLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalKeratinocyteCytosolLongpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-05-27
-dateUnrestricted 2010-02-27
-fileName wgEncodeAffyRnaChipRawSignalKeratinocyteCytosolLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cytosol
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalKeratinocyteCytosolLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalKeratinocyteNucleusLongnonpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-06-12
-dateUnrestricted 2010-03-12
-fileName wgEncodeAffyRnaChipRawSignalKeratinocyteNucleusLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalKeratinocyteNucleusLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalKeratinocyteNucleusLongpolya
-objType table
-cell NHEK
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE July 2009 Freeze
-dateSubmitted 2009-06-12
-dateUnrestricted 2010-03-12
-fileName wgEncodeAffyRnaChipRawSignalKeratinocyteNucleusLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization nucleus
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalKeratinocyteNucleusLongpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalProstateCellLongnonpolya
-objType table
-cell prostate
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-24
-dateUnrestricted 2009-08-24
-fileName wgEncodeAffyRnaChipRawSignalProstateCellLongnonpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract longNonPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalProstateCellLongnonpolya
-view RawSignal
-
-metaObject wgEncodeAffyRnaChipRawSignalProstateCellLongpolya
-objType table
-cell prostate
-composite wgEncodeAffyRnaChip
-dataType RnaChip
-dataVersion ENCODE Nov 2008 Freeze
-dateSubmitted 2008-11-24
-dateUnrestricted 2009-08-24
-fileName wgEncodeAffyRnaChipRawSignalProstateCellLongpolya.wig.gz
-grant Gingeras
-lab Affy
-localization cell
-origAssembly hg18
-project wgEncode
-rnaExtract longPolyA
-subId 2121
-tableName wgEncodeAffyRnaChipRawSignalProstateCellLongpolya
-view RawSignal
 
 metaObject wgEncodeAffyRnaChipTransfragsGm12878CellTotal
 objType table
@@ -1488,10 +583,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-03-10
 dateUnrestricted 2009-12-10
+dccAccession wgEncodeEH000016
+expId 16
 fileName wgEncodeAffyRnaChipTransfragsGm12878CellTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum 450cd35cb0dd12cf2f271ee8049fa0b8
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -1507,10 +605,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-12-09
 dateUnrestricted 2009-09-09
+dccAccession wgEncodeEH000012
+expId 12
 fileName wgEncodeAffyRnaChipTransfragsGm12878CytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 1fe318245f0d982d17382b21772ab60a
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1526,10 +627,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-21
 dateUnrestricted 2009-08-21
+dccAccession wgEncodeEH000002
+expId 2
 fileName wgEncodeAffyRnaChipTransfragsGm12878CytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 72fa517e36861521c41227861bdbc821
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1545,10 +649,13 @@ dataType RnaChip
 dataVersion ENCODE Sep 2009 Freeze
 dateSubmitted 2009-08-27
 dateUnrestricted 2010-05-27
+dccAccession wgEncodeEH000026
+expId 26
 fileName wgEncodeAffyRnaChipTransfragsGm12878NucleolusTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleolus
+md5sum 73e76b24be5efac36920746e05788b45
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -1564,10 +671,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-21
 dateUnrestricted 2009-08-21
+dccAccession wgEncodeEH000003
+expId 3
 fileName wgEncodeAffyRnaChipTransfragsGm12878NucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum e835cc291ae66816e8943f8a35cbc82d
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1583,10 +693,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-04-01
 dateUnrestricted 2010-01-01
+dccAccession wgEncodeEH000017
+expId 17
 fileName wgEncodeAffyRnaChipTransfragsGm12878NucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum 963f981d9b46ca791a305547a7f9d3aa
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1602,10 +715,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000018
+expId 18
 fileName wgEncodeAffyRnaChipTransfragsHepg2CytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 41975e54d89a2d50809fefd54e34465e
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1621,10 +737,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000019
+expId 19
 fileName wgEncodeAffyRnaChipTransfragsHepg2CytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 3c76db3cf15643b0aeb1970861970b7e
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1640,10 +759,13 @@ dataType RnaChip
 dataVersion ENCODE Sep 2009 Freeze
 dateSubmitted 2009-08-27
 dateUnrestricted 2010-05-27
+dccAccession wgEncodeEH000027
+expId 27
 fileName wgEncodeAffyRnaChipTransfragsHepg2NucleolusTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleolus
+md5sum f2c607ac4951430394946d6ac5123113
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -1659,10 +781,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-07-17
 dateUnrestricted 2010-04-17
+dccAccession wgEncodeEH000024
+expId 24
 fileName wgEncodeAffyRnaChipTransfragsHepg2NucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum a5ce722c4485da5336921bcdbfc43b1e
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1678,10 +803,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-07-17
 dateUnrestricted 2010-04-17
+dccAccession wgEncodeEH000025
+expId 25
 fileName wgEncodeAffyRnaChipTransfragsHepg2NucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum c13256a76a34f047f7e1bbe1e7e54d58
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1697,10 +825,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-25
 dateUnrestricted 2009-08-25
+dccAccession wgEncodeEH000011
+expId 11
 fileName wgEncodeAffyRnaChipTransfragsK562CellTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum e48a8787a71eababdb6e403091b182ae
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -1716,10 +847,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-01-09
 dateUnrestricted 2009-10-09
+dccAccession wgEncodeEH000013
+expId 13
 fileName wgEncodeAffyRnaChipTransfragsK562ChromatinTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization chromatin
+md5sum c28df5ca4c27c400563faf23f4b34b2b
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -1735,10 +869,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000005
+expId 5
 fileName wgEncodeAffyRnaChipTransfragsK562CytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 5ca7a52323fd32a7f551053133261781
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1754,10 +891,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000006
+expId 6
 fileName wgEncodeAffyRnaChipTransfragsK562CytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum e00718a075afe2a6140382d4ad03d1f9
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1773,10 +913,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-02-04
 dateUnrestricted 2009-11-04
+dccAccession wgEncodeEH000015
+expId 15
 fileName wgEncodeAffyRnaChipTransfragsK562NucleolusTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleolus
+md5sum 66b50b303ef6232260cc4122a477c564
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -1792,10 +935,13 @@ dataType RnaChip
 dataVersion ENCODE Feb 2009 Freeze
 dateSubmitted 2009-01-09
 dateUnrestricted 2009-10-09
+dccAccession wgEncodeEH000014
+expId 14
 fileName wgEncodeAffyRnaChipTransfragsK562NucleoplasmTotal.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleoplasm
+md5sum a8dd7bc1d955912e94483e7c25122d58
 origAssembly hg18
 project wgEncode
 rnaExtract total
@@ -1811,10 +957,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000007
+expId 7
 fileName wgEncodeAffyRnaChipTransfragsK562NucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum 468f3e30a0e436db8f9b449c4cd5c69a
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1830,10 +979,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-22
 dateUnrestricted 2009-08-22
+dccAccession wgEncodeEH000008
+expId 8
 fileName wgEncodeAffyRnaChipTransfragsK562NucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum feaf778819569eaf61716fac3f9da836
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1849,10 +1001,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-21
 dateUnrestricted 2009-08-21
+dccAccession wgEncodeEH000004
+expId 4
 fileName wgEncodeAffyRnaChipTransfragsK562PolysomeLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization polysome
+md5sum 8bca1cd0ae0691ee7e9f176369609e07
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1868,10 +1023,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000020
+expId 20
 fileName wgEncodeAffyRnaChipTransfragsKeratinocyteCytosolLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum 89176eaaea87c333104434d20d10488a
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1887,10 +1045,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-05-27
 dateUnrestricted 2010-02-27
+dccAccession wgEncodeEH000021
+expId 21
 fileName wgEncodeAffyRnaChipTransfragsKeratinocyteCytosolLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cytosol
+md5sum c27a35b233d10c1bc83d2e38f952355f
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1906,10 +1067,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-06-12
 dateUnrestricted 2010-03-12
+dccAccession wgEncodeEH000022
+expId 22
 fileName wgEncodeAffyRnaChipTransfragsKeratinocyteNucleusLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum 5d17826eb5392cacfd04d0128c3d0f9b
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1925,10 +1089,13 @@ dataType RnaChip
 dataVersion ENCODE July 2009 Freeze
 dateSubmitted 2009-06-12
 dateUnrestricted 2010-03-12
+dccAccession wgEncodeEH000023
+expId 23
 fileName wgEncodeAffyRnaChipTransfragsKeratinocyteNucleusLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization nucleus
+md5sum a03f8e7d051de3ad4c5676f34178adec
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1944,10 +1111,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-24
 dateUnrestricted 2009-08-24
+dccAccession wgEncodeEH000009
+expId 9
 fileName wgEncodeAffyRnaChipTransfragsProstateCellLongnonpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum a4db5a27d52b111b9a613dcd0bda7ecd
 origAssembly hg18
 project wgEncode
 rnaExtract longNonPolyA
@@ -1963,10 +1133,13 @@ dataType RnaChip
 dataVersion ENCODE Nov 2008 Freeze
 dateSubmitted 2008-11-24
 dateUnrestricted 2009-08-24
+dccAccession wgEncodeEH000010
+expId 10
 fileName wgEncodeAffyRnaChipTransfragsProstateCellLongpolya.broadPeak.gz
 grant Gingeras
 lab Affy
 localization cell
+md5sum 0a7c911f040a37e7e3a3865e4e972431
 origAssembly hg18
 project wgEncode
 rnaExtract longPolyA
@@ -1974,4 +1147,4 @@ subId 2121
 tableName wgEncodeAffyRnaChipTransfragsProstateCellLongpolya
 view Transfrags
 
-# MAGIC: -1870764246
+# MAGIC: 1116245098

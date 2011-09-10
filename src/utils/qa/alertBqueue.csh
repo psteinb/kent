@@ -13,9 +13,9 @@ source `which qaConfig.csh`
 
 set go=""
 # make lists of substitutions for email addresses
-set counter=( 1 2 3 4 5 6 7 8 9 10 11 12 )
-set alias=( andy belinda  brian  brooke bob  fan    jim  jing larry  mark  rachel  zach     )
-set email=( aamp giardine braney rhead  kuhn fanhsu kent jzhu larrym markd hartera jsanborn )
+set counter=( 1 2 3 4 5 6 7 8 9 10 11 12 13 )
+set alias=( andy belinda  brian  brooke bob  donna  fan    jim  jing larry  mark  rachel  zach     )
+set email=( aamp giardine braney rhead  kuhn donnak fanhsu kent jzhu larrym markd hartera jsanborn )
 
 
 if ( $#argv != 1  ) then
@@ -56,6 +56,13 @@ hgsql -h $sqlbeta -t -e "SELECT dbs, track, reviewer, sponsor, \
 # get list of all developers and QA involved in B-queue tracks
 set contacts=`hgsql -N -h $sqlbeta -e "SELECT sponsor, reviewer FROM pushQ \
   WHERE priority = 'B' AND reviewer != ''" qapushq`
+
+# check for empty Bqueue
+if ( "$contacts" == "" ) then
+  # echo "quitting.  nothing to do"
+  exit
+endif
+
 # clean up list to get unique names
 set contacts=`echo $contacts | sed "s/,/ /g" | sed "s/ /\n/g" \
   | perl -wpe '$_ = lcfirst($_);' | sort -u`
@@ -64,10 +71,9 @@ set debug=true
 set debug=false
 if ( $debug == "true" ) then
   echo "\ncontacts $contacts"
-    set contacts=`echo $contacts | sed "s/,/ /" | sed "s/ /\n/g" \
-    | perl -wpe '$_ = lcfirst($_);' | sort -u`
-  set contacts="larrym kate fan ting ann Hiram rachel Andy andy bob larry kayla"
-  echo "contacts $contacts"
+  echo "contactsReal $contacts"
+  set contacts="larrym kate fan ann Hiram rachel Andy andy bob larry "
+  echo "contactsDebug $contacts"
 endif
 
 # replace common names with email addresses
@@ -80,20 +86,17 @@ foreach i ( $counter )
     echo "   contacts $contacts"
     ## send output only to selected people
     # set contacts="ann kuhn pauline rhead"
-    # set contacts="pauline rhead ann"
+    set contacts="kuhn"
     echo "   contacts $contacts"
     cat Bfile 
+    exit
   endif 
 end
 
-if ( $debug == "true" ) then
-  exit
-endif
-
 # add ann to list
-set contacts="$contacts ann donna"
+set contacts="$contacts ann "
 
-# cat Bfile | mail -c $contacts'@soe.ucsc.edu' -s "test. ignore  " $USER
-cat Bfile | mail -c $contacts'@soe.ucsc.edu' -s "B-queue alert" $USER
+# cat Bfile | mail -c $contacts'@soe.ucsc.edu' -s "test. ignore  "
+cat Bfile | mail -c $contacts'@soe.ucsc.edu' -s "B-queue alert" 
 rm Bfile
 

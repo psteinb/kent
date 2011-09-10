@@ -21,7 +21,6 @@ scripts:
 	rm -f ${SCRIPTS}/genePredToBed;
 	echo cp -p genePredToBed/genePredToBed ${SCRIPTS};
 	@cp -p genePredToBed/genePredToBed ${SCRIPTS};
-	cd cvsTools && ${MAKE} scripts
 
 alpha: scripts all
 
@@ -30,13 +29,21 @@ test:
 	cd twoBitToFa && ${MAKE} test
 	cd twoBitInfo && ${MAKE} test
 	cd pslLiftSubrangeBlat && ${MAKE} test
+	cd bedGeneParts && ${MAKE} test
 
 clean:
+	@for D in $(USE_DIRS) x; do \
+	  if test "$$D" != "x" ; then \
+	    ( cd $$D && echo $$D && $(MAKE) clean ) ;\
+	    x=$$? ; if [ $$x -ne 0 ]; then exit $$x ; fi \
+	    fi ;\
+	done
 	touch non-empty-rm.o
 	- find . -name \*.o -print | xargs rm
 
 SCRIPT_FILES = \
         agpToLift \
+        bedCollapse.pl \
         iSync \
         lodToBedScore \
 	mkMafFrames.pl
@@ -50,11 +57,18 @@ DIRS = \
 	ave \
 	aveCols \
 	bedClip \
+	bedCommonRegions \
+	bedGeneParts \
 	bedGraphToBigWig \
+	bedRemoveOverlap \
+	bedRestrictToPositions \
 	bedToBigBed \
+	bigBedInfo \
 	bigBedSummary \
 	bigBedToBed \
+	bigWigAverageOverBed \
 	bigWigInfo \
+	bigWigMerge \
 	bigWigSummary \
 	bigWigToBedGraph \
 	bigWigToWig \
@@ -63,9 +77,9 @@ DIRS = \
 	catUncomment \
 	ccCp \
 	chopFaLines \
+	colTransform \
 	countChars \
 	convolve \
-	cvsTools \
 	detab \
 	endsInLf \
 	fastqToFa \

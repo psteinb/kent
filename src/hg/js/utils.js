@@ -246,7 +246,7 @@ function setVarAndPostForm(aName,aValue,formName)
 }
 
 // json help routines
-function tdbGetJsonRecord(trackName)  { return trackDbJson[trackName]; }
+function tdbGetJsonRecord(trackName)  { return hgTracks.trackDb[trackName]; }
 function tdbIsFolder(tdb)             { return (tdb.kindOfParent == 1); } // NOTE: These must jive with tdbKindOfParent() and tdbKindOfChild() in trackDb.h
 function tdbIsComposite(tdb)          { return (tdb.kindOfParent == 2); }
 function tdbIsMultiTrack(tdb)         { return (tdb.kindOfParent == 3); }
@@ -418,20 +418,51 @@ function validateFloat(obj,min,max)
     }
 }
 
+
+function metadataIsVisible(trackName)
+{
+    var divit = $("#div_"+trackName+"_meta");
+    if (divit == undefined || divit.length == 0)
+        return false;
+    return ($(divit).css('display') != 'none');
+}
+
 function metadataShowHide(trackName,showLonglabel,showShortLabel)
 {
 // Will show subtrack specific configuration controls
 // Config controls not matching name will be hidden
     var divit = $("#div_"+trackName+"_meta");
+    if (divit == undefined || divit.length == 0)
+        return false;
+    var img = $(divit).prev('a').find("img");
+    if (img != undefined && $(img).length == 1) {
+        img = $(img)[0];
+        if ($(divit).css('display') == 'none')
+            $(img).attr('src','../images/upBlue.png');
+        else
+            $(img).attr('src','../images/downBlue.png');
+    }
     if($(divit).css('display') == 'none') {
         $("#div_"+trackName+"_cfg").hide();  // Hide any configuration when opening metadata
 
-        if($(divit).find('table').length == 0)
+        if($(divit).find('table').length == 0) {
             lookupMetadata(trackName,showLonglabel,showShortLabel);
+            return false;
+        }
     }
     var tr = $(divit).parents('tr');
     if (tr.length > 0) {
-        $(divit).children('table').css('backgroundColor',$(tr[0]).css('backgroundColor'));
+        tr = tr[0];
+        var bgClass = null;
+        var classes = $( tr ).attr("class").split(" ");
+        for (var ix=0;ix<classes.length;ix++) {
+            if (classes[ix].substring(0,'bgLevel'.length) == 'bgLevel')
+                bgClass = classes[ix];
+        }
+        if (bgClass) {
+            $(divit).children('table').removeClass('bgLevel1 bgLevel2 bgLevel3 bgLevel4');
+            $(divit).children('table').addClass(bgClass);
+        }
     }
     $(divit).toggle();  // jQuery hide/show
     return false;
@@ -519,6 +550,19 @@ function warn(msg)
     }
 }
 
+var gWarnSinceMSecs = 0;
+function warnSince(msg)
+{   // Warn messages with msecs since last warnSince msg
+    // This is necessary because IE Developer tools are hanging
+    var now = new Date();
+    var msecs = now.getTime();
+    var since = 0;
+    if (gWarnSinceMSecs > 0)
+        since = msecs - gWarnSinceMSecs;
+    gWarnSinceMSecs = msecs;
+    warn('['+since+'] '+msg);
+}
+
 function cgiBooleanShadowPrefix()
 // Prefix for shadow variable set with boolean variables.
 // Exact copy of code in cheapcgi.c
@@ -563,8 +607,12 @@ function getAllVars(obj,subtrackName)
                     urlData[name+"_sel"] = 1;
                     urlData[name]        = val;
                 }
-            } else
-                urlData[name] = val;
+            } else {
+                if ($.isArray( val ) && val.length > 1) {
+                    urlData[name] = "[" + val.toString() + "]";
+                } else
+                    urlData[name] = val;
+            }
         }
     });
     return urlData;
@@ -602,8 +650,20 @@ function varHashToQueryString(varHash)
         if(count++ > 0) {
             retVal += "&";
         }
-        // XXXX encode var=val ?
-        retVal += aVar + "=" + varHash[aVar];
+        var val = varHash[aVar];
+        if (typeof(val) == 'string'
+        && val.length >= 2
+        && val.indexOf('[') == 0
+        && val.lastIndexOf(']') == (val.length - 1)) {
+            var vals = val.substr(1,val.length - 2).split(',');
+            $(vals).each(function (ix) {
+                if (ix > 0)
+                    retVal += "&";
+                retVal += aVar + "=" + encodeURIComponent(this);
+            });
+        } else {
+            retVal += aVar + "=" + encodeURIComponent(val);
+        }
     }
     return retVal;
 }
@@ -880,16 +940,20 @@ function waitMaskSetup(timeOutInMs)
         // create the waitMask
         $("body").append("<div id='waitMask' class='waitMask');'></div>");
         waitMask = $('#waitMask');
-        // Special for IE
-        if ($.browser.msie)
-            $(waitMask).css('filter','alpha(opacity= 0)');
     }
-    $(waitMask).css('display','block');
+    $(waitMask).css({opacity:0.0,display:'block',top: '0px', height: $(document).height().toString() + 'px' });
+    // Special for IE, since it takes so long, make mask obvious
+    if ($.browser.msie)
+        $(waitMask).css({opacity:0.4,backgroundColor:'gray'});
 
     // Things could fail, so always have a timeout.
-    if(timeOutInMs == undefined || timeOutInMs <=0)
-        timeOutInMs = 5000; // Don't ever leave this as infinite
-    setTimeout('waitMaskClear();',timeOutInMs); // Just in case
+    if(timeOutInMs == undefined || timeOutInMs ==0)
+        timeOutInMs = 30000; // IE can take forever!
+
+    if (timeOutInMs > 0)
+        setTimeout('waitMaskClear();',timeOutInMs); // Just in case
+
+    return waitMask;  // The caller could add css if they wanted.
 }
 
 function _launchWaitOnFunction()
@@ -939,7 +1003,7 @@ function waitOnFunction(func)
         return false;
     }
 
-    waitMaskSetup(5000);  // Find or create the waitMask (which masks the whole page) but gives up after 5sec
+    waitMaskSetup(0);  // Find or create the waitMask (which masks the whole page) but gives up after 5sec
 
     // Special if the first var is a button that can visually be inset
     if(arguments.length > 1 && arguments[1].type != undefined) {
@@ -954,8 +1018,39 @@ function waitOnFunction(func)
     }
     gWaitFunc = func;
 
-    setTimeout('_launchWaitOnFunction();',50);
+    setTimeout('_launchWaitOnFunction();',10);
 
+}
+
+// --- yielding iterator ---
+function _yieldingIteratorObject(yieldingFunc)
+{ // This is the "recusive object" or ro which is instantiated in waitOnIteratingFunction
+  // yieldingFunc is passed in from waitOnIteratingFunction
+  // and will recurse which recursively calls an iterator
+    this.step = function(msecs,args) {
+        setTimeout(function() { yieldingFunc(args); }, msecs); // recursive timeouts
+        return;
+    }
+}
+
+function yieldingIterator(interatingFunc,continuingFunc,args)
+{   // Will run interatingFunc function with "yields", then run continuingFunc
+    // Based upon design by Guido Tapia, PicNet
+    // interatingFunc must return number of msecs to pause before next interation.
+    //                return 0 ends iteration with call to continuingFunc
+    //                return < 0 ends iteration with no call to continuingFunc
+    // Both interatingFunc and continuingFunc will receive the single "args" param.
+    // Hint. for multiple args, create a single struct object
+
+    var ro = new _yieldingIteratorObject(function() {
+            var msecs = interatingFunc(args);
+            if (msecs > 0)
+                ro.step(msecs,args);      // recursion
+            else if (msecs == 0)
+                continuingFunc(args);     // completion
+            // else (msec < 0) // abandon
+        });
+    ro.step(1,args);                      // kick-off
 }
 
 function showLoadingImage(id)
@@ -963,6 +1058,7 @@ function showLoadingImage(id)
 // Show a loading image above the given id; return's id of div added (so it can be removed when loading is finished).
 // This code was mostly directly copied from hgHeatmap.js, except I also added the "overlay.appendTo("body");"
     var loadingId = id + "LoadingOverlay";
+    // make an opaque overlay to partially hide the image
     var overlay = $("<div></div>").attr("id", loadingId).css("position", "absolute");
     overlay.appendTo("body");
     overlay.css("top", $('#'+ id).position().top);
@@ -974,7 +1070,9 @@ function showLoadingImage(id)
     overlay.height(height);
     overlay.css("background", "white");
     overlay.css("opacity", 0.75);
-    var imgLeft = (width / 2) - 110;
+    // now add the overlay image itself in the center of the overlay.
+    var imgWidth = 220;   // hardwired based on width of loading.gif
+    var imgLeft = (width / 2) - (imgWidth / 2);
     var imgTop = (height / 2 ) - 10;
     $("<img src='../images/loading.gif'/>").css("position", "relative").css('left', imgLeft).css('top', imgTop).appendTo(overlay);
     return loadingId;
@@ -1592,6 +1690,12 @@ function sortTableInitialize(table,addSuperscript,altColors)
         if ( $(this).attr('onclick') == undefined ) {
             $(this).click( function () { tableSortOnButtonPress(this);} );
         }
+        if ($.browser.msie) { // Special case for IE since CSS :hover doesn't work (note pointer and hand because older IE calls it hand)
+            $(this).hover(
+                function () { $(this).css( { backgroundColor: '#CCFFCC', cursor: 'pointer', cursor: 'hand' } ); },
+                function () { $(this).css( { backgroundColor: '#FCECC0', cursor: '' } ); }
+            );
+        }
         if ( $(this).attr('title').length == 0) {
             var title = $(this).text().replace(/[^a-z0-9 ]/ig,'');
             if (title.length > 0 && $(this).find('sup'))
@@ -1612,8 +1716,10 @@ function sortTableInitialize(table,addSuperscript,altColors)
     // Highlight rows?  But on subtrack list, this will mess up the "..." coloring.  So just exclude tables with drag and drop
     if ($(table).hasClass('tableWithDragAndDrop') == false) {
         $('tbody.sortable').find('tr').hover(
-            function(){ $(this).addClass('bgLevel3'); },      // Will highlight the rows
-            function(){ $(this).removeClass('bgLevel3');}
+            function(){ $(this).addClass('bgLevel3');
+                        $(this).find('table').addClass('bgLevel3'); },      // Will highlight the rows, including '...'
+            function(){ $(this).removeClass('bgLevel3');
+                        $(this).find('table').removeClass('bgLevel3'); }
         );
     }
 
@@ -1630,3 +1736,910 @@ function setCheckboxList(list, value)
         $("input[name='" + names[i] + "']").attr('checked', value);
     }
 }
+
+function calculateHgTracksWidth()
+{
+// return appropriate width for hgTracks image given users current window width
+    return $(window).width() - 20;
+}
+
+function hgTracksSetWidth()
+{
+    var winWidth = calculateHgTracksWidth();
+    if($("#imgTbl").length == 0) {
+        // XXXX what's this code for?
+        $("#TrackForm").append('<input type="hidden" name="pix" value="' + winWidth + '"/>');
+        //$("#TrackForm").submit();
+    } else {
+        $("input[name=pix]").val(winWidth);
+    }
+}
+
+/////////////////////////////////////////////////////
+// findTracks functions
+
+function updateMetaDataHelpLinks(index)
+{
+// update the metadata help links based on currently selected values.
+// If index == 0 we update all help items, otherwise we only update the one == index.
+    var db = getDb();
+    var disabled = {  // blackList
+        'accession': 1, 'dataType':        1, 'dataVersion': 1, 'geoSample':    1, 'grant':     1,
+        'lab':       1, 'labExpId':        1, 'labVersion':  1, 'origAssembly': 1, 'replicate': 1,
+        'setType':   1, 'softwareVersion': 1, 'subId':       1, 'view':         1
+    }
+    var expected = $('tr.mdbSelect').length;
+    var ix=1;
+    if (index!=0) {
+        ix=index;
+        expected=index;
+    }
+    for(;ix <= expected;ix++) {
+        var helpLink = $("span#helpLink" + ix);
+        if (helpLink.length > 0) {
+            var val = $("select[name='hgt_mdbVar" + ix + "']").val();  // NOTE must match METADATA_NAME_PREFIX in hg/hgTracks/searchTracks.c
+            var text = $("select[name='hgt_mdbVar" + ix + "'] option:selected").text();
+            helpLink.html("&nbsp;"); // Do not want this with length == 0 later!
+            if (typeof(disabled[val]) == 'undefined') {
+                var str;
+                if (val == 'cell') {
+                    if (db.substr(0, 2) == "mm") {
+                        str = "../ENCODE/cellTypesMouse.html";
+                    } else {
+                        str = "../ENCODE/cellTypes.html";
+                    }
+                } else if (val.toLowerCase() == 'antibody') {
+                    str = "../ENCODE/antibodies.html";
+                } else {
+                    str = "../ENCODE/otherTerms.html#" + val;
+                }
+                helpLink.html("<a target='_blank' title='detailed descriptions of terms' href='" + str + "'>" + text + "</a>");
+            }
+        }
+    }
+}
+
+function findTracksMdbVarChanged(obj)
+{ // Ajax call to repopulate a metadata vals select when mdb var changes
+  // This handles the currnet case when 2 vars have the same name (e.g. advanced, files tabs)
+
+    findTracksClearFound();  // Changing values so abandon what has been found
+
+    var newVar = $(obj).val();
+    var a = /hgt_mdbVar(\d+)/.exec(obj.name); // NOTE must match METADATA_NAME_PREFIX in hg/hgTracks/searchTracks.c
+    if(newVar != undefined && a && a[1]) {
+        var num = a[1];
+        if ($('#advancedTab').length == 1 && $('#filesTab').length == 1) {
+            $("select.mdbVar[name='hgt_mdbVar"+num+"'][value!='"+newVar+"']").val(newVar);
+        }
+        var cgiVars = "db=" + getDb() +  "&cmd=hgt_mdbVal" + num + "&var=" + newVar;
+        if (document.URL.search('hgFileSearch') != -1)
+            cgiVars += "&fileSearch=1";
+        else
+            cgiVars += "&fileSearch=0";
+
+        $.ajax({
+                   type: "GET",
+                   url: "../cgi-bin/hgApi",
+                   data: cgiVars,
+                   dataType: 'html',
+                   trueSuccess: findTracksHandleNewMdbVals,
+                   success: catchErrorOrDispatch,
+                   error: errorHandler,
+                   cache: true,
+                   cmd: "hgt_mdbVal" + num, // NOTE must match METADATA_VALUE_PREFIX in hg/hgTracks/searchTracks.c
+                   num: num
+               });
+    }
+    // NOTE: with newJquery, the response is getting a new error (missing ; before statement)
+    //       There were also several XML parsing errors.
+    // This error is fixed with the addition of "dataType: 'html'," above.
+}
+
+function findTracksHandleNewMdbVals(response, status)
+{ // Handle ajax response (repopulate a metadata val select)
+  // This handles the currnet case when 2 vars have the same name (e.g. advanced, files tabs)
+
+    var td = $('td#' + this.cmd );
+    if (td != undefined) {
+        var usesFilterBy = ($("select.mdbVar[name='hgt_mdbVar"+this.num+"']").hasClass('noMulti') == false);
+        td.empty();
+        td.append(response);
+        var inp = $(td).find('.mdbVal');
+        var tdIsLike = $('td#isLike'+this.num);
+        if (inp != undefined && tdIsLike != undefined) {
+            if ($(inp).hasClass('freeText')) {
+                $(tdIsLike).text('contains');
+            } else if ($(inp).hasClass('wildList')
+                   || (usesFilterBy && $(inp).hasClass('filterBy'))) {
+                $(tdIsLike).text('is among');
+            } else {
+                $(tdIsLike).text('is');
+            }
+        }
+        $(td).find('.filterBy').each( function(i) { // Do this by 'each' to set noneIsAll individually
+            if (usesFilterBy) {
+                if (newJQuery)
+                    ddcl.setup(this,'noneIsAll');
+                else
+                    $(this).dropdownchecklist({ firstItemChecksAll: true, noneIsAll: true, maxDropHeight: filterByMaxHeight(this) });
+            } else {
+                $(this).attr("multiple",false);
+                $(this).removeClass('filterBy');
+                $(this).show();
+            }
+        });
+    }
+    updateMetaDataHelpLinks(this.num);
+}
+
+function findTracksMdbValChanged(obj)
+{ // Keep all tabs with same selects in sync  TODO: Change from name to id based identification and only have one set of inputs in form
+  // This handles the currnet case when 2 vars have the same name (e.g. advanced, files tabs)
+
+    findTracksClearFound();  // Changing values so abandon what has been found
+
+    if ($('#advancedTab').length == 1 && $('#filesTab').length == 1) {
+        var newVal = $(obj).val();
+        var a = /hgt_mdbVal(\d+)/.exec(obj.name); // NOTE must match METADATA_NAME_PREFIX in hg/hgTracks/searchTracks.c
+        if(newVal != undefined && a && a[1]) {
+            var num = a[1];
+            $("input.mdbVal[name='hgt_mdbVal"+num+"'][value!='"+newVal+"']").val(newVal);
+            $("select.mdbVal[name='hgt_mdbVal"+num+"'][value!='"+newVal+"']").each( function (i) {
+                $(this).val(newVal);
+                if ($(this).hasClass('filterBy')) {
+                    $(this).dropdownchecklist("destroy");
+                    if (newJQuery)
+                        ddcl.setup(this,'noneIsAll');
+                    else
+                        $(this).dropdownchecklist({ firstItemChecksAll: true, noneIsAll: true, maxDropHeight: filterByMaxHeight(this) });
+                }
+            });
+        }
+    }
+    //findTracksSearchButtonsEnable(true);
+}
+
+function findTracksChangeVis(seenVis)
+{ // called by onchange of vis
+    var visName = $(seenVis).attr('id');
+    var trackName = visName.substring(0,visName.length - "_id".length)
+    var hiddenVis = $("input[name='"+trackName+"']");
+    var tdb = tdbGetJsonRecord(trackName);
+    if($(seenVis).val() != "hide")
+        $(hiddenVis).val($(seenVis).val());
+    else {
+        var selCb = $("input#"+trackName+"_sel_id");
+        $(selCb).attr('checked',false);  // Can't set it to [] because that means default setting is used.  However, we are explicitly hiding this!
+        $(seenVis).attr('disabled',true);  // Can't set it to [] because that means default setting is used.  However, we are explicitly hiding this!
+        var needSel = (tdb.parentTrack != undefined);
+        if (needSel) {
+            var hiddenSel = $("input[name='"+trackName+"_sel']");
+            $(hiddenSel).val('0');  // Can't set it to [] because that means default setting is used.  However, we are explicitly hiding this!
+            $(hiddenSel).attr('disabled',false);
+        }
+        if(tdbIsSubtrack(tdb))
+            $(hiddenVis).val("[]");
+        else
+            $(hiddenVis).val("hide");
+    }
+    $(hiddenVis).attr('disabled',false);
+
+    $('input.viewBtn').val('View in Browser');
+    //warn("Changed "+trackName+" to "+$(hiddenVis).val())
+}
+
+function findTracksClickedOne(selCb,justClicked)
+{ // called by on click of CB and findTracksCheckAll()
+    var selName = $(selCb).attr('id');
+    var trackName = selName.substring(0,selName.length - "_sel_id".length)
+    var hiddenSel = $("input[name='"+trackName+"_sel']");
+    var seenVis = $('select#' + trackName + "_id");
+    var hiddenVis = $("input[name='"+trackName+"']");
+    var tr = $(selCb).parents('tr.found');
+    var tdb = tdbGetJsonRecord(trackName);
+    var needSel = (tdb.parentTrack != undefined);
+    var shouldPack = tdb.canPack && tdb.kindOfParent == 0; // If parent then not pack but full
+    if (shouldPack && tdb.shouldPack != undefined && !tdb.shouldPack)
+        shouldPack = false;
+    var checked = $(selCb).attr('checked');
+    //warn(trackName +" selName:"+selName +" justClicked:"+justClicked +" hiddenSel:"+$(hiddenSel).attr('name') +" seenVis:"+$(seenVis).attr('id') +" hiddenVis:"+$(hiddenVis).attr('name') +" needSel:"+needSel +" shouldPack:"+shouldPack);
+
+    // First deal with seenVis control
+    if(checked) {
+        $(seenVis).attr('disabled', false);
+        if($(seenVis).attr('selectedIndex') == 0) {
+            if(shouldPack)
+                $(seenVis).attr('selectedIndex',3);  // packed
+            else
+                $(seenVis).attr('selectedIndex',$(seenVis).attr('length') - 1);
+        }
+    } else {
+        $(seenVis).attr('selectedIndex',0);  // hide
+        $(seenVis).attr('disabled', true );
+    }
+
+    // Deal with hiddenSel and hiddenVis so that submit does the right thing
+    // Setting these requires justClicked OR seen vs. hidden to be different
+    var setHiddenInputs = justClicked;
+    if(!justClicked) {
+        if(needSel)
+            setHiddenInputs = (checked != ($(hiddenSel).val() == '1'));
+        else if (checked)
+            setHiddenInputs = ($(seenVis).val() != $(hiddenVis).val());
+        else
+            setHiddenInputs = ($(hiddenVis).val() != "hide" && $(hiddenVis).val() != "[]");
+    }
+    if(setHiddenInputs) {
+        if(checked)
+            $(hiddenVis).val($(seenVis).val());
+        else if(tdbIsSubtrack(tdb))
+            $(hiddenVis).val("[]");
+        else
+            $(hiddenVis).val("hide");
+        $(hiddenVis).attr('disabled',false);
+
+        if(needSel) {
+            if(checked)
+                $(hiddenSel).val('1');
+            else
+                $(hiddenSel).val('0');  // Can't set it to [] because that means default setting is used.  However, we are explicitly hiding this!
+            $(hiddenSel).attr('disabled',false);
+        }
+    }
+
+    // The "view in browser" button should be enabled/disabled
+    if(justClicked) {
+        $('input.viewBtn').val('View in Browser');
+        findTracksCounts();
+    }
+}
+
+
+function findTracksNormalize()
+{ // Normalize the page based upon current state of all found tracks
+    $('div#found').show()
+    var selCbs = $('input.selCb');
+
+    // All should have their vis enabled/disabled appropriately (false means don't update cart)
+    $(selCbs).each( function(i) { findTracksClickedOne(this,false); });
+
+    findTracksCounts();
+}
+
+function findTracksNormalizeWaitOn()
+{ // Put up wait mask then Normalize the page based upon current state of all found tracks
+    waitOnFunction( findTracksNormalize );
+}
+
+function findTracksCheckAll(check)
+{ // Checks/unchecks all found tracks.
+    var selCbs = $('input.selCb');
+    $(selCbs).attr('checked',check);
+
+    // All should have their vis enabled/disabled appropriately (false means don't update cart)
+    $(selCbs).each( function(i) { findTracksClickedOne(this,false); });
+
+    $('input.viewBtn').val('View in Browser');
+    findTracksCounts();
+    return false;  // Pressing button does nothing more
+}
+
+function findTracksCheckAllWithWait(check)
+{
+    waitOnFunction( findTracksCheckAll, check);
+}
+
+function findTracksSearchButtonsEnable(enable)
+{ // Displays visible and checked track count
+    var searchButton = $('input[name="hgt_tSearch"]'); // NOTE: must match TRACK_SEARCH in hg/inc/searchTracks.h
+    var clearButton  = $('input.clear');
+    if(enable) {
+        $(searchButton).attr('disabled',false);
+        $(clearButton).attr('disabled',false);
+    } else {
+        $(searchButton).attr('disabled',true);
+        $(clearButton).attr('disabled',true);
+    }
+}
+
+function findTracksCounts()
+{// Displays visible and checked track count
+    var counter = $('.selCbCount');
+    if(counter != undefined) {
+        var selCbs =  $("input.selCb");
+        $(counter).text("("+$(selCbs).filter(":enabled:checked").length + " of " +$(selCbs).length+ " selected)");
+    }
+}
+
+function findTracksClearFound()
+{// Clear found tracks and all input controls
+    var found = $('div#found');
+    if(found != undefined)
+        $(found).remove();
+    found = $('div#filesFound');
+    if(found != undefined)
+        $(found).remove();
+    return false;
+}
+
+function filterByMaxHeight(multiSel)
+{   // Setting a max hieght to scroll dropdownchecklists but
+    // multiSel is hidden when this is done, so it's position and height must be estimated.
+    var pos = $(multiSel).closest(':visible').offset().top + 30;
+    if (pos <= 0)
+        pos = 260;
+
+    // Special mess since the filterBy's on non-current tabs will calculate pos badly.
+    var tabbed = $('input#currentTab');
+    if (tabbed != undefined) {
+        var tabDiv = $(multiSel).parents('div#'+ $(tabbed).attr('value'));
+        if (tabDiv == null || tabDiv == undefined || $(tabDiv).length == 0) {
+            pos = 360;
+        }
+    }
+    var maxHeight = $(window).height() - pos;
+    var selHeight = $(multiSel).children().length * 21;
+    if (maxHeight > selHeight)
+        maxHeight = null;
+    //else if($.browser.msie && maxHeight > 500)  // DDCL bug on IE only.
+    //    maxHeight = 500;          // Seems to be solved by disbling DDCL's window.resize event for IE
+
+    return maxHeight;
+}
+
+function findTracksClear()
+{// Clear found tracks and all input controls
+    findTracksClearFound();
+    $('input[type="text"]').val(''); // This will always be found
+    //$('select.mdbVar').attr('selectedIndex',0); // Do we want to set the first two to cell/antibody?
+    $('select.mdbVal').attr('selectedIndex',0); // Should be 'Any'
+    $('select.filterBy').each( function(i) { // Do this by 'each' to set noneIsAll individually
+        //$(this).dropdownchecklist("refresh");  // requires v1.1
+        $(this).dropdownchecklist("destroy");
+        $(this).show();
+        if (newJQuery)
+            ddcl.setup(this,'noneIsAll');
+        else
+            $(this).dropdownchecklist({ firstItemChecksAll: true, noneIsAll: true, maxDropHeight: filterByMaxHeight(this) });
+    });
+
+    $('select.groupSearch').attr('selectedIndex',0);
+    $('select.typeSearch').attr('selectedIndex',0);
+    //findTracksSearchButtonsEnable(false);
+    return false;
+}
+
+function findTracksSortNow(obj)
+{// Called by radio button to sort tracks
+    if( $('#sortIt').length == 0 )
+        $('form#trackSearch').append("<input TYPE=HIDDEN id='sortIt' name='"+$(obj).attr('name')+"' value='"+$(obj).val()+"'>");
+    else
+        $('#sortIt').val($(obj).val());
+
+    // How to hold onto selected tracks?
+    // There are 2 separate forms.  Scrape named inputs from searchResults form and dup them on trackSearch?
+    var inp = $('form#searchResults').find('input:hidden').not(':disabled').not("[name='hgsid']");
+    if($(inp).length > 0) {
+        $(inp).appendTo('form#trackSearch');
+        $('form#trackSearch').attr('method','POST'); // Must be post to avoid url too long  NOTE: probably needs to be post anyway
+    }
+
+    $('#searchSubmit').click();
+    return true;
+}
+
+function findTracksPage(pageVar,startAt)
+{// Called by radio button to sort tracks
+    var pager = $("input[name='"+pageVar+"']");
+    if( $(pager).length == 1)
+        $(pager).val(startAt);
+
+    // How to hold onto selected tracks?
+    // There are 2 separate forms.  Scrape named inputs from searchResults form and dup them on trackSearch?
+    var inp = $('form#searchResults').find('input:hidden').not(':disabled').not("[name='hgsid']");
+    if($(inp).length > 0) {
+        $(inp).appendTo('form#trackSearch');
+        $('form#trackSearch').attr('method','POST'); // Must be post to avoid url too long  NOTE: probably needs to be post anyway
+    }
+
+    $('#searchSubmit').click();
+    return false;
+}
+
+function findTracksConfigureSet(name)
+{// Called when configuring a composite or superTrack
+    var thisForm =  $('form#searchResults');
+    $(thisForm).attr('action',"../cgi-bin/hgTrackUi?hgt_tSearch=Search&g="+name);
+    $(thisForm).find('input.viewBtn').click();
+}
+
+function findTracksMdbSelectPlusMinus(obj, rowNum)
+{ // Now [+][-] mdb var rows with javascript rather than cgi roundtrip
+  // Will remove row or clone new one.  Complication is that 'advanced' and 'files' tab duplicate the tables!
+
+ var objId = $(obj).attr('id');
+    rowNum = objId.substring(objId.length - 1);
+    if ($(obj).val() == '+') {
+        var buttons = $("input#plusButton"+rowNum);  // Two tabs may have the exact same buttons!
+        if (buttons.length > 0) {
+            var table = null;
+            $(buttons).each(function (i) {
+                var tr = $(this).parents('tr.mdbSelect')[0];
+                if (tr != undefined) {
+                    table = $(tr).parents('table')[0];
+                    if(newJQuery) {
+                        var newTr = $(tr).clone();
+                        var element = $(newTr).find("select.mdbVar")[0];
+                        if (element != undefined)
+                            $(element).attr('selectedIndex',-1);
+
+                        element = $(newTr).find("td[id^='hgt_mdbVal']")[0];
+                        if (element != undefined)
+                            $(element).empty();
+                        element = $(newTr).find("td[id^='isLike']")[0];
+                        if (element != undefined)
+                            $(element).empty();
+                        $(tr).after( newTr );
+                    } else
+                        $(tr).after( $(tr).clone() );
+                }
+            });
+            if (table)
+                findTracksMdbSelectRowsNormalize(table); // magic is in this function
+            return false;
+        }
+    } else { // == '-'
+        var buttons = $("input#minusButton"+rowNum);  // Two tabs may have the exact same buttons!
+        if (buttons.length > 0) {
+            var remaining = 0;
+            $(buttons).each(function (i) {
+                var tr = $(this).parents('tr')[0];
+                var table = $(tr).parents('table')[0];
+                if (tr != undefined)
+                    $(tr).remove();
+                remaining = findTracksMdbSelectRowsNormalize(table);  // Must renormalize since 2nd of 3 rows may have been removed
+            });
+            if (remaining > 0) {
+                removeNum = remaining + 1;  // Got to remove the cart vars, though it doesn't matter which as count must not be too many.
+                setCartVars( [ "hgt_mdbVar"+removeNum, "hgt_mdbVal"+removeNum ], [ "[]","[]" ] );
+            }
+
+            findTracksClearFound();  // Changing values so abandon what has been found
+            return false;
+        }
+    }
+    return true;
+}
+
+function findTracksMdbSelectRowsNormalize(table)
+{ // Called when [-][+] buttons changed the number of mdbSelects in findTracks\
+  // Will walk through each row and get the numberings of addressable elements correct.
+    //var table = $('table#'+tableId);
+    if (table != undefined) {
+        var mdbSelectRows = $(table).find('tr.mdbSelect');
+        var needMinus = (mdbSelectRows.length > 2);
+        $(table).find('tr.mdbSelect').each( function (ix) {
+            var rowNum = ix + 1;  // Each [-][+] and mdb var=val pair of selects must be numbered
+
+            // First the [-][+] buttons
+            var plusButton = $(this).find("input[value='+']")[0];
+            if (plusButton != undefined) {
+                $(plusButton).attr('id',"plusButton"+rowNum);
+                // rebinding click appears to be not needed and screws up IE as well.
+                //$(plusButton).unbind('click')
+                //$(plusButton).click(function() { return findTracksMdbSelectPlusMinus($(plusButton), rowNum); });
+                var minusButton = $(this).find("input[value='-']")[0];
+                if (needMinus) {
+                    if (minusButton == undefined) {
+                        $(plusButton).before("<input type='button' id='minusButton"+rowNum+"' value='-' style='font-size:.7em;' title='delete this row' onclick='return findTracksMdbSelectPlusMinus(this,"+rowNum+");'>");
+                        minusButton = $(this).find("input[value='-']")[0];
+                    } else {
+                        $(minusButton).attr('id',"minusButton"+rowNum);
+                        $(minusButton).unbind('click');
+                        $(minusButton).click(function() { return findTracksMdbSelectPlusMinus($(minusButton), rowNum); });
+                    }
+                } else if (minusButton != undefined)
+                    $(minusButton).remove();
+            }
+            // Now the mdb var=val pair of selects
+            var element = $(this).find("select[name^='hgt_mdbVar']")[0];
+            if (element != undefined)
+                $(element).attr('name','hgt_mdbVar' + rowNum);
+
+            element = $(this).find("select[name^='hgt_mdbVal']")[0];
+            if (element != undefined)
+                $(element).attr('name','hgt_mdbVal' + rowNum);
+
+            // A couple more things
+            element = $(this).find("td[id^='isLike']")[0];
+            if (element != undefined)
+                $(element).attr('id','isLike' + rowNum);
+            element = $(this).find("td[id^='hgt_mdbVal']")[0];
+            if (element != undefined)
+                $(element).attr('id','hgt_mdbVal' + rowNum);
+        });
+        return mdbSelectRows.length;
+    }
+    return 0;
+}
+
+function findTracksSwitchTabs(ui)
+{ // switching tabs on findTracks page
+
+    if( ui.panel.id == 'simpleTab' && $('div#found').length < 1) {
+        setTimeout("$('input#simpleSearch').focus();",20); // delay necessary, since select event not afterSelect event
+    } else if( ui.panel.id == 'advancedTab') {
+        // Advanced tab has DDCL wigets which were sized badly because the hidden width was unknown
+        // delay necessary, since select event not afterSelect event
+        setTimeout("ddcl.reinit($('div#advancedTab').find('select.filterBy'),false);",20);
+    }
+    if( $('div#filesFound').length == 1) {
+        if( ui.panel.id == 'filesTab')
+            $('div#filesFound').show();
+        else
+            $('div#filesFound').hide();
+    }
+    if( $('div#found').length == 1) {
+        if( ui.panel.id != 'filesTab')
+            $('div#found').show();
+        else
+            $('div#found').hide();
+    }
+}
+
+/////////////////////////////////////////////////////
+// filterTable functions
+
+function filterTableFilterVar(filter)
+{ // returns the var associated with a fileFilter
+
+    if($(filter).hasClass('filterBy') == false)
+        return undefined;
+    if($(filter).hasClass('filterTable') == false)
+        return undefined;
+
+    // Find the var for this filter
+    var classes = $(filter).attr("class").split(' ');
+    classes = aryRemove(classes,"filterBy","filterTable","noneIsAll");
+    if (classes.length > 1 ) {
+        warn('Too many classes for filterBy: ' + classes);
+        return undefined;
+    }
+    return classes.pop();
+}
+
+/* // This version of filterTable() uses the yieldingIterator methods.
+   // These methods and the yieldingIterator were developed because IE was so slow.
+   // HOWEVER: IE was sped up by avoiding .add() and .parent(),
+   // so I reverted to simpler code but wish to retain this example for
+   // future reference of how to deael with slow javascript.
+
+function _filterTableByClassesIterative(args)
+{ // Applies a single class filter to a filterTable TRs
+  // Called via yieldingIterator
+    if (args.curIx >= args.classes.length)
+        return 0;
+
+    var tds = $(args.tdsRemaining).filter('.' + args.classes[args.curIx]);
+    if (tds.length > 0) {
+        if (args.tdsFiltered == null)
+            args.tdsFiltered = tds;
+        else
+            args.tdsFiltered = jQuery.merge( args.tdsFiltered, tds );  // This one takes too long in IE!
+    }
+    //warnSince("Iterating class:"+args.curIx);
+    args.curIx++;
+    if (args.curIx >= args.classes.length)
+        return 0;
+    return 1;
+}
+
+function _filterTableByClassesComplete(args)
+{ // Continues after filterTableByClassesIterative
+  // Called via yieldingIterator
+    var filtersStruct = args.filtersStruct;
+
+    //warnSince("Completing classes...");
+    if (args.tdsFiltered == null)
+        filtersStruct.trsRemaining = null;
+    else {
+        //filtersStruct.trsRemaining = $(args.tdsFiltered).parent(); // Very slow in IE!!!
+        var tds = args.tdsFiltered;
+        var trs = [];
+        $(tds).each(function (ix) {
+            trs[ix] = this.parentNode;
+        });
+        filtersStruct.trsRemaining = trs;
+    }
+    //warnSince("Mostly complete classes...");
+    filtersStruct.curIx++;
+    yieldingIterator(_filterTableIterative,_filterTableComplete,filtersStruct);
+    //warnSince("Really complete classes.");
+}
+
+function _filterTableIterative(args)
+{ // Applies a single filter to a filterTable TRs
+  // Called via yieldingIterator
+
+    //warnSince("Filter "+args.curIx+" iterating...");
+    if (args.curIx >= args.filters.length)
+        return 0;
+
+    var filter = args.filters[args.curIx];
+
+    var classes = $(filter).val();
+    if (classes == null || classes.length == 0)
+        {
+        args.trsRemaining = null;
+        return 0; // Nothing selected so exclude all rows
+        }
+
+    if(classes[0] != 'All') { // nothing excluded by this filter
+        // Get the filter variable
+        var filterVar = filterTableFilterVar(filter);
+        if (filterVar != undefined) {// No filter variable?!
+            if ($.browser.msie) {   // Special for IE, since it takes so long
+                var classesStruct = new Object;
+                classesStruct.filtersStruct = args;
+                classesStruct.classes       = classes;
+                classesStruct.curIx         = 0;
+                classesStruct.tdsRemaining = $(args.trsRemaining).children('td.' + filterVar);
+                classesStruct.tdsFiltered = null;
+                yieldingIterator(_filterTableByClassesIterative,_filterTableByClassesComplete,classesStruct);
+                return -1; // Stops itteration now, but will be resumed in _filterTableByClassesComplete
+            } else {
+                var varTds = $(args.trsRemaining).children('td.' + filterVar);
+                var filteredTrs = null;
+                for(var ix=0;ix<classes.length;ix++) {
+                    var tds = $(varTds).filter('.' + classes[ix]);
+                    if (tds.length > 0) {
+                        var trs = [];
+                        $(tds).each(function (ix) {
+                            trs[ix] = this.parentNode;
+                        });
+                        if (filteredTrs == null)
+                            filteredTrs = trs; // $(tds).parent('tr'); // parent() takes too long in IE
+                        else
+                            filteredTrs = jQuery.merge( filteredTrs, trs );// $(tds).parent() );  // takes too long in IE!
+                    }
+                }
+                args.trsRemaining = filteredTrs;
+            }
+        }
+    }
+    args.curIx++;
+    if (args.curIx >= args.filters.length)
+        return 0;
+    return 1;
+}
+
+function _filterTableComplete(args)
+{ // Continuation after all the filters have been applied
+  // Called via yieldingIterator
+
+    //warnSince("Completing...");
+    //$('tr.filterable').hide();  // <========= This is what is taking so long!
+    $('tr.filterable').css('display', 'none');
+
+    if (args.trsRemaining != null) {
+        //$(args.trsRemaining).show();
+        $(args.trsRemaining).css('display', '');
+
+        // Update count
+        var counter = $('.filesCount');
+        if(counter != undefined)
+            $(counter).text($(args.trsRemaining).length + " / ");
+    } else {
+        var counter = $('.filesCount');
+        if(counter != undefined)
+            $(counter).text(0 + " / ");
+    }
+
+    var tbody = $( $('tr.filterable')[0] ).parent('tbody.sorting');
+    if (tbody != undefined)
+         $(tbody).removeClass('sorting');
+    //warnSince("Really complete.");
+}
+
+function _filterTableYielding()
+{ // Called by filter onchange event.  Will show/hide trs based upon all filters
+    var trsAll = $('tr.filterable'); // Default all
+    if (trsAll.length == 0)
+        return undefined;
+
+    // Find all filters
+    var filters = $("select.filterBy");
+    if (filters.length == 0)
+        return undefined;
+
+    var filtersStruct = new Object;
+    filtersStruct.filters = filters;
+    filtersStruct.curIx = 0;
+    filtersStruct.trsRemaining = trsAll;
+
+    yieldingIterator(_filterTableIterative,_filterTableComplete,filtersStruct);
+}
+*/
+
+function filterTablesApplyOneFilter(filter,remainingTrs)
+{ // Applies a single filter to a filterTables TRs
+    var classes = $(filter).val();
+    if (classes == null || classes.length == 0)
+        return null; // Nothing selected so exclude all rows
+
+    if(classes[0] == 'All')
+        return remainingTrs;  // nothing excluded by this filter
+
+    // Get the filter variable
+    var filterVar = filterTableFilterVar(filter);
+    if (filterVar == undefined)
+        return null;
+
+    var varTds = $(remainingTrs).children('td.' + filterVar);
+    var filteredTrs = null;
+    var ix =0;
+    for(;ix<classes.length;ix++) {
+        var tds = $(varTds).filter('.' + classes[ix]);
+        if (tds.length > 0) {
+            var trs = [];
+            $(tds).each(function (ix) {
+                trs[ix] = this.parentNode;
+            });
+
+            if (filteredTrs == null)
+                filteredTrs = trs;
+            else
+                filteredTrs = jQuery.merge( filteredTrs, trs );  // This one takes too long in IE!
+        }
+    }
+    return filteredTrs;
+}
+
+function filterTablesTrsSurviving(filterClass)
+// returns a list of trs that satisfy all filters
+// If defined, will exclude filter identified by filterClass
+{
+    // find all filterable table rows
+    var showTrs = $('tr.filterable'); // Default all
+    if (showTrs.length == 0)
+        return undefined;
+
+    // Find all filters
+    var filters = $("select.filterBy");
+    if (filters.length == 0)
+        return undefined;
+
+    // Exclude one if requested.
+    if (filterClass != undefined && filterClass.length > 0)
+        filters = $(filters).not('.' + filterClass);
+
+    for(var ix =0;showTrs != null && ix < filters.length;ix++) {
+        showTrs = filterTablesApplyOneFilter(filters[ix],showTrs)
+    }
+    return showTrs;
+}
+
+function _filterTable()
+{ // Called by filter onchange event.  Will show/hide trs based upon all filters
+    var showTrs = filterTablesTrsSurviving();
+    //$('tr.filterable').hide();  // <========= This is what is taking so long!
+    $('tr.filterable').css('display', 'none')
+
+    if (showTrs != undefined && showTrs.length > 0) {
+        //$(showTrs).show();
+        $(showTrs).css('display', '');
+
+        // Update count
+        var counter = $('.filesCount');
+        if(counter != undefined)
+            $(counter).text($(showTrs).length + " / ");
+    } else {
+        var counter = $('.filesCount');
+        if(counter != undefined)
+            $(counter).text(0 + " / ");
+    }
+
+    var tbody = $( $('tr.filterable')[0] ).parent('tbody.sorting');
+    if (tbody != undefined)
+         $(tbody).removeClass('sorting');
+}
+
+function filterTableTrigger()
+{ // Called by filter onchange event.  Will show/hide trs based upon all filters
+    var tbody = $( $('tr.filterable')[0] ).parent('tbody');
+    if (tbody != undefined)
+         $(tbody).addClass('sorting');
+
+    waitOnFunction(_filterTable);
+}
+
+function filterTableDone(event)
+{ // Called by custom 'done' event
+    event.stopImmediatePropagation();
+    $(this).unbind( event );
+    filterTableTrigger();
+}
+
+function filterTable(multiSelect)
+{ // Called by filter onchange event.  Will show/hide trs based upon all filters
+    // IE takes tooo long, so this should be called only when leaving the filterBy box
+    if ( $('tr.filterable').length > 300) {
+        //if ($.browser.msie) { // IE takes tooo long, so this should be called only when leaving the filterBy box
+            $(multiSelect).one('done',filterTableDone);
+            return;
+        //}
+    } else
+        filterTableTrigger();
+}
+
+function filterTableExcludeOptions(filter)
+{ // bound to 'click' event inside ui.dorpdownchecklist.js.
+  // Will mark all options in one filterBy box that are inconsistent with the current
+  // selections in other filterBy boxes.  Mark with class ".excluded"
+
+    // Compare to the list of all trs
+    var allTrs = $('tr.filterable'); // Default all
+    if (allTrs.length == 0)
+        return false;
+
+    if ($.browser.msie && $(allTrs).length > 300) // IE takes tooo long, so this should be called only when leaving the filterBy box
+        return false;
+
+    // Find the var for this filter
+    var filterVar = filterTableFilterVar(filter);
+    if (filterVar == undefined)
+        return false;
+
+    // Look at list of visible trs.
+    var visibleTrs = filterTablesTrsSurviving(filterVar);
+    if (visibleTrs == undefined)
+        return false;
+
+    //if ($.browser.msie && $(visibleTrs).length > 300) // IE takes tooo long, so this should be called only when leaving the filterBy box
+    //    return false;
+
+    if (allTrs.length == visibleTrs.length) {
+        $(filter).children('option.excluded').removeClass('excluded');   // remove .excluded" from all
+        return true;  // Nothing more to do.  All are already excluded
+    }
+
+    // Find the tds that belong to this var
+    var tds = $(visibleTrs).find('td.'+filterVar);
+    if (tds.length == 0) {
+        $(filter).children('option').addClass('excluded');   // add .excluded" to all
+        return true;
+    }
+
+    // Find the val classes
+    var classes = new Array();
+    $(tds).each(function (i) {
+        var someClass = $(this).attr("class").split(' ');
+        someClass = aryRemove(someClass,filterVar);
+        var val = someClass.pop()
+        if (aryFind(classes,val) == -1)
+            classes.push(val);
+    });
+    if (classes.length == 0) {
+        $(filter).children('option').addClass('excluded');   // add .excluded" to all
+        return true;
+    }
+
+    // Find all options with those classes
+    $(filter).children('option').each(function (i) {
+        if (aryFind(classes,$(this).val()) != -1)
+            $(this).removeClass('excluded'); // remove .excluded from matching
+        else
+            $(this).addClass('excluded');    // add .excluded" to non-matching
+    });
+
+    // If all options except "all" are included then all should nt be excluded
+    var excluded = $(filter).children('option.excluded');
+    if (excluded.length == 1) {
+        var text = $(excluded[0]).text();
+        if (text == 'All' || text == 'Any')
+            $(excluded[0]).removeClass('excluded');
+    }
+    return true;
+}
+

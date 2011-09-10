@@ -210,7 +210,9 @@ boolean canPack = (sameString("psl", s) || sameString("chain", s) ||
                    sameString("expRatio", s) || sameString("wigMaf", s) ||
 		   sameString("factorSource", s) || sameString("bed5FloatScore", s) ||
 		   sameString("bed6FloatScore", s) || sameString("altGraphX", s) ||
-		   sameString("bam", s) || sameString("bedDetail", s));
+		   sameString("bam", s) || sameString("bedDetail", s) ||
+		   sameString("bed8Attrs", s) || sameString("gvf", s) ||
+		   sameString("vcfTabix", s));
 freeMem(t);
 return canPack;
 }
@@ -267,7 +269,7 @@ else
 }
 
 struct trackDb *trackDbFromOpenRa(struct lineFile *lf, char *releaseTag)
-/* Load track info from ra file already opened as lineFile into list.  If releaseTag is 
+/* Load track info from ra file already opened as lineFile into list.  If releaseTag is
  * non-NULL then only load tracks that mesh with release. */
 {
 char *raFile = lf->fileName;
@@ -283,15 +285,15 @@ for (;;)
 	{
         char *subRelease;
 
-	if (!lineFileNext(lf, &line, NULL))
-	   {
+	if (!lineFileNextFull(lf, &line, NULL, NULL, NULL))
+            { // NOTE: lineFileNextFull joins continuation lines
 	   done = TRUE;
 	   break;
 	   }
 	line = skipLeadingSpaces(line);
         if (startsWithWord("track", line))
             {
-            lineFileReuse(lf);
+            lineFileReuseFull(lf); // NOTE: only works with previous lineFileNextFull call
             break;
             }
         else if ((incFile = trackDbInclude(raFile, line, &subRelease)) != NULL)
@@ -312,28 +314,28 @@ for (;;)
     slAddHead(&btList, bt);
     for (;;)
         {
-	/* Break at blank line or EOF. */
-	if (!lineFileNext(lf, &line, NULL))
-	    break;
-	line = skipLeadingSpaces(line);
-	if (line == NULL || line[0] == 0)
-	    break;
+        /* Break at blank line or EOF. */
+        if (!lineFileNextFull(lf, &line, NULL, NULL, NULL))  // NOTE: joins continuation lines
+            break;
+        line = skipLeadingSpaces(line);
+        if (line == NULL || line[0] == 0)
+            break;
 
-	/* Skip comments. */
-	if (line[0] == '#')
-	    continue;
+        /* Skip comments. */
+        if (line[0] == '#')
+            continue;
 
-	/* Parse out first word and decide what to do. */
-	word = nextWord(&line);
-	if (line == NULL)
-	    errAbort("No value for %s line %d of %s", word, lf->lineIx, lf->fileName);
-	line = trimSpaces(line);
-	trackDbUpdateOldTag(&word, &line);
+        /* Parse out first word and decide what to do. */
+        word = nextWord(&line);
+        if (line == NULL)
+            errAbort("No value for %s line %d of %s", word, lf->lineIx, lf->fileName);
+        line = trimSpaces(line);
+        trackDbUpdateOldTag(&word, &line);
         if (releaseTag && sameString(word, "release"))
             errAbort("Release tag %s in stanza with include override %s, line %d of %s",
                 line, releaseTag, lf->lineIx, lf->fileName);
-	trackDbAddInfo(bt, word, line, lf);
-	}
+        trackDbAddInfo(bt, word, line, lf);
+        }
     if (releaseTag)
         trackDbAddRelease(bt, releaseTag);
     }
@@ -417,6 +419,58 @@ if (tdb->settingsHash == NULL)
 return hashFindVal(tdb->settingsHash, name);
 }
 
+struct slName *trackDbLocalSettingsWildMatch(struct trackDb *tdb, char *expression)
+// Return local settings that match expression else NULL.  In alpha order.
+{
+if (tdb == NULL)
+    errAbort("Program error: null tdb passed to trackDbSetting.");
+if (tdb->settingsHash == NULL)
+    tdb->settingsHash = trackDbSettingsFromString(tdb->settings);
+
+struct slName *slFoundVars = NULL;
+struct hashCookie brownie = hashFirst(tdb->settingsHash);
+struct hashEl* el = NULL;
+while ((el = hashNext(&brownie)) != NULL)
+    {
+    if (wildMatch(expression, el->name))
+        slNameAddHead(&slFoundVars, el->name);
+    }
+
+if (slFoundVars != NULL)
+    slNameSort(&slFoundVars);
+
+return slFoundVars;
+}
+
+struct slName *trackDbSettingsWildMatch(struct trackDb *tdb, char *expression)
+// Return settings in tdb tree that match expression else NULL.  In alpha order, no duplicates.
+{
+struct trackDb *generation;
+struct slName *slFoundVars = NULL;
+for (generation = tdb; generation != NULL; generation = generation->parent)
+    {
+    struct slName *slFoundHere = trackDbLocalSettingsWildMatch(generation,expression);
+    if (slFoundHere != NULL)
+        {
+        if (slFoundVars == NULL)
+            slFoundVars = slFoundHere;
+        else
+            {
+            struct slName *one = NULL;
+            while ((one = slPopHead(&slFoundHere)) != NULL)
+                {
+                slNameStore(&slFoundVars, one->name); // Will only store if it is not already found!  This means closest to home will work
+                slNameFree(&one);
+                }
+            }
+        }
+    }
+if (slFoundVars != NULL)
+    slNameSort(&slFoundVars);
+
+return slFoundVars;
+}
+
 boolean trackDbSettingOn(struct trackDb *tdb, char *name)
 /* Return true if a tdb setting is "on" "true" or "enabled". */
 {
@@ -431,7 +485,7 @@ char *trackDbRequiredSetting(struct trackDb *tdb, char *name)
 {
 char *ret = trackDbSetting(tdb, name);
 if (ret == NULL)
-   errAbort("Missing required %s setting in %s track", name, tdb->track);
+   errAbort("Missing required '%s' setting in %s track", name, tdb->track);
 return ret;
 }
 
@@ -540,9 +594,21 @@ tdbMarkAsSuperTrackChild(tdb);
 if(tdb->parent)
     {
     tdbMarkAsSuperTrack(tdb->parent);
-    refAddUnique(&(tdb->parent->children),tdb);
     }
 freeMem(stInfo);
+}
+
+char *maybeSkipHubPrefix(char *track)
+{
+if (!startsWith("hub_", track))
+    return track;
+
+char *nextUnderBar = strchr(track + sizeof "hub_", '_');
+
+if (nextUnderBar)
+    return nextUnderBar + 1;
+
+return track;
 }
 
 void trackDbSuperMarkup(struct trackDb *tdbList)
@@ -563,8 +629,7 @@ for (tdb = tdbList; tdb != NULL; tdb = tdb->next)
         tdbMarkAsSuperTrack(tdb);
         tdb->isShow = stInfo->isShow;
         if (!hashLookup(superHash, tdb->track))
-            hashAdd(superHash, tdb->track, tdb);
-        tdb->children = NULL; // assertable?
+            hashAdd(superHash, maybeSkipHubPrefix(tdb->track), tdb);
         }
     freeMem(stInfo);
     }
@@ -643,6 +708,8 @@ else if(sameWord("narrowPeak",type)
     cType = cfgPeak;
 else if(sameWord("genePred",type))
         cType = cfgGenePred;
+else if(sameWord("bedLogR",type) || sameWord("peptideMapping", type))
+    cType = cfgBedScore;
 else if(startsWith("bed ", type))
     {
     char *words[3];
@@ -689,14 +756,14 @@ char *trackDbSettingByView(struct trackDb *tdb, char *name)
 {
 if (tdb->parent == NULL)
     return NULL;
-return trackDbSettingClosestToHome(tdb->parent, name);
+return trackDbSetting(tdb->parent, name);
 }
 
 
 char *trackDbSettingClosestToHomeOrDefault(struct trackDb *tdb, char *name, char *defaultVal)
 /* Look for a trackDb setting (or default) from lowest level on up chain of parents. */
 {
-char *trackSetting = trackDbSettingClosestToHome(tdb,name);
+char *trackSetting = trackDbSetting(tdb,name);
 if(trackSetting == NULL)
     trackSetting = defaultVal;
 return trackSetting;
@@ -705,7 +772,7 @@ return trackSetting;
 boolean trackDbSettingClosestToHomeOn(struct trackDb *tdb, char *name)
 /* Return true if a tdb setting closest to home is "on" "true" or "enabled". */
 {
-char *setting = trackDbSettingClosestToHome(tdb,name);
+char *setting = trackDbSetting(tdb,name);
 return  (setting && (   sameWord(setting,"on")
                      || sameWord(setting,"true")
                      || sameWord(setting,"enabled")
@@ -785,37 +852,6 @@ if (conn != NULL)
 return tdb;
 }
 #endif///def OMIT
-
-void tdbExtrasAddOrUpdate(struct trackDb *tdb,char *name,void *value)
-/* Adds some "extra" information to the extras hash.  Creates hash if necessary. */
-{
-if(tdb->extras == NULL)
-    {
-    tdb->extras = hashNew(0);
-    hashAdd(tdb->extras, name, value);
-    }
-else
-    {
-    hashReplace(tdb->extras, name, value);
-    }
-}
-
-void tdbExtrasRemove(struct trackDb *tdb,char *name)
-/* Removes a value from the extras hash. */
-{
-if(tdb->extras != NULL)
-    hashMayRemove(tdb->extras, name);
-}
-
-void *tdbExtrasGetOrDefault(struct trackDb *tdb,char *name,void *defaultVal)
-/* Returns a value if it is found in the extras hash. */
-{
-if(tdb->extras == NULL)
-    return defaultVal;
-
-return hashOptionalVal(tdb->extras, name, defaultVal);
-
-}
 
 boolean tdbIsView(struct trackDb *tdb,char **viewName)
 // Is this tdb a view?  Will fill viewName if provided
@@ -973,8 +1009,6 @@ for (tdbContainer = tdbList; tdbContainer != NULL; tdbContainer = tdbContainer->
     sortOrderFree(&sortOrder);
     sortableTdbItemsFree(&itemsToSort);
     }
-if(countOfSortedContainers > 0)
-    verbose(1,"Sorted %d containers\n",countOfSortedContainers);
 }
 
 void trackDbAddTableField(struct trackDb *tdbList)
@@ -1130,5 +1164,107 @@ if (updated)
     *pVal = cloneString(val);
     }
 return updated;
+}
+
+static struct tdbExtras *tdbExtrasNew()
+// Return a new empty tdbExtras
+{
+struct tdbExtras *extras;
+AllocVar(extras); // Note no need for extras = AllocVar(extras)
+// Initialize any values that need an "empty" state
+extras->fourState = TDB_EXTRAS_EMPTY_STATE; // I guess it is 5 state!
+// pointers are NULL and booleans are FALSE by default
+return extras;
+}
+
+void tdbExtrasFree(struct tdbExtras **pTdbExtras)
+// Frees the tdbExtras structure
+{
+// Developer, add intelligent routines to free structures
+// NOTE: For now just leak contents, because complex structs would also leak
+freez(pTdbExtras);
+}
+
+static struct tdbExtras *tdbExtrasGet(struct trackDb *tdb)
+// Returns tdbExtras struct, initializing if needed.
+{
+if (tdb->tdbExtras == NULL)   // Temporarily add this back in because Angie see asserts popping.
+    tdb->tdbExtras = tdbExtrasNew();
+return tdb->tdbExtras;
+}
+
+int tdbExtrasFourState(struct trackDb *tdb)
+// Returns subtrack four state if known, else TDB_EXTRAS_EMPTY_STATE
+{
+struct tdbExtras *extras = tdb->tdbExtras;
+if (extras)
+    return extras->fourState;
+return TDB_EXTRAS_EMPTY_STATE;
+}
+
+void tdbExtrasFourStateSet(struct trackDb *tdb,int fourState)
+// Sets subtrack four state
+{
+tdbExtrasGet(tdb)->fourState = fourState;
+}
+
+boolean tdbExtrasReshapedComposite(struct trackDb *tdb)
+// Returns TRUE if composite has been declared as reshaped, else FALSE.
+{
+struct tdbExtras *extras = tdb->tdbExtras;
+if (extras)
+    return extras->reshapedComposite;
+return FALSE;
+}
+
+void tdbExtrasReshapedCompositeSet(struct trackDb *tdb)
+// Declares that the composite has been reshaped.
+{
+tdbExtrasGet(tdb)->reshapedComposite = TRUE;
+}
+
+struct mdbObj *tdbExtrasMdb(struct trackDb *tdb)
+// Returns mdb metadata if already known, else NULL
+{
+struct tdbExtras *extras = tdb->tdbExtras;
+if (extras)
+    return extras->mdb;
+return NULL;
+}
+
+void tdbExtrasMdbSet(struct trackDb *tdb,struct mdbObj *mdb)
+// Sets the mdb metadata structure for later retrieval.
+{
+tdbExtrasGet(tdb)->mdb = mdb;
+}
+
+struct _membersForAll *tdbExtrasMembersForAll(struct trackDb *tdb)
+// Returns composite view/dimension members for all, else NULL.
+{
+struct tdbExtras *extras = tdb->tdbExtras;
+if (extras)
+    return extras->membersForAll;
+return NULL;
+}
+
+void tdbExtrasMembersForAllSet(struct trackDb *tdb, struct _membersForAll *membersForAll)
+// Sets the composite view/dimensions members for all for later retrieval.
+{
+tdbExtrasGet(tdb)->membersForAll = membersForAll;
+}
+
+struct _membership *tdbExtrasMembership(struct trackDb *tdb)
+// Returns subtrack membership if already known, else NULL
+{
+struct tdbExtras *extras = tdb->tdbExtras;
+if (extras)
+    return extras->membership;
+return tdbExtrasGet(tdb)->membership;
+}
+
+void tdbExtrasMembershipSet(struct trackDb *tdb,struct _membership *membership)
+// Sets the subtrack membership for later retrieval.
+{
+tdbExtrasGet(tdb)->membership = membership;
 }
 

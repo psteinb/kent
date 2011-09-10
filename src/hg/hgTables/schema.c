@@ -120,7 +120,15 @@ while ((row = sqlNextRow(sr)) != NULL)
 	     hPrintf("n/a");
 	hPrintf("</TD>");
 	}
-    hPrintf("<TD><TT>%s</TT></TD>", row[1]);
+    // enums/sets with many items can make for painfully wide rows in the table --
+    // add spaces between quoted list values:
+    if (stringIn("','", row[1]))
+	{
+	struct dyString *spaced = dyStringSub(row[1], "','", "', '");
+	hPrintf("<TD><TT>%s</TT></TD>", spaced->string);
+	}
+    else
+	hPrintf("<TD><TT>%s</TT></TD>", row[1]);
     if (!tooBig)
 	{
 	hPrintf(" <TD>");
@@ -183,15 +191,15 @@ static void explainCoordSystem()
 {
 if (!hIsGsidServer())
     {
-    puts("<P><I>Note: all start coordinates in our database are 0-based, not \n"
+    puts("<BR><I>Note: all start coordinates in our database are 0-based, not \n"
      "1-based.  See explanation \n"
      "<A HREF=\"http://genome.ucsc.edu/FAQ/FAQtracks#tracks1\">"
-     "here</A>.</I></P>");
+     "here</A>.</I>");
     }
 else
     {
-    puts("<P><I>Note: all start coordinates in our database are 0-based, not \n"
-     "1-based.\n</I></P>");
+    puts("<BR><I>Note: all start coordinates in our database are 0-based, not \n"
+     "1-based.\n</I>");
     }
 }
 
@@ -331,7 +339,11 @@ static void printTrackHtml(struct trackDb *tdb)
 if (tdb != NULL && isNotEmpty(tdb->html))
     {
     webNewSection("%s (%s) Track Description", tdb->shortLabel, tdb->track);
-    puts(tdb->html);
+    char *browserVersion;
+    if (btIE == cgiClientBrowser(&browserVersion, NULL, NULL) && *browserVersion < '8')
+        puts(tdb->html);
+    else
+    printf("<span style='position:relative; top:-1.2em; margin-bottom:0em;'>%s\n</span>",tdb->html);
     }
 }
 
@@ -367,10 +379,6 @@ if (tdbForConn != NULL)
 	printf("<BR>This table simply points to a file in "
 	       "<A HREF=\"/goldenPath/help/bigWig.html\" TARGET=_BLANK>"
 	       "BigWig</A> format.<BR>\n");
-    else if (startsWithWord("bam", type))
-	printf("<BR>This table simply points to a file in "
-	       "<A HREF=\"http://samtools.sourceforge.net/SAM1.pdf\" TARGET=_BLANK>"
-	       "BAM</A> format.<BR>\n");
     }
 jpList = joinerRelate(joiner, db, table);
 
@@ -589,6 +597,10 @@ hPrintf("Binary file of type %s stored at %s<BR>\n",
 	type, trackDbSetting(tdb, "bigDataUrl"));
 if (sameString(type, "bigBed"))
     showSchemaBigBed(table);
+else if (sameString(type, "bam"))
+    showSchemaBam(table);
+else if (sameString(type, "vcfTabix"))
+    showSchemaVcf(table);
 }
 
 static void showSchemaWiki(struct trackDb *tdb, char *table)
@@ -601,8 +613,12 @@ showSchemaDb(wikiDbName(), tdb, table);
 static void showSchema(char *db, struct trackDb *tdb, char *table)
 /* Show schema to open html page. */
 {
-if (hIsBigBed(database, table, curTrack, ctLookupName))
+if (isBigBed(database, table, curTrack, ctLookupName))
     showSchemaBigBed(table);
+else if (isBamTable(table))
+    showSchemaBam(table);
+else if (isVcfTable(table))
+    showSchemaVcf(table);
 else if (isCustomTrack(table))
     showSchemaCt(db, table);
 else if (isHubTrack(table))

@@ -13,7 +13,13 @@
 #include "hgConfig.h"
 #include "jsHelper.h"
 #include "imageV2.h"
-#include "searchTracks.h"
+#include "search.h"
+#include "hubConnect.h"
+
+#define DOWNLOADS_ONLY_TRACKS_INCLUDED
+#ifdef DOWNLOADS_ONLY_TRACKS_INCLUDED
+#include "fileUi.h"
+#endif///def DOWNLOADS_ONLY_TRACKS_INCLUDED
 
 static void textSizeDropDown()
 /* Create drop down for font size. */
@@ -84,7 +90,6 @@ if (changeVis != -2)
 
 jsInit();
 cgiMakeHiddenVar(configGroupTarget, "none");
-boolean isFirstNotCtGroup = TRUE;
 for (group = groupList; group != NULL; group = group->next)
     {
     struct trackRef *tr;
@@ -99,17 +104,18 @@ for (group = groupList; group != NULL; group = group->next)
     boolean isOpen = !isCollapsedGroup(group);
     collapseGroupGoodies(isOpen, FALSE, &indicatorImg,
                             &indicator, &otherState);
-    hTableStart();
-    hPrintf("<TR NOWRAP>");
-    hPrintf("<TH NOWRAP align=\"left\" colspan=3 BGCOLOR=#536ED3>");
+    hPrintf("<TABLE BORDER='1' CELLSPACING='0' style='background-color:#%s; width:54em;'>\n",HG_COL_INSIDE);
+    hPrintf("<TR NOWRAP class='blueToggleBar'>");
+    hPrintf("<TH NOWRAP align='left' colspan=3>");
+    hPrintf("<table style='width:100%%;'><tr><td style='text-align:left;'>");
     hPrintf("\n<A NAME='%sGroup'></A>",group->name);
     hPrintf("<input type=hidden name='%s' id='%s' value=%d>",
         collapseGroupVar(group->name),collapseGroupVar(group->name), (isOpen?0:1));
-    hPrintf("<A HREF='%s?%s&%s=%s#%sGroup' class='bigBlue'><IMG height=22 width=22 onclick=\"return toggleTrackGroupVisibility(this,'%s');\" id='%s_button' src='%s' alt='%s' class='bigBlue' title='%s this group'></A>&nbsp;&nbsp;",
-        hgTracksName(), cartSidUrlString(cart),collapseGroupVar(group->name),
-         otherState, group->name, group->name, group->name, indicatorImg, indicator,isOpen?"Collapse":"Expand");
-    hPrintf("<B>&nbsp;%s</B> ", wrapWhiteFont(group->label));
+    hPrintf("<IMG class='toggleButton' onclick=\"return toggleTrackGroupVisibility(this,'%s');\" id='%s_button' src='%s' alt='%s' title='%s this group'>&nbsp;&nbsp;",
+        group->name, group->name, indicatorImg, indicator,isOpen?"Collapse":"Expand");
+    hPrintf("<B>&nbsp;%s</B> ", group->label);
     hPrintf("&nbsp;&nbsp;&nbsp;");
+    hPrintf("</td><td style='text-align:right;'>\n");
     hPrintf("<INPUT TYPE=SUBMIT NAME=\"%s\" VALUE=\"%s\" "
 	   "onClick=\"document.mainForm.%s.value='%s'; %s\" title='Hide all tracks in this groups'>",
 	    configHideAll, "hide all", configGroupTarget, group->name,
@@ -140,6 +146,7 @@ for (group = groupList; group != NULL; group = group->next)
         hPrintf("%s", wrapWhiteFont("Group Order: "));
         }
 #endif///def PRIORITY_CHANGES_IN_CONFIG_UI
+    hPrintf("</td></tr></table>\n");
     hPrintf("</TH>\n");
 #ifdef PRIORITY_CHANGES_IN_CONFIG_UI
     if (withPriorityOverride)
@@ -149,14 +156,14 @@ for (group = groupList; group != NULL; group = group->next)
         hDoubleVar(pname, (double)group->priority, 4);
         hPrintf("</TH>\n");
         if (isOpen)
-            hPrintf("<TH align=CENTER BGCOLOR=#536ED3><B>&nbsp;%s</B></TH> ", wrapWhiteFont("Group"));
+            hPrintf("<TH align=CENTER BGCOLOR='#536ED3'><B>&nbsp;%s</B></TH> ", wrapWhiteFont("Group"));
         hPrintf("\n");
         }
 #endif///def PRIORITY_CHANGES_IN_CONFIG_UI
     hPrintf("</TR>\n");
 
-    /* First non-CT group gets ruler. */
-    if (!showedRuler && isFirstNotCtGroup &&
+    /* First non-CT, non-hub group gets ruler. */
+    if (!showedRuler && !isHubTrack(group->name) &&
                 differentString(group->name, "user"))
 	{
         showedRuler = TRUE;
@@ -184,11 +191,10 @@ for (group = groupList; group != NULL; group = group->next)
 #endif///def PRIORITY_CHANGES_IN_CONFIG_UI
 	hPrintf("</TR>\n");
 	}
-    if (differentString(group->name, "user"))
-        isFirstNotCtGroup = FALSE;
     /* Scan track list to determine which supertracks have visible member
      * tracks, and to insert a track in the list for the supertrack.
      * Sort tracks and supertracks together by priority */
+    makeGlobalTrackHash(trackList);
     groupTrackListAddSuper(cart, group);
 
     if (!withPriorityOverride)
@@ -206,14 +212,24 @@ for (group = groupList; group != NULL; group = group->next)
             slAddTail(&refList, ref);
             if (tdbIsSuper(track->tdb))
                 {
-                struct trackRef *tr2;
-                for (tr2 = group->trackList; tr2 != NULL; tr2 = tr2->next)
+                struct slRef *child = track->tdb->children;
+                for (; child != NULL; child=child->next)
                     {
-                    char *parent = tr2->track->tdb->parentName;
-                    if (parent && sameString(parent, track->track))
+                    struct trackDb *childTdb = child->val;
+                    struct track *childTrack = hashFindVal(trackHash, childTdb->track);
+#ifdef DOWNLOADS_ONLY_TRACKS_INCLUDED
+                    // Try adding downloadsOnly track
+                    if (childTrack == NULL && tdbIsDownloadsOnly(childTdb))
+                        {
+                        AllocVar(childTrack);           // Fake a track!
+                        childTrack->tdb = childTdb;
+                        childTrack->hasUi = FALSE;
+                        }
+#endif///def DOWNLOADS_ONLY_TRACKS_INCLUDED
+                    if (childTrack != NULL)
                         {
                         AllocVar(ref);
-                        ref->track = tr2->track;
+                        ref->track = childTrack;
                         slAddTail(&refList, ref);
                         }
                     }
@@ -236,18 +252,17 @@ for (group = groupList; group != NULL; group = group->next)
             hPrintf("&nbsp;&nbsp;&nbsp;&nbsp;");
 
         // Print an icon before the title when one is defined
-        hPrintPennantIcon(track->tdb);
+        hPrintPennantIcon(tdb);
 
-	if (track->hasUi)
-	    hPrintf("<A %s%s%s HREF=\"%s?%s=%u&g=%s&hgTracksConfigPage=configure\">",
-                tdb->parent ? "TITLE=\"Part of super track: " : "",
-                tdb->parent ? tdb->parent->shortLabel : "",
-                tdb->parent ? "...\"" : "", hgTrackUiName(),
-		cartSessionVarName(), cartSessionId(cart), track->track);
-        hPrintf(" %s", track->shortLabel);
-        if (tdbIsSuper(track->tdb))
+        if (track->hasUi)
+	    hPrintf("<A TITLE='%s%s...' HREF='%s?%s=%u&g=%s&hgTracksConfigPage=configure'>",
+                tdb->parent ? "Part of super track: " : "Configure ",
+                tdb->parent ? tdb->parent->shortLabel : tdb->shortLabel,
+                hgTrackUiName(),cartSessionVarName(), cartSessionId(cart), track->track);
+        hPrintf(" %s", tdb->shortLabel);
+        if (tdbIsSuper(tdb))
             hPrintf("...");
-	if (track->hasUi)
+        if (track->hasUi)
 	    hPrintf("</A>");
 	hPrintf("</TD>");
         hPrintf("<TD NOWRAP>");
@@ -257,7 +272,13 @@ for (group = groupList; group != NULL; group = group->next)
 
 	/* If track is not on this chrom print an informational
 	   message for the user. */
-	if (hTrackOnChrom(track->tdb, chromName))
+#ifdef DOWNLOADS_ONLY_TRACKS_INCLUDED
+        if (tdbIsDownloadsOnly(tdb))
+            hPrintf("<A TITLE='Downloadable files...' HREF='%s?%s=%u&g=%s'>Downloads</A>", // No vis display for downloadsOnly
+                hgFileUiName(),cartSessionVarName(), cartSessionId(cart), tdb->track);
+        else
+#endif///def DOWNLOADS_ONLY_TRACKS_INCLUDED
+        if (hTrackOnChrom(track->tdb, chromName))
 	    {
             if (tdbIsSuper(track->tdb))
                 {
@@ -277,33 +298,101 @@ for (group = groupList; group != NULL; group = group->next)
 	    hPrintf("[No data-%s]", chromName);
 	hPrintf("</TD>");
 	hPrintf("<TD NOWRAP>");
-	hPrintf("%s", track->longLabel);
+	hPrintf("%s", tdb->longLabel);
 	hPrintf("</TD>");
 #ifdef PRIORITY_CHANGES_IN_CONFIG_UI
         if (withPriorityOverride)
             {
             hPrintf("<TD>");
-            safef(pname, sizeof(pname), "%s.priority",track->track);
-            hDoubleVar(pname, (double)track->priority, 4);
-            hPrintf("</TD>");
-            hPrintf("<TD>\n");
-            /* suppress group pull-down for supertrack members */
-            if (tdbIsSuperTrackChild(track->tdb))
-                hPrintf("&nbsp");
+#ifdef DOWNLOADS_ONLY_TRACKS_INCLUDED
+            if (tdbIsDownloadsOnly(tdb))
+                hPrintf("&nbsp</TD><TD>\n&nbsp");
             else
+#endif///def DOWNLOADS_ONLY_TRACKS_INCLUDED
                 {
-                safef(gname, sizeof(gname), "%s.group",track->track);
-                printGroupListHtml(gname, groupList, track->groupName);
+                safef(pname, sizeof(pname), "%s.priority",track->track);
+                hDoubleVar(pname, (double)track->priority, 4);
+                hPrintf("</TD>");
+                hPrintf("<TD>\n");
+                /* suppress group pull-down for supertrack members */
+                if (tdbIsSuperTrackChild(track->tdb))
+                    hPrintf("&nbsp");
+                else
+                    {
+                    safef(gname, sizeof(gname), "%s.group",track->track);
+                    printGroupListHtml(gname, groupList, track->groupName);
+                    }
                 }
             hPrintf("</TD>");
             }
 #endif///def PRIORITY_CHANGES_IN_CONFIG_UI
 	hPrintf("</TR>\n");
 	}
-    hTableEnd();
-    hPrintf("<BR>");
+    hPrintf("</TABLE>\n");
+    cgiDown(0.9);
     }
 }
+
+#ifdef DOWNLOADS_ONLY_TRACKS_INCLUDED
+static int addDownloadOnlyTracks(char *db,struct group **pGroupList,struct track **pTrackList)
+// Download only tracks are not normaly incorporated into the grou and track lists
+{
+int count = 0;
+struct track *track = NULL;
+struct group *group = NULL;
+struct trackDb *tdbList = hTrackDb(db);
+struct trackDb *tdb = tdbList;
+for(;tdb != NULL; tdb = tdb->next)
+    {
+    if (!tdbIsDownloadsOnly(tdb)
+    || tdbIsFolderContent(tdb)
+    || tdbIsCompositeChild(tdb))
+        continue;
+
+    // Must find group
+    if (tdb->grp == NULL)
+        continue;
+
+    for (group = *pGroupList;group != NULL; group = group->next)
+        {
+        if (sameWord(group->name,tdb->grp))
+            break;
+        }
+    if (group == NULL)
+        continue;
+
+    // Make the track
+    track = trackFromTrackDb(tdb);
+    track->group = group;
+    track->groupName = cloneString(group->name);  // Don't even bother looking in cart.  That junk should be thrown out, now that we have dragReorder
+    slAddHead(pTrackList,track);
+    count++;
+    }
+
+if (count > 0)
+    {
+    // Going to have to make all new group->trackLists
+    slSort(pGroupList, gCmpPriority);
+    for (group = *pGroupList;group != NULL; group = group->next)
+        slFreeList(&group->trackList);
+
+    // Sort the tracks anew and add each on into it's group.
+    slSort(pTrackList, tgCmpPriority);
+    for (track = *pTrackList; track != NULL; track = track->next)
+        {
+        struct trackRef *tr;
+        AllocVar(tr);
+        tr->track = track;
+        slAddHead(&track->group->trackList, tr);
+        }
+
+    /* Straighten things out, clean up, and go home. */
+    for (group = *pGroupList;group != NULL; group = group->next)
+        slReverse(&group->trackList);
+    }
+return count;
+}
+#endif///def DOWNLOADS_ONLY_TRACKS_INCLUDED
 
 void configPageSetTrackVis(int vis)
 /* Do config page after setting track visibility. If vis is -2, then visibility
@@ -321,6 +410,10 @@ withPriorityOverride = cartUsualBoolean(cart, configPriorityOverride, FALSE);
 /* Get track list and group them. */
 ctList = customTracksParseCart(database, cart, &browserLines, &ctFileName);
 trackList = getTrackList(&groupList, vis);
+
+#ifdef DOWNLOADS_ONLY_TRACKS_INCLUDED
+addDownloadOnlyTracks(database,&groupList,&trackList);
+#endif///def DOWNLOADS_ONLY_TRACKS_INCLUDED
 
 /* The ideogram for some reason is considered a track.
  * We don't really want to process it as one though, so
@@ -437,8 +530,8 @@ hPrintf("</TD><TD>");
 hPrintf("Enable advanced javascript features");
 hPrintf("</TD></TR>\n");
 
-
 hTableEnd();
+cgiDown(0.9);
 
 char *freeze = hFreezeFromDb(database);
 char buf[128];
@@ -464,7 +557,7 @@ hPrintf("&nbsp;&nbsp;&nbsp;Groups:  ");
 hButtonWithOnClick("hgt.collapseGroups", "collapse all", "Collapse all track groups", "return setAllTrackGroupVisibility(false)");
 hPrintf(" ");
 hButtonWithOnClick("hgt.expandGroups", "expand all", "Expand all track groups", "return setAllTrackGroupVisibility(true)");
-hPrintf("<P STYLE=\"margin-top:5;\">Control track and group visibility more selectively below.<P>");
+hPrintf("<div style='margin-top:.2em; margin-bottom:.9em;'>Control track and group visibility more selectively below.</div>");
 trackConfig(trackList, groupList, groupTarget, vis);
 
 dyStringFree(&title);

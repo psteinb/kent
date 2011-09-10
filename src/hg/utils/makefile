@@ -13,12 +13,14 @@ SCRIPT_FILES = \
 USE_DIRS = $(DIRS)
 
 DIRS = \
+	bedToPsl \
 	bedWeedOverlapping \
 	chromGraphFromBin \
 	chromGraphToBin \
 	crTreeIndexBed \
 	crTreeSearchBed \
 	gapToLift \
+	hubCheck hubPublicCheck \
 	oligoMatch \
 	positionalTblCheck \
 	safePush \

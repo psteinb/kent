@@ -19,6 +19,10 @@ priority 220.3
 track chainNetEquCab1 override
 priority 220.3
 
+track chainNetBosTau6 override
+priority 250.3
+shortLabel $o_db Chain/Net
+
 track chainNetBosTau4 override
 priority 250.3
 
@@ -66,6 +70,11 @@ priority 410.3
 
 track chainNetRheMac2 override
 priority 430.3
+
+track chainNetPanTro3 override
+priority 460.3
+matrix 16 91,-114,-31,-123,-114,100,-125,-31,-31,-125,100,-114,-123,-31,-114,91
+chainMinScore 3000
 
 track chainNetPanTro2 override
 priority 460.3

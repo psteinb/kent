@@ -1,8 +1,8 @@
 /* snp125Ui.c - enums & char arrays for snp UI features and shared util code */
 #include "snp125Ui.h"
+#include "snp125.h"
 #include "common.h"
 
-static char const rcsid[] = "$Id: snp125Ui.c,v 1.33 2010/05/28 18:48:07 angie Exp $";
 
 char *snp125OrthoTable(struct trackDb *tdb, int *retSpeciesCount)
 /* Look for a setting that specifies a table with orthologous alleles.
@@ -49,8 +49,7 @@ char *snp125ColorSourceLabels[] = {
     "Molecule Type",
 };
 
-char *snp125ColorSourceVarName = "snp125ColorSource";
-char *snp125ColorSourceDefault = "Function";
+char *snp125ColorSourceOldVar = "snp125ColorSource";
 
 int snp125ColorSourceArraySize   = ArraySize(snp125ColorSourceLabels);
 
@@ -64,6 +63,19 @@ char *snp128ColorSourceLabels[] = {
 
 int snp128ColorSourceArraySize   = ArraySize(snp128ColorSourceLabels);
 
+/* As of dbSNP 132, we have some new choices: */
+char *snp132ColorSourceLabels[] = {
+    "Class",
+    "Validation",
+    "Function",
+    "Molecule Type",
+    "Unusual Conditions (UCSC)",
+    "Miscellaneous Attributes (dbSNP)",
+    "Allele Frequencies",
+};
+
+int snp132ColorSourceArraySize   = ArraySize(snp132ColorSourceLabels);
+
 /****** MolType related controls *******/
 /* Types: unknown, genomic, cDNA */
 
@@ -72,7 +84,7 @@ char *snp125MolTypeLabels[] = {
     "Genomic",
     "cDNA",
 };
-char *snp125MolTypeStrings[] = {
+char *snp125MolTypeOldColorVars[] = {
     "snp125MolTypeUnknown",
     "snp125MolTypeGenomic",
     "snp125MolTypecDNA",
@@ -87,7 +99,7 @@ char *snp125MolTypeDefault[] = {
     "black",
     "blue",
 };
-static char *snp125MolTypeOldVars[] = {
+static char *snp125MolTypeOldIncludeVars[] = {
     "snp125MolTypeUnknownInclude",
     "snp125MolTypeGenomicInclude",
     "snp125MolTypecDNAInclude",
@@ -114,7 +126,7 @@ char *snp125ClassLabels[] = {
     "Insertion",
     "Deletion",
 };
-char *snp125ClassStrings[] = {
+char *snp125ClassOldColorVars[] = {
     "snp125ClassUnknown",
     "snp125ClassSingle",
     "snp125ClassIn-del",
@@ -153,7 +165,7 @@ char *snp125ClassDefault[] = {
     "black",  // insertion
     "red",    // deletion
 };
-static char *snp125ClassOldVars[] = {
+static char *snp125ClassOldIncludeVars[] = {
     "snp125ClassUnknownInclude",
     "snp125ClassSingleInclude",
     "snp125ClassIn-delInclude",
@@ -181,7 +193,7 @@ char *snp125ValidLabels[] = {
     "By HapMap",
     "By 1000 Genomes Project",
 };
-char *snp125ValidStrings[] = {
+char *snp125ValidOldColorVars[] = {
     "snp125ValidUnknown",
     "snp125ValidCluster",
     "snp125ValidFrequency",
@@ -208,7 +220,7 @@ char *snp125ValidDefault[] = {
     "green",
     "blue",
 };
-static char *snp125ValidOldVars[] = {
+static char *snp125ValidOldIncludeVars[] = {
     "snp125ValidUnknownInclude",
     "snp125ValidClusterInclude",
     "snp125ValidFrequencyInclude",
@@ -235,7 +247,7 @@ char *snp125FuncLabels[] = {
     "Splice Site",
     "Reference (coding)",
 };
-char *snp125FuncStrings[] = {
+char *snp125FuncOldColorVars[] = {
     "snp125FuncUnknown",
     "snp125FuncLocus",
     "snp125FuncSynon",
@@ -292,7 +304,7 @@ char **snp125FuncDataSynonyms[] = {
     NULL
 };
 
-static char *snp125FuncOldVars[] = {
+static char *snp125FuncOldIncludeVars[] = {
     "snp125FuncUnknownInclude",
     "snp125FuncLocusInclude",
     "snp125FuncSynonInclude",
@@ -319,7 +331,7 @@ char *snp125LocTypeLabels[] = {
     "RangeSubstitution",
     "RangeDeletion",
 };
-char *snp125LocTypeStrings[] = {
+char *snp125LocTypeOldColorVars[] = {
     "snp125LocTypeUnknown",
     "snp125LocTypeRange",
     "snp125LocTypeExact",
@@ -346,7 +358,7 @@ char *snp125LocTypeDefault[] = {
     "green",
     "green",
 };
-static char *snp125LocTypeOldVars[] = {
+static char *snp125LocTypeOldIncludeVars[] = {
     "snp125LocTypeUnknownInclude",
     "snp125LocTypeRangeInclude",
     "snp125LocTypeExactInclude",
@@ -357,6 +369,138 @@ static char *snp125LocTypeOldVars[] = {
 };
 
 int snp125LocTypeArraySize   = ArraySize(snp125LocTypeLabels);
+
+/****** Exception related controls *******/
+char *snp132ExceptionLabels[] = {
+    "None",
+    "RefAlleleMismatch",
+    "RefAlleleRevComp",
+    "DuplicateObserved",
+    "MixedObserved",
+    "FlankMismatchGenomeLonger",
+    "FlankMismatchGenomeEqual",
+    "FlankMismatchGenomeShorter",
+    "NamedDeletionZeroSpan",
+    "NamedInsertionNonzeroSpan",
+    "SingleClassLongerSpan",
+    "SingleClassZeroSpan",
+    "SingleClassTriAllelic",
+    "SingleClassQuadAllelic",
+    "ObservedWrongFormat",
+    "ObservedTooLong",
+    "ObservedContainsIupac",
+    "ObservedMismatch",
+    "MultipleAlignments",
+    "NonIntegerChromCount",
+    "AlleleFreqSumNot1",
+};
+
+char *snp132ExceptionVarName[] = {
+    "NoExceptions",
+    "RefAlleleMismatch",
+    "RefAlleleRevComp",
+    "DuplicateObserved",
+    "MixedObserved",
+    "FlankMismatchGenomeLonger",
+    "FlankMismatchGenomeEqual",
+    "FlankMismatchGenomeShorter",
+    "NamedDeletionZeroSpan",
+    "NamedInsertionNonzeroSpan",
+    "SingleClassLongerSpan",
+    "SingleClassZeroSpan",
+    "SingleClassTriAllelic",
+    "SingleClassQuadAllelic",
+    "ObservedWrongFormat",
+    "ObservedTooLong",
+    "ObservedContainsIupac",
+    "ObservedMismatch",
+    "MultipleAlignments",
+    "NonIntegerChromCount",
+    "AlleleFreqSumNot1",
+};
+
+char *snp132ExceptionDefault[] = {
+    "black",	// NoExceptions
+    "red",	// RefAlleleMismatch
+    "red",	// RefAlleleRevComp
+    "red",	// DuplicateObserved
+    "red",	// MixedObserved
+    "red",	// FlankMismatchGenomeLonger
+    "red",	// FlankMismatchGenomeEqual
+    "red",	// FlankMismatchGenomeShorter
+    "red",	// NamedDeletionZeroSpan
+    "red",	// NamedInsertionNonzeroSpan
+    "red",	// SingleClassLongerSpan
+    "red",	// SingleClassZeroSpan
+    "gray",	// SingleClassTriAllelic
+    "gray",	// SingleClassQuadAllelic
+    "red",	// ObservedWrongFormat
+    "gray",	// ObservedTooLong
+    "gray",	// ObservedContainsIupac
+    "red",	// ObservedMismatch
+    "red",	// MultipleAlignments
+    "gray",	// NonIntegerChromCount
+    "gray",	// AlleleFreqSumNot1
+};
+
+int snp132ExceptionArraySize = ArraySize(snp132ExceptionLabels);
+
+/****** Miscellaneous attributes (dbSNP's bitfields) related controls *******/
+
+char *snp132BitfieldLabels[] = {
+    "None",
+    "Clinically Associated",
+    "MAF >= 5% in Some Population",
+    "MAF >= 5% in All Populations",
+    "Appears in OMIM/OMIA",
+    "Has Microattribution/Third-Party Annotation",
+    "Submitted by Locus-Specific Database",
+    "Genotype Conflict",
+    "Ref SNP Cluster has Nonoverlapping Alleles",
+    "Some Assembly's Allele Does Not Match Observed",
+};
+
+char *snp132BitfieldVarName[] = {
+    "NoBitfields",
+    "ClinicallyAssoc",
+    "Maf5SomePop",
+    "Maf5AllPops",
+    "HasOmimOmia",
+    "MicroattrTpa",
+    "SubmittedByLsdb",
+    "GenotypeConflict",
+    "RsClusterNonoverlappingAlleles",
+    "DbSnpObservedMismatch",
+};
+
+char *snp132BitfieldDataName[] = {
+    "",
+    "clinically-assoc",
+    "maf-5-some-pop",
+    "maf-5-all-pops",
+    "has-omim-omia",
+    "microattr-tpa",
+    "submitted-by-lsdb",
+    "genotype-conflict",
+    "rs-cluster-nonoverlapping-alleles",
+    "observed-mismatch",
+};
+
+char *snp132BitfieldDefault[] = {
+    "black",	// NoBitfields
+    "red",	// ClinicallyAssoc
+    "blue",	// Maf5SomePop
+    "green",	// Maf5AllPops
+    "red",	// HasOmimOmia
+    "red",	// MicroattrTpa
+    "red",	// SubmittedByLsdb
+    "gray",	// GenotypeConflict
+    "gray",	// RsClusterNonoverlappingAlleles
+    "gray",	// DbSnpObservedMismatch
+};
+
+int snp132BitfieldArraySize = ArraySize(snp132BitfieldLabels);
+
 
 struct slName *snp125FilterFromCart(struct cart *cart, char *track, char *attribute,
 				    boolean *retFoundInCart)
@@ -378,31 +522,31 @@ else
     int oldArraySize = 0;
     if (sameString(attribute, "molType"))
 	{
-	oldVarNames = snp125MolTypeOldVars;
+	oldVarNames = snp125MolTypeOldIncludeVars;
 	oldDataName = snp125MolTypeDataName;
 	oldArraySize = snp125MolTypeArraySize;
 	}
     else if (sameString(attribute, "class"))
 	{
-	oldVarNames = snp125ClassOldVars;
+	oldVarNames = snp125ClassOldIncludeVars;
 	oldDataName = snp125ClassDataName;
 	oldArraySize = snp125ClassArraySize;
 	}
     else if (sameString(attribute, "valid"))
 	{
-	oldVarNames = snp125ValidOldVars;
+	oldVarNames = snp125ValidOldIncludeVars;
 	oldDataName = snp125ValidDataName;
 	oldArraySize = snp125ValidArraySize;
 	}
     else if (sameString(attribute, "func"))
 	{
-	oldVarNames = snp125FuncOldVars;
+	oldVarNames = snp125FuncOldIncludeVars;
 	oldDataName = snp125FuncDataName;
 	oldArraySize = snp125FuncArraySize;
 	}
     else if (sameString(attribute, "locType"))
 	{
-	oldVarNames = snp125LocTypeOldVars;
+	oldVarNames = snp125LocTypeOldIncludeVars;
 	oldDataName = snp125LocTypeDataName;
 	oldArraySize = snp125LocTypeArraySize;
 	}
@@ -428,3 +572,56 @@ if (retFoundInCart != NULL)
 return values;
 }
 
+char *snp125OldColorVarToNew(char *oldVar, char *attribute)
+/* Abbreviate an old cart var name -- new name is based on track plus this. Don't free result. */
+{
+char *ptr = oldVar;
+if (startsWith("snp125", oldVar))
+    {
+    ptr += strlen("snp125");
+    char upCaseAttribute[256];
+    safecpy(upCaseAttribute, sizeof(upCaseAttribute), attribute);
+    upCaseAttribute[0] = toupper(upCaseAttribute[0]);
+    if (startsWith(upCaseAttribute, ptr))
+	ptr += strlen(upCaseAttribute);
+    }
+return ptr;
+}
+
+enum snp125ColorSource snp125ColorSourceFromCart(struct cart *cart, struct trackDb *tdb)
+/* Look up color source in cart, keeping backwards compatibility with old cart var names. */
+{
+char cartVar[512];
+safef(cartVar, sizeof(cartVar), "%s.colorSource", tdb->track);
+char *snp125ColorSourceDefault = snp125ColorSourceLabels[SNP125_DEFAULT_COLOR_SOURCE];
+char *colorSourceCart = cartUsualString(cart, cartVar,
+					cartUsualString(cart, snp125ColorSourceOldVar,
+							snp125ColorSourceDefault));
+int cs = stringArrayIx(colorSourceCart, snp125ColorSourceLabels, snp125ColorSourceArraySize);
+int version = snpVersion(tdb->table);
+if (version >= 132)
+    // The enum begins with locType, which is not in the array, so add 1 to enum:
+    cs = 1 + stringArrayIx(colorSourceCart, snp132ColorSourceLabels, snp132ColorSourceArraySize);
+if (cs < 0)
+    cs = SNP125_DEFAULT_COLOR_SOURCE;
+return (enum snp125ColorSource)cs;
+}
+
+char *snp125ColorSourceToLabel(struct trackDb *tdb, enum snp125ColorSource cs)
+/* Due to availability of different color sources in several different versions,
+ * this is not just an array lookup, hence the encapsulation. Don't modify return value. */
+{
+int version = snpVersion(tdb->table);
+if (version >= 132)
+    {
+    if (cs < 1 || cs >= snp132ColorSourceArraySize+1)
+	errAbort("Bad color source for build 132 or later (%d)", cs);
+    return snp132ColorSourceLabels[cs-1];
+    }
+else
+    {
+    if (cs < 0 || cs >= snp125ColorSourceArraySize)
+	errAbort("Bad color source for build 131 or earlier (%d)", cs);
+    return snp125ColorSourceLabels[cs];
+    }
+}

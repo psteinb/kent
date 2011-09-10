@@ -23,6 +23,7 @@ use warnings;
 use warnings FATAL => 'all';
 use strict;
 
+#use DataBrowser qw(browse);
 use File::stat;
 use File::Basename;
 use Getopt::Long;
@@ -83,7 +84,7 @@ submission-type is currently ignored.
 
 Current dafVersion is: $Encode::dafVersion
 
-Creates the following output files: $Encode::loadFile, $Encode::trackFile and README.txt
+Creates the following output files: $Encode::loadFile, $Encode::trackFile 
 
 options:
     -allowReloads       Allow reloads of existing tables
@@ -155,9 +156,13 @@ sub dieTellWrangler
 # daf is daf hash
 
 # dispatch table
+# modified some validators for specific types, it no longer validates orControl across the board, 
+# orControl is now only used for antibody. 
+# a new validator OrNone was created to handle 'None' as a value for white listed fields
+
 our %validators = (
     files => \&validateFiles,
-    view => \&validateDatasetName,
+    view => \&validateControlledVocab,
     labVersion => \&validateNoValidation,
     origAssembly => \&validateNoValidation,
     controlId => \&validateNoValidation,
@@ -169,15 +174,20 @@ our %validators = (
     rank => \&validateNoValidation,
     fragLength => \&validateNoValidation,
     setType => \&validateSetType,
-    cell => \&validateControlledVocabOrControl,
+    cell => \&validateControlledVocabOrNone,
     antibody => \&validateControlledVocabOrControl,
-    ripAntibody => \&validateControlledVocabOrControl,
-    ripTgtProtein => \&validateControlledVocabOrControl,
-    treatment => \&validateControlledVocabOrControl,
-    protocol => \&validateControlledVocabOrControl,
-    phase => \&validateControlledVocabOrControl,
-    restrictionEnzyme => \&validateControlledVocabOrControl,
-    obtainedBy => \&validateobtainedBy,
+    ripAntibody => \&validateControlledVocabOrNone,
+    ripTgtProtein => \&validateControlledVocabOrNone,
+    treatment => \&validateControlledVocabOrNone,
+    protocol => \&validateControlledVocabOrNone,
+    phase => \&validateControlledVocabOrNone,
+    restrictionEnzyme => \&validateControlledVocabOrNone,
+    obtainedBy => \&validateObtainedBy,
+    md5sum => \&validateNoValidation,
+    bioRep => \&validateNoValidation,
+    tissueSourceType => \&validateControlledVocabOrNone,
+    spikeInPool => \&validateNoValidation,
+    readType => \&validateControlledVocabOrNone,
     default => \&validateControlledVocab,
     );
 
@@ -259,15 +269,25 @@ sub validateSetType {
 
 
 # project-specific validators
+sub validateControlledVocabOrNone {
+
+	my ($val, $type) = @_;
+	#correction for how cell is termed in the CV
+	if($type eq 'cell') {
+        $type = 'Cell Line';
+    }
+    if ($val eq "None"){return ()}
+	return defined($terms{$type}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
+
+}
 
 sub validateControlledVocabOrControl {
     my ($val, $type) = @_;
-    if($type eq 'cell') {
-        $type = 'Cell Line';
-    } elsif ($type eq 'antibody') {
+    if ($type eq 'antibody') {
         $type = 'Antibody';
+        return defined($terms{$type}{$val} || $terms{'control'}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
     }
-    return defined($terms{$type}{$val} || $terms{'control'}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
+    return defined($terms{$type}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
 }
 
 sub validateControlledVocab {
@@ -275,8 +295,8 @@ sub validateControlledVocab {
     return defined($terms{$type}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
 }
 
-sub validateobtainedBy {
-    my($val,$type) = @_;
+sub validateObtainedBy {
+    my ($val,$type) = @_;
     return defined($terms{'lab'}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
 }
 
@@ -324,6 +344,10 @@ our %formatCheckers = (
     bam => \&validateBam,
     shortFrags => \&validateBed,
     bedLogR => \&validateBed,
+    bedRnaElements => \&validateBed,
+    bedRrbs => \&validateBed,
+    txt  => \&validateFreepass,
+    doc => \&validateFreepass,
     );
 
 my $floatRegEx = "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?";
@@ -586,7 +610,7 @@ sub validateGtf {
     }
     HgAutomate::verbose(2, "validateGtf(path=$path,file=$file,type=$type)\n");
     # XXXX Add support for $opt_quick
-    my $err = system ( "gtfToGenePred $filePath $outFile >$errFile 2>&1");
+    my $err = system ( "gtfToGenePred -simple $filePath $outFile >$errFile 2>&1");
     if ($err) {
         print STDERR  "File \'$file\' failed GTF validation\n";
         open(ERR, "$errFile") || die "ERROR: Can't open gtfToGenePred error file \'$errFile\': $!\n";
@@ -1293,6 +1317,62 @@ sub validationSettings {
     return 0;
 }
 
+sub makeDownloadTargetFileName {
+# Make the target filename out of tableName, type and source file format
+    my ($tablename, $type, $srcFilesRef) = @_;
+    my @srcFiles = @{$srcFilesRef};
+    HgAutomate::verbose(2, "makeDownloadTargetFileName ( $tablename, $type )\n");
+
+    if (@srcFiles > 1) {
+        if (($type eq "bam") || ($type eq "bigWig") || ($type eq "bigBed")) {
+            die "Cannot concatenate '$type' files";
+        }
+    }
+
+    my $target;
+    if (($type eq "bam") || ($type eq "bigWig"))  {
+        $target = "$tablename.$type";
+
+    } else {
+
+        my $fileType = $type;
+        $fileType = "bed" if ($type =~ /^bed /);
+
+        if (@srcFiles > 1) {
+            if (($type eq "fastq") || ($type eq "doc")) {
+                $target = "$tablename.$fileType.tgz"; # will want to tar these
+            } else {
+                $target = "$tablename.$fileType.gz";  # will cat and gz these
+            }
+        } else {
+            my $srcFile  = $srcFiles[0];
+
+            # Special effort for single docs which will have the suffix they came in with
+            if ($type eq "doc") {
+                my @fileNameParts = split(/\./,$srcFile);
+                if (@fileNameParts > 1) {
+                    shift( @fileNameParts ); # Throw away the root
+                    $fileType = join(".", @fileNameParts);
+                }
+            }
+
+            if (Encode::isTarZipped($srcFile)) {
+                if (Encode::isTarZipped(".$fileType")) {
+                    $target = "$tablename.$fileType"; # $fileType includes .tgz
+                } else {
+                    $target = "$tablename.$fileType.tgz";
+                }
+            } elsif (Encode::isZipped($srcFile) && Encode::isZipped(".$fileType")) {
+                $target = "$tablename.$fileType"; # $fileType includes .gz
+            } else {
+                $target = "$tablename.$fileType.gz"; # default of single file will be gz (even for a doc or fastq)
+            }
+        }
+    }
+    $target =~ s/ //g;  # removes spaces which should already be gone!
+    return $target;
+}
+
 ############################################################################
 # Main
 
@@ -1448,12 +1528,12 @@ if (defined($daf->{variables})) {
 
 # make replicate column required when appropriate.
 my $hasReplicates = 0;
-my $maxOrder = 0;
+#my $maxOrder = 0; Removing order for view level as this is not being used for prioritization
 for my $view (keys %{$daf->{TRACKS}}) {
     $hasReplicates += $daf->{TRACKS}{$view}{hasReplicates};
-    if($daf->{TRACKS}{$view}{order} > $maxOrder) {
-        $maxOrder = $daf->{TRACKS}{$view}{order}
-    }
+#    if($daf->{TRACKS}{$view}{order} > $maxOrder) {
+#        $maxOrder = $daf->{TRACKS}{$view}{order}
+#    }
 }
 
 if($hasReplicates) {
@@ -1527,6 +1607,7 @@ if(@errors) {
 
 %terms = Encode::getControlledVocab($configPath);
 
+
 my @variables;
 if (defined($daf->{variables})) {
     @variables = @{$daf->{variableArray}};
@@ -1560,6 +1641,18 @@ while (@{$lines}) {
         pushError(\@errors, "$errorPrefix line has no tabs; the DDF is required to be tab delimited");
         next;
     }
+    
+    #I added a function top check if the lines after the ddf header had more values than the ddf header had fields
+    #previously it would just throw a runtime error, as $i is just incremented along with the values of $line
+    #if @ddfHeader didn't have a matching index location, which would only happen at the end, the program would die.
+    #now it throws an error into @errors, and skips the ddf line
+    my @linetest = split "\t", $line;
+    my $linamt = scalar(@linetest);
+    my $ddfamt = scalar(@ddfHeader);
+    if ($linamt > $ddfamt){
+    	pushError(\@errors, "$errorPrefix has too many fields Line:$linamt DDF:$ddfamt");
+    	next;
+    }
     my $i = 0;
     my %line;
     for my $val (split('\t', $line)) {
@@ -1579,7 +1672,7 @@ while (@{$lines}) {
         pushError(\@errors, $errorPrefix . "\n" . join("\n", @tmp));
         next;
     }
-
+	
     my $view = $line{view};
     HgAutomate::verbose(2,"Parsing $view\n");
     if($daf->{TRACKS}{$view}) {
@@ -1601,25 +1694,37 @@ while (@{$lines}) {
         }
         $line{files} = \@filenames;
         my @metadataErrors;
+        
+        
         for my $field (keys %line) {
+        
+        	#the next two condotionals evaluate whether a field value is blank, if the field is required throw an error,
+        	#if not, then skip validation, and pass the blank value through
+        	if ($line{$field} eq "" && !($fields->{$field}{required})){
+        		next;
+        	} elsif ($line{$field} eq "" && $fields->{$field}{required}){
+				push (@errors, "Missing value for required field '$field' on ddf line $ddfLineNumber");
+				next;
+        	}
             my $cell = $line{cell};
 			my $sex = $line{sex};
             push(@metadataErrors, validateDdfField($field, $line{$field}, $view, $daf, $cell,$sex));
         }
+        
         if(@metadataErrors) {
             pushError(\@errors, @metadataErrors);
         } else {
             # avoid spurious errors by not putting invalid lines into %ddfSets
-	    # ddfKey returnes undef if there are no variables defined
-	    if (defined(ddfKey(\%line, \%ddfHeader, $daf, 1))) {
-		$ddfSets{ddfKey(\%line, \%ddfHeader, $daf, 0)}{VIEWS}{$view} = \%line;
-		$ddfReplicateSets{ddfKey(\%line, \%ddfHeader, $daf, 1)}{VIEWS}{$view} = \%line;
-		my $str = join(", ", map($line{$_}, sort(@variables)));
-                if (defined($daf->{dataVersion}) && $daf->{dataVersion} > 1) {
-                    $str .= ", V" . $daf->{dataVersion};
-                }
-		$metadataHash{$str} = 1;
-	    }
+			# ddfKey returnes undef if there are no variables defined
+			if (defined(ddfKey(\%line, \%ddfHeader, $daf, 1))) {
+			$ddfSets{ddfKey(\%line, \%ddfHeader, $daf, 0)}{VIEWS}{$view} = \%line;
+			$ddfReplicateSets{ddfKey(\%line, \%ddfHeader, $daf, 1)}{VIEWS}{$view} = \%line;
+			my $str = join(", ", map($line{$_}, sort(@variables)));
+					if (defined($daf->{dataVersion}) && $daf->{dataVersion} > 1) {
+						$str .= ", V" . $daf->{dataVersion};
+					}
+			$metadataHash{$str} = 1;
+			}
         }
         push(@ddfLines, \%line);
     } else {
@@ -1661,8 +1766,9 @@ if(!@errors) {
             # Make a list of the PlusRawSignal/MinusRawSignal or RawSignals we are going to have to make
             my @newViews = ();
             #push @newViews, "RawSignal" if $daf->{TRACKS}{RawSignal}{order};  ## No longer create RawSignals
-            push @newViews, "PlusRawSignal" if $daf->{TRACKS}{PlusRawSignal}{order};
-            push @newViews, "MinusRawSignal" if $daf->{TRACKS}{MinusRawSignal}{order};
+			# Code is never triggered, but if triggered we no longer use the order field for track prioritization.
+			#push @newViews, "PlusRawSignal" if $daf->{TRACKS}{PlusRawSignal}{order};
+			#push @newViews, "MinusRawSignal" if $daf->{TRACKS}{MinusRawSignal}{order};
 
             foreach my $newView (@newViews) #loop around making them
             {
@@ -1782,11 +1888,11 @@ doTime("beginning out files") if $opt_timing;
 if($opt_skipOutput) {
     open(LOADER_RA, ">>/dev/null");
     open(TRACK_RA, ">>/dev/null");
-    open(README, ">>/dev/null");
+
 } else {
     open(LOADER_RA, ">$outPath/$Encode::loadFile") || die "SYS ERROR: Can't write \'$outPath/$Encode::loadFile\' file; error: $!\n";
     open(TRACK_RA, ">$outPath/$Encode::trackFile") || die "SYS ERROR: Can't write \'$outPath/$Encode::trackFile\' file; error: $!\n";
-    open(README, ">$outPath/README.txt") || die "SYS ERROR: Can't write '$outPath/READEME.txt' file; error: $!\n";
+
 }
 if($opt_metaDataOnly || !$opt_skipOutput) {
     open(MDB_TXT, ">$outPath/$Encode::mdbFile") || die "SYS ERROR: Can't write \'$outPath/$Encode::mdbFile\' file; error: $!\n";
@@ -1817,6 +1923,14 @@ foreach my $ddfLine (@ddfLines) {
     my $type = $daf->{TRACKS}{$view}{type} || die "Missing DAF entry for view '$view'\n";
     my $sql = $daf->{TRACKS}{$view}{sql};
     my $lab = $daf->{lab};
+    
+    #the next 3 variables are for the new long label generation mechanism
+    my $longlabeldatatype = $daf->{dataType};
+    my $longlabelprefix = ${${$terms{'dataType'}}{$longlabeldatatype}}{'label'};
+    my $longlabelview = ${${$terms{'view'}}{$view}}{'label'};
+    #print "view = $longlabelview\n";
+    
+    
     my $metadata = "project=wgEncode grant=$daf->{grant} lab=$lab";
     if (defined($labs{$lab}) && $labs{$lab}->{pi} ne $labs{$lab}->{grant}) {
         # add co-PI name
@@ -1838,7 +1952,7 @@ foreach my $ddfLine (@ddfLines) {
         && $key ne 'softwareVersion'
         && $key ne 'origAssembly') {
             $metadata .= " $key=$value"; # and the rest
-        }
+    	}
     }
     if($daf->{dataType} =~/ChIPseq/i) {
         if(!$ddfLine->{setType}) {
@@ -1857,6 +1971,13 @@ foreach my $ddfLine (@ddfLines) {
             $metadata .= " controlId=$controlId";
         }
     }
+	# Extend meta-data for mouse to input sex,strain and age information from CV without labs needing to input
+	# meta-data in DDF for cell lines and primary cell lines.
+	if( ($daf->{assembly} eq 'mm9') && ($terms{'Cell Line'}->{$ddfLine->{cell}}->{'category'} ne 'Tissue')) {
+	   $metadata .= " sex=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'sex'}" if !$ddfLine->{sex};
+	   $metadata .= " strain=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'strain'}" if !$ddfLine->{strain};
+	   $metadata .= " age=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'age'}" if !$ddfLine->{age};
+	}
     $metadata .= " view=$view";
     $metadata .= " replicate=$ddfLine->{replicate}" if $ddfLine->{replicate} && $daf->{TRACKS}{$view}{hasReplicates};
     $metadata .= " labVersion=$ddfLine->{labVersion}" if $ddfLine->{labVersion};
@@ -1891,16 +2012,23 @@ foreach my $ddfLine (@ddfLines) {
         $daf->{TRACKS}{$view}{shortLabelPrefix} = "";
     }
     my $shortLabel = defined($daf->{TRACKS}{$view}{shortLabelPrefix}) ? $daf->{TRACKS}{$view}{shortLabelPrefix} : "";
-    my $longLabel = "ENCODE" . (defined($daf->{TRACKS}{$view}{longLabelPrefix}) ? " $daf->{TRACKS}{$view}{longLabelPrefix}" : "");
-    if(defined($replicate)) {
-        $longLabel .= " Replicate $replicate";
-    }
+    
+    #long label is being generated by a new subroutine, so no longer needed here.
+    #my $longLabel = "ENCODE" . (defined($daf->{TRACKS}{$view}{longLabelPrefix}) ? " $daf->{TRACKS}{$view}{longLabelPrefix}" : "");
+    #if(defined($replicate)) {
+    #    $longLabel .= " Replicate $replicate";
+    #}
     my $subGroups = "view=$view";
     my $pushQDescription = "";
     my $species;
     my $tier1 = 0;
+    #the variables hash is generated out of scope for the long label mechanism, so i pre-initialized a separate hash here
+    #then it's copied over in the if statement
+    my %longlabelvars;
     if (@variables) {
         my %hash = map { $_ => $ddfLine->{$_} } @variables;
+        #copied over here
+        %longlabelvars = %hash;
         for my $var (@variables) {
             my $cvTypeVar = $var;
             if ($var eq "antibody") {
@@ -1908,8 +2036,8 @@ foreach my $ddfLine (@ddfLines) {
             } elsif ($var eq "cell") {
                 $cvTypeVar = "Cell Line";
             } elsif ($var eq "obtainedBy") {
-		$cvTypeVar = "lab";
-	     }
+				$cvTypeVar = "lab";
+			}
             if(!defined($terms{$cvTypeVar}->{$hash{$var}})) {
                 $cvTypeVar = "control";
             }
@@ -1924,38 +2052,32 @@ foreach my $ddfLine (@ddfLines) {
         }
 
         my $shortSuffix = "";
-        my $longSuffix;
+        #longsuffix is deprecated, as the long label is being generated by a new subroutine
         if($hash{'antibody'} && $hash{'cell'}) {
             $pushQDescription = "$hash{'antibody'} in $hash{'cell'}";
             $shortSuffix = "$hash{'cell'} $hash{'antibody'}";
-            $longSuffix = "$hash{'antibody'} in $hash{'cell'} cells";
         } elsif($hash{'ripAntibody'} && $hash{'ripTgtProtein'} && $hash{'cell'}) {
-            $longSuffix = "$hash{'ripTgtProtein'} in $hash{'cell'} cells using $hash{'ripAntibody'}";
-            $pushQDescription = $longSuffix;
+
+            $pushQDescription = "";
             $shortSuffix = "$hash{'cell'} $hash{'ripTgtProtein'} $hash{'ripAntibody'}";
         } elsif($hash{'rnaExtract'} && $hash{'localization'} && $hash{'cell'}) {
             $shortSuffix = "$hash{'cell'} $hash{'localization'} $hash{'rnaExtract'}";
-            $longSuffix = "$hash{'rnaExtract'} in $hash{'cell'} $hash{'localization'}";
             if ($hash{'mapAlgorithm'}) {
                 $shortSuffix = $shortSuffix . $hash{'mapAlgorithm'};
-                $longSuffix = $longSuffix . "using" . $hash{'mapAlgorithm'};
             }
-            $pushQDescription = $longSuffix;
+            $pushQDescription = "";
         } elsif($hash{'freezeDate'}) {
             $shortSuffix = $hash{'freezeDate'};
-            $longSuffix = $hash{'freezeDate'};
-            $pushQDescription = $longSuffix;
+            $pushQDescription = "";
         } elsif ($hash{"species"}) {
             $pushQDescription = "$hash{'species'}";
             $shortSuffix = "$hash{'species'}";
-            $longSuffix = "in $hash{'species'}";
             $species = "$hash{'species'}";
-            $pushQDescription = "$view $daf->{dataType} $longSuffix";
+            $pushQDescription = "$view $daf->{dataType}";
         } elsif ($hash{"cell"}) {
             $pushQDescription = "$hash{'cell'}";
             $shortSuffix = "$hash{'cell'}";
-            $longSuffix = "in $hash{'cell'} cells";
-            $tier1 = 1 if ($hash{'cell'} eq 'GM12878' || $hash{'cell'} eq 'K562');
+            $tier1 = 1 if ($hash{'cell'} eq 'GM12878' || $hash{'cell'} eq 'K562' || $hash{'cell'} eq 'H1hESC');
         } else {
 	    warn "Warning: variables undefined for pushQDescription,shortSuffix,longSuffix\n";
     	}
@@ -1969,10 +2091,9 @@ foreach my $ddfLine (@ddfLines) {
         if($shortSuffix) {
             $shortLabel = $shortLabel ? "$shortLabel ($shortSuffix)" : $shortSuffix;
         }
-        if($longSuffix) {
-            $longLabel .= " ($longSuffix)";
-        }
-        # make the "subGroups" setting from all variables
+        
+       
+        
         for my $var (sort keys %hash) {
             # The var name is over-ridden for antibody and cell, for historical reasons
             my $groupVar = $var;
@@ -1988,7 +2109,7 @@ foreach my $ddfLine (@ddfLines) {
               #Not sure why when we check for obtainedBy subGroups prints out and when when this is
 	      # not pressent the subGroups provides error of unitialized.
 	      # The behavior is odd since there is no $var of obtainedBy in the cv.ra
-     		$cvTypeVar = "lab";
+     	        $cvTypeVar = "lab";
 	    }
 
             if(!defined($terms{$cvTypeVar}->{$hash{$var}})) {
@@ -2000,9 +2121,9 @@ foreach my $ddfLine (@ddfLines) {
 	 #        in the table name. The below code was found to be to specific, however if there are any problems
 	 # I have left the code in so that we can easily add it back in.
 	#  if(defined($replicate) && ($daf->{lab} eq "HudsonAlpha" || $daf->{lab} eq "Uw") || $daf->{lab} eq "Gis") {
-           if(defined($replicate)) {
-	    $subGroups .= " rep=rep$replicate"; # UGLY special casing
-        }
+			if(defined($replicate)) {
+				$subGroups .= " rep=rep$replicate"; # UGLY special casing
+			}
     }
 
     # Add view and replicate to tablename
@@ -2064,6 +2185,20 @@ foreach my $ddfLine (@ddfLines) {
     $metadata .= " dateSubmitted=$dateSubmitted";
     $metadata .= " dateUnrestricted=$dateUnrestricted";
 
+    # We should add attic terms to the mdb.txt.  At least those that we can recognize
+    if ($daf->{TRACKS}{$view}{auxiliary} && $daf->{TRACKS}{$view}{auxiliary} eq "yes") {
+        $metadata .= " attic=auxValid";
+    } elsif ($ddfLine->{display} && $ddfLine->{display} eq "no") {
+        $metadata .= " attic=auxExp";
+    } elsif ($type eq "doc") {
+        if ($daf->{TRACKS}{$view}{supplemental} && $daf->{TRACKS}{$view}{supplemental} eq "yes") {
+            # FIXME: at this point, the pipeline is unprepared to deal with "sup" which is placed in "supplemental" subdir.
+            $metadata .= " attic=sup";
+        } else {
+            $metadata .= " attic=auxSup";
+        }
+    }
+
     $tableName =~ "/Utaustin/Uta/";  # Special case for certain transgressors
     if(length($tableName) > 64) {
         $tableName =~ "/Hudsonalpha/Haib/" if length($tableName) > 64; # Special case for certain transgressors
@@ -2073,7 +2208,6 @@ foreach my $ddfLine (@ddfLines) {
         $tableName =~ "/Control/Ctrl/" if length($tableName) > 64;
         die "Table name [$tableName] too long, must be <= 64 chars, got [".length($tableName)."]\n" if length($tableName) > 64;
     }
-
 
     if($tableNamesUsed{$tableName}++) {
         dieTellWrangler("System Error: identical tableName '$tableName' was generated by multiple data sets\n");
@@ -2085,6 +2219,13 @@ foreach my $ddfLine (@ddfLines) {
         }
     }
 
+    my $targetFile = makeDownloadTargetFileName($tableName, $type, \@{$ddfLine->{files}} );
+    my $downloadDir = Encode::downloadDir($daf);
+    if(!$opt_allowReloads) {
+        if(-e "$downloadDir/$targetFile") {
+            die "view '$view' has already been loaded as file '$downloadDir/$targetFile'\nPlease contact your wrangler if you need to reload this data\n";
+        }
+    }
     # XXXX Move the decision about which views have tracks into the DAF?
     # Already this is used in 2 places so made it a function,
     # would be better in the DAF except we'd have to go change all the DAFs :(
@@ -2097,6 +2238,7 @@ foreach my $ddfLine (@ddfLines) {
     if(!$downloadOnly) {
         $metadata .= " tableName=$tableName";
     }
+    print MDB_TXT sprintf("metadata %s fileName=%s\n", $metadata, $targetFile);
 
     print LOADER_RA "tablename $tableName\n";
     print LOADER_RA "view $view\n";
@@ -2112,42 +2254,13 @@ foreach my $ddfLine (@ddfLines) {
     print LOADER_RA "files @{$ddfLine->{files}}\n";
     print LOADER_RA "downloadOnly $downloadOnly\n";
     print LOADER_RA "pushQDescription $pushQDescription\n";
+    print LOADER_RA "targetFile $targetFile\n";
     print LOADER_RA "\n";
 
-    if ($type eq "bam") {
-        # print out metadata for bam file
-        my $metaextra = " fileName=$tableName.$fileType";
-        print MDB_TXT sprintf("metadata %s %s\n", $metadata, $metaextra);
+        
 
-        # print out metadata for bai file
-        # turns out we probably don't need this.
-        # $metaextra = " fileName=$tableName.$fileType.bai";
-        # print MDB_TXT sprintf("metadata %s %s\n", $metadata, $metaextra);
-    } elsif ($type eq "bigWig") {
-        my $metaextra = " fileName=$tableName.$fileType";
-        print MDB_TXT sprintf("metadata %s %s\n", $metadata, $metaextra);
-    } else {
-        $fileType = "bed" if ($type =~ /^bed /);
-        my $metaextra = " fileName=$tableName.$fileType.gz";
-        print MDB_TXT sprintf("metadata %s %s\n", $metadata, $metaextra);
-    }
-
-    if($downloadOnly || ($type eq "wig" && !grep(/$Encode::autoCreatedPrefix/, @{$ddfLine->{files}}))) {
-        # adds entries to README.txt for download only files AND wig data (excepting wig data generated by us)
-        print README "file: $tableName.$type.gz\n";
-        for my $var (@variables) {
-            print README "$var: " . $ddfLine->{$var} . "\n";
-        }
-        if(defined($replicate)) {
-            print README "replicate: $replicate\n";
-        }
-
-        print README sprintf("data RESTRICTED UNTIL: %d-%02d-%02d\n", 1900 + $rYear, $rMon + 1, $rMDay);
-        print README "\n";
-    }
     if(!$downloadOnly) {
         print TRACK_RA "        track $tableName\n";
-        print TRACK_RA "        release alpha\n";
         if ($tier1 eq 1) {
             # default to only Tier1 subtracks visible.  Wrangler should review if this is
             #   correct for the track
@@ -2156,7 +2269,16 @@ foreach my $ddfLine (@ddfLines) {
             print TRACK_RA "        parent " . $compositeTrack . "View" . $view . " off\n";
         }
         print TRACK_RA "        shortLabel $shortLabel\n";
+        
+        
+        #call the subroutine to generate the new long label - not all the passed variables are needed or used
+        #the attempt is to make the long labels comething like this
+        # Cell (age strain treatment protocol antibody control localization rnaExtract readType insertLength) dataType View (Rep) from ENCODE/lab
+		# not everything in the parentheses are going to be used
+        #E.G. NHEK cell longPolyA RNA-seq Transcript Gencode V7 Rep 5 from ENCODE/CSHL
+        my $longLabel = &generateLongLabel($lab, \%longlabelvars, $replicate, $longlabelprefix, $longlabeldatatype, $longlabelview);
         print TRACK_RA "        longLabel $longLabel\n";
+        #print TRACK_RA "        longLabel $longLabel\n";
         print TRACK_RA "        subGroups $subGroups\n";
         if($type eq 'wig') {
             my $placeHolder = Encode::wigMinMaxPlaceHolder($tableName);
@@ -2202,7 +2324,7 @@ foreach my $ddfLine (@ddfLines) {
 close(LOADER_RA);
 close(TRACK_RA);
 close(MDB_TXT);
-close(README);
+
 doTime("done out files") if $opt_timing;
 
 if($submitPath =~ /(\d+)$/) {
@@ -2221,37 +2343,65 @@ if($submitPath =~ /(\d+)$/) {
     }
 }
 
-my @cmds;
-# push @cmds, "docIdSubmitDir encpipeline_beta $submitPath  /hive/groups/encode/dcc/pipeline/downloads/betaDocId";
-push @cmds, "docIdSubmitDir encpipeline_prod $submitPath  /hive/groups/encode/dcc/pipeline/downloads/docId";
-my $safe = SafePipe->new(CMDS => \@cmds,  DEBUG => $opt_verbose - 1);
-if(my $err = $safe->exec()) {
-    my $err = $safe->stderr();
-    printf "Could not submit to docId system: " . $err;
-    exit 1;
+#matt made this
+sub generateLongLabel {
+	my $lab = $_[0];
+	my %vars = %{$_[1]};
+	my $replicate = $_[2];
+	my $prefix = $_[3];
+	my $datatype = $_[4];
+	my $view = $_[5];
+	
+	my $count = 0;
+	foreach my $value (@_){
+		unless (defined($value)){
+			$_[$count] = "";
+		}
+		$count++;
+	}
+	
+	#takes off -m if the lab does mouse also
+	$lab =~ s/\-m$//g;
+	
+	#the order that the edv's should come in after cell
+	my @order = qw (age strain treatment protocol antibody control localization rnaExtract readType insertLength);
+
+	#always a cell first
+	my $longlabel = "$vars{'cell'}";
+	#if the particular track doesn't have an EDV, then skip it
+	foreach my $key (@order){
+		#go down the order and check if the incoming %vars has it, a by product of this is that if it's not in the@order above
+		#it won't go in the long label name 
+		if (exists $vars{$key}){
+			
+			#don't put anything that matches none to the label
+			my $testvars = lc($vars{$key});
+			if ($testvars =~ m/none/){next}
+			$longlabel = $longlabel . " $vars{$key}";
+		}
+	}
+	#switch for yes or no on replicate
+	if ($replicate){
+		$longlabel = $longlabel . " $prefix $view Rep $replicate from ENCODE/$lab";
+	}
+	else {
+		$longlabel = $longlabel . " $prefix $view from ENCODE/$lab";
+	}
+
+	#turn all _ into spaces
+	$longlabel =~ s/\_/ /g;
+
+	#length checker
+	my $llength = length ($longlabel);
+	if ($llength > 80){
+		$longlabel = $longlabel . " #too long length = $llength";
+	}
+	
+	$longlabel = $longlabel . " #autogenerated";
+	return $longlabel;
+
 }
 
-# commenting this out until we decide to roll-out name changes
-
-# undef(@cmds);
-# push @cmds, "mv $submitPath/out/trackDb.ra  $submitPath/out/trackDb.ra.preDocId; sed -f $submitPath/out/edit.sed $submitPath/out/trackDb.ra.preDocId" ;
-
-# $safe = SafePipe->new(CMDS => \@cmds, STDOUT => "$submitPath/out/trackDb.ra",  DEBUG => $opt_verbose - 1);
-# if(my $err = $safe->exec()) {
-#    my $err = $safe->stderr();
-#    printf "Could not edit trackDb.ra " . $err;
-#    exit 1;
-#}
-
-#undef(@cmds);
-#push @cmds, "mv $submitPath/out/load.ra  $submitPath/out/load.ra.preDocId; sed -f $submitPath/out/edit.sed $submitPath/out/load.ra.preDocId";
-
-#$safe = SafePipe->new(CMDS => \@cmds, STDOUT => "$submitPath/out/load.ra",  DEBUG => $opt_verbose - 1);
-#if(my $err = $safe->exec()) {
-#    my $err = $safe->stderr();
-#    printf "Could not edit load.ra " . $err;
-#    exit 1;
-#}
 
 $time0=$timeStart;
 doTime("done. ") if $opt_timing;

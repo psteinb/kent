@@ -135,6 +135,10 @@ struct sqlConnection *hAllocConnProfile(char *profileName, char *db);
 /* Get free connection, specifying a profile and/or a database. If none
  * is available, allocate a new one. */
 
+struct sqlConnection *hAllocConnProfileMaybe(char *profileName, char *db);
+/* Get free connection, specifying a profile and/or a database. If none is
+ * available, allocate a new one.  Return NULL if database doesn't exist. */
+
 struct sqlConnection *hAllocConnTrack(char *db, struct trackDb *tdb);
 /* Get free connection for accessing tables associated with the specified
  * track and database. If none is available, allocate a new one. */
@@ -143,6 +147,11 @@ struct sqlConnection *hAllocConnProfileTbl(char *db, char *spec, char **tableRet
 /* Allocate a connection to db, spec can either be in the form `table' or
  * `profile:table'.  If it contains profile, connect via that profile.  Also
  * returns pointer to table in spec string. */
+
+struct sqlConnection *hAllocConnProfileTblMaybe(char *db, char *spec, char **tableRet);
+/* Allocate a connection to db, spec can either be in the form `table' or
+ * `profile:table'.  If it contains profile, connect via that profile.  Also
+ * returns pointer to table in spec string. Return NULL if database doesn't exist */
 
 struct sqlConnection *hAllocConnDbTbl(char *spec, char **tableRet, char *defaultDb);
 /* Allocate a connection to db and table, spec is in form `db.table'; if
@@ -404,6 +413,14 @@ struct dbDb *hArchiveDbDbList(void);
 /* Return list of databases in archive central dbDb.
  * Free this with dbDbFree. */
 
+struct hash *hDbDbHash();
+/* The hashed-up version of the entire dbDb table, keyed on the db */
+/* this is likely better to use than hArchiveOrganism if it's likely to be */
+/* repeatedly called */
+
+struct hash *hDbDbAndArchiveHash();
+/* hDbDbHash() plus the dbDb rows from the archive table */
+
 int hDbDbCmpOrderKey(const void *va, const void *vb);
 /* Compare to sort based on order key */
 
@@ -414,8 +431,25 @@ struct sqlConnection *hMaybeConnectArchiveCentral(void);
 /* Connect to central database for archives.
  * Free this up with hDisconnectCentralArchive(). */
 
+boolean hHostHasPrefix(char *prefix);
+/* Return TRUE if this is running on web-server with host name prefix */
+
 boolean hIsPrivateHost(void);
-/* Return TRUE if this is running on private web-server. */
+/* Return TRUE if this is running on private (development) web-server.
+ * This was originally genome-test as well as hgwdev, however genome-test
+ * may be repurposed to direct users to the preview site instead of development site. */
+
+boolean hIsBetaHost(void);
+/* Return TRUE if this is running on beta (QA) web-server.
+ * Use sparingly as behavior on beta should be as close to RR as possible. */
+
+boolean hIsPreviewHost(void);
+/* Return TRUE if this is running on preview web-server.  The preview
+ * server is a mirror of the development server provided for public
+ * early access. */
+
+char *hBrowserName();
+/* Return browser name based on host name */
 
 boolean hTrackOnChrom(struct trackDb *tdb, char *chrom);
 /* Return TRUE if track exists on this chromosome. */
@@ -454,9 +488,6 @@ struct trackDb *hCompositeTrackDbForSubtrack(char *db, struct trackDb *sTdb);
  * return the trackDb for the composite track if we can find it, else NULL.
  * Note: if the composite trackDb is found and returned, then its subtracks
  * member will contain a newly allocated tdb like sTdb (but not ==). */
-
-void hTrackDbLoadSuper(char *db, struct trackDb *tdb);
-/* Populate child trackDbs of this supertrack */
 
 struct hTableInfo *hFindTableInfoWithConn(struct sqlConnection *conn, char *chrom, char *rootName);
 /* Find table information, with conn as part of input parameters.  Return NULL if no table.  */

@@ -1,10 +1,14 @@
 /* freen - My Pet Freen. */
 #include "common.h"
 #include "linefile.h"
+#include "localmem.h"
 #include "hash.h"
 #include "options.h"
-#include "obscure.h"
-#include "jsHelper.h"
+#include "ra.h"
+#include "jksql.h"
+#include "trackDb.h"
+#include "hui.h"
+#include "correlate.h"
 
 void usage()
 {
@@ -15,18 +19,22 @@ errAbort("freen - test some hairbrained thing.\n"
 void freen(char *input)
 /* Test some hair-brained thing. */
 {
-size_t size;
-char *buf;
-readInGulp(input, &buf, &size);
-char *untagged = stripRegEx(buf, "<[^>]*>", REG_ICASE);
-puts(untagged);
+struct hash *hash = raReadAll(input, "track"); 
+struct hashEl *hohList = hashElListHash(hash);
+struct hashEl *hohEl;
+for (hohEl = hohList; hohEl != NULL; hohEl = hohEl->next)
+    {
+    struct hashEl *helList = hashElListHash(hohEl->val);
+    struct hashEl *hel;
+    for (hel = helList; hel != NULL; hel = hel->next)
+        printf("%s: %s\n", hel->name, (char*)hel->val);
+    printf("\n");
+    }
 }
 
 int main(int argc, char *argv[])
 /* Process command line. */
 {
-// optionInit(&argc, argv, options);
-
 if (argc != 2)
     usage();
 freen(argv[1]);

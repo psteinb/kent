@@ -8,33 +8,37 @@ static char const rcsid[] = "$Id: variation.c,v 1.148 2010/06/07 16:54:21 angie 
 
 static double snp125AvHetCutoff = SNP125_DEFAULT_MIN_AVHET;
 static int snp125WeightCutoff = SNP125_DEFAULT_MAX_WEIGHT;
+static int snp132MinSubmitters = SNP132_DEFAULT_MIN_SUBMITTERS;
+static float snp132MinMinorAlFreq = SNP132_DEFAULT_MIN_MINOR_AL_FREQ;
+static float snp132MaxMinorAlFreq = SNP132_DEFAULT_MAX_MINOR_AL_FREQ;
+static int snp132MinAlFreq2N = SNP132_DEFAULT_MIN_AL_FREQ_2N;
 
 // Globals for caching cart coloring and filtering settings for snp125+ tracks:
-static char **snp125LocTypeCart = NULL;
-static char **snp125ClassCart = NULL;
-static char **snp125MolTypeCart = NULL;
-static char **snp125ValidCart = NULL;
+static enum snp125ColorSource snp125ColorSource = SNP125_DEFAULT_COLOR_SOURCE;
+static enum snp125Color *snp125LocTypeCart = NULL;
+static enum snp125Color *snp125ClassCart = NULL;
+static enum snp125Color *snp125MolTypeCart = NULL;
+static enum snp125Color *snp125ValidCart = NULL;
 static struct hash *snp125FuncCartColorHash = NULL;
 static struct hash *snp125FuncCartNameHash = NULL;
+static enum snp125Color *snp132ExceptionsCart = NULL;
+static enum snp125Color *snp132BitfieldsCart = NULL;
 
 static boolean snp125LocTypeFilterOn = FALSE;
 static boolean snp125ClassFilterOn = FALSE;
 static boolean snp125MolTypeFilterOn = FALSE;
 static boolean snp125ValidFilterOn = FALSE;
 static boolean snp125FuncFilterOn = FALSE;
+static boolean snp132ExceptionFilterOn = FALSE;
+static boolean snp132BitfieldFilterOn = FALSE;
 
 static struct slName *snp125LocTypeFilter = NULL;
 static struct slName *snp125ClassFilter = NULL;
 static struct slName *snp125MolTypeFilter = NULL;
 static struct slName *snp125ValidFilter = NULL;
 static struct slName *snp125FuncFilter = NULL;
-
-void filterSnpMapItems(struct track *tg, boolean (*filter)
-		       (struct track *tg, void *item))
-/* Filter out items from track->itemList. */
-{
-filterSnpItems(tg, filter);
-}
+static struct slName *snp132ExceptionFilter = NULL;
+static struct slName *snp132BitfieldFilter = NULL;
 
 void filterSnpItems(struct track *tg, boolean (*filter)
 		    (struct track *tg, void *item))
@@ -106,6 +110,56 @@ struct snp125 *el = item;
 if (el->weight > snp125WeightCutoff)
     return FALSE;
 return TRUE;
+}
+
+boolean snp132MinSubmittersFilterItem(void *item)
+/* Return TRUE if item passes filter. */
+{
+struct snp132Ext *el = item;
+
+if (el->submitterCount < snp132MinSubmitters)
+    return FALSE;
+return TRUE;
+}
+
+static float snp132MajorAlleleFreq(const struct snp132Ext *snp)
+/* Some SNPs have >2 alleles, so minor allele frequency is harder to define.
+ * So instead, I'm using major allele frequency -- (1 - major) can be a proxy for minor. */
+{
+float majorAlF = 0.0;
+int i;
+for (i = 0;  i < snp->alleleFreqCount;  i++)
+    if (snp->alleleFreqs[i] > majorAlF)
+	majorAlF = snp->alleleFreqs[i];
+return majorAlF;
+}
+
+static boolean snp132MinorAlFreqFilterItem(void *item)
+/* Return TRUE if item passes filter, i.e. has a minor allele frequency >= threshold
+ * (but if the range has not been changed from defaults, don't require that item has
+ * any allele frequency data). */
+{
+if (snp132MinMinorAlFreq == SNP132_DEFAULT_MIN_MINOR_AL_FREQ &&
+    snp132MaxMinorAlFreq == SNP132_DEFAULT_MAX_MINOR_AL_FREQ)
+    return TRUE;
+struct snp132Ext *el = item;
+float majorAlFreq = snp132MajorAlleleFreq(el);
+return (((1.0 - majorAlFreq) >= snp132MinMinorAlFreq) &&
+	((1.0 - majorAlFreq) <= snp132MaxMinorAlFreq));
+}
+
+static boolean snp132MinAlFreq2NFilterItem(void *item)
+/* Return TRUE if item passes filter, i.e. has a 2N chromosome count > threshold
+ * (but if threshold is 0, don't require that item has any allele frequency data). */
+{
+if (snp132MinAlFreq2N == 0)
+    return TRUE;
+struct snp132Ext *el = item;
+int twoN = 0;
+int i;
+for (i = 0;  i < el->alleleFreqCount;  i++)
+    twoN += (int)(round(el->alleleNs[i]));
+return (twoN >= snp132MinAlFreq2N);
 }
 
 boolean snpSourceFilterItem(struct track *tg, void *item)
@@ -193,8 +247,8 @@ else
     while (s != NULL && s[0] != 0)
 	{
 	e = strchr(s, ',');
-	if (e == NULL && slNameInList(snp125ValidFilter, s))
-	    return TRUE;
+	if (e == NULL)
+	    return slNameInList(snp125ValidFilter, s);
 	else
 	    {
 	    safencpy(val, sizeof(val), s, e-s);
@@ -265,6 +319,66 @@ else
     return slNameInList(snp125LocTypeFilter, el->locType);
 }
 
+static boolean snp132ExceptionFilterItem(void *item)
+/* Return TRUE if item passes filter, i.e. has an included property. */
+{
+struct snp132Ext *el = item;
+if (! snp132ExceptionFilterOn)
+    return TRUE;
+else
+    {
+    if (isEmpty(el->exceptions) && slNameInList(snp132ExceptionFilter, "NoExceptions"))
+	return TRUE;
+    char *s = el->exceptions, *e;
+    char val[256]; // Longest exception name is much shorter than this
+    while (s != NULL && s[0] != 0)
+	{
+	e = strchr(s, ',');
+	if (e == NULL)
+	    return slNameInList(snp132ExceptionFilter, s);
+	else
+	    {
+	    safencpy(val, sizeof(val), s, e-s);
+	    if (slNameInList(snp132ExceptionFilter, val))
+		return TRUE;
+	    e += 1;
+	    }
+	s = e;
+	}
+    return FALSE;
+    }
+}
+
+static boolean snp132BitfieldFilterItem(void *item)
+/* Return TRUE if item passes filter, i.e. has an included property. */
+{
+struct snp132Ext *el = item;
+if (! snp132BitfieldFilterOn)
+    return TRUE;
+else
+    {
+    if (isEmpty(el->bitfields) && slNameInList(snp132BitfieldFilter, ""))
+	return TRUE;
+    char *s = el->bitfields, *e;
+    char val[256]; // Longest bitfield name is much shorter than this
+    while (s != NULL && s[0] != 0)
+	{
+	e = strchr(s, ',');
+	if (e == NULL)
+	    return slNameInList(snp132BitfieldFilter, s);
+	else
+	    {
+	    safencpy(val, sizeof(val), s, e-s);
+	    if (slNameInList(snp132BitfieldFilter, val))
+		return TRUE;
+	    e += 1;
+	    }
+	s = e;
+	}
+    return FALSE;
+    }
+}
+
 void filterSnp125Items(struct track *tg, int version)
 /* Filter out items from track->itemList using snp125 filters. */
 {
@@ -279,12 +393,29 @@ for (el = tg->items; el != NULL; el = next)
 	snp125ClassFilterItem(el) &&
 	snp125ValidFilterItem(el) &&
 	snp125FuncFilterItem(el) &&
-	(version >= 128 || snp125LocTypeFilterItem(el)))
- 	slAddHead(&newList, el);
+	(version >= 128 || snp125LocTypeFilterItem(el)) &&
+	(version < 132 ||
+	 (snp132MinSubmittersFilterItem(el) &&
+	  snp132MinorAlFreqFilterItem(el) &&
+	  snp132MinAlFreq2NFilterItem(el) &&
+	  snp132ExceptionFilterItem(el) &&
+	  snp132BitfieldFilterItem(el))))
+        slAddHead(&newList, el);
     }
 slReverse(&newList);
 tg->items = newList;
 }
+
+struct orthoBed
+/* Abbreviated version of orthoAlleles: bed4 plus chimp allele */
+    {
+    struct orthoBed *next;       /* Next in singly linked list. */
+    char            *chrom;      /* Human chromosome or FPC contig */
+    unsigned         chromStart; /* Start position in chromosome */
+    unsigned         chromEnd;   /* End position in chromosome */
+    char            *name;       /* Name of item */
+    char            *chimp;      /* Chimp allele */
+    };
 
 struct orthoBed *orthoBedLoad(char **row)
 /* Load a bed from row fetched with select * from bed
@@ -304,10 +435,11 @@ return ret;
 }
 
 int snpOrthoCmp(const void *va, const void *vb)
-/* Compare for sort based on bed4 */
+/* Compare for sort based on bed4 -- like bedCmp, but more
+ * deterministic because it uses chromEnd and name too. */
 {
-struct snp125Extended *a = *((struct snp125Extended **)va);
-struct orthoBed       *b = *((struct orthoBed       **)vb);
+struct bed4 *a = *((struct bed4 **)va);
+struct bed4 *b = *((struct bed4 **)vb);
 int dif;
 
 if(a==0||b==0)
@@ -324,17 +456,22 @@ return dif;
 
 void setSnp125ExtendedNameExtra(struct track *tg)
 /* add extra text to be drawn in snp name field.  This works by
-   walking through two sorted lists and updating the nameExtra value
+   walking through two sorted lists and updating the name value
    for the SNP list with data from a table of orthologous state
    information */
 {
+char cartVar[512];
+    safef(cartVar, sizeof(cartVar), "%s.extendedNames", tg->tdb->track);
+boolean enabled = cartUsualBoolean(cart, cartVar,
+			  // Check old cart var name for backwards compatibility w/ old sessions:
+				   cartUsualBoolean(cart, "snp125ExtendedNames", FALSE));
+if (!enabled)
+    return;
 struct sqlConnection *conn          = hAllocConn(database);
 int                   rowOffset     = 0;
 char                **row           = NULL;
-struct slList        *snpItemList   = tg->items; /* list of SNPs */
-struct slList        *snpItem       = snpItemList;
-struct slList        *orthoItemList = NULL;      /* list of orthologous state info */
-struct slList        *orthoItem     = orthoItemList;
+struct orthoBed      *orthoItemList = NULL;      /* list of orthologous state info */
+struct orthoBed      *orthoItem     = orthoItemList;
 char                 *orthoTable    = snp125OrthoTable(tg->tdb, NULL);
 struct sqlResult     *sr            = NULL;
 int                   cmp           = 0;
@@ -350,16 +487,16 @@ if(isEmpty(orthoTable) || !sqlTableExists(conn, orthoTable))
 sr = hRangeQuery(conn, orthoTable, chromName, winStart, winEnd, NULL, &rowOffset);
 while ((row = sqlNextRow(sr)) != NULL)
     {
-    orthoItem = (struct slList *)orthoBedLoad(row + rowOffset);
+    orthoItem = orthoBedLoad(row + rowOffset);
     if (orthoItem)
         slAddHead(&orthoItemList, orthoItem);
     }
 
 /* List of SNPs is already sorted, so sort list of Ortho info */
-slSort(&orthoItemList, bedCmp);
+slSort(&orthoItemList, snpOrthoCmp);
 
 /* Walk through two sorted lists together */
-snpItem   = snpItemList;
+struct snp125 *snpItem = tg->items;
 orthoItem = orthoItemList;
 while (snpItem!=NULL && orthoItem!=NULL)
     {
@@ -376,28 +513,72 @@ while (snpItem!=NULL && orthoItem!=NULL)
 	orthoItem = orthoItem->next;
 	continue;
 	}
-    /* update the snp->extraName with the ortho data */
-    dyStringPrintf(extra, " %s>%s", ((struct orthoBed *)orthoItem)->chimp, ((struct snp125Extended *)snpItem)->observed);
-    ((struct snp125Extended *)snpItem)->nameExtra = cloneString(extra->string);
+    /* update the snp->name with the ortho data */
+    dyStringPrintf(extra, "%s %s>%s", snpItem->name, orthoItem->chimp, snpItem->observed);
+    snpItem->name = cloneString(extra->string);
     dyStringClear(extra);
     /* increment the list pointers */
     snpItem = snpItem->next;
     orthoItem = orthoItem->next;
     }
-tg->items=snpItemList;
 freeDyString(&extra);
 sqlFreeResult(&sr);
 hFreeConn(&conn);
 }
 
-Color snp125ExtendedColor(struct track *tg, void *item, struct hvGfx *hvg)
-/* Return color of snp track item. */
+static char *snp125MapItemName(struct track *tg, void *item)
+/* Now that snp125->name is overwritten when adding chimp allele suffix, we need
+ * to strip it back off for links to hgc. */
 {
-return ((struct snp125Extended *)item)->color;
+static char mapName[256];
+struct snp125 *snp = item;
+safecpy(mapName, sizeof(mapName), snp->name);
+char *ptr = strchr(mapName, ' ');
+if (ptr != NULL)
+    *ptr = '\0';
+return mapName;
 }
 
-int snp125ExtendedColorCmpRaw(const Color ca, const char *aName,
-			      const Color cb, const char *bName)
+static Color snp132ColorByAlleleFreq(struct snp132Ext *snp, struct hvGfx *hvg)
+/* If snp has allele freq data, return a shade from red (rare) to blue (common);
+ * otherwise return black. */
+{
+static boolean colorsInited = FALSE;
+static Color redToBlue[EXPR_DATA_SHADES];
+static struct rgbColor red = {255, 0, 0};
+static struct rgbColor blue = {0, 0, 255};
+if (!colorsInited)
+    hvGfxMakeColorGradient(hvg, &red, &blue, EXPR_DATA_SHADES, redToBlue);
+if (snp->alleleFreqCount > 0)
+    {
+    float majorAlF = snp132MajorAlleleFreq(snp);
+    // >2 common alleles (e.g. at VNTR sites) can cause low major allele freq;
+    // cap at 0.5 to avoid overflow in the shade calculation.
+    if (majorAlF < 0.5)
+	majorAlF = 0.5;
+    if (majorAlF > 1.0)
+	majorAlF = 1.0;
+    // Shade on a scale of 100% (red) to 50% (blue):
+    int shadeIndex = (int)((1.0 - 2.0*(majorAlF - 0.5)) * (EXPR_DATA_SHADES-1));
+    return redToBlue[shadeIndex];
+    }
+return MG_BLACK;
+}
+
+Color snp125Color(struct track *tg, void *item, struct hvGfx *hvg)
+/* Return color of snp track item -- stashed in the weight column for set/enum
+ * attributes that were used for sorting at draw time.  Allele frequency shading
+ * must be done at draw time because it uses hvg.  Aside from allele frequencies
+ * and overloaded weight, only the bed4 fields of snp are used at draw time). */
+{
+struct snp132Ext *snp = item;
+if (snp125ColorSource == snp125ColorSourceAlleleFreq)
+    return snp132ColorByAlleleFreq(snp, hvg);
+else
+    return (Color)(snp->weight);
+}
+
+int snp125ColorCmpRaw(const Color ca, const char *aName, const Color cb, const char *bName)
 /* Compare to sort based on color -- black first, red last.  This is not
  * a slSort Cmp function, just a comparator of the values. */
 {
@@ -428,71 +609,102 @@ hPrintComment("SNP track: colors %d (%s) and %d (%s) not known", ca, aName, cb, 
 return 0;
 }
 
-int snp125ExtendedColorCmp(const void *va, const void *vb)
+int snp125ColorCmp(const void *va, const void *vb)
 /* Compare to sort based on color -- black first, red last */
 {
-const struct snp125Extended *a = *((struct snp125Extended **)va);
-const struct snp125Extended *b = *((struct snp125Extended **)vb);
-const Color ca = a->color;
-const Color cb = b->color;
+const struct snp125 *a = *((struct snp125 **)va);
+const struct snp125 *b = *((struct snp125 **)vb);
+const Color ca = (Color)(a->weight);
+const Color cb = (Color)(b->weight);
 
-return snp125ExtendedColorCmpRaw(ca, a->name, cb, b->name);
+return snp125ColorCmpRaw(ca, a->name, cb, b->name);
 }
 
-void sortSnp125ExtendedByColor(struct track *tg)
-/* Sort snps so that more functional snps (non-synonymous, splice site) are printed last.
- * Color calculation is used as an intermediate step to represent severity. */
+int snp125ColorCmpDesc(const void *va, const void *vb)
+/* Compare to sort based on color -- red first, black last */
 {
-/* snp and snpMap have different loaders that do not support the color
- * attribute of the snp125Extended struct */
-if(differentString(tg->table,"snp") && differentString(tg->table,"snpMap"))
-    slSort(&tg->items, snp125ExtendedColorCmp);
+return snp125ColorCmp(vb, va);
 }
 
-void loadSnp125Extended(struct track *tg)
-/* load snps from snp125 table, ortho alleles from snpXXXortho table,
- * and return in extended struct */
+static enum snp125Color *snp125ColorsFromCart(char *track, char *attribute,
+				 char *vars[], boolean varsAreOld, char *defaults[], int varCount)
+/* Look up attribute colors in cart using both old and new cart var names where applicable. */
 {
-struct sqlConnection   *conn      = hAllocConn(database);
-int                     rowOffset = 0;
-char                  **row       = NULL;
-struct slList          *itemList  = tg->items;
-struct slList          *item      = itemList;
-struct sqlResult       *sr        = NULL;
-struct snp125Extended  *se        = NULL;
-enum   trackVisibility  visLim    = limitVisibility(tg);
-int                     version   = snpVersion(tg->table);
-int                     i         = 0;
+enum snp125Color *cartColors = NULL;
+AllocArray(cartColors, varCount);
+int i;
+for (i=0; i < varCount; i++)
+    {
+    char cartVar[512];
+    safef(cartVar, sizeof(cartVar), "%s.%s%s", track, attribute,
+	  (varsAreOld ? snp125OldColorVarToNew(vars[i], attribute) : vars[i]));
+    char *defaultCol = defaults[i];
+    if (varsAreOld)
+	defaultCol = cartUsualString(cart, vars[i], defaultCol);
+    char *col = cartUsualString(cart, cartVar, defaultCol);
+    cartColors[i] = stringArrayIx(col, snp125ColorLabel, snp125ColorArraySize);
+    }
+return cartColors;
+}
 
-snp125AvHetCutoff = cartUsualDouble(cart, "snp125AvHetCutoff", SNP125_DEFAULT_MIN_AVHET);
-snp125WeightCutoff = cartUsualInt(cart, "snp125WeightCutoff", SNP125_DEFAULT_MAX_WEIGHT);
-snp125ExtendedNames = cartUsualBoolean(cart, "snp125ExtendedNames", FALSE);
+static void snp125SetupFiltersAndColorsFromCart(struct trackDb *tdb)
+/* Load the controls set by hgTrackUi into global vars. */
+{
+char *track = tdb->track;
+char cartVar[512];
+safef(cartVar, sizeof(cartVar), "%s.minAvHet", track);
+snp125AvHetCutoff = cartUsualDouble(cart, cartVar,
+			     // Check old cart var name:
+			     cartUsualDouble(cart, "snp125AvHetCutoff", SNP125_DEFAULT_MIN_AVHET));
+safef(cartVar, sizeof(cartVar), "%s.maxWeight", track);
+int defaultMaxWeight = SNP125_DEFAULT_MAX_WEIGHT;
+char *setting = trackDbSetting(tdb, "defaultMaxWeight");
+if (isNotEmpty(setting))
+    defaultMaxWeight = atoi(setting);
+snp125WeightCutoff = cartUsualInt(cart, cartVar,
+			     // Check old cart var name and tdb default:
+			     cartUsualInt(cart, "snp125WeightCutoff", defaultMaxWeight));
+safef(cartVar, sizeof(cartVar), "%s.minSubmitters", track);
+snp132MinSubmitters = cartUsualInt(cart, cartVar, SNP132_DEFAULT_MIN_SUBMITTERS);
+safef(cartVar, sizeof(cartVar), "%s.minMinorAlFreq", track);
+snp132MinMinorAlFreq = cartUsualDouble(cart, cartVar, SNP132_DEFAULT_MIN_MINOR_AL_FREQ);
+safef(cartVar, sizeof(cartVar), "%s.maxMinorAlFreq", track);
+snp132MaxMinorAlFreq = cartUsualDouble(cart, cartVar, SNP132_DEFAULT_MAX_MINOR_AL_FREQ);
+safef(cartVar, sizeof(cartVar), "%s.minAlFreq2N", tdb->track);
+snp132MinAlFreq2N = cartUsualInt(cart, cartVar, SNP132_DEFAULT_MIN_AL_FREQ_2N);
 
-char *track = tg->tdb->track;
 snp125MolTypeFilter = snp125FilterFromCart(cart, track, "molType", &snp125MolTypeFilterOn);
 snp125ClassFilter = snp125FilterFromCart(cart, track, "class", &snp125ClassFilterOn);
 snp125ValidFilter = snp125FilterFromCart(cart, track, "valid", &snp125ValidFilterOn);
 snp125FuncFilter = snp125FilterFromCart(cart, track, "func", &snp125FuncFilterOn);
 snp125LocTypeFilter = snp125FilterFromCart(cart, track, "locType", &snp125LocTypeFilterOn);
+snp132ExceptionFilter = snp125FilterFromCart(cart, track, "exceptions", &snp132ExceptionFilterOn);
+snp132BitfieldFilter = snp125FilterFromCart(cart, track, "bitfields", &snp132BitfieldFilterOn);
 
-AllocArray(snp125MolTypeCart, snp125MolTypeArraySize);
-for (i=0; i < snp125MolTypeArraySize; i++)
-    snp125MolTypeCart[i] = cartUsualString(cart, snp125MolTypeStrings[i], snp125MolTypeDefault[i]);
-AllocArray(snp125ClassCart, snp125ClassArraySize);
-for (i=0; i < snp125ClassArraySize; i++)
-    snp125ClassCart[i] = cartUsualString(cart, snp125ClassStrings[i], snp125ClassDefault[i]);
-AllocArray(snp125ValidCart, snp125ValidArraySize);
-for (i=0; i < snp125ValidArraySize; i++)
-    snp125ValidCart[i] = cartUsualString(cart, snp125ValidStrings[i], snp125ValidDefault[i]);
-AllocArray(snp125LocTypeCart, snp125LocTypeArraySize);
-for (i=0; i < snp125LocTypeArraySize; i++)
-    snp125LocTypeCart[i] = cartUsualString(cart, snp125LocTypeStrings[i], snp125LocTypeDefault[i]);
+snp125ColorSource = snp125ColorSourceFromCart(cart, tdb);
+snp125MolTypeCart = snp125ColorsFromCart(track, "molType", snp125MolTypeOldColorVars, TRUE,
+					 snp125MolTypeDefault, snp125MolTypeArraySize);
+snp125ClassCart = snp125ColorsFromCart(track, "class", snp125ClassOldColorVars, TRUE,
+				       snp125ClassDefault, snp125ClassArraySize);
+snp125ValidCart = snp125ColorsFromCart(track, "valid", snp125ValidOldColorVars, TRUE,
+				       snp125ValidDefault, snp125ValidArraySize);
+snp125LocTypeCart = snp125ColorsFromCart(track, "locType", snp125LocTypeOldColorVars, TRUE,
+					 snp125LocTypeDefault, snp125LocTypeArraySize);
+snp132ExceptionsCart = snp125ColorsFromCart(track, "exception", snp132ExceptionVarName, FALSE,
+					    snp132ExceptionDefault, snp132ExceptionArraySize);
+snp132BitfieldsCart = snp125ColorsFromCart(track, "bitfields", snp132BitfieldVarName, FALSE,
+					   snp132BitfieldDefault, snp132BitfieldArraySize);
 
 snp125FuncCartColorHash = hashNew(0);
 snp125FuncCartNameHash = hashNew(0);
+int i;
 for (i=0; i < snp125FuncArraySize; i++)
     {
-    char *cartVal = cartUsualString(cart, snp125FuncStrings[i], snp125FuncDefault[i]);
+    safef(cartVar, sizeof(cartVar), "%s.func%s",
+	  track, snp125OldColorVarToNew(snp125FuncOldColorVars[i], "func"));
+    char *cartVal = cartUsualString(cart, cartVar,
+				    cartUsualString(cart, snp125FuncOldColorVars[i],
+						    snp125FuncDefault[i]));
     /* There are many function types, some of which are mapped onto
      * simpler types in snp125Ui.c.  First store the indexes of
      * selected colors of simpler types that we present as coloring
@@ -507,54 +719,228 @@ for (i=0; i < snp125FuncArraySize; i++)
 int j, k;
 for (j = 0;  snp125FuncDataSynonyms[j] != NULL;  j++)
     {
+    char *canonical = snp125FuncDataSynonyms[j][0];
     for (k = 1;  snp125FuncDataSynonyms[j][k] != NULL;  k++)
 	{
 	hashAddInt(snp125FuncCartColorHash, snp125FuncDataSynonyms[j][k],
-		   hashIntVal(snp125FuncCartColorHash,
-			      snp125FuncDataSynonyms[j][0]));
-	hashAdd(snp125FuncCartNameHash, snp125FuncDataSynonyms[j][k],
-		snp125FuncDataSynonyms[j][0]);
+		   hashIntVal(snp125FuncCartColorHash, canonical));
+	hashAdd(snp125FuncCartNameHash, snp125FuncDataSynonyms[j][k], canonical);
 	}
     }
+}
 
-/* load SNPs */
-sr = hRangeQuery(conn, tg->table, chromName, winStart, winEnd, NULL, &rowOffset);
+Color snp125ColorToMg(enum snpColorEnum thisSnpColor)
+/* Translate full range of snpColorEnum into memgfx MG_<COLOR>. */
+{
+switch (thisSnpColor)
+    {
+    case snp125ColorRed:
+	return MG_RED;
+	break;
+    case snp125ColorGreen:
+	return MG_GREEN;
+	break;
+    case snp125ColorBlue:
+	return MG_BLUE;
+	break;
+    case snp125ColorGray:
+	return MG_GRAY;
+	break;
+    case snp125ColorBlack:
+    default:
+	return MG_BLACK;
+	break;
+    }
+}
 
-if(differentString(tg->table,"snp") && differentString(tg->table,"snpMap"))
-    while ((row = sqlNextRow(sr)) != NULL)
+static void snp125ColorItems(struct track *tg, int version)
+/* Use cart settings and snp properties to assign a color to snp -- and stash it in snp->weight.
+ * Note: we can't do the allele frequency shading here because that uses hvg for the shades,
+ * and hvg isn't passed in until draw time. */
+{
+struct snp132Ext *snp;
+for (snp = tg->items;  snp != NULL;  snp = snp->next)
+    {
+    enum snp125Color color = snp125ColorBlack;
+    int valIx;
+    char *words[128];
+    int wordCount, i;
+    char buf[4096];
+    switch (snp125ColorSource)
 	{
-	/* use loader for snp125 table format */
-	item = (struct slList *)snp125ExtendedLoad(row + rowOffset);
-	se = (struct snp125Extended *)item;
-	se->color = snp125Color(tg, se, NULL);
-	slAddHead(&itemList, item);
+	case snp125ColorSourceMolType:
+	    valIx = stringArrayIx(snp->molType, snp125MolTypeDataName, snp125MolTypeArraySize);
+	    if (valIx < 0)
+		valIx = 0;
+	    color = snp125MolTypeCart[valIx];
+	    break;
+	case snp125ColorSourceClass:
+	    valIx = stringArrayIx(snp->class, snp125ClassDataName, snp125ClassArraySize);
+	    if (valIx < 0)
+		valIx = 0;
+	    color = snp125ClassCart[valIx];
+	    break;
+	case snp125ColorSourceValid:
+	    for (i=0; i < snp125ValidArraySize; i++)
+		if (containsStringNoCase(snp->valid, snp125ValidDataName[i]))
+		    color = snp125ValidCart[i];
+	    break;
+	case snp125ColorSourceFunc:
+	    {
+	    safecpy(buf, sizeof(buf), snp->func);
+	    wordCount = chopCommas(buf, words);
+	    for (i = 0;  i < wordCount;  i++)
+		{
+		enum snp125Color wordColor = hashIntVal(snp125FuncCartColorHash, words[i]);
+		if (snp125ColorCmpRaw(snp125ColorToMg(wordColor), "wordColor",
+				      snp125ColorToMg(color), "color") > 0)
+		    color = wordColor;
+		}
+	    }
+	    break;
+	case snp125ColorSourceLocType:
+	    valIx = stringArrayIx(snp->locType,snp125LocTypeDataName,snp125LocTypeArraySize);
+	    if (valIx < 0)
+		valIx = 0;
+	    color = snp125LocTypeCart[valIx];
+	    break;
+	case snp125ColorSourceExceptions:
+	    {
+	    if (isEmpty(snp->exceptions))
+		color = snp132ExceptionsCart[0];
+	    else
+		{
+		safecpy(buf, sizeof(buf), snp->exceptions);
+		wordCount = chopCommas(buf, words);
+		for (i = 0;  i < wordCount;  i++)
+		    {
+		    valIx = stringArrayIx(words[i], snp132ExceptionVarName, snp132ExceptionArraySize);
+		    enum snp125Color wordColor = snp132ExceptionsCart[valIx];
+		    if (snp125ColorCmpRaw(snp125ColorToMg(wordColor), "wordColor",
+					  snp125ColorToMg(color), "color") > 0)
+			color = wordColor;
+		    }
+		}
+	    }
+	    break;
+	case snp125ColorSourceBitfields:
+	    {
+	    if (isEmpty(snp->bitfields))
+		color = snp132BitfieldsCart[0];
+	    else
+		{
+		safecpy(buf, sizeof(buf), snp->bitfields);
+		wordCount = chopCommas(buf, words);
+		for (i = 0;  i < wordCount;  i++)
+		    {
+		    valIx = stringArrayIx(words[i], snp132BitfieldDataName, snp132BitfieldArraySize);
+		    enum snp125Color wordColor = snp132BitfieldsCart[valIx];
+		    if (snp125ColorCmpRaw(snp125ColorToMg(wordColor), "wordColor",
+					  snp125ColorToMg(color), "color") > 0)
+			color = wordColor;
+		    }
+		}
+	    }
+	    break;
+	case snp125ColorSourceAlleleFreq:
+	default:
+	    color = snp125ColorBlack;
+	    break;
 	}
-else
-    while ((row = sqlNextRow(sr)) != NULL)
-	{
-	/* use loader for pre-snp125 table format */
-	item = (struct slList *)snpExtendedLoad(row + rowOffset);
-	se = (struct snp125Extended *)item;
-	se->color = snp125Color(tg, se, NULL);
-	slAddHead(&itemList, item);
-	}
+    snp->weight = snp125ColorToMg(color);
+    }
+}
+
+static void loadSnp125Basic(struct track *tg, int version, void *(loadFunction)(char **))
+/* load snp125 or snp132Ext items from table */
+{
+struct sqlConnection *conn = hAllocConn(database);
+struct snp132Ext *itemList = NULL;
+int rowOffset = 0;
+char **row = NULL;
+struct sqlResult *sr = hRangeQuery(conn, tg->table, chromName, winStart, winEnd, NULL, &rowOffset);
+while ((row = sqlNextRow(sr)) != NULL)
+    {
+    struct slList *snp = loadFunction(row + rowOffset);
+    slAddHead(&itemList, snp);
+    }
 sqlFreeResult(&sr);
 hFreeConn(&conn);
-
 tg->items = itemList;
+}
 
-filterSnp125Items(tg, version);
+static int bedCmpStartName(const void *va, const void *vb)
+/* Compare two bed4's by chromStart (chrom assumed to be same) and name. */
+{
+const struct bed *a = *((struct bed **)va);
+const struct bed *b = *((struct bed **)vb);
+int diff = a->chromStart - b->chromStart;
+if (diff == 0)
+    diff = strcmp(a->name, b->name);
+return diff;
+}
 
-if (visLim==tvDense)
-    sortSnp125ExtendedByColor(tg);
+static int snp132AlFreqCmp(const void *va, const void *vb)
+/* Compare two SNPs by allele frequency: (no info/)rare first, common last. */
+{
+const struct snp132Ext *a = *((struct snp132Ext **)va);
+const struct snp132Ext *b = *((struct snp132Ext **)vb);
+if (a->alleleFreqCount == 0 && b->alleleFreqCount == 0)
+    return bedCmpStartName(va, vb);
+else if (a->alleleFreqCount == 0 && b->alleleFreqCount != 0)
+    return -1;
+else if (a->alleleFreqCount == 0 && b->alleleFreqCount != 0)
+    return 1;
 else
-     {
-     slSort(&tg->items, bedCmp);
-     if(snp125ExtendedNames && visLim != tvSquish)
-         setSnp125ExtendedNameExtra(tg);
-     tg->limitedVisSet = FALSE;
-     limitVisibility(tg);
-     }
+    {
+    float majorAlFA = snp132MajorAlleleFreq(a);
+    float majorAlFB = snp132MajorAlleleFreq(b);
+    if (majorAlFA > majorAlFB)
+	return -1;
+    else if (majorAlFA < majorAlFB)
+	return 1;
+    else
+	return bedCmpStartName(va, vb);
+    }
+}
+
+static int snp132AlFreqCmpDesc(const void *va, const void *vb)
+/* Compare two SNPs by allele frequency: common first, (no info/)rare last. */
+{
+return snp132AlFreqCmp(vb, va);
+}
+
+void loadSnp125(struct track *tg)
+/* load snps from table, ortho alleles from snpXXXOrthoXXX table, filter and color. */
+{
+int version = snpVersion(tg->table);
+if (version >= 132)
+    loadSnp125Basic(tg, version, (void *)(snp132ExtLoad));
+else if (version >= 125)
+    loadSnp125Basic(tg, version, (void *)(snp125Load));
+else
+    errAbort("How was loadSnp125 called on version < 125? (%d)", version);
+
+snp125SetupFiltersAndColorsFromCart(tg->tdb);
+filterSnp125Items(tg, version);
+snp125ColorItems(tg, version);
+
+// If in dense or squish mode, sort items by color or allele frequency:
+boolean sortByAF = (snp125ColorSource == snp125ColorSourceAlleleFreq);
+if (tg->visibility == tvDense)
+    slSort(&tg->items, sortByAF ? snp132AlFreqCmp : snp125ColorCmp);
+else if (tg->visibility == tvSquish)
+    slSort(&tg->items, sortByAF ? snp132AlFreqCmpDesc : snp125ColorCmpDesc);
+else
+    {
+    slSort(&tg->items, snpOrthoCmp);
+    setSnp125ExtendedNameExtra(tg);
+    enum trackVisibility newVis = limitVisibility(tg);
+    if (newVis == tvDense)
+	slSort(&tg->items, sortByAF ? snp132AlFreqCmp : snp125ColorCmp);
+    else if (newVis == tvSquish)
+	slSort(&tg->items, sortByAF ? snp132AlFreqCmpDesc : snp125ColorCmpDesc);
+    }
 }
 
 void loadSnpMap(struct track *tg)
@@ -571,22 +957,8 @@ for (snpMapType=0; snpMapType<snpMapTypeCartSize; snpMapType++)
 bedLoadItem(tg, "snpMap", (ItemLoader)snpMapLoad);
 if (!startsWith("hg",database))
     return;
-filterSnpMapItems(tg, snpMapSourceFilterItem);
-filterSnpMapItems(tg, snpMapTypeFilterItem);
-}
-
-char *snp125ExtendedName(struct track *tg, void *item)
-{
-struct dyString *ds = newDyString(256);
-struct snp125Extended *se = item;
-char *ret = NULL;
-
-dyStringPrintf(ds, "%s", se->name);
-if (se!=NULL && se->nameExtra != NULL)
-    dyStringAppend(ds, se->nameExtra);
-ret = cloneString(ds->string);
-freeDyString(&ds);
-return ret;
+filterSnpItems(tg, snpMapSourceFilterItem);
+filterSnpItems(tg, snpMapTypeFilterItem);
 }
 
 void loadSnp(struct track *tg)
@@ -649,109 +1021,18 @@ enum   snpColorEnum thisSnpColor = stringArrayIx( snpMapSourceCart[stringArrayIx
 switch (thisSnpColor)
     {
     case snpColorRed:
- 	return MG_RED;
- 	break;
+	return MG_RED;
+	break;
     case snpColorGreen:
- 	return MG_GREEN;
- 	break;
+	return MG_GREEN;
+	break;
     case snpColorBlue:
- 	return MG_BLUE;
- 	break;
-    default:
- 	return MG_BLACK;
- 	break;
-    }
-}
-
-Color snp125ColorToMg(enum snpColorEnum thisSnpColor)
-/* Translate full range of snpColorEnum into memgfx MG_<COLOR>. */
-{
-switch (thisSnpColor)
-    {
-    case snp125ColorRed:
- 	return MG_RED;
- 	break;
-    case snp125ColorGreen:
-        return MG_GREEN;
- 	break;
-    case snp125ColorBlue:
- 	return MG_BLUE;
- 	break;
-    case snp125ColorGray:
-        return MG_GRAY;
-	break;
-    case snp125ColorBlack:
-    default:
- 	return MG_BLACK;
- 	break;
-    }
-}
-
-Color snp125Color(struct track *tg, void *item, struct hvGfx *hvg)
-/* Return color of snp track item. */
-{
-struct snp125 *el = item;
-enum   snp125ColorEnum thisSnpColor = snp125ColorBlack;
-char  *snpColorSource = cartUsualString(cart, snp125ColorSourceVarName, snp125ColorSourceDefault);
-int    snpValid = 0;
-int    index1 = 0;
-int    index2 = 0;
-
-index1 = stringArrayIx(snpColorSource,
-		       snp125ColorSourceLabels, snp125ColorSourceArraySize);
-switch (index1)
-    {
-    case snp125ColorSourceMolType:
-//*** seems like we should precompute a mapping directly from el->molType to color 
-//*** (the second stringArrayIx into snp125MolTypeCart shouldn't be necessary)
-	index2 = stringArrayIx(el->molType,snp125MolTypeDataName,snp125MolTypeArraySize);
-	if (index2 < 0)
-	    index2 = 0;
-	thisSnpColor=(enum snp125ColorEnum)stringArrayIx(snp125MolTypeCart[index2],snp125ColorLabel,snp125ColorArraySize);
-	break;
-    case snp125ColorSourceClass:
-	index2 = stringArrayIx(el->class,snp125ClassDataName,snp125ClassArraySize);
-	if (index2 < 0)
-	    index2 = 0;
-	thisSnpColor=(enum snp125ColorEnum)stringArrayIx(snp125ClassCart[index2],snp125ColorLabel,snp125ColorArraySize);
-	break;
-	/* valid is a set */
-    case snp125ColorSourceValid:
-	for (snpValid=0; snpValid<snp125ValidArraySize; snpValid++)
-	    if (containsStringNoCase(el->valid, snp125ValidDataName[snpValid]))
-		thisSnpColor = (enum snp125ColorEnum) stringArrayIx(snp125ValidCart[snpValid],snp125ColorLabel,snp125ColorArraySize);
-	break;
-	/* func is a set */
-    case snp125ColorSourceFunc:
-	{
-	char *words[128];
-	int wordCount, i;
-	char funcString[4096];
-	safecpy(funcString, sizeof(funcString), el->func);
-	wordCount = chopCommas(funcString, words);
-	for (i = 0;  i < wordCount;  i++)
-	    {
-	    enum snp125ColorEnum wordColor = (enum snp125ColorEnum)
-		hashIntVal(snp125FuncCartColorHash, words[i]);
-	    /* This sorting function is a reverse-sort, so use it backwards: */
-	    if (snp125ExtendedColorCmpRaw(
-			snp125ColorToMg(wordColor), "wordColor",
-			snp125ColorToMg(thisSnpColor), "thisSnpColor") > 0)
-		thisSnpColor = wordColor;
-	    }
-	}
-	break;
-    case snp125ColorSourceLocType:
-	index2 = stringArrayIx(el->locType,snp125LocTypeDataName,snp125LocTypeArraySize);
-	if (index2 < 0)
-	    index2 = 0;
-	thisSnpColor=(enum snp125ColorEnum)stringArrayIx(snp125LocTypeCart[index2],snp125ColorLabel,snp125ColorArraySize);
+	return MG_BLUE;
 	break;
     default:
-	thisSnpColor = snp125ColorBlack;
+	return MG_BLACK;
 	break;
     }
-return snp125ColorToMg(thisSnpColor);
 }
 
 Color snpColor(struct track *tg, void *item, struct hvGfx *hvg)
@@ -869,11 +1150,10 @@ int heightPer = tg->heightPer;
 int x1 = round((double)((int)s->chromStart-winStart)*scale) + xOff;
 int x2 = round((double)((int)s->chromEnd-winStart)*scale) + xOff;
 int w = x2-x1;
-Color itemColor = tg->itemColor(tg, s, hvg);
 
-if ( w<1 )
+if (w < 1)
     w = 1;
-hvGfxBox(hvg, x1, y, w, heightPer, itemColor);
+hvGfxBox(hvg, x1, y, w, heightPer, color);
 /* Clip here so that text will tend to be more visible... */
 if (tg->drawName && vis != tvSquish)
     mapBoxHc(hvg, s->chromStart, s->chromEnd, x1, y, w, heightPer,
@@ -890,6 +1170,10 @@ int lineHeight = tg->lineHeight;
 int heightPer = tg->heightPer;
 int w, y;
 boolean withLabels = (withLeftLabels && vis == tvPack && !tg->drawName);
+#ifdef IMAGEv2_NO_LEFTLABEL_ON_FULL
+if (theImgBox != NULL)
+    withLabels = (withLeftLabels && (vis == tvPack || vis == tvFull) && !tg->drawName);
+#endif ///def IMAGEv2_NO_LEFTLABEL_ON_FULL
 
 if (!tg->drawItemAt)
     errAbort("missing drawItemAt in track %s", tg->track);
@@ -909,7 +1193,7 @@ if (vis == tvPack || vis == tvSquish)
         int textX = x1;
         char *name = tg->itemName(tg, item);
 	Color itemColor = tg->itemColor(tg, item, hvg);
-	Color itemNameColor = tg->itemNameColor(tg, item, hvg);
+        Color itemNameColor = tg->itemNameColor(tg, item, hvg);
 
         y = yOff + lineHeight * sn->row;
         tg->drawItemAt(tg, item, hvg, xOff, y, scale, font, itemColor, vis);
@@ -918,15 +1202,20 @@ if (vis == tvPack || vis == tvSquish)
             int nameWidth = mgFontStringWidth(font, name);
             int dotWidth = tl.nWidth/2;
             textX -= nameWidth + dotWidth;
+        #ifdef IMAGEv2_NO_LEFTLABEL_ON_FULL
+            if (theImgBox == NULL && textX < insideX)
+        #else///ifndef IMAGEv2_NO_LEFTLABEL_ON_FULL
             if (textX < insideX)        /* Snap label to the left. */
+        #endif ///ndef IMAGEv2_NO_LEFTLABEL_ON_FULL
 		{
 		textX = leftLabelX;
-		hvGfxUnclip(hvg);
-		hvGfxSetClip(hvg, leftLabelX, yOff, insideWidth, tg->height);
-		hvGfxTextRight(hvg, leftLabelX, y, leftLabelWidth-1, heightPer,
+                assert(hvgSide != NULL);
+		hvGfxUnclip(hvgSide);
+		hvGfxSetClip(hvgSide, leftLabelX, yOff, insideWidth, tg->height);
+		hvGfxTextRight(hvgSide, leftLabelX, y, leftLabelWidth-1, heightPer,
 			    itemNameColor, font, name);
-		hvGfxUnclip(hvg);
-		hvGfxSetClip(hvg, insideX, yOff, insideWidth, tg->height);
+		hvGfxUnclip(hvgSide);
+		hvGfxSetClip(hvgSide, insideX, yOff, insideWidth, tg->height);
 		}
             else
 		hvGfxTextRight(hvg, textX, y, nameWidth, heightPer,
@@ -946,7 +1235,23 @@ else
 	Color itemColor = tg->itemColor(tg, item, hvg);
         tg->drawItemAt(tg, item, hvg, xOff, y, scale, font, itemColor, vis);
         if (vis == tvFull)
+            {
+        #ifdef IMAGEv2_NO_LEFTLABEL_ON_FULL
+            if (theImgBox != NULL) // In dragScroll >1x item labels cannot be in leftLabel
+                {                  // So they appear here in the image, just like in pack
+                int s = tg->itemStart(tg, item);
+                int textX = round((s - winStart)*scale) + xOff;
+                if (textX >= insideX)
+                    {
+                    char *name = tg->itemName(tg, item);
+                    int nameWidth = mgFontStringWidth(font, name);
+                    Color itemNameColor = tg->itemNameColor(tg, item, hvg);
+                    hvGfxTextRight(hvg, textX, y, nameWidth, heightPer, itemNameColor, font, name);
+                    }
+                }
+        #endif ///def IMAGEv2_NO_LEFTLABEL_ON_FULL
 	    y += lineHeight;
+            }
         }
     }
 }
@@ -961,6 +1266,11 @@ int lineHeight = tg->lineHeight;
 int heightPer = tg->heightPer;
 int y, w;
 boolean withLabels = (withLeftLabels && vis == tvPack && !tg->drawName);
+#ifdef IMAGEv2_NO_LEFTLABEL_ON_FULL
+if (theImgBox != NULL)
+    withLabels = (withLeftLabels && (vis == tvPack || tvFull) && !tg->drawName);
+#endif ///def IMAGEv2_NO_LEFTLABEL_ON_FULL
+snp125ColorSource = snp125ColorSourceFromCart(cart, tg->tdb);
 
 if (!tg->drawItemAt)
     errAbort("missing drawItemAt in track %s", tg->track);
@@ -979,8 +1289,8 @@ if (vis == tvPack || vis == tvSquish)
         int textX = x1;
         char *name = tg->itemName(tg, item);
 	Color itemColor = tg->itemColor(tg, item, hvg);
-	Color itemNameColor = tg->itemNameColor(tg, item, hvg);
-	boolean drawNameInverted = FALSE;
+        Color itemNameColor = tg->itemNameColor(tg, item, hvg);
+        boolean drawNameInverted = FALSE;
 
         y = yOff + lineHeight * sn->row;
         tg->drawItemAt(tg, item, hvg, xOff, y, scale, font, itemColor, vis);
@@ -992,23 +1302,28 @@ if (vis == tvPack || vis == tvSquish)
 	    drawNameInverted = highlightItem(tg, item);
             textX -= nameWidth + dotWidth;
 	    snapLeft = (textX < insideX);
-            if (snapLeft)        /* Snap label to the left. */
+        #ifdef IMAGEv2_NO_LEFTLABEL_ON_FULL
+            if (theImgBox == NULL && snapLeft)
+        #else///ifndef IMAGEv2_NO_LEFTLABEL_ON_FULL
+            if (snapLeft)
+        #endif ///ndef IMAGEv2_NO_LEFTLABEL_ON_FULL
 		{
 		textX = leftLabelX;
-		hvGfxUnclip(hvg);
-		hvGfxSetClip(hvg, leftLabelX, yOff, insideWidth, tg->height);
+                assert(hvgSide != NULL);
+		hvGfxUnclip(hvgSide);
+		hvGfxSetClip(hvgSide, leftLabelX, yOff, insideWidth, tg->height);
 		if (drawNameInverted)
 		    {
 		    int boxStart = leftLabelX + leftLabelWidth - 2 - nameWidth;
-		    hvGfxBox(hvg, boxStart, y, nameWidth+1, heightPer - 1, color);
-		    hvGfxTextRight(hvg, leftLabelX, y, leftLabelWidth-1, heightPer,
+		    hvGfxBox(hvgSide, boxStart, y, nameWidth+1, heightPer - 1, color);
+		    hvGfxTextRight(hvgSide, leftLabelX, y, leftLabelWidth-1, heightPer,
 		                MG_WHITE, font, name);
 		    }
 		else
-		    hvGfxTextRight(hvg, leftLabelX, y, leftLabelWidth-1, heightPer,
+		    hvGfxTextRight(hvgSide, leftLabelX, y, leftLabelWidth-1, heightPer,
 			    itemNameColor, font, name);
-		hvGfxUnclip(hvg);
-		hvGfxSetClip(hvg, insideX, yOff, insideWidth, tg->height);
+		hvGfxUnclip(hvgSide);
+		hvGfxSetClip(hvgSide, insideX, yOff, insideWidth, tg->height);
 		}
             else
 	        {
@@ -1065,15 +1380,13 @@ tg->itemNameColor = snpColor;
 
 void snp125Methods(struct track *tg)
 {
-char *orthoTable  = snp125OrthoTable(tg->tdb, NULL);
 tg->drawItems     = snpDrawItems;
 tg->drawItemAt    = snp125DrawItemAt;
 tg->freeItems     = freeSnp125;
-tg->loadItems     = loadSnp125Extended;
-tg->itemNameColor = snp125ExtendedColor;
-tg->itemColor     = snp125ExtendedColor;
-if (isNotEmpty(orthoTable) && hTableExists(database, orthoTable))
-    tg->itemName  = snp125ExtendedName;
+tg->loadItems     = loadSnp125;
+tg->mapItemName   = snp125MapItemName;
+tg->itemNameColor = snp125Color;
+tg->itemColor     = snp125Color;
 }
 
 char *perlegenName(struct track *tg, void *item)

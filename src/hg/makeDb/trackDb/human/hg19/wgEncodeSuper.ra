@@ -9,7 +9,7 @@ track wgEncodeDNAseSuper
 superTrack on
 group regulation
 shortLabel ENC DNase/FAIRE
-longLabel ENCODE Dnase HS and Open Chromatin
+longLabel ENCODE Open Chromatin by DNaseI HS and FAIRE
 wgEncode 1
 
 track wgEncodeHistoneSuper
@@ -33,6 +33,13 @@ shortLabel ENC DNA Methyl
 longLabel ENCODE DNA Methylation
 wgEncode 1
 
+track wgEncodeRbpSuper
+superTrack on
+group regulation
+shortLabel ENC RNA Binding
+longLabel ENCODE RNA Binding Proteins
+wgEncode 1
+
 track wgEncodeRnaSeqSuper
 superTrack on
 group expression
@@ -45,6 +52,13 @@ superTrack on
 group expression
 shortLabel ENC RNA Subcell Loc
 longLabel ENCODE RNA Subcellular Localization 
+wgEncode 1
+
+track wgEncodeProtGenoSuper
+superTrack on
+group expression
+shortLabel ENC ProtGeno
+longLabel ENCODE Proteogenomics
 wgEncode 1
 
 

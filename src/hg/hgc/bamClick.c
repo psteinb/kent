@@ -5,16 +5,16 @@
 #include "common.h"
 #include "hash.h"
 #include "hdb.h"
-#include "bamFile.h"
+#include "hgBam.h"
 #include "hgc.h"
-#ifdef KNETFILE_HOOKS
+#if (defined USE_BAM && defined KNETFILE_HOOKS)
 #include "knetUdc.h"
 #include "udc.h"
-#endif//def KNETFILE_HOOKS
+#endif//def USE_BAM && KNETFILE_HOOKS
 
 static char const rcsid[] = "$Id: bamClick.c,v 1.21 2010/05/11 01:43:28 kent Exp $";
 
-#include "bamFile.h"
+#include "hgBam.h"
 
 struct bamTrackData
     {
@@ -27,7 +27,7 @@ struct bamTrackData
  * CIGAR that is anchored to positive strand while showing rc'd sequence.  I think
  * to do it right, we would need to reverse the CIGAR string for display. */
 static boolean useStrand = FALSE;
-
+static boolean skipQualityScore = FALSE;
 static void singleBamDetails(const bam1_t *bam)
 /* Print out the properties of this alignment. */
 {
@@ -37,7 +37,8 @@ int tLength = bamGetTargetLength(bam);
 int tStart = core->pos, tEnd = tStart+tLength;
 boolean isRc = useStrand && bamIsRc(bam);
 printPosOnChrom(seqName, tStart, tEnd, NULL, FALSE, itemName);
-printf("<B>Alignment Quality: </B>%d<BR>\n", core->qual);
+if (!skipQualityScore)
+    printf("<B>Alignment Quality: </B>%d<BR>\n", core->qual);
 printf("<B>CIGAR string: </B><tt>%s</tt> (", bamGetCigar(bam));
 bamShowCigarEnglish(bam);
 printf(")<BR>\n");
@@ -54,22 +55,29 @@ puts("<BR>");
 char nibName[HDB_MAX_PATH_STRING];
 hNibForChrom(database, seqName, nibName);
 struct dnaSeq *genoSeq = hFetchSeq(nibName, seqName, tStart, tEnd);
-char *qSeq = NULL;
-struct ffAli *ffa = bamToFfAli(bam, genoSeq, tStart, useStrand, &qSeq);
-printf("<B>Alignment of %s to %s:%d-%d%s:</B><BR>\n", itemName,
-       seqName, tStart+1, tEnd, (isRc ? " (reverse complemented)" : ""));
-ffShowSideBySide(stdout, ffa, qSeq, 0, genoSeq->dna, tStart, tLength, 0, tLength, 8, isRc,
-		 FALSE);
-printf("<B>Sequence quality scores:</B><BR>\n<TT><TABLE><TR>\n");
-UBYTE *quals = bamGetQueryQuals(bam, useStrand);
-int i;
-for (i = 0;  i < core->l_qseq;  i++)
+char *qSeq = bamGetQuerySequence(bam, FALSE);
+if (isNotEmpty(qSeq) && !sameString(qSeq, "*"))
     {
-    if (i > 0 && (i % 24) == 0)
-	printf("</TR>\n<TR>");
-    printf("<TD>%c<BR>%d</TD>", qSeq[i], quals[i]);
+    char *qSeq = NULL;
+    struct ffAli *ffa = bamToFfAli(bam, genoSeq, tStart, useStrand, &qSeq);
+    printf("<B>Alignment of %s to %s:%d-%d%s:</B><BR>\n", itemName,
+	   seqName, tStart+1, tEnd, (isRc ? " (reverse complemented)" : ""));
+    ffShowSideBySide(stdout, ffa, qSeq, 0, genoSeq->dna, tStart, tLength, 0, tLength, 8, isRc,
+		     FALSE);
     }
-printf("</TR></TABLE></TT>\n");
+if (!skipQualityScore && core->l_qseq > 0)
+    {
+    printf("<B>Sequence quality scores:</B><BR>\n<TT><TABLE><TR>\n");
+    UBYTE *quals = bamGetQueryQuals(bam, useStrand);
+    int i;
+    for (i = 0;  i < core->l_qseq;  i++)
+        {
+        if (i > 0 && (i % 24) == 0)
+	    printf("</TR>\n<TR>");
+        printf("<TD>%c<BR>%d</TD>", qSeq[i], quals[i]);
+        }
+    printf("</TR></TABLE></TT>\n");
+    }
 }
 
 static void showOverlap(const bam1_t *leftBam, const bam1_t *rightBam)
@@ -165,6 +173,10 @@ void doBamDetails(struct trackDb *tdb, char *item)
 if (item == NULL)
     errAbort("doBamDetails: NULL item name");
 int start = cartInt(cart, "o");
+if (!tdb || !trackDbSetting(tdb, "bamSkipPrintQualScore"))
+   skipQualityScore = FALSE;
+else
+   skipQualityScore = TRUE;
 // TODO: libify tdb settings table_pairEndsByName, stripPrefix and pairSearchRange
 
 #if (defined USE_BAM && defined KNETFILE_HOOKS)
@@ -172,6 +184,9 @@ knetUdcInstall();
 if (udcCacheTimeout() < 300)
     udcSetCacheTimeout(300);
 #endif//def USE_BAM && KNETFILE_HOOKS
+
+if (sameString(item, "zoom in"))
+    printf("Zoom in to a region with fewer items to enable 'detail page' links for individual items.<BR>");
 
 char varName[1024];
 safef(varName, sizeof(varName), "%s_pairEndsByName", tdb->track);
@@ -181,20 +196,22 @@ char position[512];
 safef(position, sizeof(position), "%s:%d-%d", seqName, winStart, winEnd);
 struct hash *pairHash = isPaired ? hashNew(0) : NULL;
 struct bamTrackData btd = {start, item, pairHash};
-char *fileName;
-if (isCustomTrack(tdb->table))
+char *fileName = trackDbSetting(tdb, "bigDataUrl");
+if (fileName == NULL)
     {
-    fileName = trackDbSetting(tdb, "bigDataUrl");
-    if (fileName == NULL)
-	errAbort("doBamDetails: can't find bigDataUrl for custom track %s", tdb->track);
+    if (isCustomTrack(tdb->table))
+	{
+	errAbort("bamLoadItemsCore: can't find bigDataUrl for custom track %s", tdb->track);
+	}
+    else
+	{
+	struct sqlConnection *conn = hAllocConnTrack(database, tdb);
+	fileName = bamFileNameFromTable(conn, tdb->table, seqName);
+	hFreeConn(&conn);
+	}
     }
-else
-    {
-    struct sqlConnection *conn = hAllocConnTrack(database, tdb);
-    fileName = bamFileNameFromTable(conn, tdb->table, seqName);
-    hFreeConn(&conn);
-    }
-bamFetch(fileName, position, oneBam, &btd);
+
+bamFetch(fileName, position, oneBam, &btd, NULL);
 if (isPaired)
     {
     char *setting = trackDbSettingOrDefault(tdb, "pairSearchRange", "20000");
@@ -206,7 +223,7 @@ if (isPaired)
 	btd.pairHash = newPairHash;
 	safef(position, sizeof(position), "%s:%d-%d", seqName,
 	      max(0, winStart-pairSearchRange), winEnd+pairSearchRange);
-	bamFetch(fileName, position, oneBam, &btd);
+	bamFetch(fileName, position, oneBam, &btd, NULL);
 	}
     struct hashEl *hel;
     struct hashCookie cookie = hashFirst(btd.pairHash);

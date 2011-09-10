@@ -1,3 +1,4 @@
+
 #include "common.h"
 #include "hash.h"
 #include "cheapcgi.h"
@@ -13,8 +14,6 @@
 
 #define MAIN_FORM "mainForm"
 #define WIGGLE_HELP_PAGE  "../goldenPath/help/hgWiggleTrackHelp.html"
-
-struct hash *trackHash = NULL;	/* Hash of all tracks in database. */
 
 void fileUi(struct cart *cart,struct trackDb *tdb, char *db, char *chrom, boolean ajax)
 // Downloadable Files UI
@@ -34,41 +33,69 @@ if (!ajax)
 printf("<B style='font-family:serif; font-size:200%%;'>%s</B>\n", tdb->longLabel);
 
 // If Composite, link to the hgTrackUi.  But if downloadsOnly then link to any superTrack.
-#define LINK_TO_PARENT "%s<B style='font-family:serif; font-size:100%%;'>(<A HREF='%s?%s=%u&c=%s&g=%s' title='Link to parent track'><IMG height=12 src='../images/ab_up.gif'>%s</A>)</B>"
+#define LINK_TO_PARENT "%s<B style='font-family:serif;'>(<A HREF='%s?%s=%u&c=%s&g=%s' title='Link to %s track settings'><IMG height=12 src='../images/ab_up.gif'>%s</A>)</B>\n"
 if (tdbIsComposite(tdb))
     {
     char *encodedTrackName = cgiEncode(tdb->track);
-    printf(LINK_TO_PARENT,"&nbsp;&nbsp;", hgTrackUiName(), cartSessionVarName(), cartSessionId(cart), chrom, encodedTrackName,"Browser tracks");
+    printf(LINK_TO_PARENT,"&nbsp;&nbsp;", hgTrackUiName(), cartSessionVarName(), cartSessionId(cart), chrom, encodedTrackName,tdb->shortLabel,"Track settings");
     freeMem(encodedTrackName);
     }
 else if (tdb->parent) //Print link for parent track
     {
     char *encodedTrackName = cgiEncode(tdb->parent->track);
-    printf(LINK_TO_PARENT,"&nbsp;&nbsp;", hgTrackUiName(), cartSessionVarName(), cartSessionId(cart), chrom, encodedTrackName, tdb->parent->shortLabel);
+    printf(LINK_TO_PARENT,"&nbsp;&nbsp;", hgTrackUiName(), cartSessionVarName(), cartSessionId(cart), chrom, encodedTrackName, tdb->parent->shortLabel, tdb->parent->shortLabel);
     freeMem(encodedTrackName);
     }
-puts("<BR><BR>");
+
+// NAVLINKS - Link to Description down below
+if (tdb->html != NULL && tdb->html[0] != 0)
+    {
+    printf("<span id='navDown' style='float:right; display:none;'>");
+    // First put up a button to go to File Search
+    printf("<A HREF='hgFileSearch?db=%s' TITLE='Search for other downloadable files ...'>File Search</A>&nbsp;&nbsp;&nbsp;",db);
+
+    // Now link to description
+    char *downArrow = "&dArr;";
+    enum browserType browser = cgiBrowser();
+    if (browser == btIE || browser == btFF)
+        downArrow = "&darr;";
+    printf("<A HREF='#TRACK_HTML' TITLE='Jump to description section of page'>Description%s</A>",downArrow);
+    printf("</span>");
+    }
+puts("<BR>");
 
 filesDownloadUi(db,cart,tdb);
 
 // Print data version trackDB setting, if any */
 char *version = trackDbSetting(tdb, "dataVersion");
 if (version)
-    printf("<P><B>Data version:</B> %s<BR>\n", version);
+    {
+    cgiDown(0.7);
+    printf("<B>Data version:</B> %s<BR>\n", version);
+    }
 
 // Print lift information from trackDb, if any
-trackDbPrintOrigAssembly(tdb, db);
+(void) trackDbPrintOrigAssembly(tdb, db);
 
 if (tdb->html != NULL && tdb->html[0] != 0)
     {
-    htmlHorizontalLine();
-    // include anchor for Description link
-    puts("<A NAME=TRACK_HTML></A>");
-    printf("<table class='windowSize'><tr valign='top'><td>");
+    char *browserVersion;
+    if (btIE == cgiClientBrowser(&browserVersion, NULL, NULL) && *browserVersion < '8')
+        htmlHorizontalLine();
+    else // Move line down, since <H2>Description (in ->html) is proceded by too much space
+        printf("<HR ALIGN='bottom' style='position:relative; top:1em;'>");
+
+    printf("<table class='windowSize'><tr valign='top'><td rowspan=2>");
+    puts("<A NAME='TRACK_HTML'></A>");    // include anchor for Description link
+
+    // Add pennantIcon
+    printPennantIconNote(tdb);
+
     puts(tdb->html);
-    printf("</td><td>");
+    printf("</td><td nowrap>");
+    cgiDown(0.7); // positions top link below line
     makeTopLink(tdb);
-    printf("&nbsp</td></tr><tr valign='bottom'><td colspan=2>");
+    printf("&nbsp</td></tr><tr valign='bottom'><td nowrap>");
     makeTopLink(tdb);
     printf("&nbsp</td></tr></table>");
     }
@@ -77,7 +104,6 @@ if (tdb->html != NULL && tdb->html[0] != 0)
 void doMiddle(struct cart *cart)
 /* Write body of web page. */
 {
-struct trackDb *tdbList = NULL;
 struct trackDb *tdb = NULL;
 char *track;
 char *ignored;
@@ -86,9 +112,7 @@ track = cartString(cart, "g"); // QUESTION: Should this be 'f' ??
 getDbAndGenome(cart, &db, &ignored, NULL);
 char *chrom = cartUsualString(cart, "c", hDefaultChrom(db));
 
-// QUESTION: Do We need track list ???  trackHash ??? Can't we just get one track and no children
-trackHash = trackHashMakeWithComposites(db,chrom,&tdbList,FALSE);
-tdb = tdbForTrack(db, track,&tdbList);
+tdb = tdbForTrack(db, track,NULL);// We only need to see one tdb.
 
 
 if (tdb == NULL)
@@ -102,17 +126,6 @@ if (!tdbIsComposite(tdb) && !tdbIsDownloadsOnly(tdb))
     {
     warn("Track '%s' of type %s is not supported by hgFileUi.",track, tdb->type);
     return;
-    }
-
-// QUESTION: Do we need superTrack?  If we have lnk to superTrack, then yes.
-char *super = trackDbGetSupertrackName(tdb);
-if (super)
-    {
-    if (tdb->parent) // configured as a supertrack member in trackDb
-        {
-        tdbMarkAsSuperTrack(tdb->parent);
-        trackDbSuperMemberSettings(tdb);
-        }
     }
 
 fileUi(cart, tdb, db, chrom, FALSE);

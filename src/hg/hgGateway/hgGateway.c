@@ -18,11 +18,10 @@
 #include "jsHelper.h"
 #include "hPrint.h"
 #include "suggest.h"
-#include "searchTracks.h"
+#include "search.h"
 
 static char const rcsid[] = "$Id: hgGateway.c,v 1.117 2010/04/29 02:54:35 larrym Exp $";
 
-boolean isPrivateHost;		/* True if we're on genome-test. */
 struct cart *cart = NULL;
 struct hash *oldVars = NULL;
 char *clade = NULL;
@@ -56,38 +55,37 @@ char *onChangeClade = "onchange=\"document.orgForm.clade.value = document.mainFo
 if (sameString(position, "genome") || sameString(position, "hgBatch"))
     position = defaultPosition;
 
-webIncludeResourceFile("autocomplete.css");
 jsIncludeFile("jquery.js", NULL);
+#ifdef NEW_JQUERY
+webIncludeResourceFile("jquery-ui.css");
+jsIncludeFile("jquery-ui.js", NULL);
+printf("<script type='text/javascript'>var newJQuery=true;</script>\n");
+#else///ifndef NEW_JQUERY
+webIncludeResourceFile("autocomplete.css");
 jsIncludeFile("jquery.autocomplete.js", NULL);
+printf("<script type='text/javascript'>var newJQuery=false;</script>\n");
+#endif///ndef NEW_JQUERY
 jsIncludeFile("ajax.js", NULL);
 jsIncludeFile("autocomplete.js", NULL);
 jsIncludeFile("hgGateway.js", NULL);
 jsIncludeFile("utils.js", NULL);
 
 puts(
-"<CENTER>"
-"<TABLE BGCOLOR=\"#FFFEE8\" BORDERCOLOR=\"cccc99\" BORDER=0 CELLPADDING=1>\n"
-"<TR><TD>\n"
-"<CENTER><FONT SIZE=\"2\">\n"
+"<CENTER style='font-size:small;'>"
 "The UCSC Genome Browser was created by the \n"
 "<A HREF=\"../staff.html\">Genome Bioinformatics Group of UC Santa Cruz</A>.\n"
 "<BR>"
 "Software Copyright (c) The Regents of the University of California.\n"
 "All rights reserved.\n"
-"</FONT></CENTER>\n"
-"</TD></TR></TABLE></CENTER>\n"
+"</CENTER>\n"
 );
 
 puts(
 "<FORM ACTION='../cgi-bin/hgTracks' NAME='mainForm' METHOD='GET' style='display:inline;'>\n"
-"<center>"
-"<table bgcolor=\"cccc99\" border=\"0\" CELLPADDING=1 CELLSPACING=0>\n"
-"<tr><td>\n"
-"<table BGCOLOR=\"FEFDEF\" BORDERCOLOR=\"CCCC99\" BORDER=0 CELLPADDING=0 CELLSPACING=0>\n"
-"<tr><td>\n"
-"<table bgcolor=\"fffef3\" border=0>\n"
-"<tr>\n"
-"<td>\n");
+"<CENTER>"
+"<table style='background-color:#FFFEF3; border: 1px solid #CCCC99;'>\n"
+"<tr><td>\n");
+cgiMakeHiddenVar(hgHubConnectCgiDestUrl, "../cgi-bin/hgTracks");
 
 puts("<table><tr>");
 if (gotClade)
@@ -99,7 +97,6 @@ puts(
 if(supportsSuggest)
     puts("<td align=center valign=baseline><a title='click for help on gene search box' target='_blank' href='../goldenPath/help/geneSearchBox.html'>gene</a></td>\n");
 puts(
-"<td align=center valign=baseline>image width</td>\n"
 "<td align=center valign=baseline> &nbsp; </td>\n"
 "</tr>\n<tr>"
 );
@@ -129,7 +126,9 @@ printf("</td>\n");
 if(supportsSuggest)
     {
     puts("<td align=center>\n");
-    hWrites("<input name='hgt.suggest' type='text' size='5' id='suggest' />\n");
+    hPrintf("<input name='hgt.suggest' type='text' size='5' id='suggest' />\n"
+            "<input type='hidden' name='hgt.suggestTrack' id='suggestTrack' value='%s'>\n", assemblyGeneSuggestTrack(db)
+            );
     printf("</td>\n");
     }
 
@@ -142,9 +141,6 @@ if (gotClade)
 freez(&defaultPosition);
 position = NULL;
 
-puts("<td align=center>\n");
-cgiMakeIntVar("pix", cartUsualInt(cart, "pix", hgDefaultPixWidth), 4);
-puts("</td>\n");
 puts("<td align=center>");
 if(supportsSuggest)
     hButtonWithOnClick("Submit", "submit", NULL, "submitButtonOnClick()");
@@ -159,19 +155,19 @@ puts(
 "</td></tr>\n");
 
 puts(
-"<tr><td><center><BR>\n"
+"<tr><td><CENTER><BR>\n"
 "<a HREF=\"../cgi-bin/cartReset\">Click here to reset</a> the browser user interface settings to their defaults.");
 
 #define SURVEY 1
 #ifdef SURVEY
 if (survey && differentWord(survey, "off"))
-    printf("&nbsp;&nbsp;&nbsp;<FONT STYLE=\"background-color:yellow;\"><A HREF=\"%s\" TARGET=_BLANK><EM><B>%s</EM></B></A></FONT>", survey, surveyLabel ? surveyLabel : "Take survey");
+    printf("&nbsp;&nbsp;&nbsp;<span style='background-color:yellow;'><A HREF=\"%s\" TARGET=_BLANK><EM><B>%s</EM></B></A></span>", survey, surveyLabel ? surveyLabel : "Take survey");
 #endif
 
 puts(
 "<BR>\n"
-"</center>\n"
-"</td></tr><tr><td><center>\n"
+"</CENTER>\n"
+"</td></tr><tr><td><CENTER>\n"
 );
 
 puts("<TABLE BORDER=\"0\">");
@@ -202,7 +198,7 @@ if (hubConnectTableExists())
     {
     puts("<TD VALIGN=\"TOP\">");
     printf("<input TYPE=SUBMIT onclick=\"document.mainForm.action='%s';\" VALUE='%s' title='%s'>\n",
-        "../cgi-bin/hgHubConnect", "import tracks", "Import tracks");
+        "../cgi-bin/hgHubConnect", "track hubs", "Import tracks");
     puts("</TD>");
     }
 
@@ -221,19 +217,38 @@ puts("</TD>");
 
 puts("</TR></TABLE>");
 
-puts("</center>\n"
-"</td></tr></table>\n"
-"</td></tr></table>\n"
+puts("</CENTER>\n"
 "</td></tr></table>\n"
 );
-puts("</center>");
+puts("</CENTER>");
+#ifdef NEW_JQUERY
+hPrintf("<input type='hidden' id='hgt.newJQuery' name='hgt.newJQuery' value='1'>\n");
+#endif
+
+
+if(!cartVarExists(cart, "pix"))
+    // put a hidden input for pix on page so default value can be filled in on the client side
+    hPrintf("<input type='hidden' name='pix' value=''>\n");
+
 puts("</FORM>");
-if (isPrivateHost)
-puts("<P>This is just our test site.  It usually works, but it is filled with tracks in various "
+if (hIsPreviewHost())
+    {
+puts("<P>"
+"WARNING: This is our preview site. It is a weekly mirror of our internal development server for public access.  "
+"Data and tools here are under construction, have not been quality reviewed, and are subject to change "
+"at any time.  We provide this site for early access, with the warning that it is less available "
+"and stable than our public site.  For high-quality reviewed annotations on our production server, visit "
+"      <A HREF=\"http://genome.ucsc.edu\">http://genome.ucsc.edu</A>."
+"</P><BR>");
+    }
+else if (hIsPrivateHost())
+    {
+puts("<P>WARNING: This is our development and test site.  It usually works, but it is filled with tracks in various "
 "stages of construction, and others of little interest to people outside of our local group. "
 "It is usually slow because we are building databases on it. The documentation is poor. "
  "More data than usual is flat out wrong.  Maybe you want to go to "
 	 "<A HREF=\"http://genome.ucsc.edu\">genome.ucsc.edu</A> instead.");
+    }
 
 if (hIsGsidServer())
     {
@@ -275,7 +290,6 @@ if (hIsGsidServer())
 else
     {
     char buffer[128];
-    char *browserName = (isPrivateHost ? "TEST Genome Browser" : "Genome Browser");
 
     /* tell html routines *not* to escape htmlOut strings*/
     htmlNoEscape();
@@ -287,7 +301,7 @@ else
 	else
 	    safef(buffer, sizeof(buffer), "(<I>%s</I>) ", scientificName);
 	}
-    cartWebStart(theCart, db, "%s %s%s Gateway\n", organism, buffer, browserName);
+    cartWebStart(theCart, db, "%s %s%s Gateway\n", organism, buffer, hBrowserName());
     htmlDoEscape();
     }
 hgGateway();
@@ -299,7 +313,6 @@ char *excludeVars[] = {NULL};
 int main(int argc, char *argv[])
 /* Process command line. */
 {
-isPrivateHost = hIsPrivateHost();
 oldVars = hashNew(10);
 cgiSpoof(&argc, argv);
 

@@ -5,6 +5,9 @@
 
 #include "cart.h"
 #include "trackDb.h"
+#include "customTrack.h"
+#include "wiggle.h"
+
 struct lineFile;
 
 void setUdcCacheDir();
@@ -31,9 +34,10 @@ char *wrapWhiteFont(char *s);
  */
 
 #define ENCODE_DATA_RELEASE_POLICY "/ENCODE/terms.html"
-char *encodeRestrictionDateDisplay(char *db,struct trackDb *trackDb);
+char *encodeRestrictionDate(char *db,struct trackDb *trackDb,boolean excludePast);
 /* Create a string for ENCODE restriction date of this track
    if return is not null, then free it after use */
+#define encodeRestrictionDateDisplay(db,tdb) encodeRestrictionDate(db,tdb,TRUE)
 
 char *hDocumentRoot();
 /* get the path to the DocumentRoot, or the default */
@@ -479,6 +483,7 @@ enum wiggleSmoothingEnum {
    wiggleSmoothing14 = 13,
    wiggleSmoothing15 = 14,
    wiggleSmoothing16 = 15,
+   wiggleSmoothingMax = MAX_SMOOTHING,	/* Not an option, but lets us keep track of memory to use */
 };
 
 enum wiggleSmoothingEnum wiggleSmoothingStringToEnum(char *string);
@@ -645,6 +650,14 @@ enum baseColorDrawOpt
 #define CDS_MRNA_HELP_PAGE "../goldenPath/help/hgCodonColoringMrna.html"
 #define CDS_BASE_HELP_PAGE "../goldenPath/help/hgBaseLabel.html"
 
+/* Settings for coloring and filtering genePred tables from an item class table. */
+#define GENEPRED_CLASS_VAR "geneClasses"
+#define GENEPRED_CLASS_PREFIX "gClass_"
+#define GENEPRED_CLASS_TBL "itemClassTbl"
+#define GENEPRED_CLASS_NAME_COLUMN "itemClassNameColumn"
+#define GENEPRED_CLASS_NAME_COLUMN_DEFAULT "name"
+#define GENEPRED_CLASS_CLASS_COLUMN "itemClassClassColumn"
+#define GENEPRED_CLASS_CLASS_COLUMN_DEFAULT "class"
 
 void baseColorDrawOptDropDown(struct cart *cart, struct trackDb *tdb);
 /* Make appropriately labeled drop down of options if any are applicable.*/
@@ -907,6 +920,9 @@ char *compositeLabelWithVocabLink(char *db,struct trackDb *parentTdb, struct tra
 /* If the parentTdb has a controlledVocabulary setting and the vocabType is found,
    then label will be wrapped with the link to display it.  Return string is cloned. */
 
+char *controlledVocabLink(char *file,char *term,char *value,char *title, char *label,char *suffix);
+// returns allocated string of HTML link to controlled vocabulary term
+
 char *metadataAsHtmlTable(char *db,struct trackDb *tdb,boolean
         showLongLabel,boolean showShortLabel, struct hash *trackHash);
 /* If metadata from metaDb exists, return string of html with table definition */
@@ -1043,6 +1059,19 @@ struct dyString *dyAddFilterAsDouble(struct cart *cart, struct trackDb *tdb,
             uses:  defaultLimits: function param if no tdb limits settings found)
    The 'and' param allows stringing multiple where clauses together */
 
+#define ALL_SCORE_FILTERS_LOGIC
+#ifdef ALL_SCORE_FILTERS_LOGIC
+struct dyString *dyAddAllScoreFilters(struct cart *cart, struct trackDb *tdb, struct dyString *extraWhere,boolean *and);
+/* creates the where clause condition to gather together all random double filters
+   Filters are expected to follow
+        {fiterName}: trackDb min or min:max - default value(s);
+        {filterName}Min or {filterName}: min (user supplied) cart variable;
+        {filterName}Max: max (user supplied) cart variable;
+        {filterName}Limits: trackDb allowed range "0.0:10.0" Optional
+            uses:  defaultLimits: function param if no tdb limits settings found)
+   The 'and' param and dyString in/out allows stringing multiple where clauses together */
+#endif///def ALL_SCORE_FILTERS_LOGIC
+
 void encodePeakCfgUi(struct cart *cart, struct trackDb *tdb, char *name, char *title, boolean boxed);
 /* Put up UI for filtering wgEnocde peaks based on score, Pval and Qval */
 
@@ -1056,6 +1085,10 @@ void bamCfgUi(struct cart *cart, struct trackDb *tdb, char *name, char *title, b
 /* BAM: short-read-oriented alignment file format. */
 
 boolean tdbSortPrioritiesFromCart(struct cart *cart, struct trackDb **tdbList);
+/* Updates the tdb->priority from cart then sorts the list anew.
+   Returns TRUE if priorities obtained from cart */
+
+boolean tdbRefSortPrioritiesFromCart(struct cart *cart, struct slRef **tdbRefList);
 /* Updates the tdb->priority from cart then sorts the list anew.
    Returns TRUE if priorities obtained from cart */
 
@@ -1121,6 +1154,8 @@ typedef struct _filterBy {
     char*htmlName;            // Name used in HTML/CGI
     boolean useIndex;         // The returned values should be indexes
     boolean valueAndLabel;    // If values list is value|label, then label is shown to the user
+    boolean styleFollows;     // style settings can follow like value|label[background-color:#660000]
+                              // legacy like value|label{#AA0000} is a just the style='color... that follows
     struct slName *slValues;  // Values that can be filtered on (All is always implied)
     struct slName *slChoices; // Values that have been chosen
 } filterBy_t;
@@ -1134,8 +1169,11 @@ void filterBySetFree(filterBy_t **filterBySet);
 char *filterBySetClause(filterBy_t *filterBySet);
 /* returns the "column1 in (...) and column2 in (...)" clause for a set of filterBy structs */
 
-void filterBySetCfgUi(struct trackDb *tdb, filterBy_t *filterBySet);
+void filterBySetCfgUi(struct trackDb *tdb, filterBy_t *filterBySet, boolean onOneLine);
 /* Does the UI for a list of filterBy structure */
+
+char *filterByClause(filterBy_t *filterBy);
+/* returns the SQL where clause for a single filterBy struct */
 
 struct dyString *dyAddFilterByClause(struct cart *cart, struct trackDb *tdb,
        struct dyString *extraWhere,char *column, boolean *and);
@@ -1185,5 +1223,21 @@ boolean hPrintPennantIcon(struct trackDb *tdb);
 boolean printPennantIconNote(struct trackDb *tdb);
 // Returns TRUE and prints out the "pennantIcon" and note when found.
 //This is used by hgTrackUi and hgc before printing out trackDb "html"
+
+void cfgByCfgType(eCfgType cType,char *db, struct cart *cart, struct trackDb *tdb,char *prefix, char *title, boolean boxed);
+// Methods for putting up type specific cfgs used by composites/subtracks in hui.c and exported for common use
+
+boolean cfgBeginBoxAndTitle(struct trackDb *tdb, boolean boxed, char *title);
+/* Handle start of box and title for individual track type settings */
+
+void cfgEndBox(boolean boxed);
+/* Handle end of box and title for individual track type settings */
+
+void printUpdateTime(char *database, struct trackDb *tdb,
+    struct customTrack *ct);
+/* display table update time, or in case of bbi file, file stat time */
+
+void printBbiUpdateTime(time_t *timep);
+/* for bbi files, print out the timep value */
 
 #endif /* HUI_H */

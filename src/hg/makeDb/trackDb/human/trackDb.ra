@@ -10,6 +10,9 @@ include trackDb.nt.ra
 # Denisova tracks
 include trackDb.denisova.ra
 
+# Genome variants aka pgSnp aka personal genomes
+include trackDb.pgSnp.ra
+
 track cytoBandIdeo
 shortLabel Chromosome Band (Ideogram)
 longLabel Chromosome Bands Localized by FISH Mapping Clones (for Ideogram)
@@ -25,6 +28,47 @@ group map
 priority 1
 visibility hide
 type bed 4 +
+
+track hiSeqDepth
+compositeTrack on
+shortLabel Hi Seq Depth
+longLabel Regions of Exceptionally High Depth of Aligned Short Reads
+group map
+priority 27
+visibility hide
+color 139,69,19
+altColor 0,0,0
+type bed 3
+
+    track hiSeqDepthTopPt1Pct
+    parent hiSeqDepth
+    shortLabel Top 0.001 Depth
+    longLabel Top 0.001 of Read Depth Distribution
+    priority 1
+
+    track hiSeqDepthTopPt5Pct
+    parent hiSeqDepth
+    shortLabel Top 0.005 Depth
+    longLabel Top 0.005 of Read Depth Distribution
+    priority 2
+
+    track hiSeqDepthTop1Pct
+    parent hiSeqDepth
+    shortLabel Top 0.01 Depth
+    longLabel Top 0.01 of Read Depth Distribution
+    priority 3
+
+    track hiSeqDepthTop5Pct
+    parent hiSeqDepth
+    shortLabel Top 0.05 Depth
+    longLabel Top 0.05 of Read Depth Distribution
+    priority 4
+
+    track hiSeqDepthTop10Pct
+    parent hiSeqDepth
+    shortLabel Top 0.10 Depth
+    longLabel Top 0.10 of Read Depth Distribution
+    priority 5
 
 track gad
 shortLabel GAD View
@@ -45,6 +89,8 @@ visibility hide
 color 0,0,0
 type bed 4
 tableBrowser off decipherRaw knownToDecipher knownCanonToDecipher
+prevExonText Left edge
+nextExonText Right edge
 
 track caseControl
 compositeTrack on
@@ -162,46 +208,6 @@ color 30,130,210
 type genePred
 url http://vega.sanger.ac.uk/Homo_sapiens/geneview?transcript=$$
 
-track retroMrnaInfo
-shortLabel Retroposed Genes 2.0c
-longLabel Retroposed Genes, Including Pseudogenes [retroMrnaInfo]
-group genes
-priority 37.12
-visibility hide
-nextItemButton on
-spectrum on
-type bed 12 .
-
-track ucscRetroInfo3
-shortLabel Retroposed Genes 2.0d
-longLabel Retroposed Genes, Including Pseudogenes August 2008 [ucscRetroInfo3]
-group genes
-priority 37.13
-visibility hide
-nextItemButton on
-spectrum on
-type bed 12 .
-
-track ucscRetroAli3
-shortLabel Retroposed Genes 3.0
-longLabel Retroposed Genes, Including Pseudogenes August 2008 [ucscRetroAli3]
-group genes
-type psl
-priority 37.14
-color 20,0,250
-visibility hide
-retroMrnaInfo ucscRetroInfo3
-#transMapTypeDesc UCSC retrocopies
-baseColorDefault diffCodons
-baseColorUseCds table retroCds
-baseColorUseSequence extFile retroSeq retroExtFile
-indelDoubleInsert on
-indelQueryInsert on
-showDiffBasesAllScales .
-showDiffBasesMaxZoom 10000.0
-showCdsAllScales .
-showCdsMaxZoom 10000.0
-
 track sanger20
 shortLabel Sanger 20
 longLabel Sanger Institute Chromosome 20 Genes
@@ -257,9 +263,10 @@ type genePred acemblyPep acemblyMrna
 autoTranslate 0
 url http://www.ncbi.nlm.nih.gov/IEB/Research/Acembly/av.cgi?db=human&l=$$
 itemClassTbl acemblyClass
-geneClasses main putative
+geneClasses main putative cDNA_supported
 gClass_main 128,0,125
 gClass_putative 200,0,125
+gClass_cDNA_supported 200,0,125
 urlLabel AceView Gene Summary:
 
 track slamMouse
@@ -303,6 +310,29 @@ spectrum on
 type genePred
 autoTranslate 0
 url http://www.pseudogene.org/cgi-bin/display-by-acc.cgi?id=$$
+
+track pseudoYale60
+shortLabel Yale Pseudo60
+longLabel Yale Pseudogenes based on Ensembl Release 60
+group genes
+priority 53
+visibility hide
+spectrum on
+type genePred
+autoTranslate 0
+geneClasses Processed Duplicated Ambiguous
+gClass_Processed 180,0,0
+gClass_Duplicated 100,50,0
+gClass_Ambiguous 100,91,191
+itemClassTbl pseudoYale60Class
+dataVersion December 2010
+urlLabel Yale pseudogene.org link:
+url http://tables.pseudogene.org/index.cgi?table=Human60&value=$$
+
+searchTable pseudoYale60
+searchType genePred
+termRegex PGOHUM[0-9]+
+searchPriority 50
 
 track luNega
 shortLabel UCSC Pseudo
@@ -900,7 +930,7 @@ shortLabel SNPs (131)
 longLabel Simple Nucleotide Polymorphisms (dbSNP build 131) Not Clinically Associated
 group varRep
 priority 100.093
-visibility dense
+visibility hide
 url http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?type=rs&rs=$$
 urlLabel dbSNP: 
 defaultGeneTracks knownGene
@@ -923,7 +953,7 @@ shortLabel SNPs (131) Comp
 longLabel Simple Nucleotide Polymorphisms (dbSNP build 131) -- Composite version
 group varRep
 priority 99.093
-visibility dense 
+visibility hide
 url http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?type=rs&rs=$$
 urlLabel dbSNP: 
 defaultGeneTracks knownGene
@@ -1222,7 +1252,6 @@ color 150,0,150
 type bed 4 +
 
 track dgv
-release alpha
 shortLabel DGV Struct Var
 longLabel Database of Genomic Variants: Structural Variation (CNV, Inversion, In/del)
 group varRep
@@ -1236,22 +1265,6 @@ exonArrows off
 urlLabel DGV Browser and Report:
 url http://projects.tcag.ca/cgi-bin/variation/xview?source=$D&view=variation&id=Variation_$$
 dataVersion v10
-
-track dgv
-release beta,public
-shortLabel DGV Struct Var
-longLabel Database of Genomic Variants: Structural Variation (CNV, Inversion, In/del)
-group varRep
-priority 144.8
-visibility hide
-color 0,100,0
-itemRgb on
-type bed 9 +
-noScoreFilter .
-exonArrows off
-urlLabel DGV Browser and Report:
-url http://projects.tcag.ca/cgi-bin/variation/xview?source=$D&view=variation&id=Variation_$$
-dataVersion v9
 
 track covMask1kGPilotLowCov
 compositeTrack on
@@ -2424,7 +2437,7 @@ color 200,80,0
 type bed 8 +
 urlLabel Laboratoire de Biologie Mol&#233;culaire Eucaryote:
 url http://www-snorna.biotoul.fr/plus.php?id=$$
-url2Label The miRNA Registry:
+url2Label miRBase:
 #url2 http://microrna.sanger.ac.uk/cgi-bin/sequences/mirna_entry.pl?id=$$
 url2 http://www.mirbase.org/cgi-bin/query.pl?terms=$$
 
@@ -2440,7 +2453,7 @@ type bed 8 +
 noScoreFilter .
 urlLabel Laboratoire de Biologie Moleculaire Eucaryote:
 url http://www-snorna.biotoul.fr/plus.php?id=$$
-url2Label The miRNA Registry:
+url2Label miRBase:
 #url2 http://microrna.sanger.ac.uk/cgi-bin/sequences/mirna_entry.pl?id=$$
 url2 http://www.mirbase.org/cgi-bin/query.pl?terms=$$
 dataVersion miRBase Release 13.0 (March 2009) and snoRNABase Version 3
@@ -2490,186 +2503,6 @@ expScale 3.0
 expStep 0.5
 expTable sestanBrainAtlasExps
 groupings sestanBrainAtlasGroups
-
-track agilentCgh
-release alpha
-shortLabel Agilent CGH
-longLabel Agilent CGH Microarray probesets
-compositeTrack on
-group expression
-visibility hide
-noScoreFilter .
-noInherit on
-html agilentCghAlpha
-type bed 3 .
-
-    track agilentCgh1x1m
-    release alpha
-    parent agilentCgh
-    shortLabel Ag CGH 1x1m
-    longLabel Agilent SurePrint G3 Human CGH Microarray 1x1M AMADID 021529
-    color 0,128,0
-    type bed 4 .
-    priority 1
-
-    track agilentHrd1x1m
-    release alpha
-    parent agilentCgh
-    shortLabel Ag HRD 1x1m
-    longLabel Agilent SurePrint G3 Human High-Resolution Microarray 1x1M AMADID 023642
-    color 255,128,0
-    type bed 4 .
-    priority 2
-
-    track agilentCghSnp2x400k
-    release alpha
-    parent agilentCgh
-    shortLabel Ag SNP 2x400k
-    longLabel Agilent SurePrint G3 Human CGH+SNP Microarray 2x400K AMADID 028081
-    color 0,0,128
-    type bed 9 .
-    itemRgb on
-    priority 3
-
-    track agilentCgh2x400k
-    release alpha
-    parent agilentCgh
-    shortLabel Ag CGH 2x400k
-    longLabel Agilent SurePrint G3 Human CGH Microarray 2x400K AMADID 021850
-    color 0,128,0
-    type bed 4 .
-    priority 4
-
-    track agilentCghSnp4x180k
-    release alpha
-    parent agilentCgh
-    shortLabel Ag SNP 4x180k
-    longLabel Agilent SurePrint G3 Human CGH+SNP Microarray 4x180K AMADID 029830
-    color 0,0,128
-    type bed 9 .
-    itemRgb on
-    priority 5
-
-    track agilentCgh4x180k
-    release alpha
-    parent agilentCgh
-    shortLabel Ag CGH 4x180k
-    longLabel Agilent SurePrint G3 Human CGH Microarray 4x180K AMADID 022060
-    color 255,128,0
-    type bed 4 .
-    priority 6
-
-    track agilentCgh8x60k
-    release alpha
-    parent agilentCgh
-    shortLabel Ag CGH 8x60k
-    longLabel Agilent SurePrint G3 Human CGH Microarray 8x60K AMADID 021924
-    type bed 4 .
-    color 0,128,0
-    priority 7
-
-    track agilentCgh244a
-    release alpha
-    parent agilentCgh
-    shortLabel Ag CGH 1x244k
-    longLabel Agilent SurePrint HD Human CGH Microarray 1x244K AMADID 014693
-    color 255,128,0
-    type bed 4 .
-    priority 8
-
-    track agilentCgh105a
-    release alpha
-    parent agilentCgh
-    shortLabel Ag CGH 2x105k
-    longLabel Agilent SurePrint HD Human CGH Microarray 2x105K AMADID 014698
-    color 0,128,0
-    type bed 4 .
-    priority 9
-
-    track agilentCgh44k
-    release alpha
-    parent agilentCgh
-    shortLabel Ag CGH 4x44k
-    longLabel Agilent SurePrint HD Human CGH Microarray 4x44K AMADID 014950
-    color 255,128,0
-    type bed 4 .
-    priority 10
-
-track agilentCgh
-release beta,public
-shortLabel Agilent Array
-longLabel Agilent Microarray Probesets
-compositeTrack on
-group expression
-origAssembly hg18
-priority 0
-visibility hide
-noScoreFilter .
-type bed 6 .
-
-    track agilentCgh1x1m
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag CGH 1x1m
-    longLabel Agilent SurePrint G3 Human CGH Microarray 1x1M AMADID 021529
-    color 0,128,0
-    priority 1
-
-    track agilentHrd1x1m
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag HRD 1x1m
-    longLabel Agilent SurePrint G3 Human High-Resolution Microarray 1x1M AMADID 023642
-    color 255,128,0
-    priority 2
-
-    track agilentCgh2x400k
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag CGH 2x400k
-    longLabel Agilent SurePrint G3 Human CGH Microarray 2x400K AMADID 021850
-    color 0,128,0
-    priority 3
-
-    track agilentCgh4x180k
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag CGH 4x180k
-    longLabel Agilent SurePrint G3 Human CGH Microarray 4x180K AMADID 022060
-    color 255,128,0
-    priority 4
-
-    track agilentCgh8x60k
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag CGH 8x60k
-    longLabel Agilent SurePrint G3 Human CGH Microarray 8x60K AMADID 021924
-    color 0,128,0
-    priority 5
-
-    track agilentCgh244a
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag CGH 1x244k
-    longLabel Agilent SurePrint HD Human CGH Microarray 1x244K AMADID 014693
-    color 255,128,0
-    priority 7
-
-    track agilentCgh105a
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag CGH 2x105k
-    longLabel Agilent SurePrint HD Human CGH Microarray 2x105K AMADID 014698
-    color 0,128,0
-    priority 8
-
-    track agilentCgh44k
-    release beta,public
-    parent agilentCgh
-    shortLabel Ag CGH 4x44k
-    longLabel Agilent SurePrint HD Human CGH Microarray 4x44K AMADID 014950
-    color 255,128,0
-    priority 10
 
 track xTBAmaf
 shortLabel xTBAmaf
@@ -2741,6 +2574,36 @@ chromosomes chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13
     shortLabel Perlegen
     longLabel Oxford Recombination Rates from Perlegen Data
     priority 3
+
+track hapmapLdPh
+compositeTrack on
+shortLabel HapMap LD Phased
+longLabel HapMap Linkage Disequilibrium - Phase II - from phased genotypes
+group varRep
+priority 144.491
+visibility hide
+canPack off
+chromosomes chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22
+dataVersion HapMap release 22
+type ld2
+
+    track hapmapLdPhYri
+    parent hapmapLdPh
+    shortLabel Phased YRI
+    longLabel Linkage Disequilibrium for the Yoruba (YRI) from phased genotypes
+    priority 1
+
+    track hapmapLdPhCeu
+    parent hapmapLdPh
+    shortLabel Phased CEU
+    longLabel Linkage Disequilibrium for the CEPH (CEU) from phased genotypes
+    priority 2
+
+    track hapmapLdPhChbJpt
+    parent hapmapLdPh
+    shortLabel Ph JPT+CHB
+    longLabel LD for the Han Chinese + Japanese from Tokyo (JPT+CHB) from phased genotypes
+    priority 5
 
 track snpRecombHotspot
 compositeTrack on
@@ -3129,16 +2992,60 @@ priority 0
 track eponine override
 priority 0
 
-track omimGene
-shortLabel OMIM Genes
-longLabel OMIM-Associated Genes
+track omimLocation
+shortLabel OMIM Pheno Loci
+longLabel OMIM Phenotypes - Gene Unknown
 group phenDis
-priority 29.6
+priority 29.75
 visibility hide
-color 0, 0, 200
+color 0, 80, 0
 type bed 4
 hgsid on
-url http://www.ncbi.nlm.nih.gov/omim/
+url http://www.omim.org/entry/
+tableBrowser off
+
+track omimGene2
+shortLabel OMIM Genes
+longLabel OMIM Genes - Dark Green Are Disease-causing
+group phenDis
+priority 29.73
+visibility hide
+color 0, 80, 0
+type bed 4
+hgsid on
+url http://www.omim.org/entry/
+tableBrowser off omimGeneMap omimPhenotype omimGeneSymbol mim2gene
+
+track omimAvSnp
+shortLabel OMIM AV SNPs
+longLabel OMIM Allelic Variant SNPs
+group phenDis
+priority 29.71
+visibility hide
+color 0, 80, 0
+type bed 4
+hgsid on
+url http://www.omim.org/entry/
+tableBrowser off omimAv omimAvRepl
+
+track cosmic
+shortLabel COSMIC
+longLabel COSMIC: Catalogue Of Somatic Mutations In Cancer
+group phenDis
+priority 29.80
+visibility hide
+color 200, 0, 0
+type bed 4
+hgsid on
+url http://www.sanger.ac.uk/perl/genetics/CGP/cosmic?action=mut_summary
+
+searchName cosmicId
+searchTable cosmic
+searchMethod exact
+searchType bed
+searchPriority 10
+query select chrom, chromStart, chromEnd, name from %s where name like '%s%%'
+termiRegex COSM*
 
 searchTable wgRnaOld
 searchMethod fuzzy
@@ -3568,11 +3475,28 @@ xrefQuery select name, cloneAcc from %s where cloneAcc = '%s'
 termRegex AC[0-9]{6}
 searchPriority 52
 
-searchName omimGeneAcc
-searchTable omimGene
+searchName omimAvSnpAcc
+searchTable omimAvSnp
 searchMethod exact
 searchType bed
 shortCircuit 1
+semiShortCircuit 1
+termRegex ([0-9]{6})+\.+([0-9]{4})
+searchPriority 10
+
+searchName omimGene2Acc
+searchTable omimGene2
+searchMethod exact
+searchType bed
+shortCircuit 1
+semiShortCircuit 1
+termRegex ([0-9]{6})
+searchPriority 10
+
+searchName omimGeneLocAcc
+searchTable omimLocation
+searchMethod exact
+searchType bed
 semiShortCircuit 1
 termRegex ([0-9]{6})
 searchPriority 10
@@ -3671,255 +3595,6 @@ semiShortCircuit 1
 termRegex rs[0-9]+
 searchPriority 11
 padding 250
-
-track pgSnp
-compositeTrack on
-shortLabel Genome Variants
-longLabel Personal Genome Variants
-group varRep
-priority 500
-visibility hide
-subGroup1 view Projects A_PSU=PSU_Bushmen B_1kG=1000_Genomes_Pilot C_1off=Single-Genome_Projects
-subGroup2 id Genome A_KB1=KB1 B_NB1=NB1 C_MD8=MD8 D_TK1=TK1 E_ABT=ABT F_12878=NA12878 G_12891=NA12891 H_12892=NA12892 I_19240=NA19240 J_19238=NA19238 K_19239=NA19239 L_Venter=Venter M_Watson=Watson N_18507=NA18507 O_YH=YH P_SJK=SJK Q_AK1=AK1 R_Quake=Quake RS_Irish=Irish S_Saqqaq=Saqqaq
-dragAndDrop subTracks
-configurable on
-dimensions dimX=view dimY=id
-sortOrder view=+ id=+
-type bed 4 +
-
-    track pgSnpPSU
-    shortLabel PSU Bushmen
-    view A_PSU
-    visibility pack
-    parent pgSnp
-
-        track pgKb1Indel
-        parent pgSnpPSU
-	subGroups view=A_PSU id=A_KB1
-        shortLabel KB1 indels
-        longLabel KB1 indels from 454 and Illumina
-
-        track pgKb1Comb
-        parent pgSnpPSU
-	subGroups view=A_PSU id=A_KB1
-        shortLabel KB1
-        longLabel KB1 Genome Variants, combination of 454, Illumina, and genotyping
-        pgDbLink pgKb1PhenCode pgKb1Snpedia pgKb1Hgmd
-
-        track pgNb1
-        parent pgSnpPSU
-	subGroups view=A_PSU id=B_NB1
-        shortLabel NB1
-        longLabel NB1 Genome Variants (all SNPs, 2X genome plus 16x exome)
-        pgDbLink pgNb1PhenCode pgNb1Snpedia pgNb1Hgmd
-
-        track pgNb1Indel
-        parent pgSnpPSU
-	subGroups view=A_PSU id=B_NB1
-        shortLabel NB1 indels
-        longLabel NB1 Genome Variants indels
-
-        track pgMd8
-        parent pgSnpPSU
-	subGroups view=A_PSU id=C_MD8
-        shortLabel MD8
-        longLabel MD8 Genome Variants (all SNPs, 16x exome)
-        pgDbLink pgMd8PhenCode pgMd8Snpedia pgNb1Hgmd
-
-        track pgMd8Indel
-        parent pgSnpPSU
-	subGroups view=A_PSU id=C_MD8
-        shortLabel MD8 indels
-        longLabel MD8 Genome Variants indels
-
-        track pgTk1
-        parent pgSnpPSU
-	subGroups view=A_PSU id=D_TK1
-        shortLabel TK1
-        longLabel TK1 Genome Variants (all SNPs, 16x exome)
-        pgDbLink pgTk1PhenCode pgTk1Snpedia pgTk1Hgmd
-
-        track pgTk1Indel
-        parent pgSnpPSU
-	subGroups view=A_PSU id=D_TK1
-        shortLabel TK1 indels
-        longLabel TK1 Genome Variants indels
-
-        track pgAbtSolid
-        parent pgSnpPSU
-	subGroups view=A_PSU id=E_ABT
-        shortLabel ABT
-        longLabel ABT Genome Variants, SOLiD
-        pgDbLink pgAbtPhenCode pgAbtSnpedia pgAbtHgmd
-
-        track pgAbt454
-        parent pgSnpPSU
-	subGroups view=A_PSU id=E_ABT
-        shortLabel ABT exome
-        longLabel ABT Genome Variants, 454 exome
-
-        track pgAbt454indels
-        parent pgSnpPSU
-	subGroups view=A_PSU id=E_ABT
-        shortLabel ABT exome indels
-        longLabel ABT Genome Variants, 454 exome indels
-
-        track pgAbtIllum
-        parent pgSnpPSU
-	subGroups view=A_PSU id=E_ABT
-        shortLabel ABT Illum
-        longLabel ABT Genome Variants, Illumina 7.2X
-
-    track pgSnp1kG
-    shortLabel 1000GenomesPilot
-    view B_1kG
-    visibility pack
-    parent pgSnp
-
-        track pgNA12878
-        parent pgSnp1kG
-	subGroups view=B_1kG id=F_12878
-        shortLabel CEU daught '2878
-        longLabel CEU Trio Daughter NA12878 (1000 Genomes Project)
-        color 128,64,0
-
-        track pgNA12891
-        parent pgSnp1kG
-	subGroups view=B_1kG id=G_12891
-        shortLabel CEU father '2891
-        longLabel CEU Trio Father NA12891 (1000 Genomes Project)
-        color 128,64,0
-
-        track pgNA12892
-        parent pgSnp1kG
-	subGroups view=B_1kG id=H_12892
-        shortLabel CEU mother '2892
-        longLabel CEU Trio Mother NA12892 (1000 Genomes Project)
-        color 128,64,0
-
-        track pgNA19240
-        parent pgSnp1kG
-	subGroups view=B_1kG id=I_19240
-        shortLabel YRI daught '9240
-        longLabel YRI Trio Daughter NA19240 (1000 Genomes Project)
-        color 128,64,0
-
-        track pgNA19238
-        parent pgSnp1kG
-	subGroups view=B_1kG id=J_19238
-        shortLabel YRI mother '9238
-        longLabel YRI Trio Mother NA19238 (1000 Genomes Project)
-        color 128,64,0
-
-        track pgNA19239
-        parent pgSnp1kG
-	subGroups view=B_1kG id=K_19239
-        shortLabel YRI father '9239
-        longLabel YRI Trio Father NA19239 (1000 Genomes Project)
-        color 128,64,0
-
-    track pgSnp1off
-    shortLabel Single Genomes
-    view C_1off
-    visibility pack
-    parent pgSnp
-
-        track pgVenter
-        parent pgSnp1off
-	subGroups view=C_1off id=L_Venter
-        shortLabel Venter
-        longLabel J. Craig Venter - Published Method 1, Variant in Original Form (JCVI)
-        color 128,0,128
-
-        track pgWatson
-        parent pgSnp1off
-	subGroups view=C_1off id=M_Watson
-        shortLabel Watson
-        longLabel James Watson (CSHL)
-        color 153,0,0
-
-        track pgYoruban3
-        parent pgSnp1off
-	subGroups view=C_1off id=N_18507
-        shortLabel YRI NA18507
-        longLabel YRI NA18507 (Illumina Cambridge/Solexa, SNPs called by PSU)
-        color 128,0,128
-
-        track pgYh1
-        parent pgSnp1off
-	subGroups view=C_1off id=O_YH
-        shortLabel YanHuang
-        longLabel Han Chinese Individual (YanHuang Project)
-        color 0,128,128
-
-        track pgSjk
-        parent pgSnp1off
-	subGroups view=C_1off id=P_SJK
-        shortLabel SJK
-        longLabel Seong-Jin Kim (SJK, GUMS/KOBIC)
-        color 0,128,128
-
-        track pgAk1
-        parent pgSnp1off
-	subGroups view=C_1off id=Q_AK1
-        shortLabel AK1
-        longLabel Anonymous Korean individual, AK1 (Genomic Medicine Institute)
-        color 0,128,64
-
-        track pgQuake
-        parent pgSnp1off
-	subGroups view=C_1off id=R_Quake
-        shortLabel S. Quake
-        longLabel Stephen Quake (Stanford)
-
-        track pgIrish
-        parent pgSnp1off
-        subGroups view=C_1off id=RS_Irish
-        shortLabel Irish Male
-        longLabel Anonymous Irish Male
-        color 0,100,100
-
-        track pgSaqqaq
-        parent pgSnp1off
-	subGroups view=C_1off id=S_Saqqaq
-        shortLabel Saqqaq
-        longLabel Individual from the Extinct Palaeo-Eskimo Saqqaq (Saqqaq Genome Project)
-
-        track pgSaqqaqHc
-        parent pgSnp1off
-	subGroups view=C_1off id=S_Saqqaq
-        shortLabel Saqqaq HC
-        longLabel Individual from the Extinct Palaeo-Eskimo Saqqaq, high confidence SNPs (Saqqaq Genome Project)
-
-
-track pgSnpHgwdev
-compositeTrack on
-shortLabel GenomeVarsHgwdev
-longLabel Personal Genome Variants - Hgwdev only
-group varRep
-priority 500.01
-visibility hide
-type bed 4 +
-
-    track pgKb1Illum
-    parent pgSnpHgwdev
-    shortLabel KB1 Illumina
-    longLabel KB1 Genome Variants, Illumina 23.2X
-    priority 1
-
-    track pgKb1454
-    parent pgSnpHgwdev
-    shortLabel KB1 454
-    longLabel KB1 Genome Variants, 454
-    priority 2
-
-    track pgYoruban2
-    parent pgSnpHgwdev
-    shortLabel YRI '8507, SOLiD
-    longLabel YRI NA18507 Sequenced on the SOLiD Platform (PSU)
-    group varRep
-    priority 20
-    color 128,0,128
 
 
 track darned
@@ -4213,6 +3888,15 @@ type bed 4 .
     type bed 6 +
     priority 12
 
+track iscaRetrospective
+shortLabel ISCA Retro
+longLabel International Standards for Cytogenetic Arrays Consortium - Retrospective variants
+group varRep
+priority 110
+visibility hide
+type gvf
+noScoreFilter .
+
 searchName decipherId
 searchTable decipher
 termRegex [0-9]+
@@ -4264,3 +3948,125 @@ termRegex rs[0-9]+
 searchPriority 12.991
 padding 250
 
+searchTable iscaRetrospective
+searchMethod exact
+searchType bed
+semiShortCircuit 1
+termRegex [ne]ss?v[0-9]+
+searchPriority 20
+
+#NumtS track
+track numtSeq
+compositeTrack on
+shortLabel NumtS Sequence
+longLabel Human NumtS mitochondrial sequence
+group varRep
+priority 500.5
+visibility hide
+noInherit on
+type bed 3 .
+#configurable on
+html numtSeq
+
+    track numtS
+    parent numtSeq
+    shortLabel NumtS
+    longLabel Human NumtS
+    color 0,60,120
+     #itemRgb on
+    useScore 1
+    #noScoreFilter .
+    priority 1
+    type bed 6 .
+    html numtSeq
+
+    track numtSAssembled
+    parent numtSeq
+    shortLabel NumtS assembled
+    longLabel Human NumtS assembled
+    color 0,60,120
+    priority 2
+    useScore 1
+    #noScoreFilter .
+    type bed 12 .
+    html numtSeq
+
+    track numtSMitochondrion
+    parent numtSeq
+    shortLabel NumtS on mitochon
+    longLabel Human NumtS on mitochondrion
+    useScore 1
+    #noScoreFilter .
+    color 0,60,120
+    priority 3
+    type bed 6 .
+    html numtSeq
+
+    track numtSMitochondrionChrPlacement
+    parent numtSeq
+    longLabel Human NumtS on mitochondrion with chromosome placement
+    shortLabel NumtS chr colored
+    priority 4
+    itemRgb on
+    type bed 9 .
+    html numtSeq
+
+    track  bamAllNumtSSorted
+    parent numtSeq
+    shortLabel NumtS SNPs
+    longLabel Human NumtS on mitochondrion SNPs
+    priority 5
+    visibility pack
+    configurable on
+    type bam
+    bamSkipPrintQualScore .
+    chromosomes chrM
+    pairEndsByName on
+    showNames on
+    noColorTag .
+    bamColorMode strand
+    bamGrayMode aliQual
+    aliQualRange 0:255
+    baseColorDefault diffBases
+    baseColorUseSequence lfExtra
+    indelDoubleInsert on
+    indelQueryInsert on
+    showDiffBasesAllScales .
+    showDiffBasesMaxZoom 100
+    maxWindowToDraw 1000000
+
+
+
+searchTable numtSMitochondrionChrPlacement
+searchMethod exact
+searchType bed
+#shortCircuit 1
+searchPriority 15
+query select chrom, chromStart, chromEnd, name from %s where name like '%s%%'
+termiRegex HSA_NumtS_*
+
+searchTable numtSMitochondrion
+searchMethod exact
+searchType bed
+#shortCircuit 1
+searchPriority 15
+query select chrom, chromStart, chromEnd, name from %s where name like '%s%%'
+termiRegex HSA_NumtS_*
+
+searchTable numtS
+searchMethod exact
+searchType bed 
+#shortCircuit 1
+searchPriority 15
+query select chrom, chromStart, chromEnd, name from %s where name like '%s%%'
+termiRegex HSA_NumtS_*
+    
+searchTable numtSAssembled
+searchMethod exact
+searchType bed
+#shortCircuit 1
+searchPriority 15
+query select chrom, chromStart, chromEnd, name from %s where name like '%s%%'
+termiRegex HSA_NumtS_*
+
+include decode.rmap.ra

@@ -37,10 +37,10 @@ struct udcFile *udcFileOpen(char *url, char *cacheDir);
 void udcFileClose(struct udcFile **pFile);
 /* Close down cached file. */
 
-int udcRead(struct udcFile *file, void *buf, int size);
+bits64 udcRead(struct udcFile *file, void *buf, bits64 size);
 /* Read a block from file.  Return amount actually read. */
 
-void udcMustRead(struct udcFile *file, void *buf, int size);
+void udcMustRead(struct udcFile *file, void *buf, bits64 size);
 /* Read a block from file.  Abort if any problem, including EOF before size is read. */
 
 #define udcMustReadOne(file, var) udcMustRead(file, &(var), sizeof(var))
@@ -131,5 +131,13 @@ int udcCacheTimeout();
 void udcSetCacheTimeout(int timeout);
 /* Set cache timeout (if local cache files are newer than this many seconds,
  * we won't ping the remote server to check the file size and update time). */
+
+time_t udcUpdateTime(struct udcFile *udc);
+/* return udc->updateTime */
+
+#ifdef PROGRESS_METER
+off_t remoteFileSize(char *url);
+/* fetch remote file size from given URL */
+#endif
 
 #endif /* UDC_H */

@@ -2,255 +2,192 @@
 
 include wgEncodeSuper.ra
 
-#Encode Composite tracks
-include wgEncodeUwAffyExonArray.ra
-include wgEncodeSunyAlbanyGeneSt.ra
-include wgEncodeSunyAlbanyTiling.ra
-include wgEncodeSunySwitchgear.ra
-include wgEncodeHaibTfbs.ra
-include wgEncodeSydhTfbs.ra
-include wgEncodeSydhHistone.ra
-include wgEncodeOpenChromChip.ra
-include wgEncodeOpenChromDnase.ra
-include wgEncodeOpenChromFaire.ra
-include wgEncodeOpenChromSynth.ra
-include wgEncodeDukeAffyExon.ra
-include wgEncodeUwHistone.ra
+# GENCODE genes (wrangler: braney,cricket)
+include wgEncodeGencodeV3.ra alpha
+include wgEncodeGencodeV4.ra
+#include wgEncodeGencodeV5.ra alpha
+include wgEncodeGencodeV7.ra
 
-#Methyl RRBS (wrangler: Venkat)
-include wgEncodeHaibMethylRrbs.ra beta,public
-include wgEncodeHaibMethylRrbs.new.ra alpha
+# UNC/BSU Proteogenomics (wrangler: cline)
+#include wgEncodeUncBsuProt.ra beta,public
+include wgEncodeUncBsuProt.ra
 
-#Broad Histone (wrangler: Tim)
-include wgEncodeBroadHistone.ra alpha,beta
+# Integrated Regulation (wrangler: kent)
+include wgEncodeReg.ra
+#include wgEncodeRegNorm.ra alpha
 
-#UW DNase DGF (wrangler: Venkat)
-include wgEncodeUwDgf.ra beta,public
-include wgEncodeUwDgf.new.ra alpha
+# Nucleosome (wrangler: venkat)
+include wgEncodeSydhNsome.ra
 
-#Uw Dnase-Seq (wrangler: Venkat
-include wgEncodeUwDnase.ra beta,public
-include wgEncodeUwDnase.new.ra alpha
+# GIS RNA PET (wrangler: cricket)
+include wgEncodeGisRnaPet.ra alpha
 
-include wgEncodeHaibMethylSeq.ra
-include wgEncodeHaibMethylArray.ra
-include wgEncodeGisRnaSeq.ra
-include wgEncodeGisRnaPet.ra
+# GIS DNA PET (wrangler: cricket)
 include wgEncodeGisDnaPet.ra
-include wgEncodeAffyRnaChip.ra
-include wgEncodeUwTfbs.ra
-include wgEncodeCshlLongRnaSeq.ra
-include wgEncodeCaltechRnaSeq.ra
-include wgEncodeYaleRnaSeq.ra
+
+# HAIB Genotype (CNV) (wrangler: Cricket)
+include wgEncodeHaibGenotype.ra
+
+# BU Orchid (wrangler: cricket)
 include wgEncodeBuOrchid.ra
 
-track wgEncodeMapability
-compositeTrack on
-shortLabel Mapability
-longLabel Mapability or Uniqueness of Reference Genome
-group map
-#dimensions dimensionX=win
-dragAndDrop subTracks
-priority 0
-type bigWig 0.00 1.00
-viewLimits 0:1
-autoScale off
-canPack  On
-windowingFunction mean
-maxHeightPixels 100:32:16
-visibility hide
-wgEncode 1
-origAssembly hg19
+# Affy Rna Chip (wrangler: cricket)
+include wgEncodeAffyRnaChip.ra
 
-    track wgEncodeCrgMapabilityAlign24mer
-    subTrack wgEncodeMapability
-    shortLabel CRG Align 24
-    longLabel Mapability - CRG GEM Alignability of 24mers with no more than 2 mismatches
-    color 0,100,0
-    priority 1
-    
-    track wgEncodeCrgMapabilityAlign36mer
-    subTrack wgEncodeMapability
-    shortLabel CRG Align 36
-    longLabel Mapability - CRG GEM Alignability of 36mers with no more than 2 mismatches
-    color 0,100,0
-    priority 2
+# Chromatin Interactions ------
 
-    track wgEncodeCrgMapabilityAlign40mer
-    subTrack wgEncodeMapability
-    shortLabel CRG Align 40
-    longLabel Mapability - CRG GEM Alignability of 40mers with no more than 2 mismatches
-    color 0,100,0
-    priority 3
-    
-    track wgEncodeCrgMapabilityAlign50mer
-    subTrack wgEncodeMapability
-    shortLabel CRG Align 50
-    longLabel Mapability - CRG GEM Alignability of 50mers with no more than 2 mismatches
-    color 0,100,0
-    priority 4
+# GIS ChIA-pet (wrangler: braney)
+include wgEncodeGisChiaPet.ra alpha
 
-    track wgEncodeCrgMapabilityAlign75mer
-    subTrack wgEncodeMapability
-    shortLabel CRG Align 75
-    longLabel Mapability - CRG GEM Alignability of 75mers with no more than 2 mismatches
-    color 0,100,0
-    priority 5
+# UMass-Dekker 5C (wrangler: kate)
+include wgEncodeUmassDekker5C.ra alpha
 
-    track wgEncodeCrgMapabilityAlign100mer
-    subTrack wgEncodeMapability
-    shortLabel CRG Align 100
-    longLabel Mapability - CRG GEM Alignability of 100mers with no more than 2 mismatches
-    color 0,100,0
-    priority 6
+# UW 5C (wrangler: kate)
+include wgEncodeUw5C.ra alpha
 
-#  GENCODE genes (wrangler: braney )
 
-track wgEncodeSangerGencode
-compositeTrack on
-shortLabel Gencode Genes V3
-longLabel ENCODE Gencode Gene Annotations
-group genes
-visibilityViewDefaults GencodeManual=pack GencodeAuto=pack
-dragAndDrop subTracks
-priority 34.3
-#visibility pack
-color 12,12,120
-type genePred
-hgGene on
-hgsid on
-baseColorUseCds given
-baseColorDefault genomicCodons
-wgEncode 1
-cdsDrawDefault genomic\ codons
-itemClassTbl wgEncodeGencodeClassesV3
-yalePseudoAssoc wgEncodeSangerGencodeYalePseudo
-yaleUrl http://tables.pseudogene.org/
-geneClasses Validated_coding Validated_processed Validated_processed_pseudogene Validated_unprocessed_pseudogene Validated_pseudogene Havana_coding Havana_nonsense Havana_non_coding Havana_processed_pseudogene Havana_unprocessed_pseudogene Havana_pseudogene Havana_TEC Havana_polyA Ensembl_coding Ensembl_non_coding Ensembl_processed_pseudogene Ensembl_unprocessed_pseudogene Ensembl_pseudogene Ensembl_RNA
-gClass_Validated_coding 153,51,0
-gClass_Validated_processed 254,154,46
-gClass_Validated_pseudogene 255,51,255
-gClass_Validated_processed_pseudogene 153,0,102
-gClass_Validated_unprocessed_pseudogene 170,17,170
-gClass_Havana_coding 153,51,0
-gClass_Havana_non_coding 254,154,46
-gClass_Havana_nonsense 223,117,1
-gClass_Havana_polyA 0,0,0
-gClass_Havana_pseudogene 255,51,255
-gClass_Havana_processed_pseudogene 153,0,102
-gClass_Havana_unprocessed_pseudogene 170,17,170
-gClass_Havana_TEC 102,102,102
-gClass_Ensembl_coding 170,0,0
-gClass_Ensembl_non_coding 254,154,46
-gClass_Ensembl_pseudogene 255,51,255
-gClass_Ensembl_processed_pseudogene 153,0,102
-gClass_Ensembl_unprocessed_pseudogene 170,17,170
-gClass_Ensembl_RNA 255,153,153
-gClass_2way_consensus_pseudogene 85,34,170
-# 11:17 22:34 2E:46 33:51 55:85 59:89 5D:93 66:102 70:112 74:116 77:119 80:128 84:132 88:136 89:137 99:153 9A:154 AA:170 DF:223 FF:255
-################### Saved for historical curiosity
-#gClass_Validated_processed 51,153,255
-#gClass_Validated_processed_pseudogene 85,34,170
-#gClass_Validated_unprocessed_pseudogene 102,17,255
-#gClass_Validated_pseudogene 153,102,255
-#gClass_Havana_coding 153,51,0
-#gClass_Havana_non_coding 254,154,46
-#gClass_Havana_nonsense 223,116,1
-#gClass_Havana_polyA 0,0,0
-#gClass_Havana_processed_pseudogene 153,0,102
-#gClass_Havana_unprocessed_pseudogene 180,4,174
-#gClass_Havana_pseudogene 255,51,255
-#gClass_Havana_TEC 102,102,102
-#gClass_Ensembl_coding 223,1,1
-#gClass_Ensembl_non_coding 254,46,46
-#gClass_Ensembl_processed_pseudogene 127,70,44
-#gClass_Ensembl_unprocessed_pseudogene 195,98,65
-#gClass_Ensembl_pseudogene 196,116,81
-#gClass_Ensembl_RNA 194,70,65
-###################
-filterBy level:Level=+Validated,Manual_annotation,Automatic_annotation class:Class=Validated_coding,Validated_processed,Validated_processed_pseudogene,Validated_unprocessed_pseudogene,Validated_pseudogene,Havana_coding,Havana_non_coding,Havana_nonsense,Havana_polyA,Havana_processed_pseudogene,Havana_unprocessed_pseudogene,Havana_pseudogene,Havana_TEC,Ensembl_coding,Ensembl_non_coding,Ensembl_processed_pseudogene,Ensembl_unprocessed_pseudogene,Ensembl_pseudogene,Ensembl_RNA,2way_consensus_pseudogene transcriptType:Transcript_Type=ambiguous_orf,antisense,artifact,IG_C_gene,IG_D_gene,IG_J_gene,IG_pseudogene,IG_V_gene,miRNA,miRNA_pseudogene,misc_RNA,misc_RNA_pseudogene,Mt_rRNA,Mt_tRNA,Mt_tRNA_pseudogene,nonsense_mediated_decay,non_coding,polyA_signal,polyA_site,polymorphic_pseudogene,processed_pseudogene,processed_transcript,protein_coding,pseudogene,pseudo_polyA,retained_intron,retrotransposed,rRNA,rRNA_pseudogene,scRNA_pseudogene,snoRNA,snoRNA_pseudogene,snRNA,snRNA_pseudogene,TEC,transcribed_processed_pseudogene,transcribed_unprocessed_pseudogene,tRNAscan,tRNA_pseudogene,TR_pseudogene,unitary_pseudogene,unprocessed_pseudogene
+# Encode Affy Exon --------------------------------------------
 
-    track wgEncodeGencodeManualV3
-    subTrack wgEncodeSangerGencode
-    shortLabel Gencode Manual
-    longLabel ENCODE Gencode Manual Gene Annotations (level 1+2) (Oct 2009)
-    type genePred
-    priority 1
-    url http://vega.sanger.ac.uk/Homo_sapiens/transview?transcript=$$
-    urlLabel Vega Transcript:
-    idInUrlSql select ottTranscriptId from wgEncodeGencodeClassesV3 where name="%s"
-    metadata project=wgEncode grant=Hubbard lab=Sanger dataType=Gencode annotation=Manual level=1-2 freezeDate="GENCODE October 2009 Freeze" dataVersion="ENCODE September 2009 Freeze" subId=453 submittedDataVersion=V3c dateSubmitted=2009-10-27 dateUnrestricted=2010-07-27 composite=wgEncodeGencode tableName=wgEncodeGencodeManualV3 fileName=wgEncodeGencodeManualV3.gtf.gz
+# UW Affy Exon (wrangler: cricket)
+include wgEncodeUwAffyExonArray.ra
 
-    track wgEncodeGencodeAutoV3
-    subTrack wgEncodeSangerGencode
-    shortLabel Gencode Auto
-    longLabel ENCODE Gencode Automated Gene Annotations (level 3) (Oct 2009)
-    type genePred
-    priority 2
-    #url http://vega.sanger.ac.uk/Homo_sapiens/transview?transcript=$$
-    #urlLabel Vega Transcript:
-    #idInUrlSql select ottTranscriptId from wgEncodeGencodeClassesV3 where name="%s"     ### there are not OTT ids for level 3
-    metadata project=wgEncode grant=Hubbard lab=Sanger dataType=Gencode annotation=Automatic level=3 freezeDate="GENCODE October 2009 Freeze" dataVersion="ENCODE September 2009 Freeze" subId=453 submittedDataVersion=V3c dateSubmitted=2009-10-27 dateUnrestricted=2010-07-27 composite=wgEncodeGencode tableName=wgEncodeGencodeAutoV3 fileName=wgEncodeGencodeAutoV3.gtf.gz
+# Duke Affy Exon (wrangler: cricket)
+include wgEncodeDukeAffyExon.ra 
 
-    track wgEncodeGencodePolyaV3
-    subTrack wgEncodeSangerGencode off
-    shortLabel Gencode PolyA
-    longLabel ENCODE Gencode PolyA Transcript Annotations (level 2) (Oct 2009)
-    type genePred
-    priority 4
-    metadata project=wgEncode grant=Hubbard lab=Sanger dataType=Gencode annotation=Automatic level=3 freezeDate="GENCODE October 2009 Freeze" dataVersion="ENCODE September 2009 Freeze" subId=453 submittedDataVersion=V3c dateSubmitted=2009-10-27 dateUnrestricted=2010-07-27 composite=wgEncodeGencode tableName=wgEncodeGencodePolyaV3 fileName=wgEncodeGencodePolyaV3.gtf.gz
 
-searchName wgEncodeGencodeManualV3
-searchTable wgEncodeGencodeManualV3
-searchMethod exact
-searchType genePred
-termRegex ENST[0-9]+
-#termRegex OTTHUMT[0-9]+
-searchPriority 2.2
+###Open Chromatin by DNaseI HS and FAIRE Tracks (super track: wgEncodeDNAseSuper)###
+#UNC FAIRE (wrangler: tim)
+include wgEncodeOpenChromFaire.new.ra alpha
+include wgEncodeOpenChromFaire.ra beta,public
 
-searchName wgEncodeGencodeManualV3Otter
-searchTable wgEncodeGencodeManualV3
-searchMethod exact
-searchType genePred
-termRegex OTTHUMT[0-9]+
-searchPriority 2.2
-#query select t1.chrom, t1.txStart, t1.txEnd, t2.ottTranscriptId from %s t1,wgEncodeGencodeClassesV3 t2 where t1.name = t2.name and t2.ottTranscriptId like '%s'
-xrefTable wgEncodeGencodeClassesV3
-xrefQuery select name,ottTranscriptId from %s where ottTranscriptId = '%s'
+#Open Chrom Synth (wrangler: tim)
+include wgEncodeOpenChromSynth.ra
 
-searchName wgEncodeGencodeAutoV3
-searchTable wgEncodeGencodeAutoV3
-searchMethod exact
-searchType genePred
-termRegex ENST[0-9]+
-searchPriority 2.3
+#Duke DNaseI HS (wrangler: tim)
+include wgEncodeOpenChromDnase.new.ra alpha
+include wgEncodeOpenChromDnase.ra beta,public
 
-searchName wgEncodeGencodeManualV3Gene
-searchTable wgEncodeGencodeManualV3
-searchMethod exact
-searchType genePred
-#termRegex [a-z][a-z0-9][0-9]+
-searchPriority 2.4
-query select chrom, txStart, txEnd, name2 from %s where name2 like '%s'
+#Uw Dnase-Seq (wrangler: Venkat)
+include wgEncodeUwDnase.new.ra alpha
+include wgEncodeUwDnase.ra beta,public
 
-searchName wgEncodeGencodeAutoV3Gene
-searchTable wgEncodeGencodeAutoV3
-searchMethod exact
-searchType genePred
-#termRegex [a-z][a-z0-9][0-9]+
-searchPriority 2.5
-query select chrom, txStart, txEnd, name2 from %s where name2 like '%s'
 
-#  GENCODE genes (wrangler: braney )
-include wgEncodeGencode.ra
-include wgEncodeGencodeV5.ra alpha
+#UW DNase DGF (wrangler: Venkat)
+include wgEncodeUwDgf.new.ra alpha
+include wgEncodeUwDgf.ra beta,public
+
+###End Open Chromatin by DNaseI HS and FAIRE Tracks (super track: wgEncodeDNAseSuper)###
+
+
+
+
+# ENCODE RNA SEQ -----------------------------------
 
 # Riken CAGE (wrangler: cricket)
-include wgEncodeRikenCage.ra
+include wgEncodeRikenCage.ra beta,public
+include wgEncodeRikenCage.new.ra alpha
 
 # CSHL Small RNA (wrangler: cricket)
 include wgEncodeCshlShortRnaSeq.ra beta,public
 include wgEncodeCshlShortRnaSeq.new.ra alpha
 
-# UNC/BSU Proteogenomics (wrangler: cline)
-include wgEncodeUncBsuProt.ra alpha
+# GIS RNA Seq (wrangler: cricket)
+include wgEncodeGisRnaSeq.ra
+
+# Caltech RNA Seq (wrangler: cricket)
+include wgEncodeCaltechRnaSeq.ra beta,public
+include wgEncodeCaltechRnaSeq.new.ra alpha
+
+# CSHL Long Rna Seq (wrangler: cricket)
+include wgEncodeCshlLongRnaSeq.ra alpha
+
+# SYDH  Rna Seq (wrangler: cricket)
+# used to be yale
+include wgEncodeSydhRnaSeq.ra
+
+#HAIB RNA-seq (wrangler: Cricket)
+include wgEncodeHaibRnaSeq.ra alpha
+
+
+
+
+
+
+# ENCODE DNA Methyl ---------------------------------------
+
+#HAIB Methyl-Seq (wrangler: Vankat) most likely never leaving alpha
+include wgEncodeHaibMethylSeq.ra
+#HAIB Methyl Array (wrangler:Cricket)
+#include wgEncodeHaibMethylArray.ra
+include wgEncodeHaibMethyl27.ra alpha
+include wgEncodeHaibMethyl450.ra alpha
+#HAIB Methyl RRBS (wrangler: Cricket) replaces Methyl-Seq
+include wgEncodeHaibMethylRrbs.ra beta,public
+include wgEncodeHaibMethylRrbs.new.ra alpha
+
+
+
+
+
+
+# ENCODE HISTONE --------------------------------------
+
+#Broad Histone (wrangler: Tim)
+include wgEncodeBroadHistone.new.ra alpha
+include wgEncodeBroadHistone.ra beta,public
+
+#Broad HMM (wrangler: Tim)
+include wgEncodeBroadHmm.ra
+
+#UW Histone (wrangler:Venkat)
+include wgEncodeUwHistone.new.ra alpha
+include wgEncodeUwHistone.ra beta,public
+
+# SYDH Histone (wrangler: Venkat)
+include wgEncodeSydhHistone.ra beta,public
+include wgEncodeSydhHistone.new.ra alpha
+
+
+# ENCODE TFBS -------------------------------------------
+
+# UW CTCF Binding (wrangler: Venkat)
+include wgEncodeUwTfbs.new.ra alpha
+include wgEncodeUwTfbs.ra beta,public
+
+#UTA TFBS (wrangler: Tim)
+include wgEncodeOpenChromChip.new.ra alpha
+include wgEncodeOpenChromChip.ra beta,public
+
+# HAIB TFBS (wrangler: Venkat)
+include wgEncodeHaibTfbs.ra beta,public
+include wgEncodeHaibTfbs.new.ra alpha
+# SYDH TFBS (wrangler: Venkat)
+include wgEncodeSydhTfbs.ra
+#include wgEncodeSydhTfbs.ra beta,public
+
+# U Chicago TFBS (wrangler: Venkat)
+include wgEncodeUchicagoTfbs.ra 
+
+
+# SUNY RBP -----------------------------------------
+
+# SUNY RIP Gene ST (wrangler: cricket)
+include wgEncodeSunyAlbanyGeneSt.ra beta,public
+include wgEncodeSunyAlbanyGeneSt.new.ra alpha
+
+# SUNY Tiling Array (wrangler: cricket)
+include wgEncodeSunyAlbanyTiling.ra
+#include wgEncodeSunyAlbanyTiling.new.ra alpha
+
+# SUNY SwitchGear (wrangler: cricket)
+include wgEncodeSunySwitchgear.ra
+
+# SUNY Rip-seq (wrangler: cricket)
+include wgEncodeSunyRipSeq.ra 
+
+# Other miscellany ------------------------------------
+
+# Mapability - a cross lab composite   (wrangler: Tim, assisted by Rachel and Cricket)
+include wgEncodeMapability.ra beta,public
+include wgEncodeMapability.new.ra alpha
+

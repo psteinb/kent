@@ -22,7 +22,7 @@
   <tbody>
     <tr>
       <th colspan="2" align="left">
-<a href="http://www.genome.gov/10005107" target="_BLANK"><img src="../images/ENCODE_scaleup_logo.png" alt="ENCODE Project at NHGRI" height="75"></a> &nbsp;&nbsp; 
+<img src="../images/ENCODE_scaleup_logo.png" alt="ENCODE Project at NHGRI" height="75"> &nbsp;&nbsp;
  <font size="6" face="arial, Geneva, Helvetica, sans-serif"><font color="004D99">
  Encyclopedia of DNA Elements</font>
        </th>
@@ -46,9 +46,9 @@
                         <td bgcolor="#0004D99" height="100%" valign="top">
 			<font color="#FFCC00"><b><em>Human</em></b></font><br>
                         <img src="../images/DOT.gif" alt="" height="8" width="0"><br>
-			<a class="leftbar" href="/ENCODE/dataSummary.html">Data Summary</a>
+			     <a class="leftbar" href="/ENCODE/dataSummary.html">Data Summary</a>
+                        <hr> <a class="leftbar" href="search.html">Search</a>
                         <hr> <a class="leftbar" href="downloads.html">Downloads</a>
-			<hr> <a class="leftbar" href="/cgi-bin/hgTracks?db=hg18">Genome Browser (hg18)</a>
 			<hr> <a class="leftbar" href="/cgi-bin/hgTracks?db=hg19">Genome Browser (hg19)</a>
 			<hr> <a class="leftbar" href="http://genome-preview.ucsc.edu/cgi-bin/hgTracks?db=hg19">Preview Browser (hg19)</a>
 			<hr> <a class="leftbar" href="http://genomewiki.cse.ucsc.edu/index.php/Genome_Browser_Session_Gallery"
@@ -58,21 +58,24 @@
 			<img src="../images/DOT.gif" alt="" height="5" width="0"><br>
 			<font color="#FFCC00"><b><em>Mouse</em></b></font><br>
 			<img src="../images/DOT.gif" alt="" height="8" width="0"><br>
-			<a class="leftbar" href="/ENCODE/dataSummaryMouse.html">Data Summary</a>
-			<hr><a class="leftbar" href="/cgi-bin/hgTracks?db=mm9">Preview Browser (mm9)</a>
+			     <a class="leftbar" href="/ENCODE/dataSummaryMouse.html">Data Summary</a>
+                        <hr> <a class="leftbar" href="search.html">Search</a>
+                        <hr><a class="leftbar" href="downloadsMouse.html">Downloads</a>
+                        <hr><a class="leftbar" href="/cgi-bin/hgTracks?db=mm9">Genome Browser (mm9)</a>
+			<hr><a class="leftbar" href="http://genome-preview.ucsc.edu/cgi-bin/hgTracks?db=mm9">Preview Browser (mm9)</a>
 			<hr><a class="leftbar" href="cellTypesMouse.html">Cell Types</a>
-                        <!-- <hr> <a class="leftbar" href="downloadsMouse.html">Downloads</a> -->
 			<hr>
                         <img src="../images/DOT.gif" alt="" height="5" width="0"><br>
 			<font color="FFCC00"><b><em>General</em></b></font><br>
                         <img src="../images/DOT.gif" alt="" height="8"><br>
-			<a class="leftbar" href="otherTerms.html">Registered Variables</a>
-			<hr><a class="leftbar" href="antibodies.html">Antibodies</a>
+			     <a class="leftbar" href="otherTerms.html">Registered Variables</a>
+                        <hr> <a class="leftbar" href="antibodies.html">Antibodies</a>
+                        <hr> <a class="leftbar" href="usageResources.html">Education and Outreach</a>
 			<hr> <a class="leftbar" href="releaseLog.html">Release Log</a>
                         <hr> <a class="leftbar" href="terms.html">Data Policy</a>
 			<hr> <a class="leftbar" href="dataStandards.html">Data Standards</a>
-                        <hr> <a class="leftbar" href="contributors.html">Contributors</a>
 		    	<hr> <a class="leftbar" href="pubs.html">Publications</a>
+                        <hr> <a class="leftbar" href="contributors.html">Contributors</a>
                         <hr> <a class="leftbar" href="pilot.html">Pilot Project</a>
                         <hr> <a class="leftbar" href="http://www.cbse.ucsc.edu/jobs/" target="_blank">Jobs</a>
                         <hr> <a class="leftbar" href="contacts.html">Contact Us</a>
@@ -129,29 +132,60 @@ About ENCODE Data</b></font> </td>
                               <td width="10"><br>
                               </td>
                               <td>
-<p>The <a href="http://www.genome.gov/10005107" target="_blank">Encyclopedia of DNA Elements</a> 
+<p>The <a href="http://www.genome.gov/10005107" target="_blank">Encyclopedia of DNA Elements</a>
 (ENCODE) Consortium is an international collaboration
 of research groups funded by the National Human Genome Research
 Institute (<a href="http://www.genome.gov/" target="_blank">NHGRI</a>).
 The goal of ENCODE is to build a comprehensive parts list of
 functional elements in the human genome, including elements that
-act at the protein level and RNA level,
+act at the protein and RNA levels,
 and regulatory elements that control cells and
-circumstances in which a gene is active.</p>
+circumstances in which a gene is active.
+</p>
+<!--#if expr='"$SERVER_NAME" = /hgwdev.*.cse.ucsc.edu/ || "$SERVER_NAME" = "genome-test.cse.ucsc.edu"'-->
 <p>
+<b>WARNING: This is a test site.</b>
+Data and tools here are under 
+construction, have not been quality reviewed, and are subject to change 
+at any time.  
+For 
+high-quality reviewed annotations on our production server, visit
+<a HREF="http://encodeproject.org">http://encodeproject.org</a>.</p>
+<!--#endif -->
+
+<!--#if expr='"$SERVER_NAME" = /genome-preview.*.ucsc.edu/' -->
+<p>
+<b>WARNING: This is our preview site.</b>
+This website is a weekly mirror of our internal 
+development server for public access.  
+Data and tools here are under 
+construction, have not been quality reviewed, and are subject to change 
+at any time.  We provide this site for early access, with the warning that it is
+less available and stable than our public site. For 
+high-quality reviewed annotations on our production server, visit
+<a HREF="http://encodeproject.org">http://encodeproject.org</a>.</p>
+<!--#endif -->
+
 <table><tr>
 <td><a href="/ENCODE/aboutScaleup.html" target="_blank"><img src="../images/EncodeNatureGraphic.png" alt="" height="200">
 <em><font size=-2>Click to enlarge</em></font></td>
 
 <td>
 ENCODE data are now available for the entire human genome.
-<b><em>All ENCODE data are free and available for immediate use, via </em></b>:
+<b><em>All ENCODE data are free and available for immediate use via </em></b>:
 <ul class="simple">
-<li><a href="/ENCODE/downloads.html" target="_blank">Download</a> of data files</li>
-<li><a href="http://genome.ucsc.edu/cgi-bin/hgTracks?hgS_doOtherUser=submit&hgS_otherUserName=Kate&hgS_otherUserSessionName=encodePortalSession" target="_blank">Visualization</a> in the UCSC Genome Browser (data marked with the 
-<img src="../images/nhgri.gif" alt="" height="16" width="16"> NHGRI logo).</li>
-<li><a href="http://hgwdev-kate.cse.ucsc.edu/cgi-bin/hgTables?db=hg19&hgta_group=regulation&hgta_track=knownGene&hgta_table=0&hgta_regionType=genome&position=chr21:32812169-33260998&hgta_outputType=primaryTable" target="_blank">Data mining</a> with the UCSC Table Browser and other <a href="http://genome.ucsc.edu">
-UCSC Genome Bioinformatics tools</a></li>
+<li><a href="/ENCODE/search.html" target="_blank">Search</a> for displayable tracks and downloadable files
+</li>
+<li><a href="/ENCODE/downloads.html" target="_blank">Download</a> of data files
+</li>
+<li><a href="http://genome.ucsc.edu/cgi-bin/hgTracks?hgS_doOtherUser=submit&hgS_otherUserName=Kate&hgS_otherUserSessionName=encodePortalSession"
+target="_blank">Visualization</a> in the UCSC Genome Browser (ENCODE data marked with
+the <img src="../images/nhgri.gif" alt="" height="16" width="16"> NHGRI logo)
+</li>
+<li><a href="/cgi-bin/hgTables?db=hg18&hgta_group=regulation&hgta_track=wgEncodeHudsonalphaChipSeq"
+target="_blank">Data mining</a> with the UCSC Table Browser and other
+<a href="http://genome.ucsc.edu"> UCSC Genome Bioinformatics tools</a>
+</li>
 </ul>
 </td>
 
@@ -160,23 +194,24 @@ UCSC Genome Bioinformatics tools</a></li>
 <p>
 To search for ENCODE data related to your area of interest and set up a browser view, use the UCSC
 <a href="/cgi-bin/hgTracks?hgt_tSearch=1" target="_blank">Track Search tool</a> (<em>Advanced</em> features).
-The <a href="dataSummary.html" target="_blank">Data Summary</a> shows a comprehensive listing of 
+The <a href="dataSummary.html" target="_blank">Data Summary</a> shows a comprehensive listing of
 ENCODE data that is released or in preparation.
-Early access to pre-release ENCODE data is provided at 
+Early access to pre-release ENCODE data is provided at
 <a href="http://genome-preview.ucsc.edu" target="_blank">http://genome-preview.ucsc.edu</a>.
 If you would like to receive notifications of ENCODE data releases and related news by email,
-subscribe to the 
+subscribe to the
 <a href="https://lists.soe.ucsc.edu/mailman/listinfo/encode-announce" target="_blank">encode-announce mailing list</a>.
-For more information about how to access this data, see the free on-line 
+For more information about how to access this data, see the free online
 <a target=="_blank" href="http://www.openhelix.com/ENCODE/" target="_blank">OpenHelix ENCODE tutorial</a>.
 <p>
-To complement the human ENCODE data, Mouse ENCODE experiments are currently underway.
-This data will be made available as soon as possible.
-The <a href="/encode/dataSummaryMouse.html" target="_blank">Mouse ENCODE Data Summary</a> lists planned and in progress experiments.
+To complement the human ENCODE data, Mouse ENCODE experiments are currently underway. Early
+access to this data is available on the Mouse mm9/NCBI37 browser at the UCSC preview site.
+The <a href="/encode/dataSummaryMouse.html" target="_blank">Mouse ENCODE
+Data Summary</a> lists experiments that are planned or in progress.
 </p>
 <p>
-All ENCODE data is freely available for download and analysis, 
-however before publishing research that uses ENCODE data, 
+All ENCODE data is freely available for download and analysis.
+However, before publishing research that uses ENCODE data,
 please read the <a href="terms.html" target="_blank">ENCODE Data Release Policy</a>,
 which places some restrictions on publication use of data for nine
 months following data release. &nbsp;&nbsp;
@@ -240,49 +275,122 @@ months following data release. &nbsp;&nbsp;
                             <tr>
                               <td width="10"><br>
                               </td>
-                              <td style="font-family: arial, Geneva, Helvetica, sans-serif;"><!-- start news item -->
+                              <td style="font-family: arial, Geneva, Helvetica, sans-serif;">
+
+
+<!-- start news item -->
 <p>
-<font size="3"><b>16 December 2010 - Release of DNA Methylation and DNaseI Sensitivity data</b></font>
+<font size="3"><b> 8 July 2011 - Mouse ENCODE data releases: DNaseI hypersensitivity (UW DNaseI HS) and histone modifications (LICR Histone)
+</b></font>
 <p>
-We are pleased to announce the release of three tracks of ENCODE data on the GRCh37/hg19 human
-assembly. All three tracks are in the browser 'Regulation' track group; one of the tracks is in the
-new <a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeDnaMethylSuper">
-ENC DNA Methyl</a> super-track and the other two are in the new
-<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeDNAseSuper">ENC DNase/FAIRE</a>
-super-track (super-tracks provide additional documentation and organization by data type). The three
-newly released tracks are: 
+Two tracks of ENCODE data were released on the mm9 genome browser, from the UCSD/Ludwig Institute for Cancer Research and the University of Washington Mouse ENCODE groups.
 </p>
 <p>
-<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeHaibMethylRrbs"><b>HAIB Methyl
-RRBS</b></a>: This track reports the percentage of DNA molecules that exhibit cytosine methylation
-at specific CpG dinucleotides. In general, DNA methylation within a gene's promoter is associated
-with gene silencing, and DNA methylation within the exons and introns of a gene is associated with
-gene expression.</p>
-<p>
-<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeUwDgf"><b>UW DNaseI DGF</b></a>:
-This track contains deep sequencing DNase data that will be used to identify sites where regulatory
-factors bind to the genome (footprints).</p>
-<p>
-<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeUwDnase"><b>UW DNaseI HS</b></a>:
-This track shows DNaseI sensitivity measured genome-wide in different cell lines using the Digital
-DNaseI methodology and DNaseI hypersensitive sites.</p>
-<p>
-Some of the data that comprise these tracks were originally released on hg18 and have been remapped
-to hg19; in such cases, subtracks have 'origAssembly hg18' as part of their metadata.</p>
-<hr><!-- end news item --><!-- start archived item section-->
-<!-- start of archived news item -->
-<p>
-<font size="3"><b>16 November 2010 - Release of the first ENCODE RNA-seq data on hg19</b>:</font>
-We are pleased to announce the release of the first ENCODE RNA-seq data on the GRCh37/hg19 human
-browser. <a href="newsarch.html#111610">Read more</a>.</p><hr>
-<!-- end  of archived news item -->
-<!-- start of archived news item -->
-<p><font size="3"><b>15 Nov 2010 - New ENCODE Tutorial at OpenHelix</b></font>:
-OpenHelix, together with the UCSC Genome Bioinformatics group, anounce a new online tutorial suite
-to teach users how to access the ENCODE data in the UCSC Genome Browser.
-<a href="newsarch.html#111510">Read more</a>.</p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=mm9&g=wgEncodeLicrHistone">Histone Modifications by ChIP-seq from ENCODE/LICR</b></a>:
+This track shows a comprehensive survey of cis-regulatory elements in the mouse genome by using ChIP-seq to identify transcription factor binding sites and chromatin modification profiles in many mouse tissues and primary cells, including bone marrow, cerebellum, cortex, heart, kidney, liver, lung, spleen, mouse embryonic fibroblast cells (MEFs) and embryonic stem (ES) cells.
 </p>
-<!-- end of archived news item -->
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=mm9&g=wgEncodeUwDnase">DNaseI Hypersensitivity by Digital DNaseI from ENCODE/University of Washington</b></a>:
+This track shows DNaseI sensitivity measured genome-wide in mouse tissues and cell lines using the Digital DNaseI methodology and DNaseI hypersensitive sites.
+</p>
+<hr>
+<!-- end news item -->
+<!-- start news item -->
+<p>
+<font size="3"><b> 1 July 2011 - ENCODE data releases: Broad ChromHMM, Open Chrom Synth, UChicago TFBS, Duke Affy Exon
+</b></font>
+<p>
+Four tracks of ENCODE production data and analysis were released in June, from the 
+Broad Institute (Kellis lab), OpenChromatin (Duke, UNC, UT-A) and University of Chicago
+(White Lab) ENCODE groups.  This is the first data release from the University of Chicago ENCODE group, 
+which joined the Consortium as part of the NIH ARRA stimulus grants.
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeBroadHmm">Chromatin State Segmentation by HMM from ENCODE/Broad</b></a>:
+This track, and the companion hg18 track, display chromatin state segmentation of the human genome into
+fifteen states grouped to predict functional elements.
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeOpenChromSynth">DNaseI/FAIRE/ChIP Synthesis from ENCODE/OpenChrom(Duke/UNC/UTA)</b></a>:
+This track displays a synthesis of open chromatin regions and binding of selected regulatory factors, 
+based on three complementary methodologies.
+</p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeUchicagoTfbs">Transcription Factor Binding Sites by Epitope-Tag ChIP-seq from ENCODE/University of Chicago</b></a>:
+This track maps human transcription factor binding sites genome-wide using expressed transcription factors as GFP tagged fusion proteins after BAC recombineering.
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeDukeAffyExonArray">Affymetrix Exon Array from ENCODE/Duke</b></a>:
+This track displays human tissue microarray data using Affymetrix Human Exon 1.0 ST expression arrays, 
+including annotations at the gene level.
+</p>
+<hr>
+<!-- end news item -->
+
+<!-- start news item -->
+<p>
+<font size="3"><b> 24 June 2011 - ENCODE RNA-seq data standards now available
+</b></font>
+<p>
+The ENCODE Consortium has finalized <em><b>'Standards, Guidelines and Best Practices for RNA-Seq V1.0'</b></em>, as part of the Consortium's continuing
+effort to generate data standards.   The document is available at the ENCODE portal via  the
+<a target=_blank href="http://encodeproject.org/ENCODE/dataStandards.html"><b>Data Standards</b></a> link.
+</p>
+<p>
+RNA-Seq is a directed experimental approach aimed at characterizing transcription in biological samples. This document presents a set of guidelines and standards focused on best practices for creating 'reference quality' transcriptome measurements. 
+sets.</p>
+<hr>
+<!-- end news item -->
+<!-- start news item -->
+<p>
+<font size="3"><b> 1 June 2011 - ENCODE data releases in April and May
+</b></font>
+<p>
+Five tracks of ENCODE production and analysis data were released in April and May on the GRCh37/hg19 human assembly from
+the Caltech, Broad Institute, HudsonAlpha Institute for Biotechnology, Duke University (Open Chromatin), SUNY Albany,
+University of Washington, Boston University, Stanford/Yale/Davis/Harvard and UCSC ENCODE groups
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeReg">Integrated Regulation from ENCODE</b></a>:
+This collection of tracks displays integrated signal and clustering annotations from multiple cell lines, using ENCODE
+primary data from RNA-seq, ChIP-seq, and DNase-seq assays.  This track is a companion to the hg18 ENCODE Regulation track.
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeOpenChromDnase">
+ Open Chromatin by DNaseI HS from ENCODE/OpenChrom(Duke University)</b></a>:
+This track displays DNaseI hypersensitivity evidence as part of the four Open Chromatin track set.
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeSunyAlbanyGeneSt">RNA Binding Protein Associated RNA by RIP-chip GeneST from ENCODE/SUNY Albany</b></a>:
+This track displays transcriptional fragments associated with RNA 
+binding proteins in different cell lines using RIP-Chip (Ribonomic) 
+profiling on Affymetrix GeneChip® Human Gene 1.0 ST Arrays.
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeUwDnase">DNaseI Hypersensitivity by Digital DNaseI form ENCODE/University of Washington</b></a>:
+This track shows DNaseI sensitivity measured genome-wide in different 
+cell lines using the Digital DNaseI methodology.
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeBuOrchid">OrChID Predicted DNA Cleavage Sites from ENCODE/Boston Univ (Tullius Lab)</b></a>:
+This track display predicted hydroxyl radical cleavage intensity on naked DNA for each nucleotide in the genome. 
+</p>
+<p>
+<a href="http://genome.ucsc.edu/cgi-bin/hgTrackUi?db=hg19&g=wgEncodeSydhHistone">Histone Modifications by ChIP-seq from ENCODE/Stanford/Yale/Davis/Harvard</b></a>:
+This track displays maps of histone modifications genome-wide using ChIP-seq in different cell lines. 
+</p>
+<hr>
+<!-- end news item -->
+
+<!-- start archived item section -->
+<p>
+<font size="3"><b> 22 April 2011 - ENCODE data releases: UTA TFBS, UW CTCF, UNC FAIRE, RIKEN CAGE Loc, UW Affy Exon, UW DNaseI DGF & Duke DNaseI HS</b></font>
+<p>
+Seven tracks of ENCODE data on the GRCh37/hg19 human assembly were released in March and April from
+from the University of Texas at Austin (Open Chromatin), University of Washington, University of North Carolina (Open Chromatin), RIKEN, and Duke University (Open Chromatin) ENCODE groups.
+<a href="newsarch.html#042211">Read more</a>.</p>
+<!-- end archived news item -->
+<br>
+<!-- end archived news item -->
 <!-- end archived item section--> </td>
                               <td width="15"><br>
                               </td>

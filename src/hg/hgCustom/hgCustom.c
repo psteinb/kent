@@ -70,6 +70,9 @@ static boolean measureTiming = FALSE;
 #define hgCtDoRefreshClr  hgCtDo "refresh_clr"
 #define hgCtDoGenomeBrowser	  hgCtDo "gb"
 #define hgCtDoTableBrowser	  hgCtDo "tb"
+#ifdef PROGRESS_METER
+#define hgCtDoProgress	  hgCtDo "progress"
+#endif
 
 /* Global variables */
 struct cart *cart;
@@ -83,7 +86,7 @@ void makeClearButton(char *field)
 /* UI button that clears a text field */
 {
 char javascript[1024];
-safef(javascript, sizeof javascript, 
+safef(javascript, sizeof javascript,
         "document.mainForm.%s.value = '';", field);
 cgiMakeOnClickButton(javascript, "&nbsp;Clear&nbsp;");
 }
@@ -178,7 +181,7 @@ if (!isUpdateForm)
 
 if (hIsGsidServer())
     {
-    printf("<font color=red>The Custom Track function and its documentation is currently under development ...<BR><BR></font>\n");
+    printf("<span style='color:red;'>The Custom Track function and its documentation is currently under development ...</span><BR><BR>\n");
     }
 
     puts("<TABLE BORDER=0>\n");
@@ -217,7 +220,7 @@ puts("<P>");
 
 /* row for error message */
 if (err)
-    printf("<P><B>&nbsp;&nbsp;&nbsp;&nbsp;<I><FONT COLOR='RED'>Error</I></FONT>&nbsp;%s</B><P>", err);
+    printf("<P><B>&nbsp;&nbsp;&nbsp;&nbsp;<span style='color:RED; font-style:italic;'>Error</span>&nbsp;%s</B><P>", err);
 
 cgiSimpleTableStart();
 
@@ -247,13 +250,13 @@ if (isUpdateForm)
     if (dataUrl)
         {
         /* can't update via pasting if loaded from URL */
-        cgiMakeTextAreaDisableable(hgCtConfigLines, 
+        cgiMakeTextAreaDisableable(hgCtConfigLines,
             cartUsualString(cart, hgCtConfigLines, customTrackUserConfig(ct)),
                             CONFIG_ENTRY_ROWS, TEXT_ENTRY_COLS, TRUE);
         }
     else
         {
-        cgiMakeTextArea(hgCtConfigLines, 
+        cgiMakeTextArea(hgCtConfigLines,
                 cartUsualString(cart, hgCtConfigLines, customTrackUserConfig(ct)),
                             CONFIG_ENTRY_ROWS, TEXT_ENTRY_COLS);
         }
@@ -342,7 +345,7 @@ cgiTableRowEnd();
 
 /* extra space */
 cgiSimpleTableRowStart();
-puts("<TD STYLE='padding-top:10';\"></TD>");
+cgiDown(0.7);
 cgiTableRowEnd();
 
 /* next row - label for description text entry */
@@ -420,18 +423,19 @@ else
     printf("<INPUT TYPE=\"HIDDEN\" NAME=\"hgct_do_add\" VALUE=\"1\">\n");
     }
 puts("</FORM>");
+cgiDown(0.9);
 }
 
 void tableHeaderFieldStart(int columns)
 {
 /* print table column header with white text on black background */
-printf("<TD COLSPAN=%d ALIGN='CENTER' BGCOLOR=#536ED3>", columns);
+printf("<TD COLSPAN=%d ALIGN='CENTER' BGCOLOR='#536ED3'>", columns);
 }
 
 void tableHeaderField(char *label, char *description)
 {
 /* print table column header with white text on black background */
-puts("<TD ALIGN='CENTER' BGCOLOR=#536ED3 ");
+puts("<TD ALIGN='CENTER' BGCOLOR='#536ED3' ");
 if (description)
     printf("TITLE='%s'", description);
 printf("><B>%s</B></TD> ", wrapWhiteFont(label));
@@ -501,13 +505,13 @@ for (ct = ctList; ct != NULL; ct = ct->next)
     {
     /* Name  field */
     char *shortLabel = htmlEncode(ct->tdb->shortLabel);
-    if ((ctDataUrl(ct) && ctHtmlUrl(ct)) || 
+    if ((ctDataUrl(ct) && ctHtmlUrl(ct)) ||
             sameString(ct->tdb->type, "chromGraph"))
         printf("<TR><TD>%s</A></TD>", shortLabel);
     else
 	{
 	char *cgiName = cgiEncode(ct->tdb->track);
-        printf("<TR><TD><A TITLE='Update custom track: %s' HREF='%s?%s&%s=%s'>%s</A></TD>", 
+        printf("<TR><TD><A TITLE='Update custom track: %s' HREF='%s?%s&%s=%s'>%s</A></TD>",
             shortLabel, hgCustomName(),cartSidUrlString(cart),
 	    hgCtTable, cgiName, shortLabel);
 	freeMem(cgiName);
@@ -520,7 +524,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
     /* Type field */
     printf("<TD>%s</TD>", ctInputType(ct));
     /* Doc field */
-    printf("<TD ALIGN='CENTER'>%s</TD>", 
+    printf("<TD ALIGN='CENTER'>%s</TD>",
                 isNotEmpty(ct->tdb->html) ? "Y" : "&nbsp;");
     /* Items field */
     if (itemCt)
@@ -531,7 +535,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
         else
             puts("<TD>&nbsp;</TD>");
         }
-    /* Pos field; indicates initial position for the track, 
+    /* Pos field; indicates initial position for the track,
      * or first element */
     if (posCt)
         {
@@ -543,7 +547,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
             char *chrom = cloneString(pos);
             chopSuffixAt(chrom, ':');
             if (hgOfficialChromName(database, chrom))
-                printf("<TD><A HREF='%s?%s&position=%s&hgTracksConfigPage=notSet' TITLE=%s>%s:</A></TD>", 
+                printf("<TD><A HREF='%s?%s&position=%s&hgTracksConfigPage=notSet' TITLE=%s>%s:</A></TD>",
                     hgTracksName(), cartSidUrlString(cart),pos, pos, chrom);
             else
                 puts("<TD>&nbsp;</TD>");
@@ -563,7 +567,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
 	}
     /* Delete checkboxes */
     printf("<TD COLSPAN=%d ALIGN=CENTER>", showAllButtons ? 2 : 1);
-    safef(buf, sizeof(buf), "%s_%s", hgCtDeletePrefix, 
+    safef(buf, sizeof(buf), "%s_%s", hgCtDeletePrefix,
             ct->tdb->track);
     cgiMakeCheckBox(buf, setAllDelete);
     puts("</TD>");
@@ -572,7 +576,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
     if (updateCt)
         {
         printf("<TD COLSPAN=%d ALIGN=CENTER>", showAllButtons ? 2 : 1);
-        safef(buf, sizeof(buf), "%s_%s", hgCtRefreshPrefix, 
+        safef(buf, sizeof(buf), "%s_%s", hgCtRefreshPrefix,
                 ct->tdb->track);
         if ((dataUrl = ctDataUrl(ct)) != NULL)
             cgiMakeCheckBoxWithMsg(buf, setAllUpdate, dataUrl);
@@ -634,7 +638,7 @@ static void manageCustomForm(char *warn)
 
 struct dbDb *dbList = getCustomTrackDatabases();
 struct dbDb *dbDb = NULL;
-/* add this database to the list, as it may have no custom 
+/* add this database to the list, as it may have no custom
  * tracks, but we still want to see it in the menu */
 slAddTail(&dbList, hDbDb(database));
 slReverse(&dbList);
@@ -679,7 +683,7 @@ if (assemblyMenu)
     puts("</TD></TR></TABLE><P>\n");
     }
 else
-    printf("<B>genome:</B> %s &nbsp;&nbsp;&nbsp;<B>assembly:</B> %s &nbsp;&nbsp;&nbsp;[%s]\n", 
+    printf("<B>genome:</B> %s &nbsp;&nbsp;&nbsp;<B>assembly:</B> %s &nbsp;&nbsp;&nbsp;[%s]\n",
             organism, hFreezeDate(database), database);
 
 if (measureTiming && (loadTime > 0))
@@ -761,7 +765,14 @@ void helpCustom()
 /* display documentation */
 {
 webNewSection("Loading Custom Tracks");
+char *browserVersion;
+if (btIE == cgiClientBrowser(&browserVersion, NULL, NULL) && *browserVersion < '8')
+    puts("<span>");
+else
+    puts("<span style='position:relative; top:-1em;'>");
 webIncludeHelpFile("customTrackLoad", FALSE);
+
+puts("</span>");
 }
 
 void doBrowserLines(struct slName *browserLines, char **retErr)
@@ -778,10 +789,10 @@ for (bl = browserLines; bl != NULL; bl = bl->next)
     if (wordCount > 1)
         {
 	char *command = words[1];
-	if (sameString(command, "hide") 
-            || sameString(command, "dense") 
-            || sameString(command, "pack") 
-            || sameString(command, "squish") 
+	if (sameString(command, "hide")
+            || sameString(command, "dense")
+            || sameString(command, "pack")
+            || sameString(command, "squish")
             || sameString(command, "full"))
 	    {
 	    if (wordCount > 2)
@@ -813,7 +824,7 @@ for (bl = browserLines; bl != NULL; bl = bl->next)
                 break;
                 }
 	    if (!hgParseChromRange(database, words[2], &chrom, &start, &end) ||
-                start < 0 || end > hChromSize(database, chrom)) 
+                start < 0 || end > hChromSize(database, chrom))
                 {
 	        err ="Invalid browser position (use chrN:123-456 format)";
                 break;
@@ -825,6 +836,27 @@ for (bl = browserLines; bl != NULL; bl = bl->next)
 if (retErr)
     *retErr = err;
 }
+
+#ifdef PROGRESS_METER
+static void progressMeter()
+{
+printf("<FORM STYLE=\"margin-bottom:0;\" ACTION=\"%s\" METHOD=\"GET\" NAME=\"orgForm\">", hgCustomName());
+cartSaveSession(cart);
+printf("<INPUT TYPE=\"HIDDEN\" NAME=\"org\" VALUE=\"%s\">\n", organism);
+printf("<INPUT TYPE=\"HIDDEN\" NAME=\"db\" VALUE=\"%s\">\n", database);
+printf("<INPUT TYPE=\"HIDDEN\" NAME=\"hgct_do_add\" VALUE=\"1\">\n");
+puts("</FORM>");
+}
+static void doProgress(char *err)
+/* display progress meter to show loading process */
+{
+cartWebStart(cart, database, "Custom Track loading progress meter");
+progressMeter();
+// addCustomForm(NULL, err);
+helpCustom();
+cartWebEnd(cart);
+}
+#endif
 
 void doAddCustom(char *err)
 /* display form for adding custom tracks.
@@ -841,7 +873,7 @@ void doUpdateCustom(struct customTrack *ct, char *err)
  * Include error message, if any */
 {
 char *longLabel = htmlEncode(ct->tdb->longLabel);
-cartWebStart(cart, database, "Update Custom Track: %s [%s]", 
+cartWebStart(cart, database, "Update Custom Track: %s [%s]",
         longLabel, database);
 freeMem(longLabel);
 cartSetString(cart, hgCtDocText, ct->tdb->html);
@@ -921,7 +953,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
     if (cartUsualBoolean(cart, var, FALSE))
 	{
 	struct customTrack *nextCt = NULL, *urlCt = NULL;
-	struct customTrack *urlCts = 
+	struct customTrack *urlCts =
 	    customFactoryParse(database, ctDataUrl(ct), FALSE, NULL);
 	for (urlCt = urlCts; urlCt != NULL; urlCt = nextCt)
 	    {
@@ -1010,7 +1042,7 @@ char *err = NULL, *warn = NULL;
 char *selectedTable = NULL;
 struct customTrack *ct = NULL;
 boolean ctUpdated = FALSE;
-char *initialDb = NULL; 
+char *initialDb = NULL;
 
 long thisTime = clock1000();
 
@@ -1046,7 +1078,7 @@ if (sameString(initialDb, "0"))
             }
         }
     if (dbWithCts)
-        /* set the database for the selected organism to an assembly that 
+        /* set the database for the selected organism to an assembly that
          * has custom tracks */
         {
         database = dbWithCts;
@@ -1056,6 +1088,12 @@ if (sameString(initialDb, "0"))
 
 if (cartVarExists(cart, hgCtDoAdd))
     doAddCustom(NULL);
+#ifdef PROGRESS_METER
+else if (cartVarExists(cart, hgCtDoProgress))
+    {
+    doProgress(NULL);
+    }
+#endif
 else if (cartVarExists(cart, hgCtTable))
     {
     /* update track */
@@ -1077,7 +1115,7 @@ else
     /* get new and existing custom tracks from cart and decide what to do */
     char *customText = fixNewData(cart);
     /* save input so we can display if there's an error */
-    char *savedCustomText = saveLines(cloneString(customText), 
+    char *savedCustomText = saveLines(cloneString(customText),
                                 SAVED_LINE_COUNT);
     char *trackConfig = cartOptionalString(cart, hgCtConfigLines);
     char *savedConfig = cloneString(trackConfig);

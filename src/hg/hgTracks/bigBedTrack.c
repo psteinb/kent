@@ -16,16 +16,29 @@
 #include "obscure.h"
 #include "bigWig.h"
 #include "bigBed.h"
+#include "bigWarn.h"
+#include "errCatch.h"
 
-static struct bbiFile *fetchBbiForTrack(struct track *track)
+
+
+
+struct bbiFile *fetchBbiForTrack(struct track *track)
 /* Fetch bbiFile from track, opening it if it is not already open. */
 {
 struct bbiFile *bbi = track->bbiFile;
 if (bbi == NULL)
     {
-    struct sqlConnection *conn = hAllocConnTrack(database, track->tdb);
-    char *fileName = bbiNameFromSettingOrTable(track->tdb, conn, track->table);
-    hFreeConn(&conn);
+    char *fileName = NULL;
+    if (track->parallelLoading) // do not use mysql during parallel fetch
+	{
+	fileName = cloneString(trackDbSetting(track->tdb, "bigDataUrl"));
+	}
+    else
+	{
+	struct sqlConnection *conn = hAllocConnTrack(database, track->tdb);
+	fileName = bbiNameFromSettingOrTable(track->tdb, conn, track->table);
+	hFreeConn(&conn);
+	}
     bbi = track->bbiFile = bigBedFileOpen(fileName);
     }
 return bbi;
@@ -35,15 +48,55 @@ struct bigBedInterval *bigBedSelectRange(struct track *track,
 	char *chrom, int start, int end, struct lm *lm)
 /* Return list of intervals in range. */
 {
-struct bbiFile *bbi = fetchBbiForTrack(track);
-int maxItems = maximumTrackItems(track) + 1;
-struct bigBedInterval *result = bigBedIntervalQuery(bbi, chrom, start, end, maxItems, lm);
-if (slCount(result) >= maxItems)
+struct bigBedInterval *result = NULL;
+/* protect against temporary network error */
+struct errCatch *errCatch = errCatchNew();
+if (errCatchStart(errCatch))
     {
-    track->limitedVis = tvDense;
-    track->limitedVisSet = TRUE;
+    struct bbiFile *bbi = fetchBbiForTrack(track);
+    if (track->limitedVis != tvDense)
+	{
+	int maxItems = maximumTrackItems(track) + 1;
+	result = bigBedIntervalQuery(bbi, chrom, start, end, maxItems, lm);
+	if (slCount(result) >= maxItems)
+	    {
+	    track->limitedVis = tvDense;
+	    track->limitedVisSet = TRUE;
+	    result = NULL;
+	    }
+	}
+    if (track->visibility == tvDense || track->limitedVis == tvDense)
+	{
+	AllocArray(track->summary, insideWidth);
+	if (bigBedSummaryArrayExtended(bbi, chrom, start, end, insideWidth, track->summary))
+	    {
+	    char *denseCoverage = trackDbSettingClosestToHome(track->tdb, "denseCoverage");
+	    if (denseCoverage != NULL)
+		{
+		double endVal = atof(denseCoverage);
+		if (endVal <= 0)
+		    {
+		    AllocVar(track->sumAll);
+		    *track->sumAll = bbiTotalSummary(bbi);
+		    }
+		}
+	    }
+	else
+	    freez(&track->summary);
+	}
+    bbiFileClose(&bbi);
+    track->bbiFile = NULL;
+    }
+errCatchEnd(errCatch);
+if (errCatch->gotError)
+    {
+    track->networkErrMsg = cloneString(errCatch->message->string);
+    track->drawItems = bigDrawWarning;
+    track->totalHeight = bigWarnTotalHeight;
     result = NULL;
     }
+errCatchFree(&errCatch);
+
 return result;
 }
 
@@ -84,17 +137,16 @@ void bigBedDrawDense(struct track *tg, int seqStart, int seqEnd,
         MgFont *font, Color color)
 /* Use big-bed summary data to quickly draw bigBed. */
 {
-struct bbiSummaryElement summary[width];
-struct bbiFile *bbi = fetchBbiForTrack(tg);
-if (bigBedSummaryArrayExtended(bbi, chromName, seqStart, seqEnd, width, summary))
+struct bbiSummaryElement *summary = tg->summary;
+if (summary)
     {
     char *denseCoverage = trackDbSettingClosestToHome(tg->tdb, "denseCoverage");
     if (denseCoverage != NULL)
-        {
+	{
 	double startVal = 0, endVal = atof(denseCoverage);
 	if (endVal <= 0)
 	    {
-	    struct bbiSummaryElement sumAll = bbiTotalSummary(bbi);
+	    struct bbiSummaryElement sumAll = *tg->sumAll;
 	    double mean = sumAll.sumData/sumAll.validCount;
 	    double std = calcStdFromSums(sumAll.sumData, sumAll.sumSquares, sumAll.validCount);
 	    rangeFromMinMaxMeanStd(0, sumAll.maxVal, mean, std, &startVal, &endVal);
@@ -121,6 +173,7 @@ if (bigBedSummaryArrayExtended(bbi, chromName, seqStart, seqEnd, width, summary)
 	    }
 	}
     }
+freez(&tg->summary);
 }
 
 void bigBedMethods(struct track *track, struct trackDb *tdb, 

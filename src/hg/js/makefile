@@ -2,14 +2,29 @@ include ../../inc/common.mk
 
 # recursive target to do install to DEST, with extra excludes EXCL.
 
-JQUERY_FILES=jquery-1.2.6.pack.js jquery.js jquery.tablednd.js jquery.imgareaselect.js jquery-ui.js jquery.contextmenu.js jquery.autocomplete.js ui.core.js ui.dropdownchecklist.js
-JS_FILES=ajax.js autocomplete.js hgGateway.js hgTracks.js hui.js utils.js ${JQUERY_FILES}
+JQUERY_FILES=jquery-1.2.6.pack.js jquery.js jquery.tablednd.js \
+    jquery.imgareaselect.js jquery-ui.js jquery.contextmenu.js \
+    ui.dropdownchecklist.js \
+    jquery.cookie.js
+
+JS_FILES=ajax.js autocomplete.js hgGateway.js hgHubConnect.js hgTracks.js \
+    hui.js utils.js ddcl.js \
+    encodeProject.js encodeDataSummary.js encodeDataMatrix.js encodeChipMatrix.js \
+    ${JQUERY_FILES}
+
+STATIC_FILES=staticDoc.js jquery.js
+
 ifdef LOWELAB
     JS_FILES += lowetooltip.js loweautocomplete.js
 endif
 
 user:
-	${MAKE} doInstall DEST=${DOCUMENTROOT}/js/${USER}
+	if test -d ${DOCUMENTROOT}-${USER}; then \
+	    ${MAKE} doInstall DEST=${DOCUMENTROOT}-${USER}/js/${USER}; \
+		cp ${STATIC_FILES} ${DOCUMENTROOT}-${USER}/js; \
+	else \
+	    ${MAKE} doInstall DEST=${DOCUMENTROOT}/js/${USER}; \
+	fi
 
 alpha:
 	${GITUP}
@@ -28,4 +43,4 @@ install:
 
 doInstall:
 	@mkdir -p ${DEST}/
-	./cpJsFiles.pl -exclude='makefile' -destDir=${DEST} ${JS_FILES}
+	../utils/cpAndLinkToResourceFiles.pl -exclude='makefile' -versionFile=../inc/versionInfo.h -destDir=${DEST} ${JS_FILES}

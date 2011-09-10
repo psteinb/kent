@@ -93,10 +93,6 @@ struct genePred
  */
 #define genePredStdInsertMergeSize 8
 
-#define GENEPRED_CLASS_VAR "geneClasses"
-#define GENEPRED_CLASS_PREFIX "gClass_"
-#define GENEPRED_CLASS_TBL "itemClassTbl"
-
 #define GENEPRED_NUM_COLS 10  /* number of columns in a genePred */
 #define GENEPREDX_NUM_COLS 15  /* max number of columns in extended genePred */
 
@@ -161,6 +157,9 @@ void genePredAddGenbankCds(struct psl *psl, struct genbankCds* cds,
 
 int genePredCmp(const void *va, const void *vb);
 /* Compare to sort based on chromosome, txStart. */
+
+int genePredNameCmp(const void *va, const void *vb);
+/* Compare to sort based on name, then chromosome, txStart. */
 
 struct genePred *genePredFromGroupedGff(struct gffFile *gff, struct gffGroup *group, 
                                         char *name, char *exonSelectWord, unsigned optFields,
@@ -286,6 +285,15 @@ struct rbTree *genePredToRangeTree(struct genePred *gp, boolean cdsOnly);
 void gpPartOutAsBed(struct genePred *gp, int start, int end, FILE *f, 
 	char *type, int id, int minSize);
 /* Write out part of gp as bed12. */
+
+boolean codonToPos(struct genePred *gp, unsigned num, int *chromStart, int *chromEnd);
+// map 1-based codon to genomic coordinates. If the codon crosses an exon junction, we return just the beginning (LHS) of the codon.
+// Returns true if we find the codon in given gene predition; chromStart and chromEnd are set to appropriate three base region.
+
+boolean exonToPos(struct genePred *gp, unsigned num, int *chromStart, int *chromEnd);
+// map 1-based exon number to genomic coordinates.
+// Returns true if we find the exon in given gene predition; chromStart and chromEnd are set to appropriate region.
+
 
 #endif /* GENEPRED_H */
 

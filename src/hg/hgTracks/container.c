@@ -16,7 +16,10 @@ void containerLoadItems(struct track *track)
 {
 struct track *subtrack;
 for (subtrack = track->subtracks; subtrack != NULL; subtrack = subtrack->next)
-    subtrack->loadItems(subtrack);
+    {
+    if (isSubtrackVisible(subtrack) && !subtrack->parallelLoading)
+	subtrack->loadItems(subtrack);
+    }
 }
 
 static void containerFree(struct track *track)
@@ -63,6 +66,15 @@ track->height = totalHeight;
 return totalHeight;
 }
 
+char *parentContainerType(struct track *track)
+/* Determine parent's container type if any or NULL */
+{
+if (track->parent && track->parent->tdb)
+    return trackDbSetting(track->parent->tdb, "container");
+else
+    return NULL;
+}
+
 void makeContainerTrack(struct track *track, struct trackDb *tdb)
 /* Construct track subtrack list from trackDb entry for container tracks. */
 {
@@ -93,10 +105,6 @@ char *containerType = trackDbSetting(tdb, "container");
 if (sameString(containerType, "multiWig"))
     {
     multiWigContainerMethods(track);
-    }
-else if (sameString(containerType, "folder"))
-    {
-    /* Folder's just use the default methods. */
     }
 else
     errAbort("unknown container type %s in trackDb for %s", containerType, tdb->track);

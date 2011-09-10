@@ -109,6 +109,9 @@ void linkToOtherBrowser(char *otherDb, char *chrom, int start, int end);
 void printEntrezPubMedUidUrl(FILE *f, int pmid);
 /* Print URL for Entrez browser on a PubMed search. */
 
+void printSwissProtAccUrl(FILE *f, char *accession);
+/* Print URL for Swiss-Prot protein accession. */
+
 boolean clipToChrom(int *pStart, int *pEnd);
 /* Clip start/end coordinates to fit in chromosome. */
 
@@ -381,6 +384,9 @@ void doEncodePeak(struct trackDb *tdb, struct customTrack *ct);
 void doEncodeFiveC(struct sqlConnection *conn, struct trackDb *tdb);
 /* Print details for 5C track */
 
+void doPeptideMapping(struct sqlConnection *conn, struct trackDb *tdb, char *item);
+/* Print details for a peptideMapping track.  */
+
 void doHgdpGeo(struct trackDb *tdb, char *item);
 /* Show details page for HGDP SNP with population allele frequencies
  * plotted on a world map. */
@@ -394,11 +400,18 @@ char *hgdpPngFilePath(char *rsId);
 void hgdpGeoFreqTable(struct hgdpGeo *geo);
 /* Print an HTML table of populations and allele frequencies. */
 
+void printOtherSnpMappings(char *table, char *name, int start,
+			   struct sqlConnection *conn, int rowOffset);
+/* If this SNP (from any bed4+ table) is not uniquely mapped, print the other mappings. */
+
 void printCustomUrl(struct trackDb *tdb, char *itemName, boolean encode);
 /* Wrapper to call printCustomUrlWithLabel using the url setting in trackDb */
 
 void doBamDetails(struct trackDb *tdb, char *item);
 /* Show details of an alignment from a BAM file. */
+
+void doVcfTabixDetails(struct trackDb *tdb, char *item);
+/* Show details of an alignment from a VCF file compressed and indexed by tabix. */
 
 void doMakeItemsDetails(struct customTrack *ct, char *itemIdString);
 /* Show details of a makeItems item. */
@@ -408,6 +421,9 @@ void doBedDetail(struct trackDb *tdb, struct customTrack *ct, char *itemName);
 
 void doPgSnp(struct trackDb *tdb, char *itemName, struct customTrack *ct);
 /* print detail page for personal genome track (pgSnp) */
+
+void doGvf(struct trackDb *tdb, char *item);
+/* Show details for variants represented as GVF, stored in a bed8Attrs table */
 
 #define NUCCORE_SEARCH "http://www.ncbi.nlm.nih.gov/sites/entrez?db=nuccore&cmd=search&term="
 

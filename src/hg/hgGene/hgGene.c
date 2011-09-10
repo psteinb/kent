@@ -12,6 +12,7 @@
 #include "dbDb.h"
 #include "hdb.h"
 #include "web.h"
+#include "botDelay.h"
 #include "ra.h"
 #include "spDb.h"
 #include "genePred.h"
@@ -397,7 +398,7 @@ addGoodSection(localizationSection(conn, sectionRa), conn, &sectionList);
 addGoodSection(transRegCodeMotifSection(conn, sectionRa), conn, &sectionList);
 addGoodSection(pathwaysSection(conn, sectionRa), conn, &sectionList);
 addGoodSection(mrnaDescriptionsSection(conn, sectionRa), conn, &sectionList);
-addGoodSection(pseudoGeneSection(conn, sectionRa), conn, &sectionList);
+//addGoodSection(pseudoGeneSection(conn, sectionRa), conn, &sectionList);
 addGoodSection(synonymSection(conn, sectionRa), conn, &sectionList);
 // addGoodSection(xyzSection(conn, sectionRa), conn, &sectionList);
 
@@ -483,6 +484,8 @@ struct section *sectionList = NULL;
 printDescription(curGeneId, conn);
 sectionList = loadSectionList(conn);
 printIndex(sectionList);
+struct trackDb *tdb = hTrackDbForTrack(database, genomeSetting("knownGene"));
+printUpdateTime(database, tdb, NULL);
 printSections(sectionList, conn, curGeneId);
 }
 
@@ -627,6 +630,7 @@ void cartMain(struct cart *theCart)
 /* We got the persistent/CGI variable cart.  Now
  * set up the globals and make a web page. */
 {
+hgBotDelay();
 cart = theCart;
 getDbAndGenome(cart, &database, &genome, oldVars);
 getGenomeSettings();

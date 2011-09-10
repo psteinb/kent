@@ -24,19 +24,30 @@ Note that the html file in lower-level directories
 can override the html in higher-level directories
 without requiring an entry in trackDb.ra.
 
-
 There may be subdirectories for each organism such
 as 'mouse', and underneath these directories for
 each database, such as 'hg7'.  There are a trackDb.ra
 file and xxx.html files in these subdirectories.
-Tracks descriptions in the subdirectory will
+Track descriptions in the subdirectory will
 over-ride track descriptions in the parent directory.
 This allows you to customize a track for
 each version of the database.
 
-After editing a track definition here
-hgTrackDb to bring it into the MySQL database.  To update
-your personal copy (on hgwdev-userName) do
+xxx.html files may include the contents of other files
+using this syntax:
+
+<!--#insert file="sharedText.html"-->
+
+where "sharedText.html" is a relative path, relative to
+the directory that contains the xxx.html file.
+This can also be made conditional on a database:
+
+<!-- #if (db==hg19) #insert file="human/hg19/specialNote.html" -->
+
+
+After editing a track definition here, run ./loadTracks
+which invokes hgTrackDb to bring it into the MySQL database.
+To update your personal copy (on hgwdev-userName) do
     make update
 to do it on genome-test do
     make alpha
@@ -76,6 +87,14 @@ The format of the type fields:
    <fieldCount> - the number of standard fields
    <extraInfo> - either '.' meaning no non-standard fields
        or '+' if there are additional non-standard fields.
+   Optional variable for any '+' bed:
+   extraFields - a list of field=label pairs of table columns beyond those
+        defined before the '+'. Seen in hgc and available to filterBy (see below)
+        extraFields {columnInTable}=[{type}]{label}
+        type = [float],[integer],[string] OPTIONAL default:[string]
+            square brackets required, only first letter is tested: [float]=[f]
+        label = What will be seen in hgc and hgTrackUi.
+                May include '_' to be replaced by space. May include html tags.
    Optional variable for bed tracks with 9 or more of the standard fields:
    itemRgb=on  - interpret field nine as a color for this item specified
                - as an R,G,B triplet.  When loaded this field appears
@@ -111,6 +130,14 @@ The format of the type fields:
    Optional fields to be defined elsewhere in the trackDb.ra record:
 	itemAttrTbl - table used to color individual items in a track,
                       selected by name and locations.
+        itemClassTbl - table use to associate a given genePred name with
+                       a arbitrary class name, use in picking a color.
+        itemClassNameColumn - name of column that is joined with the genePred
+                              name column, default is `name'.
+        itemClassClassColumn - name of column that contains the class, default
+                               is `class'.
+        geneClasses - white space separated list of valid gene classes.
+        gClass_XXX - color to use for items that map to class XXX.
 
 8. type maf
     A type of multiple alignment track, becoming obsolete,
@@ -262,33 +289,40 @@ The format of the type fields:
     substituting "bigBed" for "bed" in the type line, the same as the "type bed"
     explained above.
 
-    bigBed-specific optional field:
-        denseCoverage maxVal
-    In dense mode do a density plot based on maximum coverage seen under pixel.  The maxVal
-    corresponds to the count at which it gets as dark as it can get.  If maxVal is 0 then this
-    will be calculated from the data itself.
+
+    bigBed-specific optional fields:
+    nonBedFieldsLabel - text heading string printed on item details page before
+	display of non-bed type fields.  Default is: "Non-BED fields:"
+    denseCoverage maxVal
+	In dense mode do a density plot based on maximum coverage seen under
+	pixel.  The maxVal Borresponds to the count at which it gets as dark
+	as it can get.  If maxVal is 0 then this will be calculated from the
+	data itself.
 
     The database loading procedure for the table can be:
 	hgBbiDbLink hg18 itemRgbBbTest /gbdb/hg18/bbi/itemRgb.hg18.bb
-    which is equivalent to:
+    The file name given should be a full path name that can be accessed
+	by the Apache WEB server.  Or, the file name can also be a
+	valid URL to the bb file.
+    This loader is equivalent to:
     hgsql hg18 -e 'drop table if exists itemRgbBbTest;
             create table itemRgbBbTest (fileName varchar(255) not null);
             insert into itemRgbBbTest values
         ("/gbdb/hg18/bbi/itemRgb.hg18.bb");'
-    The fileName can also be a valid URL to the bb file.
 
 18. type bigWig [lower] [upper]
     This uses a binary indexed file rather than a database table.  It is, other
     than substituting "bigWig" for "wig" in the type line, the same as the
     "type wig" explained above.  The database loading procedure is
-        hgBbiDbLink hg19 myLocalBigWig /gbdb/hg18/bbi/myLocalBigWig.bw
-    which is equivalent to:
+        hgBbiDbLink hg19 myLocalBigWig /gbdb/hg19/bbi/myLocalBigWig.bw
+    The file name given should be a full path name that can be accessed
+	by the Apache WEB server.  Or, the file name can also be a
+	valid URL to the bw file.
+    This loader is equivalent to:
     hgsql hg19 -e 'drop table if exists myLocalBigWig; \
             create table myLocalBigWig (fileName varchar(255) not null); \
             insert into myLocalBigWig values
         ("/gbdb/hg19/bbi/myLocalBigWig.bw");'
-    I believe this works even if the entry is a URL to a remote
-    bigWig file.
 
 19. type bam
     This uses a binary indexed file (which can be a URL) named in a database table.
@@ -302,14 +336,27 @@ The format of the type fields:
     bamColorMode    strand|gray|tag|off         # coloring method, default is strand
     bamGrayMode     aliQual|baseQual|unpaired   # grayscale metric, default is aliQual
     bamColorTag     <XX>                        # optional tag for RGB color, default is "YC"
+    bamSkipPrintQualScore .                     # Skip printing quality score in bam item details page, 
+                                                # no default, always use "." to skip printing.
     minAliQual      <N>                         # display only items with alignment quality
                                                 #   at least N, default 0
     aliQualRange    <min:max>			# shade alignment qualities within this range
 						#   default: 0:99
     baseQualRange   <min:max>			# shade base qualities within this range
 						#   default: 0:40
-    Additional general settings that may be useful to speed up display for extremely
-    dense data e.g. next-gen sequencing reads: maxWindowToDraw, chromosomes (see below)
+    Additional general settings that may be useful to speed up display for
+    extremely dense data e.g. next-gen sequencing reads: maxWindowToDraw,
+    chromosomes (see below)
+
+    Load your database table with the command:
+        hgBbiDbLink hg19 myLocalBamTrack /gbdb/hg19/bbi/myLocalFile.bam
+    Your index file is also there:  /gbdb/hg19/bbi/myLocalFile.bai
+    These path names can also be URLs to an external .bam file (and .bai)
+    use that table name: myLocalBamTrack as the name on your track line:
+    track myLocalBamTrack
+    type bam
+
+    See also, an example trackDb entry: chimp/trackDb.denisova.ra
 
 20. type factorSource
     This type is used for transcription factors on multiple cell lines.  It displays
@@ -326,6 +373,14 @@ The format of the type fields:
     some extra text for the details page or table browser filtering.  It also
     includes an ID field, so if an URL is specified can link to another
     resource without affecting the name displayed in the track.
+
+22. type pgSnp
+    This type is used for the display of variants (for example, personal genome
+    variants).  It will display stacked boxes showing the proportion of reads
+    supporting each allele when frequency is available (in case of 2 alleles 
+    only).  Also the details page will use the UCSC genes to compute any amino 
+    acid changes.  The track can be loaded using hgLoadBed and the -sqlTable 
+    option (see pgSnp.sql for the format).
 
 If something lacks a type field it needs to have custom
 display routines.   You can remove a track from the
@@ -580,6 +635,8 @@ Some settings used by various tracks:
       zoomed at no more than basesPerPixel (a float). showCdsAllScales should
       be set and showDiffBasesMaxZoom should be set to a value not more
       than showCdsMaxZoom  to make this useful.
+    o nextExonText override the default mouseover text of the next-exon button.
+    o prevExonText override the default mouseover text of the previous-exon button.
     o nextItemButton off - For tracks that have next-item buttons that
       shouldn't, turn the buttons off until whatever else is fixed.
       on - This will override the user's UI settings and display the next-item
@@ -592,11 +649,20 @@ Some settings used by various tracks:
       the user on the hgTrackUi page.
     o inputTrackTable - for tracks that are type factorSource or otherwise created
       by clustering or aggregating data found in other tracks.  This names a table
-      that is in three column format - first the input track name, then the source
-      name (cell line etc) if any, then the factor name if any.
-    o inputTracksSubgroupDisplay - used with inputTrackTable.  This contains a list
-      of group types (just the left size of the var=val pairs in the subGroupN line of the parent)
-      to display as columns in the details display table.
+      that includes in it's first column the input track name.  For factorSource
+      the second column should be the the source name (cell line etc) if any,
+      and the third should be the factor name if any.  The second and third columns
+      are optional for other track types. In general though the most important few
+      metadata fields should be included as columns, and these should be listed in
+      the inputTableFieldDisplay tag described below.
+    o inputTableFieldDisplay - used with inputTrackTable.  Countains a list of the
+      fields from that table to display as columns in the details display table.
+    o inputTracksSubgroupDisplay - used with inputTrackTable.  One and only one of
+      inputTableFieldsDisplay or inputTracksSubgroupDisplay should be used. If present
+      this tag contains a list of group types (just the left size of the var=val pairs
+      in the subGroupN line of the parent) to display as columns in the details
+      display table. DEPRECIATED - this tends to cause the clusters to break when
+      there is any data churn.  Use inputTableFieldDisplay instead.
     o showSubtrackColorOnUi - used with tracks that include other tracks.  When UI shows
       a table of tracks and this is set, a small patch of color indicating the track color
       is part of the table.
@@ -649,23 +715,32 @@ Likewise
 sets up a filter on score with limits of from 200 to 1000, but offers from 500 to 700 as default.
 NOTE: Filtering by range has so far only been tested in the 'score' filter.
 
-Category
---------
-Using the 'filterBy' setting you can set up a filter by 1 or more categories.
-Categories are simply a list of values that appear in a drop down list box ("DD").  One or more
-of these categories may be selected, to set up the filter.  The setting format:
-   filterBy {field1}:{Title1}=[+]category1a,category1b,...  [{field2}:{Title2}=[+]category2a,category2b,...]...
+Options
+-------
+Using the 'filterBy' setting you can set up a filter on a table column by 1 or more options.
+Options are simply a list of values that appear in a drop down list box ("DD").  One or more
+of these options may be selected, to set up the filter.  The setting format:
+   filterBy {field1}:{Title1}=[+]option1a,option1b,... [{field2}:{Title2}=[+]option2a,...]...
 Here {field1} must be the name of a field in the table,
      {title1} is what the user will see as the title of the drop-down list box
-     [+] can be added to say that the table has numerical values (1,2,3...), while words are seen in the DD.
-     category1a,... a comma separated list of values that appear in the DD.
-                    These values are found in the table unless the '+' is used.
+     [+] can be added to say that the table has numerical values (1,2,3...), 1-based
+     option1a,... a comma separated list of values that appear in the DD.
+                  These values are found in the table unless the '+' is used.
+                  Values can have labels (value|label) and can even end in {CSS style} settings
+     option formats: value, value|title, "valueA|State A", value|label{background-color:#FFFC04;}
+     NOTE: any spaces (even in style) must be in quotes. Try one set of quotes around all options!
+     NOTE: labels and/or style must be given to all optons or no options.  value| and value{} work.
 Example:
-     filterBy level:Level=+Validated,Manual,Automatic class:Class=coding,snRNA,...
-This sets up 2 filter by category drop downs.  The first is on the table field 'level'.  If the user selects
-both 'Validated' and 'Manual', then an item must have a 1 or 2 in the level field in order to be seen.
-And if the user also selects 'coding' in the second filter, an item would have to have level 1 or 2 and
-class='coding'.
+     filterBy level:Level=+Validated,Manual,Auto class:Class=coding{},"si RNA"{color:red},...
+This sets up 2 filters by category drop downs.  The first is on the table field 'level'.  If the
+user selects both 'Validated' and 'Manual', then an item must have a 1 or 2 in the level field in
+order to be seen.  And if the user also selects 'coding' in the second filter, an item would have
+to have level 1 or 2 and class='coding'.  NOTE: 'si RNA' option will be in red.
+
+Unless special coding is done, both filter by score and filter by options will generate a "where"
+clause that gets applied to the SQL select on the track's table when loading in hgTracks.
+
+For genePred tables, the itemClass table, as described with the genePred track type is used.
 
 
 COMPOSITE TRACKS
@@ -739,6 +814,9 @@ COMPOSITE SUBTRACK CONFIGURATION - 3 ways
    Cfg settings can be at level of composite, view, or subtrack.
 3) Individual subtracks configurable - used in combination with 1 or 2.
    "configurable on" setting, which can be at composite, view, or subtrack level.
+   (NOTE: it is possible to have a composite track that is not multi-view but has
+    different types of subtracks. In this case, the subtracks should be individually
+    configurable.)
 
 Composite Track "ClosestToHome" paradigm
 ----------------------------------------
@@ -790,7 +868,7 @@ subtracks.  Settings that are common to all tracks in a composite can be put at 
 composite level, settings that are common to all tracks in a view can be put in the view
 level, and individual track settings can be put at the lowest level.  In addition
 the composite parent track needs to have a specialized subGroup1 setting 'view' and
-view must be contained in the subGroup setting at the lowest level.   Example:
+view must be contained in the subGroups setting at the lowest level.   Example:
 
    track compositeParent
    shortLabel Composite Sample
@@ -804,12 +882,12 @@ view must be contained in the subGroup setting at the lowest level.   Example:
            track brainSignalTrack
 	   shortLabel Signals in Brain
 	   parent sigViewTrack
-	   subGroup view=Sig
+	   subGroups view=Sig
 
 	   track liverSignalTrack
 	   shortLabe Signals in Liver
 	   parent sigViewTrack
-	   subGroup view=Sig
+	   subGroups view=Sig
 
        track alnViewTrack
        view Aln
@@ -819,15 +897,15 @@ view must be contained in the subGroup setting at the lowest level.   Example:
            track brainAlignmentTrack
 	   shortLabel Signals in Brain
 	   parent alnViewTrack
-	   subGroup view=Aln
+	   subGroups view=Aln
 
 	   track liverAlignmentTrack
 	   shortLabe Signals in Liver
 	   parent alnViewTrack
-	   subGroup view=Aln
+	   subGroups view=Aln
 
 Note that the view level track needs to have a view tag.  There is some redundancy between
-information in the view track and the subGroup tag of the composite parent.  Apologies.  This
+information in the view track and the subGroups tag of the composite parent.  Apologies.  This
 is largely so that the same sorting machinery for non-view subGroups can be reused here.  In
 particular the value of the view tag needs to be the same as the right hand in the var=value pair
 of the subGroup, and the same as the left hand side of the var=val pair in the subGroup1.

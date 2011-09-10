@@ -10,9 +10,7 @@
 #include "hdb.h"
 #include "dnaseq.h"
 #include "pgPhenoAssoc.h"
-#include "hgFindSpec.h"
-
-static char const rcsid[] = "$Id: pgSnp.c,v 1.8 2010/03/08 17:45:41 giardine Exp $";
+#include "regexHelper.h"
 
 void pgSnpStaticLoad(char **row, struct pgSnp *ret)
 /* Load a row from pgSnp table into ret.  The contents of ret will
@@ -465,7 +463,7 @@ for (el = th; el != NULL; el = el->next)
                 dnaseq = newDnaSeq(rep2, strlen(rep2), "rep2");
                 aaSeq *repAa = translateSeq(dnaseq, 0, FALSE);
                 //freeDnaSeq(&dnaseq);
-                if (!strstr(repAa->dna, "X"))
+                if (!strstr(repAa->dna, "X") && isNotEmpty(repAa->dna))
                     {
                     printf("&nbsp;&nbsp;&nbsp;&nbsp;%s &gt; %s<BR>\n",
                         origAa->dna, repAa->dna);
@@ -674,18 +672,145 @@ item->name = cloneString(row[3]);
 item->alleleCount = lineFileNeedNum(lf, row, 4);
 char alleles[128]; /* pattern to match alleles */
 safef(alleles, sizeof(alleles), "^[ACTG-]+(\\/[ACTG-]+){%d}$", item->alleleCount - 1);
-if (! matchRegex(row[3], alleles))
+if (! regexMatchNoCase(row[3], alleles))
     lineFileAbort(lf, "invalid alleles %s", row[3]);
 /* read count, comma separated list of numbers with above # of items */
 item->alleleFreq = cloneString(row[5]);
 char pattern[128];
 safef(pattern, sizeof(pattern), "^[0-9]+(,[0-9]+){%d}$", item->alleleCount - 1);
-if (! matchRegex(row[5], pattern))
+if (! regexMatchNoCase(row[5], pattern))
     lineFileAbort(lf, "invalid allele frequency, %s with count of %d", row[5], item->alleleCount);
 /* scores, comma separated list of numbers with above # of items */
 item->alleleScores = cloneString(row[6]);
 safef(pattern, sizeof(pattern), "^[0-9.]+(,[0-9.]+){%d}$", item->alleleCount - 1);
-if (! matchRegex(row[6], pattern))
+if (! regexMatchNoCase(row[6], pattern))
     lineFileAbort(lf, "invalid allele scores, %s with count of %d", row[6], item->alleleCount);
 return item;
 }
+
+#define VCF_MAX_ALLELE_LEN 80
+
+static char *alleleCountsFromVcfRecord(struct vcfRecord *rec, int alDescCount)
+/* Build up comma-sep list of per-allele counts, if available, up to alDescCount
+ * which may be less than rec->alleleCount: */
+{
+static struct dyString *dy = NULL;
+if (dy == NULL)
+    dy = dyStringNew(0);
+else
+    dyStringClear(dy);
+dyStringClear(dy);
+int alCounts[VCF_MAX_ALLELE_LEN];
+boolean gotTotalCount = FALSE, gotAltCounts = FALSE;
+int i;
+for (i = 0;  i < rec->infoCount;  i++)
+    if (sameString(rec->infoElements[i].key, "AN"))
+	{
+	gotTotalCount = TRUE;
+	// Set ref allele to total count, subtract alt counts below.
+	alCounts[0] = rec->infoElements[i].values[0].datInt;
+	break;
+	}
+for (i = 0;  i < rec->infoCount;  i++)
+    if (sameString(rec->infoElements[i].key, "AC"))
+	{
+	if (rec->infoElements[i].count > 0)
+	    {
+	    gotAltCounts = TRUE;
+	    int j;
+	    for (j = 0;  j < rec->infoElements[i].count && j < alDescCount-1;  j++)
+		{
+		int ac = rec->infoElements[i].values[j].datInt;
+		alCounts[1+j] = ac;
+		if (gotTotalCount)
+		    alCounts[0] -= ac;
+		}
+	    while (j++ < alDescCount-1)
+		alCounts[1+j] = -1;
+	    if (gotTotalCount)
+		dyStringPrintf(dy, "%d", alCounts[0]);
+	    else
+		dyStringAppend(dy, "-1");
+	    for (j = 1;  j < alDescCount;  j++)
+		if (alCounts[j] >= 0)
+		    dyStringPrintf(dy, ",%d", alCounts[j]);
+		else
+		    dyStringAppend(dy, ",-1");
+	    }
+	break;
+	}
+if (gotTotalCount && !gotAltCounts)
+    dyStringPrintf(dy, "%d", alCounts[0]);
+else if (!gotTotalCount && !gotAltCounts && rec->file->genotypeCount > 0)
+    {
+    vcfParseGenotypes(rec);
+    for (i = 0;  i < alDescCount;  i++)
+	alCounts[i] = 0;
+    for (i = 0;  i < rec->file->genotypeCount;  i++)
+	{
+	struct vcfGenotype *gt = &(rec->genotypes[i]);
+	if (gt == NULL)
+	    uglyf("i=%d gt=NULL wtf?\n", i);
+	alCounts[gt->hapIxA]++;
+	if (! gt->isHaploid)
+	    alCounts[gt->hapIxB]++;
+	}
+    dyStringPrintf(dy, "%d", alCounts[0]);
+    for (i = 1;  i < alDescCount;  i++)
+	dyStringPrintf(dy, ",%d", alCounts[i]);
+    }
+return cloneStringZ(dy->string, dy->stringSize+1);
+}
+
+struct pgSnp *pgSnpFromVcfRecord(struct vcfRecord *rec)
+/* Convert VCF rec to pgSnp; don't free rec->file (vcfFile) until
+ * you're done with pgSnp because pgSnp points to rec->chrom. */
+{
+static struct dyString *dy = NULL;
+if (dy == NULL)
+    dy = dyStringNew(0);
+else
+    dyStringClear(dy);
+struct pgSnp *pgs;
+AllocVar(pgs);
+pgs->chrom = rec->chrom;
+pgs->chromStart = rec->chromStart;
+pgs->chromEnd = rec->chromEnd;
+// Build up slash-separated allele string from rec->alleles, starting with ref allele:
+dyStringAppend(dy, rec->alleles[0]);
+int alCount = rec->alleleCount, i;
+if (rec->alleleCount == 2 && sameString(rec->alleles[1], "."))
+    // ignore N/A alternate allele
+    alCount = 1;
+else if (rec->alleleCount >= 2)
+    {
+    // append /-sep'd alternate alleles, unless/until it gets too long:
+    for (i = 1;  i < rec->alleleCount;  i++)
+	{
+	if ((dy->stringSize + 1 + strlen(rec->alleles[i])) > VCF_MAX_ALLELE_LEN)
+	    break;
+	dyStringPrintf(dy, "/%s", rec->alleles[i]);
+	}
+    if (i < rec->alleleCount)
+	alCount = i;
+    }
+pgs->name = cloneStringZ(dy->string, dy->stringSize+1);
+pgs->alleleCount = alCount;
+pgs->alleleFreq = alleleCountsFromVcfRecord(rec, alCount);
+// Build up comma-sep list... supposed to be per-allele quality scores but I think
+// the VCF spec only gives us one BQ... for the reference position?  should ask.
+dyStringClear(dy);
+for (i = 0;  i < rec->infoCount;  i++)
+    if (sameString(rec->infoElements[i].key, "BQ"))
+	{
+	float qual = rec->infoElements[i].values[0].datFloat;
+	dyStringPrintf(dy, "%.1f", qual);
+	int j;
+	for (j = 1;  j < rec->alleleCount;  j++)
+	    dyStringPrintf(dy, ",%.1f", qual);
+	break;
+	}
+pgs->alleleScores = cloneStringZ(dy->string, dy->stringSize+1);
+return pgs;
+}
+

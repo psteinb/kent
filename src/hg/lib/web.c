@@ -13,7 +13,8 @@
 #include "cheapcgi.h"
 #include "dbDb.h"
 #include "hgColors.h"
-#include "searchTracks.h"
+#include "hubConnect.h"
+#include "search.h"
 #ifndef GBROWSE
 #include "axtInfo.h"
 #include "wikiLink.h"
@@ -58,8 +59,8 @@ if (webInTextMode)
     pushWarnHandler(textVaWarn);
 else
     pushWarnHandler(webVaWarn);
-hDumpStackPushAbortHandler();
 pushAbortHandler(softAbort);
+hDumpStackPushAbortHandler();
 }
 
 void webPushErrHandlersCart(struct cart *cart)
@@ -149,7 +150,18 @@ if (withHtmlHeader)
     {
     char *newString, *ptr1, *ptr2;
 
+//#define TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
+#ifdef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     puts("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2//EN\">");
+#else///ifndef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
+    char *browserVersion;
+    if (btIE == cgiClientBrowser(&browserVersion, NULL, NULL) && *browserVersion < '8')
+        puts("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 3.2//EN\">");
+    else
+        puts("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">");
+    // Strict would be nice since it fixes atleast one IE problem (use of :hover CSS pseudoclass)
+    //puts("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">");
+#endif///ndef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     puts(
 	"<HTML>" "\n"
 	"<HEAD>" "\n"
@@ -177,7 +189,10 @@ if (withHtmlHeader)
     *ptr1 = 0;
     htmlTextOut(newString);
     printf("	</TITLE>\n    ");
-    webIncludeResourceFile("HGStyle.css");
+    if (endsWith(scriptName, "qaPushQ")) // Tired of failed stylesheet versioning that messes up RR releaseLog.html (regular and ENCODE)
+	printf("    <LINK rel='STYLESHEET' href='../style/HGStyle.css' TYPE='text/css' />\n");
+    else
+        webIncludeResourceFile("HGStyle.css");
     if (extraStyle != NULL)
         puts(extraStyle);
     printf("</HEAD>" "\n"
@@ -212,6 +227,18 @@ if (withLogo)
 /* Put up the hot links bar. */
 if (isGisaid)
     {
+#ifndef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
+
+    printf("<TABLE WIDTH='100%%' class='topBlueBar' BORDER='0' CELLSPACING='0' CELLPADDING='2'><TR>\n");
+    printf("<TD><A HREF='../index.html' class='topbar'>Home</A></TD>\n");                           // Home
+    if (haveBlat)
+        printf("<TD><A HREF='../cgi-bin/hgBlat?command=start' class='topbar'>Blat</A></TD>\n");     // Blat
+    printf("<TD><A HREF='../cgi-bin/gisaidSample' class='topbar'>Sample View</A></TD>\n");          // Subject  View
+    printf("<TD><A HREF='../cgi-bin/hgTracks%s' class='topbar'>Sequence View</A></TD>\n",uiState);  // Sequence View
+    printf("<TD><A HREF='../cgi-bin/gisaidTable' class='topbar'>Table View</A></TD>\n");            // Table View
+    printf("<TD style='width:95%%'>&nbsp;</TD></TR></TABLE>\n"); // last column squeezes other columns left
+
+#else///ifdef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     printf("<TABLE WIDTH=\"100%%\" BGCOLOR=\"#000000\" BORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"1\"><TR><TD>\n");
     printf("<TABLE WIDTH=\"100%%\" BGCOLOR=\"#2636D1\" BORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"2\"><TR>\n");
 
@@ -246,9 +273,26 @@ if (isGisaid)
 */
     printf("</TR></TABLE>");
     printf("</TD></TR></TABLE>\n");
+#endif///def TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     }
 else if (isGsid)
     {
+#ifndef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
+
+    printf("<TABLE class='topBlueBar' BORDER='0' CELLSPACING='0' CELLPADDING='2'><TR>\n");
+    printf("<TD><A HREF='../index.html' class='topbar'>Home</A></TD>\n");                                               // Home
+    if (haveBlat)
+        printf("<TD ALIGN=CENTER><A HREF='../cgi-bin/hgBlat?command=start' class='topbar'>Blat</A></TD>\n");            // Blat
+    printf("<TD><A HREF='../cgi-bin/gsidSubj' class='topbar'>Subject View</A></TD>\n");                                 // Subject View
+    printf("<TD><A HREF='../cgi-bin/hgTracks%s' class='topbar'>Sequence View</A></TD>\n",uiState);                      // Sequence View
+    printf("<TD><A HREF='../cgi-bin/gsidTable' class='topbar'>Table View</A></TD>\n");                                  // Table View
+    if (endsWith(scriptName, "hgBlat"))
+        printf("<TD><A HREF='/goldenPath/help/gsidTutorial.html#BLAT' TARGET=_blank class='topbar'>Help</A></TD>\n");   // Help
+    else
+        printf("<TD><A HREF='/goldenPath/help/sequenceViewHelp.html' TARGET=_blank class='topbar'>Help</A></TD>\n");    // Help
+    printf("<TD style='width:95%%'>&nbsp;</TD></TR></TABLE>\n"); // last column squeezes other columns left
+
+#else///ifdef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     printf("<TABLE WIDTH=\"100%%\" BGCOLOR=\"#000000\" BORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"1\"><TR><TD>\n");
     printf("<TABLE WIDTH=\"100%%\" BGCOLOR=\"#2636D1\" BORDER=\"0\" CELLSPACING=\"0\" CELLPADDING=\"2\"><TR>\n");
 
@@ -281,55 +325,155 @@ else if (isGsid)
 	}
     printf("</TR></TABLE>");
     printf("</TD></TR></TABLE>\n");
+#endif///def TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     }
 else if (dbIsFound)
     {
+#ifndef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
+
+    puts("<!-- +++++++++++++++++++++ HOTLINKS BAR +++++++++++++++++++ -->\n<TR><TD COLSPAN=3 HEIGHT=40>");
+    puts("<TABLE class='topBlueBar' BORDER='0' CELLSPACING='0' CELLPADDING='2'><TR>");
+
+    if (isEncode)
+        printf("<TD><A HREF='../encode/' class='topbar'>Home</A></TD>\n");
+    else
+        {
+        printf("<TD><A HREF='../index.html%s' class='topbar'>Home</A></TD>\n", uiState);
+        if (isGsid)
+            printf("<TD><A HREF='../cgi-bin/gsidSubj%s' class='topbar'>Subject View</A></TD>\n",uiState);
+        else
+            printf("<TD><A HREF='../cgi-bin/hgGateway%s' class='topbar'>Genomes</A></TD>\n",uiState);
+
+        if (endsWith(scriptName, "hgTracks") || endsWith(scriptName, "hgGene") ||
+            endsWith(scriptName, "hgTables") || endsWith(scriptName, "hgTrackUi") ||
+            endsWith(scriptName, "hgSession") || endsWith(scriptName, "hgCustom") ||
+	    endsWith(scriptName, "hgHubConnect") ||
+            endsWith(scriptName, "hgc") || endsWith(scriptName, "hgPal"))
+            printf("<TD><A HREF='../cgi-bin/hgTracks%s&hgTracksConfigPage=notSet&%s=0' class='topbar'>Genome Browser</A></TD>\n",uiState,TRACK_SEARCH);
+
+        if (haveBlat && !endsWith(scriptName, "hgBlat"))
+            printf("<TD><A HREF='../cgi-bin/hgBlat?command=start%s%s' class='topbar'>Blat</A></TD>\n",theCart ? "&" : "", uiState+1 );
+        }
+
+    if (!isGsid && !hIsCgbServer())  // disable TB for both GSID and CGB servers
+        {
+        char *table = (theCart == NULL ? NULL :
+                    (endsWith(scriptName, "hgGene") ?
+                        cartOptionalString(theCart, "hgg_type") :
+                        cartOptionalString(theCart, "g")));
+        if (table && theCart &&
+            (endsWith(scriptName, "hgc") || endsWith(scriptName, "hgTrackUi") ||
+            endsWith(scriptName, "hgGene")))
+            {
+            struct trackDb *tdb = hTrackDbForTrack(db, table);
+            if (tdb != NULL)
+                printf("<TD><A HREF='../cgi-bin/hgTables%s&hgta_doMainPage=1&hgta_group=%s&hgta_track=%s&hgta_table=%s' class='topbar'>",
+                    uiState, tdb->grp, tdb->track, tdb->table);
+            else
+                printf("<TD><A HREF='../cgi-bin/hgTables%s&hgta_doMainPage=1' class='topbar'>", uiState);
+            trackDbFree(&tdb);
+            }
+        else
+            printf("<TD><A HREF='../cgi-bin/hgTables%s%shgta_doMainPage=1' class='topbar'>",
+                uiState, theCart ? "&" : "?" );
+        printf("Tables</A></TD>\n");
+        }
+
+    if (!endsWith(scriptName, "hgNear") && db != NULL && hgNearOk(db)) //  possible to make this conditional: if (db != NULL && hgNearOk(db))
+        {
+        if (isGsid)
+            printf("<TD><A HREF='../cgi-bin/gsidTable%s' class='topbar'>Table View</A></TD>\n",uiState);
+        else
+            printf("<TD><A HREF='../cgi-bin/hgNear%s' class='topbar'>Gene Sorter</A></TD>\n",uiState);
+        }
+    if ((!endsWith(scriptName, "hgPcr")) && (db == NULL || hgPcrOk(db)))
+        printf("<TD><A HREF='../cgi-bin/hgPcr%s' class='topbar'>PCR</A></TD>\n",uiState);
+    if (endsWith(scriptName, "hgGenome"))
+        printf("<TD><A HREF='../cgi-bin/hgGenome%s&hgGenome_doPsOutput=on' class='topbar'>PDF/PS</A></TD>\n",uiState);
+    if (endsWith(scriptName, "hgHeatmap"))
+        printf("<TD><A HREF='../cgi-bin/hgHeatmap%s&hgHeatmap_doPsOutput=on' class='topbar'>PDF/PS</A></TD>\n",uiState);
+#ifndef GBROWSE
+    if (wikiLinkEnabled() && !endsWith(scriptName, "hgSession"))
+        printf("<TD><A HREF='../cgi-bin/hgSession%s%shgS_doMainPage=1' class='topbar'>Session</A></TD>\n",uiState, theCart ? "&" : "?" );
+#endif /* GBROWSE */
+    if (!isGsid)
+        printf("<TD><A HREF='../FAQ/' class='topbar'>FAQ</A></TD>");
+    if (!isGsid)
+        {
+        if (endsWith(scriptName, "hgBlat"))
+            printf("<TD><A HREF='../goldenPath/help/hgTracksHelp.html#BLATAlign'");
+        else if (endsWith(scriptName, "hgHubConnect"))
+            printf("<TD><A HREF='../goldenPath/help/hgTrackHubHelp.html'");
+        else if (endsWith(scriptName, "hgText"))
+            printf("<TD><A HREF='../goldenPath/help/hgTextHelp.html'");
+        else if (endsWith(scriptName, "hgNear"))
+            printf("<TD><A HREF='../goldenPath/help/hgNearHelp.html'");
+        else if (endsWith(scriptName, "hgTables"))
+            printf("<TD><A HREF='../goldenPath/help/hgTablesHelp.html'");
+        else if (endsWith(scriptName, "hgGenome"))
+            printf("<TD><A HREF='../goldenPath/help/hgGenomeHelp.html'");
+        else if (endsWith(scriptName, "hgSession"))
+            printf("<TD><A HREF='../goldenPath/help/hgSessionHelp.html'");
+        else if (endsWith(scriptName, "pbGateway"))
+            printf("<TD><A HREF='../goldenPath/help/pbTracksHelpFiles/pbTracksHelp.shtml'");
+        else if (endsWith(scriptName, "hgVisiGene"))
+            printf("<TD><A HREF='../goldenPath/help/hgTracksHelp.html#VisiGeneHelp'");
+        else
+            printf("<TD><A HREF='../goldenPath/help/hgTracksHelp.html'");
+        printf(" class='topbar'>Help</A></TD>\n");
+        }
+    }
+    printf("<TD style='width:95%%'>&nbsp;</TD></TR></TABLE>\n"); // last column squeezes other columns left
+    puts("</TD></TR>\n");
+
+#else///ifdef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     puts(
        "<!-- +++++++++++++++++++++ HOTLINKS BAR +++++++++++++++++++ -->" "\n"
        "<TR><TD COLSPAN=3 HEIGHT=40 >" "\n"
-       "<table bgcolor=\"#000000\" cellpadding=\"1\" cellspacing=\"1\" width=\"100%%\" height=\"27\">" "\n"
+       "<table bgcolor=\"#000000\" cellpadding=\"1\" cellspacing=\"1\" width=\"100%\" height=\"27\">" "\n"
        "<tr bgcolor=\"#"HG_COL_HOTLINKS"\"><td valign=\"middle\">" "\n"
-       "	<table BORDER=0 CELLSPACING=0 CELLPADDING=0 bgcolor=\"#"HG_COL_HOTLINKS"\" height=\"24\"><TR>" "\n	"
-       " 	<TD VALIGN=\"middle\"><font color=\"#89A1DE\">&nbsp;" "\n"
+       "	<table BORDER=0 CELLSPACING=0 CELLPADDING=0 bgcolor=\"#"HG_COL_HOTLINKS"\" height=\"24\" class=\"topbar\"><TR>" "\n"
+       " 	<TD VALIGN=\"middle\"><font color=\"#89A1DE\">" "\n"
        );
 
 if (isEncode)
     {
-    printf("&nbsp;<A HREF=\"../encode/\" class=\"topbar\">" "\n");
+    printf("<A HREF=\"../encode/\" class=\"topbar\">" "\n");
     puts("           Home</A>");
     }
 else
     {
-    printf("&nbsp;<A HREF=\"../index.html%s\" class=\"topbar\">" "\n", uiState);
-    puts("           Home</A> &nbsp;&nbsp;&nbsp;");
+    printf("<A HREF=\"../index.html%s\" class=\"topbar\">" "\n", uiState);
+    puts("           Home</A> ");
     if (isGsid)
 	{
     	printf("       <A HREF=\"../cgi-bin/gsidSubj%s\" class=\"topbar\">\n",
 	       uiState);
-	puts("           Subject View</A> &nbsp;&nbsp;&nbsp;");
+	puts("           Subject View</A> ");
 	}
     if (!isGsid)
 	{
 	printf("       <A HREF=\"../cgi-bin/hgGateway%s\" class=\"topbar\">\n",
 	       uiState);
-    	puts("           Genomes</A> &nbsp;&nbsp;&nbsp;");
+    	puts("           Genomes</A> ");
     	}
     if (endsWith(scriptName, "hgTracks") || endsWith(scriptName, "hgGene") ||
 	endsWith(scriptName, "hgTables") || endsWith(scriptName, "hgTrackUi") ||
 	endsWith(scriptName, "hgSession") || endsWith(scriptName, "hgCustom") ||
+	endsWith(scriptName, "hgHubConnect") ||
 	endsWith(scriptName, "hgc") || endsWith(scriptName, "hgPal"))
 	{
         printf("       <A HREF='../cgi-bin/hgTracks%s&hgTracksConfigPage=notSet&%s=0' class='topbar'>\n",
 	       uiState,TRACK_SEARCH);
-	puts("           Genome Browser</A> &nbsp;&nbsp;&nbsp;");
+	puts("           Genome Browser</A> ");
 	}
     if (haveBlat && !endsWith(scriptName, "hgBlat"))
 	{
     	printf("       <A HREF=\"../cgi-bin/hgBlat?command=start%s%s\" class=\"topbar\">",
 		theCart ? "&" : "", uiState+1 );
-    	puts("           Blat</A> &nbsp;&nbsp;&nbsp;");
+    	puts("           Blat</A> ");
 	}
-}
+    }
     {
     char *table = (theCart == NULL ? NULL :
 		   (endsWith(scriptName, "hgGene") ?
@@ -344,7 +488,6 @@ else
 	    printf("       <A HREF=\"../cgi-bin/hgTables%s&hgta_doMainPage=1&"
 		   "hgta_group=%s&hgta_track=%s&hgta_table=%s\" "
 		   "class=\"topbar\">\n",
-		// uiState, tdb->grp, table, table);
 		uiState, tdb->grp, tdb->track, tdb->table);
 	else
 	    printf("       <A HREF=\"../cgi-bin/hgTables%s&hgta_doMainPage=1\" "
@@ -358,7 +501,7 @@ else
 	       uiState, theCart ? "&" : "?" );
     }
     /* disable TB for both GSID and CGB servers */
-    if (!isGsid && !hIsCgbServer()) puts("           Tables</A> &nbsp;&nbsp;&nbsp;");
+    if (!isGsid && !hIsCgbServer()) puts("           Tables</A> ");
     if (!endsWith(scriptName, "hgNear"))
     /*  possible to make this conditional: if (db != NULL && hgNearOk(db))	*/
         if (db != NULL && hgNearOk(db))
@@ -367,32 +510,32 @@ else
 	    {
 	    printf("       <A HREF=\"../cgi-bin/gsidTable%s\" class=\"topbar\">\n",
 	           uiState);
-	    puts("           Table View</A> &nbsp;&nbsp;&nbsp;");
+	    puts("           Table View</A> ");
 	    }
 	else
 	    {
 	    printf("       <A HREF=\"../cgi-bin/hgNear%s\" class=\"topbar\">\n",
 	           uiState);
-	    puts("           Gene Sorter</A> &nbsp;&nbsp;&nbsp;");
+	    puts("           Gene Sorter</A> ");
 	    }
 	}
     if ((!endsWith(scriptName, "hgPcr")) && (db == NULL || hgPcrOk(db)))
 	{
 	printf("       <A HREF=\"../cgi-bin/hgPcr%s\" class=\"topbar\">\n",
 	       uiState);
-	puts("           PCR</A> &nbsp;&nbsp;&nbsp;");
+	puts("           PCR</A> ");
 	}
     if (endsWith(scriptName, "hgGenome"))
 	{
 	printf("       <A HREF=\"../cgi-bin/hgGenome%s&hgGenome_doPsOutput=on\" class=\"topbar\">\n",
 	       uiState);
-	puts("           PDF/PS</A> &nbsp;&nbsp;&nbsp;");
+	puts("           PDF/PS</A> ");
 	}
     if (endsWith(scriptName, "hgHeatmap"))
 	{
 	printf("       <A HREF=\"../cgi-bin/hgHeatmap%s&hgHeatmap_doPsOutput=on\" class=\"topbar\">\n",
 	       uiState);
-	puts("           PDF/PS</A> &nbsp;&nbsp;&nbsp;");
+	puts("           PDF/PS</A> ");
 	}
 #ifndef GBROWSE
     if (wikiLinkEnabled() && !endsWith(scriptName, "hgSession"))
@@ -400,11 +543,11 @@ else
 	printf("<A HREF=\"../cgi-bin/hgSession%s%shgS_doMainPage=1\" "
 	       "class=\"topbar\">Session</A>",
 	       uiState, theCart ? "&" : "?" );
-	puts("&nbsp;&nbsp;&nbsp;");
+	puts("");
 	}
 #endif /* GBROWSE */
     if (!isGsid) puts("       <A HREF=\"../FAQ/\" class=\"topbar\">" "\n"
-	 "           FAQ</A> &nbsp;&nbsp;&nbsp;" "\n"
+	 "           FAQ</A> " "\n"
 	 );
     if (!isGsid)
 	{
@@ -430,16 +573,34 @@ else
     	puts("           Help</A> ");
     	}
     }
-puts("&nbsp;</font></TD>" "\n"
+puts("</font></TD>" "\n"
      "       </TR></TABLE>" "\n"
      "</TD></TR></TABLE>" "\n"
      "</TD></TR>	" "\n"
      "" "\n"
      );
+#endif///def TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
 
 if(!skipSectionHeader)
 /* this HTML must be in calling code if skipSectionHeader is TRUE */
     {
+#ifndef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
+    puts(        // TODO: Replace nested tables with CSS (difficulty is that tables are closed elsewhere)
+         "<!-- +++++++++++++++++++++ CONTENT TABLES +++++++++++++++++++ -->" "\n"
+         "<TR><TD COLSPAN=3>\n"
+         "      <!--outer table is for border purposes-->\n"
+         "      <TABLE WIDTH='100%' BGCOLOR='#" HG_COL_BORDER "' BORDER='0' CELLSPACING='0' CELLPADDING='1'><TR><TD>\n"
+         "    <TABLE BGCOLOR='#" HG_COL_INSIDE "' WIDTH='100%'  BORDER='0' CELLSPACING='0' CELLPADDING='0'><TR><TD>\n"
+         "     <div class='subheadingBar'><div class='windowSize' id='sectTtl'>"
+         );
+    htmlTextOut(textOutBuf);
+
+    puts(
+         "     </div></div>\n"
+         "     <TABLE BGCOLOR='#" HG_COL_INSIDE "' WIDTH='100%' CELLPADDING=0><TR><TH HEIGHT=10></TH></TR>\n"
+         "     <TR><TD WIDTH=10>&nbsp;</TD><TD>\n\n"
+         );
+#else///ifdef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
     puts(
          "<!-- +++++++++++++++++++++ CONTENT TABLES +++++++++++++++++++ -->" "\n"
 	 "<TR><TD COLSPAN=3>	" "\n"
@@ -457,6 +618,7 @@ if(!skipSectionHeader)
 	 "	<TR><TD WIDTH=10>&nbsp;</TD><TD>" "\n"
 	 "	" "\n"
 	 );
+#endif///def TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
 
     };
 webPushErrHandlers();
@@ -556,6 +718,23 @@ va_start(args, format);
 
 webEndSection();
 puts("<!-- +++++++++++++++++++++ START NEW SECTION +++++++++++++++++++ -->");
+#ifndef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
+puts(  // TODO: Replace nested tables with CSS (difficulty is that tables are closed elsewhere)
+    "<BR>\n\n"
+    "   <!--outer table is for border purposes-->\n"
+    "   <TABLE WIDTH='100%' BGCOLOR='#" HG_COL_BORDER "' BORDER='0' CELLSPACING='0' CELLPADDING='1'><TR><TD>\n"
+    "    <TABLE BGCOLOR='#" HG_COL_INSIDE "' WIDTH='100%'  BORDER='0' CELLSPACING='0' CELLPADDING='0'><TR><TD>\n"
+    "     <div class='subheadingBar' class='windowSize'>"
+);
+
+vprintf(format, args);
+
+puts(
+    "     </div>\n"
+    "     <TABLE BGCOLOR='#" HG_COL_INSIDE "' WIDTH='100%' CELLPADDING=0><TR><TH HEIGHT=10></TH></TR>\n"
+    "     <TR><TD WIDTH=10>&nbsp;</TD><TD>\n\n"
+);
+#else///ifdef TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
 puts(
     "<BR>" "\n"
     "" "\n"
@@ -574,6 +753,7 @@ puts(
     "	<TR><TD WIDTH=10>&nbsp;</TD><TD>" "\n"
     "" "\n"
 );
+#endif///def TOO_TIMID_FOR_CURRENT_HTML_STANDARDS
 
 va_end(args);
 }
@@ -942,10 +1122,18 @@ if (differentWord(genome, hGenome(retDb)))
 return retDb;
 }
 
+static unsigned long expireSeconds = 0;
 /* phoneHome business */
-static void alarmExit(int status)
-/* signal handler for SIGALRM for phoneHome function */
+static void cgiApoptosis(int status)
+/* signal handler for SIGALRM for phoneHome function and CGI expiration */
 {
+if (expireSeconds > 0)
+    {
+    /* want to see this error message in the apache error_log also */
+    fprintf(stderr, "cgiApoptosis: %lu seconds\n", expireSeconds);
+    /* most of our CGIs post a polite non-fatal message with this errAbort */
+    errAbort("procedures have exceeded timeout: %lu seconds, function has ended.\n", expireSeconds);
+    }
 exit(0);
 }
 
@@ -956,8 +1144,14 @@ if (beenHere)  /* one at a time please */
     return;
 beenHere = TRUE;
 
+char *expireTime = cfgOptionDefault("browser.cgiExpireMinutes", "20");
+unsigned expireMinutes = sqlUnsigned(expireTime);
+expireSeconds = expireMinutes * 60;
+
 char trashFile[PATH_LEN];
 safef(trashFile, sizeof(trashFile), "%s/registration.txt", trashDir());
+
+/* trashFile does not exist during command line execution */
 if(fileExists(trashFile))	/* update access time for trashFile */
     {
     struct utimbuf ut;
@@ -973,6 +1167,11 @@ if(fileExists(trashFile))	/* update access time for trashFile */
 	ut.actime = ut.modtime = clock1();
 	}
     (void) utime(trashFile, &ut);
+    if (expireSeconds > 0)
+	{
+	(void) signal(SIGALRM, cgiApoptosis);
+	(void) alarm(expireSeconds);	/* CGI timeout */
+	}
     return;
     }
 
@@ -996,7 +1195,8 @@ if (scriptName && ip)  /* will not be true from command line execution */
 	if (0 == pid0)	/* in child */
 	    {
 	    close(STDOUT_FILENO); /* do not hang up Apache finish for parent */
-	    (void) signal(SIGALRM, alarmExit);
+	    expireSeconds = 0;	/* no error message from this exit */
+	    (void) signal(SIGALRM, cgiApoptosis);
 	    (void) alarm(6);	/* timeout here in 6 seconds */
 #include "versionInfo.h"
 	    char url[1024];
@@ -1010,6 +1210,11 @@ if (scriptName && ip)  /* will not be true from command line execution */
 	    exit(0);
 	    }	/* child of fork has done exit(0) normally or via alarm */
 	}		/* trash file open OK */
+    if (expireSeconds > 0)
+	{
+	(void) signal(SIGALRM, cgiApoptosis);
+	(void) alarm(expireSeconds);	/* CGI timeout */
+	}
     }			/* an actual CGI binary */
 }			/* phoneHome()	*/
 /* phoneHome business */
@@ -1159,7 +1364,7 @@ webIncludeFile(hHelpFile(fileRoot));
 void webPrintLinkTableStart()
 /* Print link table start in our colors. */
 {
-printf("<TABLE><TR><TD BGCOLOR=#888888>\n");
+printf("<TABLE><TR><TD BGCOLOR='#888888'>\n");
 printf("<TABLE CELLSPACING=1 CELLPADDING=3><TR>\n");
 }
 
@@ -1174,13 +1379,13 @@ void webPrintLinkOutCellStart()
 /* Print link cell that goes out of our site. End with
  * webPrintLinkTableEnd. */
 {
-printf("<TD BGCOLOR=\"#"HG_COL_LOCAL_TABLE"\">");
+printf("<TD BGCOLOR='#" HG_COL_LOCAL_TABLE "'>");
 }
 
 void webPrintWideCellStart(int colSpan, char *bgColorRgb)
 /* Print link multi-column cell start in our colors. */
 {
-printf("<TD BGCOLOR=\"#%s\"", bgColorRgb);
+printf("<TD BGCOLOR='#%s'", bgColorRgb);
 if (colSpan > 1)
     printf(" COLSPAN=%d", colSpan);
 printf(">");
@@ -1195,7 +1400,7 @@ webPrintWideCellStart(1, HG_COL_TABLE);
 void webPrintLinkCellRightStart()
 /* Print right-justified cell start in our colors. */
 {
-printf("<TD BGCOLOR=\"#"HG_COL_TABLE"\" ALIGN=\"right\">");
+printf("<TD BGCOLOR='#"HG_COL_TABLE"' ALIGN='right'>");
 }
 
 void webPrintLinkCellEnd()
@@ -1232,19 +1437,19 @@ webPrintLinkCellEnd();
 void webPrintWideLabelCell(char *label, int colSpan)
 /* Print label cell over multiple columns in our colors. */
 {
-printf("<TD BGCOLOR=\"#"HG_COL_TABLE_LABEL"\"");
+printf("<TD BGCOLOR='#"HG_COL_TABLE_LABEL"'");
 if (colSpan > 1)
     printf(" COLSPAN=%d", colSpan);
-printf("><FONT COLOR=\"#FFFFFF\"><B>%s</B></FONT></TD>", label);
+printf("><span style='color:#FFFFFF;'><B>%s</B></spanT></TD>", label);
 }
 
 void webPrintWideCenteredLabelCell(char *label, int colSpan)
 /* Print label cell over multiple columns in our colors and centered. */
 {
-printf("<TD BGCOLOR=\"#"HG_COL_TABLE_LABEL"\"");
+printf("<TD BGCOLOR='#" HG_COL_TABLE_LABEL "'");
 if (colSpan > 1)
     printf(" COLSPAN=%d", colSpan);
-printf("><CENTER><FONT COLOR=\"#FFFFFF\"><B>%s</B></FONT></CENTER></TD>", label);
+printf("><CENTER><span style='color:#FFFFFF;'><B>%s</B></span></CENTER></TD>", label);
 }
 
 void webPrintLabelCell(char *label)
@@ -1287,9 +1492,22 @@ finishPartialTable(rowIx, itemPos, maxPerRow, webPrintLinkCellStart);
 }
 
 char *webTimeStampedLinkToResource(char *fileName, boolean wrapInHtml)
-// Returns full path of timestamped link to the requested resource file (js, or css).
-// If wrapInHtml, then returns link embedded in style or script html. Free after use.
+// If wrapInHtml
+//   returns versioned link embedded in style or script html (free after use).
+// else
+//   returns full path of a versioned path to the requested resource file (js, or css).
 // NOTE: png, jpg and gif should also be supported but are untested.
+//
+// In production sites we use a versioned softlink that includes the CGI version. This has the following benefits:
+// a) flushes user's web browser cache when the user visits a GB site whose version has changed since their last visit;
+// b) enforces the requirement that static files are the same version as the CGIs (something that often fails to happen in mirrors).
+// (see notes in redmine #3170).
+//
+// In dev trees we use mtime to create a pseudo-version; this forces web browsers to reload css/js file when it changes,
+// so we don't get odd behavior that can be caused by caching of mis-matched javascript and style files in dev trees.
+//
+// In either case, the actual file has to have been previously created by running make in the appropriate directory (kent/src/hg/js
+// or kent/src/hg/htdocs/style).
 {
 char baseName[PATH_LEN];
 char extension[FILEEXT_LEN];
@@ -1310,9 +1528,10 @@ else if (image)
     dirName = cfgOptionDefault("browser.styleImagesDir","style/images");
 struct dyString *fullDirName = NULL;
 char *docRoot = hDocumentRoot();
-if(docRoot != NULL) // tolerate missing docRoot (i.e. when running from command line)
+if(docRoot != NULL)
     fullDirName = dyStringCreate("%s/%s", docRoot, dirName);
 else
+    // tolerate missing docRoot (i.e. when running from command line)
     fullDirName = dyStringCreate("%s", dirName);
 if(!fileExists(dyStringContents(fullDirName)))
     errAbort("webTimeStampedLinkToResource: dir: %s doesn't exist.\n", dyStringContents(fullDirName));
@@ -1322,40 +1541,18 @@ struct dyString *realFileName = dyStringCreate("%s/%s", dyStringContents(fullDir
 if(!fileExists(dyStringContents(realFileName)))
     errAbort("webTimeStampedLinkToResource: file: %s doesn't exist.\n", dyStringContents(realFileName));
 
-// build and verify link path including timestamp in the form of dir/baseName-timeStamp.ext
-long mtime = fileModTime(dyStringContents(realFileName));   // We add mtime to create a pseudo-version; this forces browsers to reload css/js file when it changes
-struct dyString *linkWithTimestamp = dyStringCreate("%s/%s-%ld%s", dyStringContents(fullDirName), baseName, mtime, extension);
+// build and verify link path including timestamp in the form of dir/baseName + timeStamp or CGI Version + ext
+long mtime = fileModTime(dyStringContents(realFileName));
+struct dyString *linkWithTimestamp;
+if(hIsPreviewHost() || hIsPrivateHost())
+    linkWithTimestamp = dyStringCreate("%s/%s-%ld%s", dyStringContents(fullDirName), baseName, mtime, extension);
+else
+    linkWithTimestamp = dyStringCreate("%s/%s-v%s%s", dyStringContents(fullDirName), baseName, CGI_VERSION, extension);
 
-// If link does not exist, then create it !!
 if(!fileExists(dyStringContents(linkWithTimestamp)))
-    {
-    // The versioned copy should be created by the install process; however, mirrors may fail
-    // to preserve mtime's when copying over the javascript/css files, in which case the
-    // versioned softlinks won't match the real file; in that case, we try to create
-    // the versioned links on the fly (which requires write access to the javascript or style directory!).
+    errAbort("Cannot find correct version of file '%s'; this is due to an installation error\n\nError details: %s does not exist",
+             fileName, dyStringContents(linkWithTimestamp));
 
-    // Remove older links
-    struct dyString *pattern = dyStringCreate("%s-[0-9]+\\%s", baseName, extension);
-    struct slName *file, *files = listDirRegEx(dyStringContents(fullDirName), dyStringContents(pattern), REG_EXTENDED);
-    struct dyString *oldLink = dyStringNew(256);
-    for (file = files; file != NULL; file = file->next)
-        {
-        dyStringClear(oldLink);
-        dyStringPrintf(oldLink, "%s/%s", dyStringContents(fullDirName), file->name);
-        unlink(dyStringContents(oldLink));
-        }
-    dyStringFree(&oldLink);
-    slFreeList(&files);
-    dyStringFree(&pattern);
-
-    // Create new link
-    if(symlink(dyStringContents(realFileName), dyStringContents(linkWithTimestamp)))
-        {
-        int err = errno;
-        errAbort("webTimeStampedLinkToResource: symlink failed: errno: %d (%s); the directory '%s' must be writeable by user '%s'; alternatively, the installation process must create the versioned files\n",
-                    err, strerror(err), dyStringContents(fullDirName), getUser());
-        }
-    }
 // Free up all that extra memory
 dyStringFree(&realFileName);
 dyStringFree(&fullDirName);

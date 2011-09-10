@@ -119,26 +119,21 @@ void writeHtmlCell(char *text)
  * and stripping html tags and breaking spaces.... */
 {
 int maxLen = 128;
-if (strlen(text) > maxLen)
+int len = strlen(text);
+char *extra = "";
+if (len > maxLen)
     {
-    char *s = cloneStringZ(text,maxLen);
-    char *r;
-    stripHtmlTags(s);
-    eraseTrailingSpaces(s);
-    r = replaceChars(s, " ", "&nbsp;");
-    hPrintf("<TD>%s&nbsp;...</TD>", r);
-    freeMem(s);
-    freeMem(r);
+    len = maxLen;
+    extra = "&nbsp;...";
     }
-else
-    {
-    char *r;
-    stripHtmlTags(text);
-    eraseTrailingSpaces(text);
-    r = replaceChars(text, " ", "&nbsp;");
-    hPrintf("<TD>%s</TD>", r);
-    freeMem(r);
-    }
+char *s = cloneStringZ(text,len);
+char *r;
+stripHtmlTags(s);
+eraseTrailingSpaces(s);
+r = replaceChars(s, " ", "&nbsp;");
+hPrintf("<TD>%s%s</TD>", r, extra);
+freeMem(s);
+freeMem(r);
 }
 
 static void vaHtmlOpen(char *format, va_list args)
@@ -251,6 +246,15 @@ struct trackDb *tdb, *nextTdb, *newList = NULL;
 for (tdb = list;  tdb != NULL;  tdb = nextTdb)
     {
     nextTdb = tdb->next;
+    if (tdbIsDownloadsOnly(tdb) || tdb->table == NULL)
+        {
+        //freeMem(tdb);  // should not free tdb's.
+        // While hdb.c should and says it does cache the tdbList, it doesn't.
+        // The most notable reason that the tdbs are not cached is this hgTables CGI !!!
+        // It needs to be rewritten to make tdbRef structures for the lists it creates here!
+        continue;
+        }
+
     char *tbOff = trackDbSetting(tdb, "tableBrowser");
     if (tbOff != NULL && startsWithWord("off", tbOff))
 	slAddHead(&forbiddenTrackList, tdb);
@@ -545,14 +549,19 @@ char *chromTable(struct sqlConnection *conn, char *table)
 /* Get chr1_table if it exists, otherwise table.
  * You can freeMem this when done. */
 {
-char *chrom = hDefaultChrom(database);
-if (sqlTableExists(conn, table))
+if (isHubTrack(table))
     return cloneString(table);
 else
     {
-    char buf[256];
-    safef(buf, sizeof(buf), "%s_%s", chrom, table);
-    return cloneString(buf);
+    char *chrom = hDefaultChrom(database);
+    if (sqlTableExists(conn, table))
+	return cloneString(table);
+    else
+	{
+	char buf[256];
+	safef(buf, sizeof(buf), "%s_%s", chrom, table);
+	return cloneString(buf);
+	}
     }
 }
 
@@ -586,9 +595,11 @@ struct hTableInfo *hubTrackTableInfo(struct trackDb *tdb)
 {
 struct hTableInfo *hti;
 if (startsWithWord("bigBed", tdb->type))
-    {
     hti = bigBedToHti(tdb->track, NULL);
-    }
+else if (startsWithWord("bam", tdb->type))
+    hti = bamToHti(tdb->table);
+else if (startsWithWord("vcfTabix", tdb->type))
+    hti = vcfToHti(tdb->table);
 else
     {
     AllocVar(hti);
@@ -609,10 +620,12 @@ if (isHubTrack(table))
     struct trackDb *tdb = hashMustFindVal(fullTrackAndSubtrackHash, table);
     hti = hubTrackTableInfo(tdb);
     }
-else if (hIsBigBed(database, table, curTrack, ctLookupName))
-    {
+else if (isBigBed(database, table, curTrack, ctLookupName))
     hti = bigBedToHti(table, conn);
-    }
+else if (isBamTable(table))
+    hti = bamToHti(table);
+else if (isVcfTable(table))
+    hti = vcfToHti(table);
 else if (isCustomTrack(table))
     {
     struct customTrack *ct = ctLookupName(table);
@@ -878,10 +891,24 @@ for (group = slPopHead(&groupsAll); group != NULL; group = slPopHead(&groupsAll)
         grpFree(&group);
     }
 
+/* if we have custom tracks, we want to add the track hubs
+ * after that group */
+struct grp *addAfter = NULL;
+if (sameString(groupList->name, "user"))
+    addAfter = groupList;
+
 /* Add in groups from hubs. */
 for (group = slPopHead(pHubGrpList); group != NULL; group = slPopHead(pHubGrpList))
     {
-    slAddTail(&groupList, group);
+    /* check to see if we're inserting hubs rather than
+     * adding them to the front of the list */
+    if (addAfter != NULL)
+	{
+	group->next = addAfter->next;
+	addAfter->next = group;
+	}
+    else
+	slAddHead(&groupList, group);
     hashAdd(groupsInDatabase, group->name, group);
     }
 
@@ -1077,9 +1104,11 @@ else
 boolean htiIsPositional(struct hTableInfo *hti)
 /* Return TRUE if hti looks like it's from a positional table. */
 {
-return isCustomTrack(hti->rootName) ||
+return isCustomTrack(hti->rootName) || hti->isPos;
+#ifdef OLD
     ((hti->startField[0] && hti->endField[0]) &&
 	(hti->chromField[0] || sameString(hti->rootName, "gl")));
+#endif /* OLD */
 }
 
 char *getIdField(char *db, struct trackDb *track, char *table,
@@ -1338,8 +1367,12 @@ hashFree(&idHash);
 void doTabOutTable( char *db, char *table, FILE *f, struct sqlConnection *conn, char *fields)
 /* Do tab-separated output on fields of a single table. */
 {
-if (hIsBigBed(database, table, curTrack, ctLookupName))
+if (isBigBed(database, table, curTrack, ctLookupName))
     bigBedTabOut(db, table, conn, fields, f);
+else if (isBamTable(table))
+    bamTabOut(db, table, conn, fields, f);
+else if (isVcfTable(table))
+    vcfTabOut(db, table, conn, fields, f);
 else if (isCustomTrack(table))
     {
     doTabOutCustomTracks(db, table, conn, fields, f);
@@ -1354,12 +1387,16 @@ struct slName *fullTableFields(char *db, char *table)
 char dtBuf[256];
 struct sqlConnection *conn;
 struct slName *fieldList = NULL, *dtfList = NULL, *field, *dtf;
-if (hIsBigBed(database, table, curTrack, ctLookupName))
+if (isBigBed(database, table, curTrack, ctLookupName))
     {
     conn = hAllocConn(db);
     fieldList = bigBedGetFields(table, conn);
     hFreeConn(&conn);
     }
+else if (isBamTable(table))
+    fieldList = bamGetFields(table);
+else if (isVcfTable(table))
+    fieldList = vcfGetFields(table);
 else if (isCustomTrack(table))
     {
     struct customTrack *ct = ctLookupName(table);
@@ -1439,7 +1476,7 @@ for (region = regionList; region != NULL; region = region->next)
             {
             char *s, *script = hgTracksName();
             s = strstr(script, "cgi-bin");
-            hPrintf("<A HREF=\"http://%s/%s?db=%s", cgiServerName(), s, database);
+            hPrintf("<A HREF=\"http://%s/%s?db=%s", cgiServerNamePort(), s, database);
             }
         else
 	    hPrintf("<A HREF=\"%s?db=%s", hgTracksName(), database);
@@ -1743,7 +1780,7 @@ else if (cartVarExists(cart, hgtaDoSelectFieldsMore))
     doSelectFieldsMore();
 else if (cartVarExists(cart, hgtaDoPrintSelectedFields))
     doPrintSelectedFields();
-else if (cartVarExists(cart, hgtaDoGalaxySelectedFields)) 
+else if (cartVarExists(cart, hgtaDoGalaxySelectedFields))
     sendParamsToGalaxy(hgtaDoPrintSelectedFields, "get output");
 else if ((varList = cartFindPrefix(cart, hgtaDoClearAllFieldPrefix)) != NULL)
     doClearAllField(varList->name + strlen(hgtaDoClearAllFieldPrefix));
@@ -1887,8 +1924,6 @@ pushCarefulMemHandler(LIMIT_2or6GB);
 htmlPushEarlyHandlers(); /* Make errors legible during initialization. */
 cgiSpoof(&argc, argv);
 
-struct dyString *in = cgiUrlString();
-fprintf(stderr, "%s\n", in->string);
 hgTables();
 
 textOutClose(&compressPipeline);

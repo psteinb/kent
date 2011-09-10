@@ -7,6 +7,7 @@
 #include "bed.h"
 #include "bedGraph.h"
 #include "rangeTree.h"
+#include "errabort.h"
 
 static char const rcsid[] = "$Id: hgBedsToBedExps.c,v 1.6 2010/05/06 18:02:38 kent Exp $";
 
@@ -209,7 +210,7 @@ for (ref = list; ref != NULL; ref = ref->next)
     fprintf(f, "%s\t%d\t%d\t", chrom, range->start, range->end);
     fprintf(f, "%s\t", factor->factor);
     fprintf(f, "%d\t", round(maxLevel));	/* score */
-    fprintf(f, "+\t");  /* strand.... */
+    fprintf(f, ".\t");  /* strand.... */
     fprintf(f, "%d\t%d\t", range->start, range->end);
     fprintf(f, "0\t");  /* itemRgb */
     fprintf(f, "1\t");  /* block count */
@@ -281,11 +282,35 @@ slFreeList(&chromElList);
 rbTreeFreeList(&chromList);
 }
 
+void checkForDupes(struct bToBeCfg *list)
+/* Make sure that only have one item for each factor/source combination. */
+{
+struct hash *hash = newHash(0);
+struct bToBeCfg *el;
+boolean gotDupe = FALSE;
+for (el = list; el != NULL; el = el->next)
+    {
+    char buf[256];
+    safef(buf, sizeof(buf), "%s & %s", el->factor, el->source);
+    struct bToBeCfg *old = hashFindVal(hash, buf);
+    if (old)
+	{
+        warn("%s %s used in %s and %s", el->factor, el->source, el->dataTable, old->dataTable);
+	gotDupe = TRUE;
+	}
+    else
+        hashAdd(hash, buf, el);
+    }
+if (gotDupe)
+    noWarnAbort();
+}
+
 void hgBedsToBedExps(char *inCfg, char *outBed, char *outExp)
 /* hgBedsToBedExps - Convert multiple bed files to a single bedExp.. */
 {
 /* Load up input configuration . */
 struct bToBeCfg *cfgList = bToBeCfgLoadAll(inCfg);
+checkForDupes(cfgList);
 verbose(1, "Loaded %d records from %s\n", slCount(cfgList), inCfg);
 
 /* Find and output all sources used. */

@@ -288,14 +288,18 @@ struct region *oldNext = region->next;
 struct bed *bedList = NULL;
 region->next = NULL;
 
-if (hIsBigBed(database, table, curTrack, ctLookupName))
+if (isBigBed(database, table, curTrack, ctLookupName))
     bedList = bigBedGetFilteredBedsOnRegions(conn, database, table, region, lm, retFieldCount);
+else if (isBamTable(table))
+    bedList = bamGetFilteredBedsOnRegions(conn, database, table, region, lm, retFieldCount);
+else if (isVcfTable(table))
+    bedList = vcfGetFilteredBedsOnRegions(conn, database, table, region, lm, retFieldCount);
 else if (isCustomTrack(table))
     bedList = customTrackGetFilteredBeds(database, table, region, lm, retFieldCount);
 else if (sameWord(table, WIKI_TRACK_TABLE))
     bedList = wikiTrackGetFilteredBeds(table, region, lm, retFieldCount);
 else
-    bedList = dbGetFilteredBedsOnRegions(conn, database, database, 
+    bedList = dbGetFilteredBedsOnRegions(conn, database, database,
     	table, table, region, lm, retFieldCount);
 region->next = oldNext;
 return bedList;
@@ -397,7 +401,8 @@ if (isWiggle(database, table) || isBedGraph(table) || isBigWigTable(table) )
     }
 else
     {
-    hPrintf("%s\n", "<P> <B> Create one BED record per: </B>");
+    cgiDown(0.9);
+    hPrintf("<B> Create one BED record per: </B>\n");
     if ((anyIntersection() && intersectionIsBpWise()) ||
 	(anySubtrackMerge(database, table) && subtrackMergeIsBpWise()))
 	{
@@ -451,6 +456,7 @@ if (!doGalaxy() && !doGreat())
     cgiMakeButton(hgtaDoMainPage, "cancel");
     hPrintf("</FORM>\n");
     }
+cgiDown(0.9);
 htmlClose();
 }
 

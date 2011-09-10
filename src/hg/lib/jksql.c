@@ -391,6 +391,7 @@ static void monitorPrintInfo(struct sqlConnection *sc, char *name)
 {
 fprintf(stderr, "%.*s%s %ld %s\n", traceIndent, indentStr, name,
         sc->conn->thread_id, scConnDb(sc));
+fflush(stderr);
 }
 
 static void monitorPrint(struct sqlConnection *sc, char *name,
@@ -405,6 +406,7 @@ va_start(args, format);
 vfprintf(stderr, format, args);
 va_end(args);
 fputc('\n', stderr);
+fflush(stderr);
 }
 
 static void monitorPrintTime(void)
@@ -417,6 +419,7 @@ if (monitorFlags & JKSQL_PROF)
             ((double)sqlTotalTime)/1000.0);
     fprintf(stderr, "%.*sSQL_TOTAL_QUERIES %ld\n", traceIndent, indentStr,
             sqlTotalQueries);
+    fflush(stderr);
     }
 }
 
@@ -579,23 +582,27 @@ struct slName *sqlListTables(struct sqlConnection *conn)
 struct sqlResult *sr;
 char **row;
 struct slName *list = NULL, *el;
-char *tableList = cfgOption("showTableCache");
+char *cfgName = "showTableCache";
+char *tableList = cfgOption(cfgName);
 
-if (tableList != NULL && sqlTableExists(conn, tableList))
+if (tableList != NULL)
     {
-    // mysql does not cache "show tables", so use a cached run of show tables in the tableList table (if it exists).
-    // Table should be loaded thus:
-    //
-    //   hgsql hg18 -e 'show tables' > tables.txt
-    //   CREATE TABLE tableList (name varchar(255) NOT NULL, INDEX(name));
-    //   load data local infile 'tables.txt' into table tableList;
-    char query[256];
-    safef(query, sizeof(query), "select * from %s order by name desc", tableList);
-    sr = sqlGetResult(conn, query);
-    while ((row = sqlNextRow(sr)) != NULL)
+    // mysql does not cache "show tables", so use a cached run of show tables which is stored in the showTableCache table.
+    // See redmine 3780 for details.
+    if(sqlTableExists(conn, tableList))
         {
-        el = slNameNew(row[0]);
-        slAddHead(&list, el);
+        char query[256];
+        safef(query, sizeof(query), "select * from %s order by name desc", tableList);
+        sr = sqlGetResult(conn, query);
+        while ((row = sqlNextRow(sr)) != NULL)
+            {
+            el = slNameNew(row[0]);
+            slAddHead(&list, el);
+            }
+        }
+    else
+        {
+        errAbort("%s option is misconfigured in hg.conf: table '%s' does not exist", cfgName, tableList);
         }
     }
 else
@@ -934,6 +941,19 @@ if (sqlTableExists(sc, table))
     safef(query, sizeof(query), "drop table %s", table);
     sqlUpdate(sc, query);
     }
+}
+
+void sqlCopyTable(struct sqlConnection *sc, char *table1, char *table2)
+/* Copy table1 to table2 */
+{
+char query[256];
+
+if (table1 == NULL || table2 == NULL)
+    return;
+safef(query, sizeof(query), "create table %s like %s", table2, table1);
+sqlUpdate(sc, query);
+safef(query, sizeof(query), "insert into %s select * from  %s", table2, table1);
+sqlUpdate(sc, query);
 }
 
 void sqlGetLock(struct sqlConnection *sc, char *name)
@@ -1961,6 +1981,15 @@ struct sqlConnection *sqlConnCacheProfileAlloc(struct sqlConnCache *cache,
 /* Allocate a cached connection given a profile and/or database. */
 {
 return sqlConnCacheDoAlloc(cache, profileName, database, TRUE);
+}
+
+struct sqlConnection *sqlConnCacheProfileAllocMaybe(struct sqlConnCache *cache,
+                                                    char *profileName,
+                                                    char *database)
+/* Allocate a cached connection given a profile and/or database. Return NULL
+ * if the database doesn't exist.  */
+{
+return sqlConnCacheDoAlloc(cache, profileName, database, FALSE);
 }
 
 void sqlConnCacheDealloc(struct sqlConnCache *cache, struct sqlConnection **pConn)

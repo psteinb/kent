@@ -15,7 +15,7 @@ void usage()
 errAbort(
   "mdbPrint - Prints metadata objects, variables and values from '" MDB_DEFAULT_NAME "' table.\n"
   "usage:\n"
-  "   mdbPrint {db} [-table=] [-byVar] [-line/-count,-countObjs/-countVars/-countVals]\n"
+  "   mdbPrint {db} [-table=] [-byVar] [-line/-count]\n"
   "                 [-all]\n"
   "                 [-vars=\"var1=val1 var2=val2...\"]\n"
   "                 [-obj= [-var= [-val=]]]\n"
@@ -28,13 +28,14 @@ errAbort(
   "    -byVar   Print each var and val, then all objects that match, as\n"
   "             opposed to printing objects and all the var=val pairs that match.\n"
   "    -ra      Default. Print each obj with set of indented var val pairs on\n"
-  "             separate lines and objects as a stanzas (-byVar prints pseudo-RA).\n"
-  "    -line    Print each obj and all var=val pairs on a single line.\n"
-  "    -count   Just print count of objects, variables and values selected.\n"
-  "    -countObjs   Just print count of objects returned in the query.\n"
-  "    -countVars   Just print count of variables returned in the query.\n"
-  "    -countVals   Just print count of values returned in the query.\n"
-  "    -specialHelp Prints help for some special case features.\n"
+  "              separate lines and objects as a stanzas (-byVar prints pseudo-RA).\n"
+  "    -line      Print each obj and all var=val pairs on a single line.\n"
+  "    -count      Just print count of objects, variables and values selected.\n"
+  "    -validate    Validate mdb objects against cv.ra. (Incompatible with -byVars, -ra, -line.)\n"
+  "    -validateFull like validate but considers vars not defined in cv as invalid.\n"
+  "    -experimentify      Groups objs into experiments defined in encodeExp table.\n"
+  "    -encodeExp={table}  Optionally tell which encodeExp table to use.\n"
+  "    -specialHelp    Prints help for some special case features.\n"
   "  Four alternate ways to select metadata:\n"
   "    -all       Will print entire table (this could be huge).\n"
   "    -vars={var=val...}  Request a combination of var=val pairs.\n\n"
@@ -42,6 +43,7 @@ errAbort(
   "             'var!=val' 'var!=v%%' 'var!=' 'var!=val1,val2' are all supported.\n"
   "    -obj={objName}  Request a single object.  Can be narrowed by var and val.\n"
   "    -var={varName}  Request a single variable.  Can be narrowed by val.\n"
+  "    -composite={}   Special commonly used var=val pair replaces -vars=\"composite=wgEn...\".\n"
   "There are two basic views of the data: by objects and by variables.  The default view "
   "is by object.  Each object will print out in an RA style stanza (by default) or as "
   "a single line of output containing all var=val pairs. In 'byVar' view, each RA style "
@@ -56,7 +58,7 @@ errAbort(
   "           Return each all vars for all objects with the constraint.\n"
   "  mdbPrint hg18 -obj=wgEncodeUncFAIREseqPeaksPanislets -line\n"
   "           Return a single formatted metadata line for one object.\n"
-  "  mdbPrint hg18 -countObjs -var=cell -val=GM%%\n"
+  "  mdbPrint hg18 -count -var=cell -val=GM%%\n"
   "           Return the count of objects which have a cell begining with 'GM'.\n"
   );
 }
@@ -65,23 +67,26 @@ static struct optionSpec optionSpecs[] = {
     {"table",    OPTION_STRING}, // default "metaDb"
     {"ra",       OPTION_BOOLEAN},// ra format
     {"line",     OPTION_BOOLEAN},// linear format
+    {"composite",OPTION_STRING}, // Special case of a commn var (replaces vars="composite=wgEncodeBroadHistone")
     {"count",    OPTION_BOOLEAN},// returns only counts of objects, vars and vals
-    {"countObjs",OPTION_BOOLEAN},// returns only count of objects
-    {"countVars",OPTION_BOOLEAN},// returns only count of variables
-    {"countVals",OPTION_BOOLEAN},// returns only count of values
+    {"counts",   OPTION_BOOLEAN},// sames as count
     {"all",      OPTION_BOOLEAN},// query entire table
     {"byVar",    OPTION_BOOLEAN},// With -all prints from var perspective
     {"specialHelp",OPTION_BOOLEAN},// Certain very specialized features are described
     {"obj",      OPTION_STRING}, // objName or objId
     {"var",      OPTION_STRING}, // variable
     {"val",      OPTION_STRING}, // value
+    {"validate", OPTION_BOOLEAN},// Validate vars and vals against cv.ra terms
+    {"validateFull", OPTION_BOOLEAN},// Like validate but considers vars not defined in cv as invalid
+    {"experimentify",OPTION_BOOLEAN},// Validate Experiments as defined in the hgFixed.encodeExp table
+    {"encodeExp",OPTION_STRING},     // Optionally tell which encodeExp to use
     {"vars",     OPTION_STRING},// var1=val1 var2=val2...
     {"updDb",    OPTION_STRING},// DB to update
     {"updMdb",   OPTION_STRING},// MDB table to update
     {"updSelect",OPTION_STRING},// Experiment defining vars: "var1,var2"
     {"updVars",  OPTION_STRING},// Vars to update: "var1,var2"
-    {"expTbl",   OPTION_STRING},// Name of Experiment table
-    {"expVars",  OPTION_STRING},// Experiment defining vars: "var1,var2"
+//    {"expTbl",   OPTION_STRING},// Name of Experiment table
+//  "    -expTbl     The experiment table name to be used in insert statements.\n"
     {NULL,       0}
 };
 
@@ -93,7 +98,6 @@ errAbort(
   "usage:\n"
   "   mdbPrint {db} [-table=] -vars=\"var1=val1 var2=val2...\"\n"
   "            -updDB={db} -updMdb={metaDb} -updSelect=var1,var2,... -updVars=varA,varB,...\n"
-  "            -expTbl={table} -expVars=var1,var2,...\n"
   "Options:\n"
   "    {db}     Database to query metadata from.  This argument is required.\n"
   "    -table   Table to query metadata from.  Default is the sandbox version of\n"
@@ -109,9 +113,6 @@ errAbort(
   "    -updVars    A comma separated list of variables that will be set in the\n"
   "                mdbUpdate lines (via '-setVars').\n"
   "                Special case updVar=\"expId={n}\" to insert expIds starting with 'n'.\n"
-  "    Print INSERT SQL statements to load experiment table with metadata values.\n"
-  "    -expTbl     The experiment table name to be used in insert statements.\n"
-  "    -expVars    A comma separated list of variables that are 'experiment defining'\n"
   "The purpose of this special option is to generate mdbUpdate commands from existing metadata.\n"
   "Examples:\n"
   "  mdbPrint hg18 -vars=\"composite=wgEncodeYaleChIPseq\" -updDb=hg19 -updMdb=metaDb_braney\n"
@@ -132,8 +133,6 @@ errAbort(
   "  mdbPrint hg18 -vars=\"composite=wgEncodeBroad\" -updDb=hg18 -updMdb=metaDb_vsmalladi\n"
   "    (cont.)     -updSelect=grant,cell,antibody -updVars=expId=1200\n"
   "           This will create mdbUpdate statements to add expId to the mdb for Broad, starting with expId=1200.\n"
-  "  mdbPrint hg18 -vars=\"composite=wgEncodeBroad\" -expTbl=expTable -expVars=expId,grant,cell,antibody\n"
-  "           This will create SQL insert statements for adding expTable entries based upon mdb contents.\n"
   );
 }
 
@@ -244,79 +243,6 @@ dyStringFree(&thisSelection);
 dyStringFree(&lastSelection);
 }
 
-static void mdbObjPrintInsertToExperimentsTable(struct mdbObj **mdbObjs,char *expTableName, char *expDefiningVars)
-// prints insert statements for the experiments table to backfill experiments submitted before the experiments table existed
-// Specialty prints for limited puropse
-{
-if (expTableName == NULL || expDefiningVars == NULL)
-    errAbort("mdbObjPrintInsertToExpTbl is missing important parameter.\n");
-
-int varCount = 0;
-char **expVars = NULL;
-if (sameWord(expDefiningVars,"obj"))
-    errAbort("mdbObjPrintInsertToExpTbl 'obj' is an invalid experiment defining variable.\n");
-
-// Sort objs to avoid duplicate mdbUpdate statements
-mdbObjsSortOnVars(mdbObjs, expDefiningVars);
-
-// Parse variables that are experiment defining
-// expDefiningVars is comma delimited string of var names.  Vals are discovered in each obj
-varCount = chopByChar(expDefiningVars,',',NULL,0);
-if (varCount <= 0)
-    errAbort("mdbObjPrintInsertToExpTbl is missing experiment defining variables.\n");
-expVars = needMem(sizeof(char *) * varCount);
-varCount = chopByChar(expDefiningVars,',',expVars,varCount);
-int ix=0;
-
-// For each passed in obj, write an insert into expTable statement
-struct mdbObj *mdbObj = NULL;
-struct dyString *varNames = newDyString(256);
-struct dyString *varVals  = newDyString(256);
-struct dyString *lastVals = newDyString(256);
-for (mdbObj=*mdbObjs; mdbObj!=NULL; mdbObj=mdbObj->next)
-    {
-    if (mdbObj->obj == NULL || mdbObj->deleteThis)
-        continue;
-
-    // Build this selection string
-    dyStringClear(varNames);
-    dyStringClear(varVals);
-
-    boolean first=TRUE;
-    // "insert into expTable (cell,antibody) values ('GM12878','CTCF');
-    for (ix = 0;ix < varCount; ix++)
-        {
-        char *val = mdbObjFindValue(mdbObj,expVars[ix]);
-        if (val != NULL) // TODO what to do for NULLS?
-            {
-            if (first)
-                first=FALSE;
-            else
-                {
-                dyStringAppendC(varNames,',');
-                dyStringAppendC(varVals,',');
-                }
-            dyStringPrintf(varNames,"%s", expVars[ix]);
-            if(countLeadingDigits(val) == strlen(val))
-                dyStringPrintf(varVals,"%s",val);
-            else
-                dyStringPrintf(varVals,"'%s'",val);
-            }
-        }
-
-    // Don't bother making another insert statment if selection is the same.
-    if (dyStringLen(lastVals) > 0 && sameString(dyStringContents(lastVals),dyStringContents(varVals)))
-        continue;
-    dyStringClear(lastVals);
-    dyStringAppend(lastVals,dyStringContents(varVals));
-
-    printf("INSERT INTO %s (%s) VALUES (%s);\n",expTableName,dyStringContents(varNames),dyStringContents(varVals));
-
-    }
-dyStringFree(&varNames);
-dyStringFree(&varVals);
-dyStringFree(&lastVals);
-}
 
 int main(int argc, char *argv[])
 // Process command line.
@@ -324,6 +250,7 @@ int main(int argc, char *argv[])
 struct mdbObj   * mdbObjs   = NULL;
 struct mdbByVar * mdbByVars = NULL;
 int objsCnt=0, varsCnt=0,valsCnt=0;
+int retCode = 0;
 
 if(argc == 1)
     usage();
@@ -344,16 +271,24 @@ char *table     = optionVal("table",NULL);
 boolean raStyle = TRUE;
 if(optionExists("line") && !optionExists("ra"))
     raStyle = FALSE;
-boolean cntObjs = optionExists("countObjs");
-boolean cntVars = optionExists("countVars");
-boolean cntVals = optionExists("countVals");
-if (optionExists("count"))
+boolean justCounts = (optionExists("count") || optionExists("counts"));
+boolean byVar      = optionExists("byVar");
+boolean validate   = (optionExists("validate") || optionExists("validateFull"));
+char *encodeExp = NULL;
+if (optionExists("experimentify"))
     {
-    cntObjs = TRUE;
-    cntVars = TRUE;
-    cntVals = TRUE;
+    encodeExp = optionVal("encodeExp","encodeExp");
+    if (strlen(encodeExp) == 0 || sameWord("std",encodeExp))
+        encodeExp = "encodeExp";
     }
-boolean byVar   = optionExists("byVar");
+else if (optionExists("encodeExp"))
+    errAbort("-encodeExp option requires -experimentify option.\n");
+
+if ((validate || encodeExp != NULL) && (byVar || optionExists("line") || optionExists("ra")))
+    {
+    verbose(1, "Incompatible to combine validate or experimentify option with 'byVar', 'line' or 'ra':\n");
+    usage();
+    }
 
 boolean all = optionExists("all");
 if(all)
@@ -364,15 +299,27 @@ if(all)
     }
 else if(optionExists("obj"))
     {
-    mdbObjs = mdbObjCreate(optionVal("obj",  NULL),optionVal("var", NULL), NULL,optionVal("val", NULL));
-    }
-else if(optionExists("var"))
-    {
-    mdbByVars =  mdbByVarCreate(optionVal("var", NULL),NULL,optionVal("val", NULL));
+    mdbObjs = mdbObjCreate(optionVal("obj",  NULL),optionVal("var", NULL), optionVal("val", NULL));
     }
 else if(optionExists("vars"))
     {
     mdbByVars = mdbByVarsLineParse(optionVal("vars", NULL));
+    if (optionExists("composite"))
+        mdbByVarAppend(mdbByVars,"composite", optionVal("composite", NULL),FALSE);
+    if (optionExists("var"))
+        mdbByVarAppend(mdbByVars,optionVal("var", NULL), optionVal("val", NULL),FALSE);
+    }
+else if(optionExists("composite"))
+    {
+    mdbByVars = mdbByVarCreate("composite", optionVal("composite", NULL));
+    if (optionExists("var"))
+        mdbByVarAppend(mdbByVars,optionVal("var", NULL), optionVal("val", NULL),FALSE);
+    }
+else if(optionExists("var"))
+    {
+    mdbByVars = mdbByVarCreate(optionVal("var", NULL),optionVal("val", NULL));
+    if (optionExists("composite"))
+        mdbByVarAppend(mdbByVars,"composite", optionVal("composite", NULL),FALSE);
     }
 else
     usage();
@@ -385,12 +332,15 @@ if(table == NULL)
     table = mdbTableName(conn,TRUE); // Look for sandBox name first
     if(table == NULL)
         errAbort("TABLE NOT FOUND: '%s.%s'.\n",db,MDB_DEFAULT_NAME);
-    verbose(1, "Using table named '%s.%s'.\n",db,table);
     }
+if (encodeExp != NULL)
+    verbose(1, "Using tables named '%s.%s' and 'hgFixed.%s'.\n",db,table,encodeExp);
+else
+    verbose(1, "Using table named '%s.%s'.\n",db,table);
 
 if(byVar)
     {
-    if(!all && mdbByVars == NULL) // assertable
+    if (!all && !validate && mdbByVars == NULL) // assertable
         usage();
 
     // Requested a single var
@@ -402,7 +352,7 @@ if(byVar)
         objsCnt=mdbByVarCount(queryResults,FALSE,FALSE);
         varsCnt=mdbByVarCount(queryResults,TRUE ,FALSE);
         valsCnt=mdbByVarCount(queryResults,FALSE,TRUE );
-        if(!cntObjs && !cntVars && !cntVals)
+        if(!justCounts)
             mdbByVarPrint(queryResults,raStyle);
         mdbByVarsFree(&queryResults);
         }
@@ -422,13 +372,16 @@ else
         }
 
     if(queryResults == NULL)
+        {
         verbose(1, "No metadata met your selection criteria\n");
+        retCode = 1;
+        }
     else
         {
         objsCnt=mdbObjCount(queryResults,TRUE);
         varsCnt=mdbObjCount(queryResults,FALSE);
         valsCnt=varsCnt;
-        if(!cntObjs && !cntVars && !cntVals)
+        if(!justCounts)
             {
             if(optionExists("updSelect")) // Special print of mdbUpdate lines
                 {
@@ -438,12 +391,20 @@ else
                 mdbObjPrintUpdateLines(&queryResults,optionVal("updDb",NULL),optionVal("updMdb",NULL),
                                                     optionVal("updSelect",NULL),optionVal("updVars",NULL));
                 }
-            else if(optionExists("expVars")) // Special print of insert SQl statements for exp table
+            else if (encodeExp != NULL) // Organizes vars as experiments and validates expId values
                 {
-                if(!optionExists("expTbl"))
-                    errAbort("To print insert SQL statements, both 'expTbl' and 'expVars' must be defined.\n");
-
-                mdbObjPrintInsertToExperimentsTable(&queryResults,optionVal("expTbl",NULL),optionVal("expVars",NULL));
+                struct mdbObj *updatable = mdbObjsEncodeExperimentify(conn,db,table,encodeExp,&queryResults,2,FALSE,FALSE); // 2=full experiments described
+                printf("%d of %d obj%s can have their experiment IDs updated now.\n",slCount(updatable),objsCnt,(objsCnt==1?"":"s"));
+                if (slCount(updatable) < objsCnt)
+                    retCode = 2;
+                mdbObjsFree(&updatable);
+                }
+            else if (validate) // Validate vars and vals against cv.ra
+                {
+                int invalids = mdbObjsValidate(queryResults,optionExists("validateFull"));
+                verbose(1,"%d invalid%s of %d variable%s\n",invalids,(invalids==1?"":"s"),varsCnt,(varsCnt==1?"":"s"));
+                if (invalids > 0)
+                    retCode = 3;
                 }
             else
                 mdbObjPrint(queryResults,raStyle);
@@ -453,14 +414,11 @@ else
     }
 sqlDisconnect(&conn);
 
-if(cntObjs || cntVars || cntVals)
+if(justCounts)
     {
-    if(cntObjs)
-        printf("%d object%s\n",objsCnt,(objsCnt==1?"":"s"));
-    if(cntVars)
-        printf("%d variable%s\n",varsCnt,(varsCnt==1?"":"s"));
-    if(cntVals)
-        printf("%d value%s\n",valsCnt,(valsCnt==1?"":"s"));
+    printf("%d object%s\n",objsCnt,(objsCnt==1?"":"s"));
+    printf("%d variable%s\n",varsCnt,(varsCnt==1?"":"s"));
+    printf("%d value%s\n",valsCnt,(valsCnt==1?"":"s"));
     }
 else if( varsCnt>0 || valsCnt>0 || objsCnt>0 )
     {
@@ -475,5 +433,5 @@ if(mdbObjs)
 if(mdbByVars)
     mdbByVarsFree(&mdbByVars);
 
-return 0;
+return retCode;
 }
