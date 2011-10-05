@@ -4,7 +4,7 @@
 
 # Stan/Yale TFBS (wrangler: Venkat) 
 include wgEncodeSydhTfbs.ra beta,public
-include wgEncodeSydhTfbs.newR2.ra alpha
+include wgEncodeSydhTfbs.new.ra alpha
 
 # Stan/Yale Histone (wrangler: Venkat)
 include wgEncodeSydhHist.ra

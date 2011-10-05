@@ -1362,7 +1362,7 @@ hvGfxNextItemButton(hvg, portX + NEXT_ITEM_ARROW_BUFFER, y, arrowWidth, arrowWid
 safef(buttonText, ArraySize(buttonText), "hgt.prevItem=%s", track->track);
 mapBoxReinvoke(hvg, portX, y + 1, arrowButtonWidth, insideHeight, track, FALSE,
            NULL, 0, 0, (revCmplDisp ? "Next item" : "Prev item"), buttonText);
-#ifdef IMAGEv2_SHORT_MAPITEMS
+#ifdef IMAGEv2_SHORT_TOGGLE
 char *label = (theImgBox ? track->longLabel : parentTrack->longLabel);
 int width = portWidth - (2 * arrowButtonWidth);
 int x = portX + arrowButtonWidth;
@@ -1374,10 +1374,10 @@ if (width > size)
     width = size;
     }
 mapBoxToggleVis(hvg, x, y + 1, width, insideHeight, (theImgBox ? track : parentTrack));
-#else///ifndef IMAGEv2_SHORT_MAPITEMS
+#else///ifndef IMAGEv2_SHORT_TOGGLE
 mapBoxToggleVis(hvg, portX + arrowButtonWidth, y + 1, portWidth - (2 * arrowButtonWidth),
                 insideHeight, (theImgBox ? track : parentTrack));
-#endif///ndef IMAGEv2_SHORT_MAPITEMS
+#endif///ndef IMAGEv2_SHORT_TOGGLE
 safef(buttonText, ArraySize(buttonText), "hgt.nextItem=%s", track->track);
 mapBoxReinvoke(hvg, portX + portWidth - arrowButtonWidth, y + 1, arrowButtonWidth, insideHeight, track, FALSE,
            NULL, 0, 0, (revCmplDisp ? "Prev item" : "Next item"), buttonText);
@@ -1414,7 +1414,7 @@ if (track->limitedVis != tvHide)
             }
         if (!toggleDone)
             {
-        #ifdef IMAGEv2_SHORT_MAPITEMS
+        #ifdef IMAGEv2_SHORT_TOGGLE
             // make toggle cover only actual label
             int size = mgFontStringWidth(font,label) + 12;  // get close enough to the label
             if (trackPastTabWidth > size)
@@ -1422,7 +1422,7 @@ if (track->limitedVis != tvHide)
                 trackPastTabX = insideX + insideWidth/2 - size/2;
                 trackPastTabWidth = size;
                 }
-        #endif///def IMAGEv2_SHORT_MAPITEMS
+        #endif///def IMAGEv2_SHORT_TOGGLE
             mapBoxToggleVis(hvg, trackPastTabX, y+1,trackPastTabWidth, insideHeight,
                             (theImgBox ? track : parentTrack));
             }
@@ -1582,10 +1582,8 @@ switch (track->limitedVis)
                             {
                             if (isCenterLabelIncluded(subtrack))
                                 y += fontHeight;
-                        #ifndef IMAGEv2_DRAG_SCROLL
                             if(theImgBox && subtrack->limitedVis == tvDense)
                                 mapBoxToggleVis(hvg, trackPastTabX, y, trackPastTabWidth, track->lineHeight, subtrack);
-                        #endif///ndef IMAGEv2_DRAG_SCROLL
                             y += subtrack->totalHeight(subtrack, subtrack->limitedVis);
                             }
                         }
@@ -1604,11 +1602,9 @@ switch (track->limitedVis)
             mapHeight = track->height;
         else
             mapHeight = track->lineHeight;
-    #ifndef IMAGEv2_DRAG_SCROLL
         int maxWinToDraw = getMaxWindowToDraw(track->tdb);
         if (maxWinToDraw <= 1 || (winEnd - winStart) <= maxWinToDraw)
             mapBoxToggleVis(hvg, trackPastTabX, y, trackPastTabWidth, mapHeight, track);
-    #endif///ndef IMAGEv2_DRAG_SCROLL
         y += mapHeight;
         break;
     case tvHide:
@@ -2469,10 +2465,8 @@ if (withCenterLabels)
         else
             y = doDrawItems(track, hvg, font, y, &lastTime);
 
-        #ifndef IMAGEv2_DRAG_SCROLL
         if (theImgBox && track->limitedVis == tvDense && tdbIsCompositeChild(track->tdb))
             mapBoxToggleVis(hvg, 0, yStart,tl.picWidth, sliceHeight,track); // Strange mabBoxToggleLogic handles reverse complement itself so x=0, width=tl.picWidth
-        #endif///ndef IMAGEv2_DRAG_SCROLL
 
         if(yEnd!=y)
             warn("Slice height does not add up.  Expecting %d != %d actual",yEnd - yStart - 1,y-yStart);
@@ -2536,7 +2530,7 @@ for (flatTrack = flatTracks; flatTrack != NULL; flatTrack = flatTrack->next)
 hPrintf("</MAP>\n");
 
 jsonHashAddBoolean(jsonForClient, "dragSelection", dragZooming);
-jsonHashAddBoolean(jsonForClient, "inPlaceUpdate", IN_PLACE_UPDATE);
+jsonHashAddBoolean(jsonForClient, "inPlaceUpdate", IN_PLACE_UPDATE && advancedJavascriptFeaturesEnabled(cart));
 
 if(rulerClickHeight)
     {
@@ -2562,7 +2556,7 @@ if(sameString(type, "jsonp"))
     jsonHashAddString(json, "track", cartString(cart, "hgt.trackNameFilter"));
     jsonHashAddNumber(json, "height", pixHeight);
     jsonHashAddNumber(json, "width", pixWidth);
-    jsonHashAddString(json, "src", gifTn.forHtml);
+    jsonHashAddString(json, "img", gifTn.forHtml);
     printf("%s(", cartString(cart, "jsonp"));
     hPrintEnable();
     jsonPrint((struct jsonElement *) json, NULL, 0);
@@ -3630,6 +3624,22 @@ if (!psOutput)
         }
     }
 
+if (!psOutput)
+    {
+    hPrintf("<TD ALIGN=CENTER>&nbsp;&nbsp;<A HREF=\"../cgi-bin/hgTracks?%s=%u&hgt.psOutput=on\" id='pdfLink' class=\"topbar\">%s</A>&nbsp;&nbsp;</TD>",cartSessionVarName(),
+        cartSessionId(cart), "PDF/PS");
+    }
+
+if (!psOutput)
+    {
+    if (wikiLinkEnabled())
+        {
+        printf("<TD ALIGN=CENTER>&nbsp;&nbsp;<A HREF=\"../cgi-bin/hgSession?%s=%u"
+        "&hgS_doMainPage=1\" class=\"topbar\">Session</A>&nbsp;&nbsp;</TD>",
+        cartSessionVarName(), cartSessionId(cart));
+        }
+    }
+
 char ensVersionString[256];
 char ensDateReference[256];
 ensGeneTrackVersion(database, ensVersionString, ensDateReference,
@@ -3718,25 +3728,25 @@ if (!psOutput)
     /* Print NCBI MapView anchor */
     if (sameString(database, "hg18"))
         {
-        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=9606&build=previous&CHR=%s&BEG=%d&END=%d", 
+        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=9606&build=previous&CHR=%s&BEG=%d&END=%d",
             skipChr(chromName), winStart+1, winEnd);
         appendLink(&links, buf, "NCBI", "ncbiLink");
         }
     if (sameString(database, "hg19"))
         {
-        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=9606&CHR=%s&BEG=%d&END=%d", 
+        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=9606&CHR=%s&BEG=%d&END=%d",
             skipChr(chromName), winStart+1, winEnd);
         appendLink(&links, buf, "NCBI", "ncbiLink");
         }
     if (sameString(database, "mm8"))
         {
-        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=10090&CHR=%s&BEG=%d&END=%d", 
+        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=10090&CHR=%s&BEG=%d&END=%d",
             skipChr(chromName), winStart+1, winEnd);
         appendLink(&links, buf, "NCBI", "ncbiLink");
         }
     if (sameString(database, "danRer2"))
         {
-        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=7955&CHR=%s&BEG=%d&END=%d", 
+        safef(buf, sizeof(buf), "http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=7955&CHR=%s&BEG=%d&END=%d",
             skipChr(chromName), winStart+1, winEnd);
         appendLink(&links, buf, "NCBI", "ncbiLink");
         }
@@ -3816,22 +3826,6 @@ if (!psOutput)
 
 for(link = links; link != NULL; link = link->next)
     hPrintf("<TD ALIGN=CENTER>&nbsp;&nbsp;<A HREF=\"%s\" TARGET=\"_blank\" class=\"topbar\" id=\"%s\">%s</A>&nbsp;&nbsp;</TD>\n", link->url, link->id, link->name);
-
-if (!psOutput)
-    {
-    hPrintf("<TD ALIGN=CENTER>&nbsp;&nbsp;<A HREF=\"../cgi-bin/hgTracks?%s=%u&hgt.psOutput=on\" id='pdfLink' class=\"topbar\">%s</A>&nbsp;&nbsp;</TD>",cartSessionVarName(),
-        cartSessionId(cart), "PDF/PS");
-    }
-
-if (!psOutput)
-    {
-    if (wikiLinkEnabled())
-        {
-        printf("<TD ALIGN=CENTER>&nbsp;&nbsp;<A HREF=\"../cgi-bin/hgSession?%s=%u"
-        "&hgS_doMainPage=1\" class=\"topbar\">Session</A>&nbsp;&nbsp;</TD>",
-        cartSessionVarName(), cartSessionId(cart));
-        }
-    }
 
 if (hIsGisaidServer())
     {
