@@ -9,7 +9,7 @@ BROWSER_BINS=cartReset das hgBlat makeDb/hgCgiData hgConvert hgHubConnect \
 	hgLiftOver visiGene/hgVisiGene \
 	encode/mkEncodeFrameset encode/hgEncodeDataVersions \
 	encode/hgEncodeVocab phyloGif hgCustom hgPal hgFileUi  hgFileSearch\
-	makeDb/hgCgiData js htdocs/style
+	makeDb/hgCgiData js htdocs/style htdocs
 
 ifdef LOWELAB
     BROWSER_BINS += $(HOME)/lowelab/src/browser/tooltip $(HOME)/lowelab/src/browser/chooseorg 
