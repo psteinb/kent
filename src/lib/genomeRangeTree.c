@@ -46,7 +46,7 @@ while ((hel = hashNext(&hc)) != NULL)
     freeMem(hel->val);
 
 lmCleanup(&((*pTree)->lm));  /* clean up all the memory for all nodes for all trees */
-hashFreeWithVals(&((*pTree)->hash), freez); /* free the hash table including names and tree pointers, which escape the lmCleanup */
+freeHash(&((*pTree)->hash)); /* free the hash table including names (trees are freed by lmCleanup) */
 freez(pTree);                /* free this */
 }
 
