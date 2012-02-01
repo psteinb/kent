@@ -19,7 +19,6 @@
 #include "joiner.h"
 #include "hubConnect.h"
 
-static char const rcsid[] = "$Id: mainPage.c,v 1.154 2010/06/03 18:53:59 kent Exp $";
 
 int trackDbCmpShortLabel(const void *va, const void *vb)
 /* Sort track by shortLabel. */
@@ -645,7 +644,8 @@ hPrintf("<TABLE BORDER=0>\n");
         hasCustomTracks ? CT_MANAGE_BUTTON_LABEL : CT_ADD_BUTTON_LABEL);
 
     hPrintf(" ");
-    hOnClickButton("document.trackHubForm.submit();return false;", "track hubs");
+    if (hubConnectTableExists())
+	hOnClickButton("document.trackHubForm.submit();return false;", "track hubs");
 
     hPrintf("</TD></TR>\n");
     }
@@ -966,7 +966,11 @@ hPrintf("%s",
   "enrichments, send the data to "
   "<A HREF=\"http://great.stanford.edu\">GREAT</A>. Refer to the "
   "<A HREF=\"../goldenPath/credits.html\">Credits</A> page for the list of "
-  "contributors and usage restrictions associated with these data.");
+  "contributors and usage restrictions associated with these data. "
+  "All tables can be downloaded in their entirety from the "
+  "<A HREF=\"http://hgdownload.cse.ucsc.edu/downloads.html\""
+  ">Sequence and Annotation Downloads</A> page."
+   );
 
 hPrintf("<script type=\"text/javascript\">\n");
 hPrintf("function onSelectGreat() {\n");

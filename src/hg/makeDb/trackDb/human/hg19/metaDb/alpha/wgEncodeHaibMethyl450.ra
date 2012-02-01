@@ -1,7 +1,7 @@
 metaObject wgEncodeHaibMethyl450
 objType composite
 composite wgEncodeHaibMethyl450
-expVars lab,dataType,cell,labVersion
+expVars lab,dataType,cell,labVersion,treatment
 
 metaObject wgEncodeHaibMethyl450A549Etoh02SitesRep1
 objType table
@@ -11,14 +11,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002174
+expId 2174
 fileName wgEncodeHaibMethyl450A549Etoh02SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum a54272add0e0e2eac8b0e065401be79c
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -34,13 +34,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002198
+expId 2198
 fileName wgEncodeHaibMethyl450Ag04449SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 49966cff5ff2314fd9db2d6a7b41a96f
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -56,13 +57,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002199
+expId 2199
 fileName wgEncodeHaibMethyl450Ag04450SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 5e314b2896e51b9d929ed56cd78282ec
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -78,13 +80,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002200
+expId 2200
 fileName wgEncodeHaibMethyl450Ag09309SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum cae677a21fd268e503833eae22bc6e65
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -100,13 +103,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002201
+expId 2201
 fileName wgEncodeHaibMethyl450Ag09319SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum f947e93c828d83b92a518bc5d80a326d
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -122,13 +126,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002202
+expId 2202
 fileName wgEncodeHaibMethyl450Ag10803SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 56b194f4991272fa46dd4fdb1debb7d7
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -144,13 +149,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002209
+expId 2209
 fileName wgEncodeHaibMethyl450AosmcSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 687adc182a3d2f4e1a5bdbce714ebd5b
 obtainedBy Duke
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -166,13 +172,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002210
+expId 2210
 fileName wgEncodeHaibMethyl450Be2cSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum cee748b11a955a4d91e1720ec6a93028
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -188,13 +195,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002203
+expId 2203
 fileName wgEncodeHaibMethyl450BjSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 75565e188b99aeaaff92aa1761bd367b
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -210,13 +218,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002205
+expId 2205
 fileName wgEncodeHaibMethyl450Caco2SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 4840dfd30028faadda672fb9a3e81580
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -232,13 +241,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002204
+expId 2204
 fileName wgEncodeHaibMethyl450CmkSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 685783afc9370816ae265dc0c88418db
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -254,14 +264,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002175
+expId 2175
 fileName wgEncodeHaibMethyl450Ecc1SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 71094e82c9f8fc578a146551d12992bd
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -277,13 +287,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002206
+expId 2206
 fileName wgEncodeHaibMethyl450Gm06990SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum f0d7279f23fee22f9ea663052a662a77
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -299,14 +310,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002185
+expId 2185
 fileName wgEncodeHaibMethyl450Gm12878SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum b7dd4cbba7dfacb8afd1e8b48980fc5b
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -322,14 +333,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002186
+expId 2186
 fileName wgEncodeHaibMethyl450Gm12891SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum b8bb710469dd107c38730dc5aeb9b1aa
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -345,14 +356,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002187
+expId 2187
 fileName wgEncodeHaibMethyl450Gm12892SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 4b309f27b1646c85f4e938b0bbb9b360
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -368,13 +379,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002207
+expId 2207
 fileName wgEncodeHaibMethyl450Gm19239SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 5773db8f9e65c3c35aec03bf0ad5b4f0
 obtainedBy Duke
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -390,14 +402,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002188
+expId 2188
 fileName wgEncodeHaibMethyl450H1hescSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 865e8b7e285f90b423db9d587c01d2da
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -413,13 +425,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-09-29
 dateUnrestricted 2012-06-29
+dccAccession wgEncodeEH002208
+expId 2208
 fileName wgEncodeHaibMethyl450HaeSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum ad2a7cf4a9887ff26e5c7d9f9c686a1c
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4933
@@ -435,13 +448,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002211
+expId 2211
 fileName wgEncodeHaibMethyl450HcfSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum f3742b395f20c89208534be5f712caf6
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -457,13 +471,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002212
+expId 2212
 fileName wgEncodeHaibMethyl450HcmSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum f87aa0f384bf9fd031abaf87a0ce5856
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -479,13 +494,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002213
+expId 2213
 fileName wgEncodeHaibMethyl450HcpeSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 33c9ef54fe6b175c9e45bdb8fce81cc9
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -493,7 +509,7 @@ tableName wgEncodeHaibMethyl450HcpeSitesRep1
 treatment None
 view Sites
 
-metaObject wgEncodeHaibMethyl450Hct116SitesRep1
+metaObject wgEncodeHaibMethyl450Hct116HaibSitesRep1
 objType table
 cell HCT-116
 composite wgEncodeHaibMethyl450
@@ -501,21 +517,22 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
-fileName wgEncodeHaibMethyl450Hct116SitesRep1.bed.gz
+dccAccession wgEncodeEH002214
+expId 2214
+fileName wgEncodeHaibMethyl450Hct116HaibSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
-obtainedBy Stanford
-origAssembly hg19
+md5sum f640d32bb7cc3f4724436ff431f9b589
+obtainedBy HudsonAlpha
 project wgEncode
 replicate 1
 subId 4942
-tableName wgEncodeHaibMethyl450Hct116SitesRep1
+tableName wgEncodeHaibMethyl450Hct116HaibSitesRep1
 treatment None
 view Sites
 
-metaObject wgEncodeHaibMethyl450Hct116SitesRep2
+metaObject wgEncodeHaibMethyl450Hct116StanfordSitesRep1
 objType table
 cell HCT-116
 composite wgEncodeHaibMethyl450
@@ -523,17 +540,18 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
-fileName wgEncodeHaibMethyl450Hct116SitesRep2.bed.gz
+dccAccession wgEncodeEH002214
+expId 2214
+fileName wgEncodeHaibMethyl450Hct116StanfordSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
-obtainedBy HudsonAlpha
-origAssembly hg19
+md5sum 8ff466bca66b938f255e6b2d9cb2b3c0
+obtainedBy Stanford
 project wgEncode
-replicate 2
+replicate 1
 subId 4942
-tableName wgEncodeHaibMethyl450Hct116SitesRep2
+tableName wgEncodeHaibMethyl450Hct116StanfordSitesRep1
 treatment None
 view Sites
 
@@ -545,14 +563,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002189
+expId 2189
 fileName wgEncodeHaibMethyl450HeeSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 0ed5b971ef4fe4f954392c7c56b0a564
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -568,14 +586,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002176
+expId 2176
 fileName wgEncodeHaibMethyl450Hek293SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum b196109676da1a9b9138cb3adb11cba9
 obtainedBy Stanford
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -591,14 +609,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002191
+expId 2191
 fileName wgEncodeHaibMethyl450Helas3SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 852ab1e51d0efd1f04fe002b86bd4c4c
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -614,14 +632,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002193
+expId 2193
 fileName wgEncodeHaibMethyl450HepatoSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum fe24c3fcd6a99f0325cf655ca97ef32a
 obtainedBy Duke
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -637,14 +655,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002192
+expId 2192
 fileName wgEncodeHaibMethyl450Hepg2SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum a6adaf8b694d32d953e3d778d0b5cbc2
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -660,14 +678,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002190
+expId 2190
 fileName wgEncodeHaibMethyl450HipeSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum c43aa8167fb1dea5c9110513fb801f9e
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -683,13 +701,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002215
+expId 2215
 fileName wgEncodeHaibMethyl450Hl60SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum c2fc3bc6e5e0f9d0586e53f8a9f6be9b
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -705,13 +724,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002216
+expId 2216
 fileName wgEncodeHaibMethyl450HmecSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 0b62b1acffb0191794e6b7da6818827a
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -727,13 +747,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002217
+expId 2217
 fileName wgEncodeHaibMethyl450HnpceSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum b8faec5a308392c528d8798320833505
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -749,13 +770,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002218
+expId 2218
 fileName wgEncodeHaibMethyl450HpaeSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum f487a74e20c82638da7f9917f32f94d5
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -771,13 +793,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002219
+expId 2219
 fileName wgEncodeHaibMethyl450HrceSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 111701edbde110539da934453d441cbe
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -793,13 +816,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002220
+expId 2220
 fileName wgEncodeHaibMethyl450HreSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 501bed04c26f9e0954f4c84bf0c0db05
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -815,13 +839,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002221
+expId 2221
 fileName wgEncodeHaibMethyl450HrpeSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 14253db823cfbf10c6e35489d4101223
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -837,14 +862,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002177
+expId 2177
 fileName wgEncodeHaibMethyl450HuvecSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 1923410b7bab249f66540290f469a62e
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -860,14 +885,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002194
+expId 2194
 fileName wgEncodeHaibMethyl450Imr90SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 07dd4c1eb6bc32eca44d5fccb098e7d3
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -883,14 +908,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002178
+expId 2178
 fileName wgEncodeHaibMethyl450JurkatSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum c9f2ee6fc5714ab52554ee34a0e6a636
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -906,14 +931,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002195
+expId 2195
 fileName wgEncodeHaibMethyl450K562SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum dd1dd6c6c3e365a85229361469fac86a
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -929,14 +954,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002179
+expId 2179
 fileName wgEncodeHaibMethyl450LncapSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 8ba5f73844d33b37409232e36a27aad2
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -952,13 +977,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002222
+expId 2222
 fileName wgEncodeHaibMethyl450Mcf10aesSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 9ccb19dfa9c1939ae4d508426d41f78b
 obtainedBy Stanford
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -974,13 +1000,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002235
+expId 2235
 fileName wgEncodeHaibMethyl450Mcf10aesTamSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum d6d721fd87563d3a5053087bb790d989
 obtainedBy Stanford
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -996,14 +1023,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002180
+expId 2180
 fileName wgEncodeHaibMethyl450Mcf7SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum ba49046c29fe9e8c07891562a856e10b
 obtainedBy Duke
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -1019,13 +1046,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002223
+expId 2223
 fileName wgEncodeHaibMethyl450Nb4SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum be60f92acb66e530e261bc2a1aae0480
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1041,13 +1069,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002224
+expId 2224
 fileName wgEncodeHaibMethyl450NhaSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum fcdb44ea09db10975dfc5c3299d494f2
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1063,13 +1092,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002225
+expId 2225
 fileName wgEncodeHaibMethyl450NhbeSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum c8cfe1bf5978e9e92de9e5d0e64de477
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1085,13 +1115,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002226
+expId 2226
 fileName wgEncodeHaibMethyl450NhdfneoSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 0e561ae5b91e4312fbfc4575027a5eb3
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1107,14 +1138,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002181
+expId 2181
 fileName wgEncodeHaibMethyl450Nt2d1SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum b4a81e12b69bd92f7fc9ca186d3f4c26
 obtainedBy Stanford
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -1130,13 +1161,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002234
+expId 2234
 fileName wgEncodeHaibMethyl450Ovcar3SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 9c2929cda5c306af0818bd45801fa02a
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1152,13 +1184,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002227
+expId 2227
 fileName wgEncodeHaibMethyl450Panc1SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum fa2a20b536a8a60d9b5f0f1f1659b31d
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1174,14 +1207,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002182
+expId 2182
 fileName wgEncodeHaibMethyl450Pfsk1SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum ba7bcf2fe207a26877c0c10e98f10131
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -1197,13 +1230,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002228
+expId 2228
 fileName wgEncodeHaibMethyl450PrecSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 6d265d4ae36388c1d0d9d34d991a0b65
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1219,14 +1253,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002196
+expId 2196
 fileName wgEncodeHaibMethyl450ProgfibSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 73ec5b784106fb264285aa2e0ff4c389
 obtainedBy Duke
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -1242,14 +1276,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-08-29
 dateUnrestricted 2012-05-29
+dccAccession wgEncodeEH002197
+expId 2197
 fileName wgEncodeHaibMethyl450RptecSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum 6bb0f7a196671a048304597fa79a481d
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4802
@@ -1265,13 +1299,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002229
+expId 2229
 fileName wgEncodeHaibMethyl450SaecSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 1960df238f3d56f5f4601efef2cc63d7
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1287,13 +1322,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002232
+expId 2232
 fileName wgEncodeHaibMethyl450SkmcSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 7e23127d0eb95e3ea6e4230c425687f4
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1309,14 +1345,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002183
+expId 2183
 fileName wgEncodeHaibMethyl450SknmcSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum e55fa2e794b08752837610b44b5ee25c
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -1332,13 +1368,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002230
+expId 2230
 fileName wgEncodeHaibMethyl450SknshSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 8bf2331d5f0afc97242a4427ab357d90
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1354,13 +1391,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002231
+expId 2231
 fileName wgEncodeHaibMethyl450SknshraSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 1af2975c439b51c92a538eefdb6924e1
 obtainedBy UW
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4942
@@ -1376,14 +1414,14 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-06-29
 dateUnrestricted 2012-03-29
+dccAccession wgEncodeEH002184
+expId 2184
 fileName wgEncodeHaibMethyl450T47dDm002p24hSitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
 md5sum e8f7ab46cfc1387b5ebd052f73ebe653
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
 subId 4444
@@ -1399,18 +1437,20 @@ dataType MethylArray
 dataVersion post ENCODE Jan 2011 Freeze
 dateSubmitted 2011-10-01
 dateUnrestricted 2012-06-30
+dccAccession wgEncodeEH002233
+expId 2233
 fileName wgEncodeHaibMethyl450U87SitesRep1.bed.gz
 grant Myers
 lab HudsonAlpha
-labExpId Methyl450K
 labVersion Methyl450K
+md5sum 2cd8c007ee34b84f8e8dc4499af91eb1
 obtainedBy HudsonAlpha
-origAssembly hg19
 project wgEncode
 replicate 1
+sex F
 subId 4942
 tableName wgEncodeHaibMethyl450U87SitesRep1
 treatment None
 view Sites
 
-# MAGIC: 533489123
+# MAGIC: -1837493811

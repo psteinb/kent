@@ -25,6 +25,9 @@ Assembly Accession:	GCA_000146605.1
 #    sequence:
 # ftp://ftp.ncbi.nlm.nih.gov/genbank/genomes/Eukaryotes/vertebrates_other/Meleagris_gallopavo/Turkey_2.01/
 
+#	http://www.ncbi.nlm.nih.gov/Traces/wgs/?val=ADDD00
+
+
 ##########################################################################
 # Download sequence (DONE - 2010-10-22 - Chin)
     mkdir /hive/data/genomes/melGal1
@@ -255,6 +258,10 @@ taxId 9103
 
 ########################################################################
 # GENBANK AUTO UPDATE (DONE - 201w1-02-16 - Chin)
+# 2011-10-07 Note: Re-configure per Mark's comments:
+# genbank should not have native refseq enabled for this genome, as there are
+# no native refseqs. Xeno refseqs should be enabled. Please fix configuration
+# file and do a drop and reload.
     ssh hgwdev
     cd $HOME/kent/src/hg/makeDb/genbank
     git pull
@@ -267,16 +274,21 @@ melGal1.clusterGenome = /scratch/data/melGal1/melGal1.2bit
 melGal1.ooc = /scratch/data/melGal1/melGal1.11.ooc
 melGal1.lift = no
 melGal1.perChromTables = no
-melGal1.refseq.mrna.native.pslCDnaFilter  = ${ordered.refseq.mrna.native.pslCDnaFilter}
 melGal1.refseq.mrna.xeno.pslCDnaFilter    = ${ordered.refseq.mrna.xeno.pslCDnaFilter}
 melGal1.genbank.mrna.native.pslCDnaFilter = ${ordered.genbank.mrna.native.pslCDnaFilter}
 melGal1.genbank.mrna.xeno.pslCDnaFilter   = ${ordered.genbank.mrna.xeno.pslCDnaFilter}
 melGal1.genbank.est.native.pslCDnaFilter  = ${ordered.genbank.est.native.pslCDnaFilter}
 melGal1.genbank.est.xeno.pslCDnaFilter    = ${ordered.genbank.est.xeno.pslCDnaFilter}
 melGal1.downloadDir = melGal1
-melGal1.refseq.mrna.native.load  = yes
+melGal1.refseq.mrna.native.load  = no
 melGal1.refseq.mrna.xeno.load = yes
 melGal1.refseq.mrna.xeno.loadDesc  = yes
+melGal1.genbank.mrna.native.load = yes
+melGal1.genbank.mrna.native.loadDesc = yes
+melGal1.genbank.mrna.xeno.load = yes
+melGal1.genbank.mrna.xeno.loadDesc = yes
+melGal1.genbank.est.native.load = yes
+melGal1.genbank.est.native.loadDesc = yes
 
     git add etc/genbank.conf
     git commit -m "Added melGal1" etc/genbank.conf
@@ -314,6 +326,9 @@ melGal1.refseq.mrna.xeno.loadDesc  = yes
     time nice -n +19 ./bin/gbDbLoadStep -drop -initialLoad melGal1 &
     #    logFile: var/dbload/hgwdev/logs/2011.02.16-12:45:15.dbload.log
     #   real    23m10.935s
+    # Re-run load step 2011-10-20:
+    #  logFile: var/dbload/hgwdev/logs/2011.10.20-10:10:19.dbload.log
+    #   real  53m49.262s
 
     # enable daily alignment and update of hgwdev
     cd ~/kent/src/hg/makeDb/genbank

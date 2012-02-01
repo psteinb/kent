@@ -3,7 +3,6 @@
 #include "linefile.h"
 #include "options.h"
 
-static char const rcsid[] = "$Id: catUncomment.c,v 1.2 2003/05/06 07:41:04 kate Exp $";
 
 /* command line options */
 static struct optionSpec optionSpecs[] =

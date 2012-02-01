@@ -29,6 +29,7 @@
 #include "hgBam.h"
 #include "bigWig.h"
 #include "bigBed.h"
+#include "hdb.h"
 
 static boolean hasProtocol(char *urlOrPath)
 /* Return TRUE if it looks like it has http://, ftp:// etc. */
@@ -130,6 +131,8 @@ hub->name = cloneString(hubName);
 hub->settings = hubRa;
 
 /* Fill in required fields from settings. */
+trackHubRequiredSetting(hub, "hub");
+trackHubRequiredSetting(hub, "email");
 hub->shortLabel = trackHubRequiredSetting(hub, "shortLabel");
 hub->longLabel = trackHubRequiredSetting(hub, "longLabel");
 hub->genomesFile = trackHubRequiredSetting(hub, "genomesFile");
@@ -446,7 +449,7 @@ return retVal;
 }
 
 static int hubCheckGenome(struct trackHub *hub, struct trackHubGenome *genome,
-    struct dyString *errors)
+    struct dyString *errors, boolean checkTracks)
 /* Check out genome within hub. */
 {
 struct errCatch *errCatch = errCatchNew();
@@ -464,6 +467,9 @@ if (errCatch->gotError)
     }
 errCatchFree(&errCatch);
 
+if (!checkTracks)
+    return retVal;
+
 struct trackDb *tdb;
 for (tdb = tdbList; tdb != NULL; tdb = tdb->next)
     retVal |= hubCheckTrack(hub, genome, tdb, errors);
@@ -472,9 +478,12 @@ verbose(2, "%d tracks in %s\n", slCount(tdbList), genome->name);
 return retVal;
 }
 
-int trackHubCheck(char *hubUrl, struct dyString *errors)
+int trackHubCheck(char *hubUrl, struct dyString *errors, boolean checkTracks)
 /* hubCheck - Check a track data hub for integrity. Put errors in dyString.
- *      return 0 if hub has no errors, 1 otherwise */
+ *      return 0 if hub has no errors, 1 otherwise 
+ *      if checkTracks is TRUE, individual tracks are checked
+ */
+
 {
 struct errCatch *errCatch = errCatchNew();
 struct trackHub *hub = NULL;
@@ -499,9 +508,10 @@ verbose(2, "%s has %d elements\n", hub->genomesFile, slCount(hub->genomeList));
 struct trackHubGenome *genome;
 for (genome = hub->genomeList; genome != NULL; genome = genome->next)
     {
-    retVal |= hubCheckGenome(hub, genome, errors);
+    retVal |= hubCheckGenome(hub, genome, errors, checkTracks);
     }
 trackHubClose(&hub);
 
 return retVal;
 }
+

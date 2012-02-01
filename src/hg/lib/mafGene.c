@@ -9,7 +9,6 @@
 #include "genePred.h"
 #include "mafGene.h"
 
-static char const rcsid[] = "$Id: mafGene.c,v 1.11 2008/10/07 19:19:25 braney Exp $";
 
 struct exonInfo
 {
@@ -796,6 +795,9 @@ for(; exonStart < lastStart; exonStart++, exonEnd++, frames++)
     {
     struct exonInfo *gi;
     int thisStart = *exonStart;
+
+    if (thisStart > pred->cdsEnd)
+	break;
 
     if (thisStart < pred->cdsStart)
 	thisStart = pred->cdsStart;

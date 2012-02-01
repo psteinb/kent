@@ -26,6 +26,7 @@ use strict;
 #use DataBrowser qw(browse);
 use File::stat;
 use File::Basename;
+use File::Temp qw/ tempfile tempdir /;
 use Getopt::Long;
 use English;
 use Carp qw(cluck);
@@ -33,7 +34,8 @@ use Cwd;
 use IO::File;
 use File::Basename;
 
-use lib "/cluster/bin/scripts";
+use FindBin qw($Bin);
+use lib "$Bin";
 use Encode;
 use HgAutomate;
 use HgDb;
@@ -70,17 +72,25 @@ our $quickOpt = "";     # option to pass to validateFiles prog
 our $time0 = time;
 our $timeStart = time;
 our %chromInfo;         # chromInfo from assembly for chrom validation
+our %chromSizes;
 our $maxBedRows=80_000_000; # number of rows to allow in a bed-type file
 our %tableNamesUsed;
-our ($grants, $fields, $daf);
+our ($fields, $daf);
 our $SORT_BUF = " -S 5G ";
 our $assembly;
 
 sub usage {
     print STDERR <<END;
-usage: encodeValidate.pl submission-type project-submission-dir
+usage: encodeValidate.pl pipeline-instance project-submission-dir
 
-submission-type is currently ignored.
+The pipeline instance variable is a switch that changes the behavior of doEncodeValidate.
+The changes if the instance is:
+
+standard
+    allows use of hg19 and mm9 databases only
+
+anything else
+    allows use of the encodeTest database only
 
 Current dafVersion is: $Encode::dafVersion
 
@@ -91,17 +101,17 @@ options:
     -configDir=dir      Path of configuration directory, containing
                         metadata .ra files (default: submission-dir/../config)
     -database=assembly  Specify an assembly; necessary only when using -validateFile
-    -fileType=type	used only with validateFile option; e.g. narrowPeak
+    -fileType=type      used only with validateFile option; e.g. narrowPeak
     -metaDataOnly       Process DAF/DDF and just update the projects.metadata field;
                         equal to -allowReloads -skipAll
-    -quick		Validate only first $quickCount lines of files
+    -quick              Validate only first $quickCount lines of files
     -skipAll            Turn on all "-skip..." options
     -skipAutoCreation   Tells script skip creating the auto-created files (e.g. RawSignal, PlusRawSignal, MinusRawSignal)
                         this can save you a lot of time when you are debugging and re-running the script on large projects
     -skipOutput         Don't write the various output files
     -skipValidateFiles  Tells script skip the file validation step; to save a lot of time during testing
-    -validateDaf	exit after validating DAF file (project-submission-dir is the DAF file name).
-    -validateFile	exit after validating file (project-submission-dir is the file name;
+    -validateDaf        exit after validating DAF file (project-submission-dir is the DAF file name).
+    -validateFile       exit after validating file (project-submission-dir is the file name;
                         requires -fileType option as well)
     -verbose=num        Set verbose level to num (default 1).
     -outDir=dir         Path of output directory, for validation files
@@ -134,11 +144,7 @@ sub doTime
 sub dieTellWrangler
 {
     my ($msg) = @_;
-    my $email;
-    if($grants->{$daf->{grant}} && $grants->{$daf->{grant}}{wranglerEmail}) {
-        $email = $grants->{$daf->{grant}}{wranglerEmail};
-    }
-    $msg .= "Please contact your wrangler" . (defined($email) ? " at $email" : "") . "\n";
+    $msg .= "Please contact the ENCODE staff at encode-staff\@soe.ucsc.edu\n";
     die $msg;
 }
 
@@ -176,6 +182,7 @@ our %validators = (
     setType => \&validateSetType,
     cell => \&validateControlledVocabOrNone,
     antibody => \&validateControlledVocabOrControl,
+    control => \&validateControlledVocabOrControl,
     ripAntibody => \&validateControlledVocabOrNone,
     ripTgtProtein => \&validateControlledVocabOrNone,
     treatment => \&validateControlledVocabOrNone,
@@ -196,8 +203,8 @@ our %validators = (
 sub validateFiles {
     # Validate array of filenames, ordered by part
     # Check files exist and are of correct data format
-	# Venkat: Added $sex to pass sex from ddf to validate bam files for
-	#		  mouse tissues.
+    # Venkat: Added $sex to pass sex from ddf to validate bam files for
+    #          mouse tissues.
     my ($files, $type, $track, $daf, $cell,$sex) = @_;
     my @newFiles;
     my @errors;
@@ -215,7 +222,7 @@ sub validateFiles {
     return () if $opt_skipValidateFiles;
     for my $file (@newFiles) {
         my ($fbase,$dir,$suf) = fileparse($file, ".gz");
-	# Check if the file has been replaced with an unzipped version
+        # Check if the file has been replaced with an unzipped version
         # This check is also done where we auto create the RawSignal view from the Alignments
         if ($suf eq ".gz" and ! -e $file and -s "$dir/$fbase") {
             $file = "$dir/$fbase";
@@ -230,13 +237,21 @@ sub validateFiles {
         } elsif(!(-r $file)) {
             pushError(\@errors, "File \'$file\' is un-readable");
         } else {
-			#Venkat: Added $sex to pass sex from ddf to bam validate mouse tissues
+            #Venkat: Added $sex to pass sex from ddf to bam validate mouse tissues
             pushError(\@errors, checkDataFormat($daf->{TRACKS}{$track}{type}, $file, $cell,$sex));
         }
     }
     $files = \@newFiles;
     doTime("done validateFiles") if $opt_timing;
-    return @errors;
+    unless (@errors) {
+        return ();
+    } else {
+        my $errstr = "";
+        for my $error (@errors) {
+            $errstr = $errstr . "$error\n";
+        }
+        return $errstr;
+    }
 }
 
 sub validateDatasetName {
@@ -271,13 +286,16 @@ sub validateSetType {
 # project-specific validators
 sub validateControlledVocabOrNone {
 
-	my ($val, $type) = @_;
-	#correction for how cell is termed in the CV
-	if($type eq 'cell') {
+    my ($val, $type) = @_;
+    #correction for how cell is termed in the CV
+    if($type eq 'cell') {
         $type = 'Cell Line';
     }
-    if ($val eq "None"){return ()}
-	return defined($terms{$type}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
+
+    if ($val eq "None"){
+        return ()
+    }
+    return defined(${$terms{$type}}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
 
 }
 
@@ -285,19 +303,19 @@ sub validateControlledVocabOrControl {
     my ($val, $type) = @_;
     if ($type eq 'antibody') {
         $type = 'Antibody';
-        return defined($terms{$type}{$val} || $terms{'control'}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
+        return defined($terms{$type}->{$val} || $terms{'control'}->{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
     }
-    return defined($terms{$type}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
+    return defined($terms{$type}->{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
 }
 
 sub validateControlledVocab {
     my ($val, $type) = @_;
-    return defined($terms{$type}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
+    return defined($terms{$type}->{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
 }
 
 sub validateObtainedBy {
     my ($val,$type) = @_;
-    return defined($terms{'lab'}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
+    return defined(${$terms{'lab'}}{$val}) ? () : ("Controlled Vocabulary \'$type\' value \'$val\' is not known");
 }
 
 
@@ -308,10 +326,10 @@ sub validateObtainedBy {
 # Some of the checkers use regular expressions to validate syntax of the files.
 # Others pass first 10 lines to utility loaders; the later has:
 # advantages:
-# 	checks semantics as well as syntax
+#      checks semantics as well as syntax
 # disadvantages;
-# 	only checks the beginning of the file
-# 	but some of the loaders tolerate (but give incorrect results) for invalid files
+#      only checks the beginning of the file
+#      but some of the loaders tolerate (but give incorrect results) for invalid files
 
 # dispatch table
 our %formatCheckers = (
@@ -341,6 +359,7 @@ our %formatCheckers = (
     psl  => \&validatePsl,
     cBiP => \&validateFreepass,  # TODO: this is a dodge, because bed file is for different species, so chrom violations
     bigWig => \&validateBigWig,
+    bigBed => \&validateBigBed,
     bam => \&validateBam,
     shortFrags => \&validateBed,
     bedLogR => \&validateBed,
@@ -519,43 +538,76 @@ sub validateBed {
     my $lineNumber = 0;
     doTime("beginning validateBed") if $opt_timing;
     my $fh = Encode::openUtil($file, $path);
+    my @localerrors;
+    my $errorCount = 0;
+    my $errorLimit = 20;
+    my $oldError = 0;
     while(<$fh>) {
-        chomp;
+        my $line = $_;
+        chomp $_;
         $lineNumber++;
+        if (scalar(@localerrors) != $oldError) {
+            $oldError = scalar(@localerrors);
+            $errorCount++;
+        }
+        if ($errorCount >= $errorLimit) {
+            push @localerrors, "Error limit exceeded, there may be more after this point.\n";
+            last
+        }
         next if m/^#/; # allow comment lines, consistent with lineFile and hgLoadBed
-        my @fields = split /\s+/;
-        my $fieldCount = @fields;
+        my @fields = split /\s+/, $line;
+        my $fieldCount = scalar(@fields);
         next if(!$fieldCount);
-        my $prefix = "Failed bed validation, file '$file'; line $lineNumber:";
-        if(/^(track|browser)/) {
-            ;
-        } elsif($fieldCount < 3) {
-            die "$prefix not enough fields; " . scalar(@fields) . " present; at least 3 are required\n";
+        my $prefix = "line $lineNumber:";
+        if ($fields[0] =~ m/(track|browser)/) {
+            next
+        }
+        if($fieldCount <= 2) {
+            push @localerrors, "$prefix not enough fields; " . scalar(@fields) . " present; at least 3 are required\n";
+            next
+        }
+        if ($fields[1] !~ /^\d+$/) {
+            push @localerrors, "$prefix field 2 value ($fields[1]) is invalid; value must be a positive integer\n";
+        }
+        if ($fields[2] !~ /^\d+$/) {
+            push @localerrors, "$prefix field 3 value ($fields[2]) is invalid; value must be a positive integer\n";
+        }
+        if ($fields[2] < $fields[1]) {
+            push @localerrors, "$prefix field 3 value ($fields[2]) is less than field 2 value ($fields[1])\n";
         } elsif (!$chromInfo{$fields[0]}) {
-            die "$prefix field 1 value ($fields[0]) is invalid; not a valid chrom name\n";
-        } elsif ($fields[1] !~ /^\d+$/) {
-            die "$prefix field 2 value ($fields[1]) is invalid; value must be a positive number\n";
-        } elsif ($fields[2] !~ /^\d+$/) {
-            die "$prefix field 3 value ($fields[2]) is invalid; value must be a positive number\n";
-        } elsif ($fields[2] < $fields[1]) {
-            die "$prefix field 3 value ($fields[2]) is less than field 2 value ($fields[1])\n";
-        } elsif ($fieldCount < 3 && $fields[4] !~ /^\d+$/ && $fields[4] !~ /^\d+\.\d+$/) {
-            die "$prefix field 5 value ($fields[4]) is invalid; value must be a positive number\n";
-        } elsif ($fieldCount < 3 && $fields[4] < 0 || $fields[4] > 1000) {
-            die "$prefix field 5 value ($fields[4]) is invalid; score must be 0-1000\n";
-        } elsif ($type eq 'bed5FloatScore' && $fieldCount < 6) {
-            die "$prefix field 6 invalid; bed5FloatScore requires 6 fields";
-        } elsif ($type eq 'bed5FloatScore' && $fields[5] !~ /^$floatRegEx$/) {
-            die "$prefix field 6 value '$fields[5]' is invalid; must be a float\n";
-        } else {
-            ;
+            push @localerrors, "$prefix field 1 value ($fields[0]) is invalid; not a valid chrom name\n";
+            next
+        } elsif ($fields[0] !~ m/chrM/) {
+            if ($fields[2] > $chromSizes{$fields[0]}) {
+                push @localerrors, "$prefix field 3 value ($fields[2]) exceeds the length of $fields[0] (max = $chromSizes{$fields[0]})\n";
+            }
+        } 
+        if ($fieldCount >= 5 && ($fields[4] !~ /^\d+$/ or $fields[4] > 1000)) {
+            push @localerrors, "$prefix field 5 value ($fields[4]) is invalid; value must be a positive integer between 0-1000\n";
+        }
+        if ($fieldCount >= 5 && $type ne 'bed5FloatScore' && $fields[5] !~ m/^(\+|\-|\.)$/) {
+            push @localerrors, "$prefix field 6 ($fields[5]) value must be either + or - or .\n";
+        }
+        if ($type eq 'bed5FloatScore' && $fieldCount < 6) {
+            push @localerrors, "$prefix field 6 invalid; bed5FloatScore requires 6 fields";
+            next
+        }
+        if ($type eq 'bed5FloatScore' && $fields[5] !~ /^$floatRegEx$/) {
+            push @localerrors, "$prefix field 6 value '$fields[5]' is invalid; must be a float\n";
+            next
         }
         last if($opt_quick && $lineNumber >= $quickCount);
     }
     $fh->close();
     HgAutomate::verbose(2, "File \'$file\' passed bed validation\n");
     doTime("done validateBed",$lineNumber) if $opt_timing;
-    return ();
+    if (scalar(@localerrors)) {
+        my $errstr = join "", @localerrors;
+        $errstr = "Failed BED validation in $file:\n" . $errstr;
+        return $errstr;
+    } else {
+        return ();
+    }
 }
 
 sub validateBedGraph {
@@ -623,7 +675,7 @@ sub validateGtf {
     my @res = validateGene(undef,$outFile,$type);
     if (scalar(@res)==0) { # no errors so remove the temp .bed file
         HgAutomate::verbose(2, "File \'$file\' passed gtf gene validation \n");
-	unlink $outFile;
+        unlink $outFile;
     }
     return @res;
 }
@@ -638,8 +690,7 @@ sub validateGene {
         die "We don't currently supporte gzipped gene files\n";
     }
     # XXXX Add support for $opt_quick
-    my $err = system (
-        "cd $outPath; egrep -v '^track|browser' $filePath | ldHgGene -out=genePred.tab -genePredExt $assembly testTable stdin >$outFile 2>&1");
+    my $err = system ("cd $outPath; egrep -v '^track|browser' $filePath | ldHgGene -out=genePred.tab -genePredExt $assembly testTable stdin >$outFile 2>&1");
     if ($err) {
         print STDERR  "File \'$file\' failed GFF validation\n";
         open(ERR, "$outPath/$outFile") || die "ERROR: Can't open GFF validation file \'$outPath/$outFile\': $!\n";
@@ -659,9 +710,9 @@ sub validateTagAlign
     my $paramList = validationSettings("validateFiles","tagAlign",$assembly);
     my $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=tagAlign $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateTagAlign : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateTagAlign for '$file'");
+        print STDERR  "ERROR: failed validateTagAlign : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateTagAlign for '$file'");
     }
     return ();
 }
@@ -674,9 +725,9 @@ sub validatePairedTagAlign
     my $paramList = validationSettings("validateFiles","pairedTagAlign",$assembly);
     my $safe = SafePipe->new(CMDS => ["validateFiles $paramList $quickOpt -chromDb=$assembly -type=pairedTagAlign $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validatePairedTagAlign : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validatePairedTagAlign for '$file'");
+        print STDERR  "ERROR: failed validatePairedTagAlign : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validatePairedTagAlign for '$file'");
     }
     return ();
 }
@@ -725,9 +776,9 @@ sub validateNarrowPeak
     my ($infoFile, $twoBitFile ) = getInfoFiles($cell, $sex);
     my $safe = SafePipe->new(CMDS => ["validateFiles -chromInfo=$infoFile $quickOpt $paramList -type=narrowPeak $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateNarrowPeak : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateNarrowPeak for '$file'");
+        print STDERR  "ERROR: failed validateNarrowPeak : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateNarrowPeak for '$file'");
     }
     return ();
 }
@@ -740,9 +791,9 @@ sub validateBroadPeak
     my ($infoFile, $twoBitFile ) = getInfoFiles($cell, $sex);
     my $safe = SafePipe->new(CMDS => ["validateFiles -chromInfo=$infoFile $quickOpt $paramList -type=broadPeak $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateBroadPeak : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateBroadPeak for '$file'");
+        print STDERR  "ERROR: failed validateBroadPeak : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateBroadPeak for '$file'");
     }
     return ();
 }
@@ -785,9 +836,9 @@ sub validateFastQ
     my $paramList = validationSettings("validateFiles","fastq");
     my $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=fastq \"$file\""]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateFastQ : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateFastQ for '$file'");
+        print STDERR  "ERROR: failed validateFastQ : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateFastQ for '$file'");
     }
     return ();
 }
@@ -814,9 +865,9 @@ sub validateCsfasta
     my $paramList = validationSettings("validateFiles","csfasta");
     my $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=csfasta $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateCsfasta : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateCsfasta for '$file'");
+        print STDERR  "ERROR: failed validateCsfasta : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateCsfasta for '$file'");
     }
     HgAutomate::verbose(2, "File \'$file\' passed $type validation\n");
     doTime("done validateCsfasta") if $opt_timing;
@@ -831,9 +882,9 @@ sub validateSAM
     my $paramList = validationSettings("validateFiles","SAM");
     my $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=SAM $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateSAM : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateSAM for '$file'");
+        print STDERR  "ERROR: failed validateSAM : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateSAM for '$file'");
     }
     HgAutomate::verbose(2, "File \'$file\' passed $type validation\n");
     doTime("done validateSAM") if $opt_timing;
@@ -851,22 +902,50 @@ sub validateBam
     # index the BAM file
     my $safe = SafePipe->new(CMDS => ["samtools index $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed samtools index : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateBam for '$file'");
+        print STDERR  "ERROR: failed samtools index : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateBam for '$file'");
     }
 
     my ($infoFile, $twoBitFile ) = getInfoFiles($cell, $sex);
     $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=BAM -chromInfo=$infoFile -genome=$twoBitFile $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateBam : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateBam for '$file'");
+        print STDERR  "ERROR: failed validateBam : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateBam for '$file'");
     }
     HgAutomate::verbose(2, "File \'$file\' passed $type validation\n");
     doTime("done validateBam") if $opt_timing;
     return ();
 }
+
+sub validateBigBed
+{
+    my ($path, $file, $type) = @_;
+    doTime("Beginning validateBigBed") if $opt_timing;
+    HgAutomate::verbose(2, "validateBigBed($path,$file,$type)\n");
+    my $fh = File::Temp->new(UNLINK => 1);
+    $fh->unlink_on_destroy( 1 );
+    my $tempfilename = $fh->filename;
+    #print STDERR "tempfilename = $tempfilename\n";
+    my $safe = SafePipe->new(CMDS => ["bigBedToBed $file $tempfilename"]);
+    if(my $err = $safe->exec()) {
+        print STDERR  "ERROR: failed validateBigBed : " . $safe->stderr() . "\n";
+        return("failed validateBigBed for '$file'");
+    }
+    my ($tmpfile, $basedir, $bar) = fileparse($tempfilename);
+    my $bedError = &validateBed($basedir, $tmpfile, "bed");
+    if ($bedError) {
+        $bedError =~ s/$tmpfile/$file/g;
+        print STDERR "ERROR: failed validateBigBed : " . $bedError . "\n";
+        return("failed validateBigBed for '$file'");
+    }
+    HgAutomate::verbose(2, "File \'$file\' passed validateBigBed\n");
+    doTime("done validateBigBed") if $opt_timing;
+    return ();
+}
+
+
 
 sub validateBigWig
 {
@@ -876,9 +955,9 @@ sub validateBigWig
     my $paramList = validationSettings("validateFiles","bigWig");
     my $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=bigWig -chromDb=$daf->{assembly} $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateBigWig : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateBigWig for '$file'");
+        print STDERR  "ERROR: failed validateBigWig : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateBigWig for '$file'");
     }
     HgAutomate::verbose(2, "File \'$file\' passed $type validation\n");
     doTime("done validateBigWig") if $opt_timing;
@@ -903,9 +982,9 @@ sub validateCsqual
     my $paramList = validationSettings("validateFiles","csqual");
     my $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=csqual $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateCsqual : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateCsqual for '$file'");
+        print STDERR  "ERROR: failed validateCsqual : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateCsqual for '$file'");
     }
     HgAutomate::verbose(2, "File \'$file\' passed $type validation\n");
     doTime("done validateCsqual") if $opt_timing;
@@ -926,9 +1005,9 @@ sub validateFasta
     my $paramList = validationSettings("validateFiles","fasta");
     my $safe = SafePipe->new(CMDS => ["validateFiles $quickOpt $paramList -type=fasta $file"]);
     if(my $err = $safe->exec()) {
-	print STDERR  "ERROR: failed validateFasta : " . $safe->stderr() . "\n";
-	# don't show end-user pipe error(s)
-	return("failed validateFasta for '$file'");
+        print STDERR  "ERROR: failed validateFasta : " . $safe->stderr() . "\n";
+        # don't show end-user pipe error(s)
+        return("failed validateFasta for '$file'");
     }
     HgAutomate::verbose(2, "File \'$file\' passed $type validation\n");
     doTime("done validateFasta") if $opt_timing;
@@ -963,10 +1042,10 @@ sub validateRpkm
         chomp;
         $lineNumber++;
         next if m/^#/;
-	my @fields = split /\s+/;
-	my $cols = scalar(@fields);
+        my @fields = split /\s+/;
+        my $cols = scalar(@fields);
         die "Failed $type validation, file '$file'; line $lineNumber: line=[$_]\n"
-	    unless $cols == 3 or $cols == 5 or $cols == 7;
+            unless $cols == 3 or $cols == 5 or $cols == 7;
 #            unless m/^([^\t]+)\t(\d+\.\d+)\t(\d+\.\d+)$/;
         last if($opt_quick && $lineNumber >= $quickCount);
     }
@@ -994,7 +1073,7 @@ sub validateBowtie
         $lineNumber++;
         next if m/^#/; # allow comment lines, consistent with lineFile and hgLoadBed
         die "Failed bowtie validation, file '$file'; line $lineNumber: line=[$_]\n"
-	    unless $_ =~ m/^([A-Za-z0-9:>_,\.\|\/-]+)\t([+-])\t([A-Za-z0-9:>_,\.\|\/-]+)\t(\d+)\t(\w+)\t(\w+)\t(\d+)\t([A-Za-z0-9:>_,\.\|\/-]+)?$/;
+            unless $_ =~ m/^([A-Za-z0-9:>_,\.\|\/-]+)\t([+-])\t([A-Za-z0-9:>_,\.\|\/-]+)\t(\d+)\t(\w+)\t(\w+)\t(\d+)\t([A-Za-z0-9:>_,\.\|\/-]+)?$/;
         last if($opt_quick && $lineNumber >= $quickCount);
     }
     $fh->close();
@@ -1031,7 +1110,7 @@ sub validatePsl
         next if $lineNumber == 4 and m/^\s+match/;
         next if $lineNumber == 5 and m/^------/;
         die "Failed $type validation, file '$file'; line $lineNumber: line=[$_]\n"
-	    unless m/^(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t([+-][+-]?)\t([A-Za-z0-9:>\|\/_-]+)\t(\d+)\t(\d+)\t(\d+)\t(\w+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t([0-9,]+)\t([0-9,]+)\t([0-9,]+)/;
+            unless m/^(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t([+-][+-]?)\t([A-Za-z0-9:>\|\/_-]+)\t(\d+)\t(\d+)\t(\d+)\t(\w+)\t(\d+)\t(\d+)\t(\d+)\t(\d+)\t([0-9,]+)\t([0-9,]+)\t([0-9,]+)/;
         last if($opt_quick && $lineNumber >= $quickCount);
     }
     $fh->close();
@@ -1050,6 +1129,11 @@ sub validateDafField {
     my ($type, $val, $daf) = @_;
     $type =~ s/ /_/g;
     HgAutomate::verbose(4, "Validating $type: " . (defined($val) ? $val : "") . "\n");
+    my $deprecated;
+    $deprecated = &isDeprecated($type, $val);
+    if ($deprecated){
+        return($deprecated);
+    }
     if($validators{$type}) {
                 # Venkat: Added the return $sex to accomadate tissues for mouse
         return $validators{$type}->($val, $type, "", $daf);
@@ -1058,15 +1142,34 @@ sub validateDafField {
     }
 }
 
+sub isDeprecated {
+    my ($type, $val) = @_;
+    if ($type eq "cell") {
+        $type = "Cell Line";
+    }
+    if (exists($terms{$type}->{$val}) && exists($terms{$type}->{$val}->{'deprecated'})){
+        return("Controlled Vocabulary '$val' is deprecated: $terms{$type}->{$val}->{'deprecated'}");
+    }
+    else {
+        return ();
+    }
+}
+
 sub validateDdfField {
     # validate value for type of field
-	# Venkat: Added $sex to accomadate tissues for mouse
-    my ($type, $val, $track, $daf, $cell,$sex) = @_;
+    # Venkat: Added $sex to accomadate tissues for mouse
+    my ($type, $val, $track, $daf, $cell, $sex) = @_;
     $type =~ s/ /_/g;
     HgAutomate::verbose(4, "Validating $type: " . (defined($val) ? $val : "") . "\n");
+    my $deprecated;
+    $deprecated = &isDeprecated($type, $val);
+    if ($deprecated){
+        return($deprecated)
+
+    }
     if($validators{$type}) {
-		# Venkat: Added the return $sex to accomadate tissues for mouse
-        return $validators{$type}->($val, $type, $track, $daf, $cell,$sex);
+    # Venkat: Added the return $sex to accomadate tissues for mouse
+        return $validators{$type}->($val, $type, $track, $daf, $cell, $sex);
     } else {
         return $validators{'default'}->($val, $type, $track, $daf); # Considers the term controlled vocab
     }
@@ -1074,7 +1177,7 @@ sub validateDdfField {
 
 sub checkDataFormat {
     # validate file type
-	# Venkat: Added $sex to accomadate tissues for mouse
+    # Venkat: Added $sex to accomadate tissues for mouse
     my ($format, $file, $cell,$sex) = @_;
     HgAutomate::verbose(3, "Checking data format for $file: $format\n");
     my $type = $format;
@@ -1103,7 +1206,7 @@ sub ddfKey
         }
         return $key;
     } else {
-	return undef; # Some dafs have no variables, eg, Sanger Gencode
+        return undef; # Some dafs have no variables, eg, Sanger Gencode
     }
 }
 
@@ -1137,7 +1240,7 @@ sub isDownloadOnly {
         return 0;
     }
     #return ( (($daf->{TRACKS}->{$view}->{downloadOnly} || "") eq 'yes') or ($view =~ m/^RawData\d*$/ or $view eq 'Comparative'
-    #	or ($view eq 'Alignments' and $grant ne "Gingeras" and $grant ne "Wold"))) ? 1 : 0;
+    #    or ($view eq 'Alignments' and $grant ne "Gingeras" and $grant ne "Wold"))) ? 1 : 0;
 
 }
 
@@ -1224,9 +1327,9 @@ sub printCompositeTdbSettings {
                                 if (defined($terms{"control"}->{$term})) {
                                     $tag=$terms{"control"}->{$term}->{"tag"};
                                 }
-			       	elsif (defined($terms{"lab"}->{$term})) {
-			    	    $tag=$terms{"lab"}->{$term}->{"tag"};
-				}	    else {
+                                elsif (defined($terms{"lab"}->{$term})) {
+                                    $tag=$terms{"lab"}->{$term}->{"tag"};
+                                } else {
                                     die "'$term' is not a registered '$cvTypeVar' term\n";
                                 }
                             }
@@ -1312,7 +1415,7 @@ sub validationSettings {
     }
 
     if( scalar(@_) > 1 ) {
-	return "";
+        return "";
     }
     return 0;
 }
@@ -1330,7 +1433,7 @@ sub makeDownloadTargetFileName {
     }
 
     my $target;
-    if (($type eq "bam") || ($type eq "bigWig"))  {
+    if (($type eq "bam") || ($type eq "bigWig") || ($type eq "bigBed"))  {
         $target = "$tablename.$type";
 
     } else {
@@ -1380,11 +1483,11 @@ sub makeDownloadTargetFileName {
 # is how you do it
 # $ENV{PATH} = "/cluster/home/braney/bin/x86_64:" . $ENV{PATH};
 
-my @ddfHeader;		# list of field names on the first line of DDF file
-my %ddfHeader = ();	# convenience hash version of @ddfHeader (maps name to field index)
-my @ddfLines = ();	# each line in DDF (except for fields header); value is a hash; e.g. {files => 'foo.bed', cell => 'HeLa-S3', ...}
-my %ddfSets = ();	# info about DDF entries broken down by ddfKey
-my %ddfReplicateSets = ();	# info about DDF entries broken down by ddfKey (including replicate)
+my @ddfHeader;         # list of field names on the first line of DDF file
+my %ddfHeader = ();    # convenience hash version of @ddfHeader (maps name to field index)
+my @ddfLines = ();     # each line in DDF (except for fields header); value is a hash; e.g. {files => 'foo.bed', cell => 'HeLa-S3', ...}
+my %ddfSets = ();      # info about DDF entries broken down by ddfKey
+my %ddfReplicateSets = ();     # info about DDF entries broken down by ddfKey (including replicate)
 my $wd = cwd();
 
 my $ok = GetOptions("allowReloads",
@@ -1423,7 +1526,7 @@ if($opt_metaDataOnly) {
 usage() if (scalar(@ARGV) < 2);
 
 # Get command-line args
-my $submitType = $ARGV[0];	# currently not used
+my $pipelineInstance = $ARGV[0];     # currently not used
 my $submitDir = $ARGV[1];
 
 $ENV{TMPDIR} = $Encode::tempDir;
@@ -1437,6 +1540,7 @@ if($opt_validateFile) {
     }
     my $db = HgDb->new(DB => $assembly);
     $db->getChromInfo(\%chromInfo);
+    $db->getChromSizes(\%chromSizes);
     if(my @errors = checkDataFormat($opt_fileType, $submitDir)) {
         die "Invalid file: " . join(", ", @errors) . "\n";
     } else {
@@ -1490,33 +1594,24 @@ if(!$opt_validateDaf) {
 }
 
 # labs is now in fact the list of grants (labs are w/n grants, and are not currently validated).
-$grants = Encode::getGrants($configPath);
 $fields = Encode::getFields($configPath);
 
 if($opt_validateDaf) {
     if(-f $submitDir) {
-        Encode::parseDaf($submitDir, $grants, $fields);
+        Encode::parseDaf($submitDir,  $fields, $pipelineInstance);
     } else {
-        Encode::getDaf($submitDir, $grants, $fields);
+        Encode::getDaf($submitDir, $fields, $pipelineInstance);
     }
     print STDERR "DAF is valid\n";
     exit(0);
 }
 
-$daf = Encode::getDaf($submitDir, $grants, $fields);
+$daf = Encode::getDaf($submitDir, $fields, $pipelineInstance);
 $assembly = $daf->{assembly};
 
 my $db = HgDb->new(DB => $daf->{assembly});
 $db->getChromInfo(\%chromInfo);
-
-if($opt_sendEmail) {
-    if($grants->{$daf->{grant}} && $grants->{$daf->{grant}}{wranglerEmail}) {
-        my $email = $grants->{$daf->{grant}}{wranglerEmail};
-        if($email) {
-            `echo "dir: $submitPath" | /bin/mail -s "ENCODE data from $daf->{grant}/$daf->{lab} lab has been submitted for validation." $email`;
-        }
-    }
-}
+$db->getChromSizes(\%chromSizes);
 
 # Add the variables in the DAF file to the required fields list
 if (defined($daf->{variables})) {
@@ -1553,7 +1648,6 @@ if(validationSettings("skipValidateFiles")) {
 if(validationSettings("skipOutput")) {
     $opt_skipAutoCreation = $opt_skipOutput = $opt_skipValidateFiles = 1;
 }
-
 
 # Open dataset descriptor file (DDF)
 my @glob = glob "*.DDF";
@@ -1607,7 +1701,6 @@ if(@errors) {
 
 %terms = Encode::getControlledVocab($configPath);
 
-
 my @variables;
 if (defined($daf->{variables})) {
     @variables = @{$daf->{variableArray}};
@@ -1620,7 +1713,6 @@ if (defined($daf->{variables})) {
 pushError(\@errors, validateDafField("grant", $daf->{grant}, $daf));
 pushError(\@errors, validateDafField("lab", $daf->{lab}, $daf));
 pushError(\@errors, validateDafField("dataType", $daf->{dataType}, $daf));
-
 my %metadataHash;
 
 # Process lines in DDF file. Create a list with one entry per line;
@@ -1650,8 +1742,8 @@ while (@{$lines}) {
     my $linamt = scalar(@linetest);
     my $ddfamt = scalar(@ddfHeader);
     if ($linamt > $ddfamt){
-    	pushError(\@errors, "$errorPrefix has too many fields Line:$linamt DDF:$ddfamt");
-    	next;
+        pushError(\@errors, "$errorPrefix has too many fields Line:$linamt DDF:$ddfamt");
+        next;
     }
     my $i = 0;
     my %line;
@@ -1672,7 +1764,6 @@ while (@{$lines}) {
         pushError(\@errors, $errorPrefix . "\n" . join("\n", @tmp));
         next;
     }
-	
     my $view = $line{view};
     HgAutomate::verbose(2,"Parsing $view\n");
     if($daf->{TRACKS}{$view}) {
@@ -1697,34 +1788,36 @@ while (@{$lines}) {
         
         
         for my $field (keys %line) {
-        
-        	#the next two condotionals evaluate whether a field value is blank, if the field is required throw an error,
-        	#if not, then skip validation, and pass the blank value through
-        	if ($line{$field} eq "" && !($fields->{$field}{required})){
-        		next;
-        	} elsif ($line{$field} eq "" && $fields->{$field}{required}){
-				push (@errors, "Missing value for required field '$field' on ddf line $ddfLineNumber");
-				next;
-        	}
+            #the next two condotionals evaluate whether a field value is blank, if the field is required throw an error,
+            #if not, then skip validation, and pass the blank value through
+            if ($line{$field} eq "" && !($fields->{$field}{required})){
+                next;
+            } elsif ($line{$field} eq "" && $fields->{$field}{required}){
+                push (@errors, "Missing value for required field '$field' on ddf line $ddfLineNumber");
+                next;
+            }
             my $cell = $line{cell};
-			my $sex = $line{sex};
-            push(@metadataErrors, validateDdfField($field, $line{$field}, $view, $daf, $cell,$sex));
+            my $sex = $line{sex};
+            my $mdbError = validateDdfField($field, $line{$field}, $view, $daf, $cell, $sex, \%terms);
+            if ($mdbError) {
+                push(@metadataErrors, $mdbError);
+            }
         }
         
         if(@metadataErrors) {
             pushError(\@errors, @metadataErrors);
         } else {
             # avoid spurious errors by not putting invalid lines into %ddfSets
-			# ddfKey returnes undef if there are no variables defined
-			if (defined(ddfKey(\%line, \%ddfHeader, $daf, 1))) {
-			$ddfSets{ddfKey(\%line, \%ddfHeader, $daf, 0)}{VIEWS}{$view} = \%line;
-			$ddfReplicateSets{ddfKey(\%line, \%ddfHeader, $daf, 1)}{VIEWS}{$view} = \%line;
-			my $str = join(", ", map($line{$_}, sort(@variables)));
-					if (defined($daf->{dataVersion}) && $daf->{dataVersion} > 1) {
-						$str .= ", V" . $daf->{dataVersion};
-					}
-			$metadataHash{$str} = 1;
-			}
+            # ddfKey returnes undef if there are no variables defined
+            if (defined(ddfKey(\%line, \%ddfHeader, $daf, 1))) {
+            $ddfSets{ddfKey(\%line, \%ddfHeader, $daf, 0)}{VIEWS}{$view} = \%line;
+            $ddfReplicateSets{ddfKey(\%line, \%ddfHeader, $daf, 1)}{VIEWS}{$view} = \%line;
+            my $str = join(", ", map($line{$_}, sort(@variables)));
+                    if (defined($daf->{dataVersion}) && $daf->{dataVersion} > 1) {
+                        $str .= ", V" . $daf->{dataVersion};
+                    }
+            $metadataHash{$str} = 1;
+            }
         }
         push(@ddfLines, \%line);
     } else {
@@ -1766,9 +1859,9 @@ if(!@errors) {
             # Make a list of the PlusRawSignal/MinusRawSignal or RawSignals we are going to have to make
             my @newViews = ();
             #push @newViews, "RawSignal" if $daf->{TRACKS}{RawSignal}{order};  ## No longer create RawSignals
-			# Code is never triggered, but if triggered we no longer use the order field for track prioritization.
-			#push @newViews, "PlusRawSignal" if $daf->{TRACKS}{PlusRawSignal}{order};
-			#push @newViews, "MinusRawSignal" if $daf->{TRACKS}{MinusRawSignal}{order};
+            # Code is never triggered, but if triggered we no longer use the order field for track prioritization.
+            #push @newViews, "PlusRawSignal" if $daf->{TRACKS}{PlusRawSignal}{order};
+            #push @newViews, "MinusRawSignal" if $daf->{TRACKS}{MinusRawSignal}{order};
 
             foreach my $newView (@newViews) #loop around making them
             {
@@ -1911,11 +2004,7 @@ if(!$opt_skipOutput && !$compositeExists) {
 my $priority = $db->quickQuery("select max(priority) from trackDb where settings like '%subTrack $compositeTrack%'") || 0;
 $ddfLineNumber = 1;
 
-# use pi.ra file to map pi/lab/institution/grant/project for metadata line
-my $labRef = Encode::getLabs($configPath);
-my %labs = %{$labRef};
 my $subId = 0;
-
 foreach my $ddfLine (@ddfLines) {
     $ddfLineNumber++;
     my $diePrefix = "ERROR on DDF lineNumber $ddfLineNumber:";
@@ -1928,8 +2017,6 @@ foreach my $ddfLine (@ddfLines) {
     my $longlabeldatatype = $daf->{dataType};
     my $longlabelprefix = ${${$terms{'dataType'}}{$longlabeldatatype}}{'label'};
     my $longlabelview = ${${$terms{'view'}}{$view}}{'label'};
-    #print "view = $longlabelview\n";
-    
     
     my $metadata = "project=wgEncode grant=$daf->{grant} lab=$lab";
     $metadata .= " dataType=$daf->{dataType}";
@@ -1948,7 +2035,7 @@ foreach my $ddfLine (@ddfLines) {
         && $key ne 'softwareVersion'
         && $key ne 'origAssembly') {
             $metadata .= " $key=$value"; # and the rest
-    	}
+        }
     }
     if($daf->{dataType} =~/ChIPseq/i) {
         if(!$ddfLine->{setType}) {
@@ -1967,19 +2054,23 @@ foreach my $ddfLine (@ddfLines) {
             $metadata .= " controlId=$controlId";
         }
     }
-	# Extend meta-data for mouse to input sex,strain and age information from CV without labs needing to input
-	# meta-data in DDF for cell lines and primary cell lines.
-	if( ($daf->{assembly} eq 'mm9') && ($terms{'Cell Line'}->{$ddfLine->{cell}}->{'category'} ne 'Tissue')) {
-	   $metadata .= " sex=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'sex'}" if !$ddfLine->{sex};
-	   $metadata .= " strain=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'strain'}" if !$ddfLine->{strain};
-	   $metadata .= " age=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'age'}" if !$ddfLine->{age};
-	}
+    # Extend meta-data for mouse to input sex,strain and age information from CV without labs needing to input
+    # meta-data in DDF for cell lines and primary cell lines.
+    if( ($daf->{assembly} eq 'mm9') && ($terms{'Cell Line'}->{$ddfLine->{cell}}->{'category'} ne 'Tissue')) {
+       $metadata .= " sex=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'sex'}" if !$ddfLine->{sex};
+       $metadata .= " strain=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'strain'}" if !$ddfLine->{strain};
+       $metadata .= " age=$terms{'Cell Line'}->{$ddfLine->{cell}}->{'age'}" if !$ddfLine->{age};
+    }
     $metadata .= " view=$view";
     $metadata .= " replicate=$ddfLine->{replicate}" if $ddfLine->{replicate} && $daf->{TRACKS}{$view}{hasReplicates};
     $metadata .= " labVersion=$ddfLine->{labVersion}" if $ddfLine->{labVersion};
     $metadata .= " softwareVersion=$ddfLine->{softwareVersion}" if $ddfLine->{softwareVersion};
     $metadata .= " origAssembly=$ddfLine->{origAssembly}" if $ddfLine->{origAssembly};
-    $metadata .= ' dataVersion="' . $Encode::dataVersion .'"';
+    if ($daf->{assembly} eq "mm9"){
+        $metadata .= ' dataVersion="' . $Encode::mouseDataVersion . '"';
+    } else {
+        $metadata .= ' dataVersion="' . $Encode::dataVersion .'"';
+    }
     if($submitDir =~ /(\d+)$/) {
         $subId = $1;
     } elsif($submitDir =~ /(\d+)/) {
@@ -2032,8 +2123,8 @@ foreach my $ddfLine (@ddfLines) {
             } elsif ($var eq "cell") {
                 $cvTypeVar = "Cell Line";
             } elsif ($var eq "obtainedBy") {
-				$cvTypeVar = "lab";
-			}
+                $cvTypeVar = "lab";
+            }
             if(!defined($terms{$cvTypeVar}->{$hash{$var}})) {
                 $cvTypeVar = "control";
             }
@@ -2075,8 +2166,8 @@ foreach my $ddfLine (@ddfLines) {
             $shortSuffix = "$hash{'cell'}";
             $tier1 = 1 if ($hash{'cell'} eq 'GM12878' || $hash{'cell'} eq 'K562' || $hash{'cell'} eq 'H1hESC');
         } else {
-	    warn "Warning: variables undefined for pushQDescription,shortSuffix,longSuffix\n";
-    	}
+            warn "Warning: variables undefined for pushQDescription,shortSuffix,longSuffix\n";
+        }
         if(defined($shortViewMap{$view})) {
             $shortSuffix .= " " . $shortViewMap{$view};
         }
@@ -2103,23 +2194,22 @@ foreach my $ddfLine (@ddfLines) {
                 $cvTypeVar = "Cell Line";
             } elsif ($var eq "obtainedBy") {
               #Not sure why when we check for obtainedBy subGroups prints out and when when this is
-	      # not pressent the subGroups provides error of unitialized.
-	      # The behavior is odd since there is no $var of obtainedBy in the cv.ra
-     	        $cvTypeVar = "lab";
-	    }
-
+              # not pressent the subGroups provides error of unitialized.
+              # The behavior is odd since there is no $var of obtainedBy in the cv.ra
+                 $cvTypeVar = "lab";
+            }
             if(!defined($terms{$cvTypeVar}->{$hash{$var}})) {
                 $cvTypeVar = "control";
             }
             $subGroups .= " $groupVar=$terms{$cvTypeVar}->{$hash{$var}}->{'tag'}";
         }
-         #Venkat: Commented out the below line such that if any lab has replicates the replicate number will be placed
-	 #        in the table name. The below code was found to be to specific, however if there are any problems
-	 # I have left the code in so that we can easily add it back in.
-	#  if(defined($replicate) && ($daf->{lab} eq "HudsonAlpha" || $daf->{lab} eq "Uw") || $daf->{lab} eq "Gis") {
-			if(defined($replicate)) {
-				$subGroups .= " rep=rep$replicate"; # UGLY special casing
-			}
+        #Venkat: Commented out the below line such that if any lab has replicates the replicate number will be placed
+        # in the table name. The below code was found to be to specific, however if there are any problems
+        # I have left the code in so that we can easily add it back in.
+        #  if(defined($replicate) && ($daf->{lab} eq "HudsonAlpha" || $daf->{lab} eq "Uw") || $daf->{lab} eq "Gis") {
+        if (defined($replicate)) {
+            $subGroups .= " rep=rep$replicate"; # UGLY special casing
+        }
     }
 
     # Add view and replicate to tablename
@@ -2215,6 +2305,12 @@ foreach my $ddfLine (@ddfLines) {
         }
     }
 
+    $submitDir = `pwd`;
+    chomp $submitDir;
+    unless ($pipelineInstance eq "beta" or $pipelineInstance eq "standard") {
+        $tableName = $tableName . "_$pipelineInstance" . "_" . basename($submitDir);
+    }
+
     my $targetFile = makeDownloadTargetFileName($tableName, $type, \@{$ddfLine->{files}} );
     my $downloadDir = Encode::downloadDir($daf);
     if(!$opt_allowReloads) {
@@ -2227,6 +2323,7 @@ foreach my $ddfLine (@ddfLines) {
     # would be better in the DAF except we'd have to go change all the DAFs :(
     my $downloadOnly = isDownloadOnly($view, $daf->{grant}, $daf->{lab}, $daf);
 
+
     my $fileType = $type;
     $fileType =~ s/ //g;
     $metadata .= " composite=$compositeTrack";
@@ -2234,8 +2331,16 @@ foreach my $ddfLine (@ddfLines) {
     if(!$downloadOnly) {
         $metadata .= " tableName=$tableName";
     }
-    print MDB_TXT sprintf("metadata %s fileName=%s\n", $metadata, $targetFile);
+    my $baifile;
+    if ($targetFile =~ m/\S+.bam$/) {
+        $baifile = $targetFile . ".bai";
+    }
 
+    if ($baifile) {
+        print MDB_TXT sprintf("metadata %s fileName=%s,%s\n", $metadata, $targetFile, $baifile);
+    } else {
+        print MDB_TXT sprintf("metadata %s fileName=%s\n", $metadata, $targetFile);
+    }
     print LOADER_RA "tablename $tableName\n";
     print LOADER_RA "view $view\n";
     print LOADER_RA "type $type\n";
@@ -2270,7 +2375,7 @@ foreach my $ddfLine (@ddfLines) {
         #call the subroutine to generate the new long label - not all the passed variables are needed or used
         #the attempt is to make the long labels comething like this
         # Cell (age strain treatment protocol antibody control localization rnaExtract readType insertLength) dataType View (Rep) from ENCODE/lab
-		# not everything in the parentheses are going to be used
+        # not everything in the parentheses are going to be used
         #E.G. NHEK cell longPolyA RNA-seq Transcript Gencode V7 Rep 5 from ENCODE/CSHL
         my $longLabel = &generateLongLabel($lab, \%longlabelvars, $replicate, $longlabelprefix, $longlabeldatatype, $longlabelview);
         print TRACK_RA "        longLabel $longLabel\n";
@@ -2341,60 +2446,60 @@ if($submitPath =~ /(\d+)$/) {
 
 #matt made this
 sub generateLongLabel {
-	my $lab = $_[0];
-	my %vars = %{$_[1]};
-	my $replicate = $_[2];
-	my $prefix = $_[3];
-	my $datatype = $_[4];
-	my $view = $_[5];
-	
-	my $count = 0;
-	foreach my $value (@_){
-		unless (defined($value)){
-			$_[$count] = "";
-		}
-		$count++;
-	}
-	
-	#takes off -m if the lab does mouse also
-	$lab =~ s/\-m$//g;
-	
-	#the order that the edv's should come in after cell
-	my @order = qw (age strain treatment protocol antibody control localization rnaExtract readType insertLength);
+    my $lab = $_[0];
+    my %vars = %{$_[1]};
+    my $replicate = $_[2];
+    my $prefix = $_[3];
+    my $datatype = $_[4];
+    my $view = $_[5];
 
-	#always a cell first
-	my $longlabel = "$vars{'cell'}";
-	#if the particular track doesn't have an EDV, then skip it
-	foreach my $key (@order){
-		#go down the order and check if the incoming %vars has it, a by product of this is that if it's not in the@order above
-		#it won't go in the long label name 
-		if (exists $vars{$key}){
-			
-			#don't put anything that matches none to the label
-			my $testvars = lc($vars{$key});
-			if ($testvars =~ m/none/){next}
-			$longlabel = $longlabel . " $vars{$key}";
-		}
-	}
-	#switch for yes or no on replicate
-	if ($replicate){
-		$longlabel = $longlabel . " $prefix $view Rep $replicate from ENCODE/$lab";
-	}
-	else {
-		$longlabel = $longlabel . " $prefix $view from ENCODE/$lab";
-	}
+    my $count = 0;
+    foreach my $value (@_){
+        unless (defined($value)){
+            $_[$count] = "";
+        }
+        $count++;
+    }
 
-	#turn all _ into spaces
-	$longlabel =~ s/\_/ /g;
+    #takes off -m if the lab does mouse also
+    $lab =~ s/\-m$//g;
 
-	#length checker
-	my $llength = length ($longlabel);
-	if ($llength > 80){
-		$longlabel = $longlabel . " #too long length = $llength";
-	}
-	
-	$longlabel = $longlabel . " #autogenerated";
-	return $longlabel;
+    #the order that the edv's should come in after cell
+    my @order = qw (age strain treatment protocol antibody control localization rnaExtract readType insertLength);
+
+    #always a cell first
+    my $longlabel = "$vars{'cell'}";
+    #if the particular track doesn't have an EDV, then skip it
+    foreach my $key (@order){
+        #go down the order and check if the incoming %vars has it, a by product of this is that if it's not in the@order above
+        #it won't go in the long label name
+        if (exists $vars{$key}){
+
+            #don't put anything that matches none to the label
+            my $testvars = lc($vars{$key});
+            if ($testvars =~ m/none/){next}
+            $longlabel = $longlabel . " $vars{$key}";
+        }
+    }
+    #switch for yes or no on replicate
+    if ($replicate){
+        $longlabel = $longlabel . " $prefix $view Rep $replicate from ENCODE/$lab";
+    }
+    else {
+        $longlabel = $longlabel . " $prefix $view from ENCODE/$lab";
+    }
+
+    #turn all _ into spaces
+    $longlabel =~ s/\_/ /g;
+
+    #length checker
+    my $llength = length ($longlabel);
+    if ($llength > 80){
+        $longlabel = $longlabel . " #too long length = $llength";
+    }
+
+    $longlabel = $longlabel . " #autogenerated";
+    return $longlabel;
 
 }
 

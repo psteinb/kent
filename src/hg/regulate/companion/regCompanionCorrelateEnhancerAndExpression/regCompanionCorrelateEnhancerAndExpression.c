@@ -11,7 +11,6 @@
 #include "rangeTree.h"
 #include "obscure.h"
 
-static char const rcsid[] = "$Id: newProg.c,v 1.30 2010/03/24 21:18:33 hiram Exp $";
 
 double minR = 0.7071;
 double minExp = 10;
@@ -166,9 +165,12 @@ int promoStart = promoPos - proPad, promoEnd = promoPos + proPad;
 struct bed link;
 ZeroVar(&link);
 char nameBuf[256];
+#ifdef OLD
 char *geneNoVersion = cloneStringZ(gene->name, 8);
 safef(nameBuf, sizeof(nameBuf), "e%s->%8s", enh->name+3, geneNoVersion);
 freez(&geneNoVersion);
+#endif /* OLD */
+safef(nameBuf, sizeof(nameBuf), "%s->%s", enh->name, gene->name);
 link.chrom = gene->chrom;
 link.name = nameBuf;
 int chromStarts[2], blockSizes[2];

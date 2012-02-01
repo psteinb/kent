@@ -1,15 +1,18 @@
 
 LIST=\
-wgEncodeSydhHist.ra \
-wgEncodeSydhTfbs.ra \
-wgEncodeUwDnase.ra \
+wgEncodeCaltechHist.ra \
+wgEncodeCaltechTfbs.ra \
 wgEncodeLicrHistone.ra \
-wgEncodePsuTfbs.ra \
+wgEncodeLicrRnaSeq.ra \
 wgEncodeLicrTfbs.ra \
 wgEncodePsuHistone.ra \
+wgEncodePsuTfbs.ra \
+wgEncodeSydhHist.ra \
 wgEncodeSydhRnaSeq.ra \
-wgEncodeLicrRnaSeq.ra \
+wgEncodeSydhTfbs.ra \
+wgEncodeUwDnase.ra \
 wgEncodeUwRnaSeq.ra \
-wgEncodeCaltechTfbs.ra \
-wgEncodeCaltechHist.ra
+wgEncodeUwDgf.ra \
+wgEncodeCshlLongRnaSeq.ra
+
 include ../../../../makefile.metaDb

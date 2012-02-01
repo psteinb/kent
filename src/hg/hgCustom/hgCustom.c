@@ -18,10 +18,11 @@
 #include "knetUdc.h"
 #include "udc.h"
 #endif//def USE_BAM && KNETFILE_HOOKS
+#include "jsHelper.h"
+#include <signal.h>
 
 static long loadTime = 0;
 
-static char const rcsid[] = "$Id: hgCustom.c,v 1.142 2010/05/28 23:04:56 kuhn Exp $";
 
 void usage()
 /* Explain usage and exit. */
@@ -97,49 +98,49 @@ void addIntro()
 if (hIsGsidServer())
   {
   puts(" Data must be formatted in\n"
-  " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#BED'>BED</A>,\n"
+  " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1'>BED</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/bigBed.html'>bigBed</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/bedgraph.html'>bedGraph</A>,\n"
-  " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#GFF'>GFF</A>,\n"
-  " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#GTF'>GTF</A>,\n"
+  " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format3'>GFF</A>,\n"
+  " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format4'>GTF</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/wiggle.html'>WIG</A>\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/bigWig.html'>bigWig</A>,\n"
   " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1.7'>BED detail</A>,\n"
   " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format10'>Personal Genome SNP</A>,\n"
-  " or <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#PSL'>PSL</A>\n"
+  " or <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format2'>PSL</A>\n"
   " formats. To configure the display, set\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#TRACK'>track</A>\n"
   " and"
   " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#BROWSER'>browser</A>\n"
   " line attributes as described in the \n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html'>User's Guide</A>.\n"
-  " URLs for data in the bigBed, bigWig BAM and VCF formats must be embedded in a track\n"
+  " URLs for data in the bigBed, bigWig, BAM and VCF formats must be embedded in a track\n"
   " line in the box below.\n"
   );
   }
 else
   {
   puts(" Data must be formatted in\n"
-  " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#BED'>BED</A>,\n"
+  " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1'>BED</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/bigBed.html'>bigBed</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/bedgraph.html'>bedGraph</A>,\n"
-  " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#GFF'>GFF</A>,\n"
-  " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#GTF'>GTF</A>,\n"
+  " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format3'>GFF</A>,\n"
+  " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format4'>GTF</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/wiggle.html'>WIG</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/bigWig.html'>bigWig</A>,\n"
-  " <A TARGET=_BLANK HREF='../goldenPath/help/maf.html'>MAF</A>,\n"
+  " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format5'>MAF</A>,\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/bam.html'>BAM</A>,\n"
   " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1.7'>BED detail</A>,\n"
   " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format10'>Personal Genome SNP,</A>\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/vcf.html'>VCF</A>,\n"
-  " or <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#PSL'>PSL</A>\n"
+  " or <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format2'>PSL</A>\n"
   " formats. To configure the display, set\n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#TRACK'>track</A>\n"
   " and"
   " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#BROWSER'>browser</A>\n"
   " line attributes as described in the \n"
   " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html'>User's Guide</A>.\n"
-  " URLs for data in the bigBed and bigWig formats must be embedded in a track\n"
+  " URLs for data in the bigBed, bigWig, BAM and VCF formats must be embedded in a track\n"
   " line in the box below.\n"
   " Publicly available custom tracks are listed\n"
   " <A HREF='../goldenPath/customTracks/custTracks.html'>here</A>.\n"
@@ -166,9 +167,13 @@ else
     /* add form needs clade for assembly menu */
     gotClade = hGotClade();
 
+jsIncludeFile("jquery.js", NULL);
+jsIncludeFile("hgCustom.js", NULL);
+jsIncludeFile("utils.js", NULL);
+
 /* main form */
 printf("<FORM ACTION=\"%s\" METHOD=\"%s\" "
-    " ENCTYPE=\"multipart/form-data\" NAME=\"mainForm\">\n",
+    " ENCTYPE=\"multipart/form-data\" NAME=\"mainForm\" onsubmit=\"$('input[name=Submit]').attr('disabled', 'disabled');\" >\n",
     hgCustomName(), cartUsualString(cart, "formMethod", "POST"));
 cartSaveSession(cart);
 
@@ -240,7 +245,8 @@ if (isUpdateForm)
     cgiTableFieldEnd();
     cgiTableField("&nbsp;");
     puts("<TD ALIGN='RIGHT'>");
-    cgiMakeSubmitButton();
+    cgiMakeButtonWithOnClick("Submit", "Submit", NULL, "return submitClick(this);");
+    printf("<img id='loadingImg' src='../images/loading.gif' />\n");
     cgiTableFieldEnd();
     cgiTableField("&nbsp;");
     cgiTableRowEnd();
@@ -305,7 +311,8 @@ else
 if (!isUpdateForm)
     {
     cgiSimpleTableFieldStart();
-    cgiMakeSubmitButton();
+    cgiMakeButtonWithOnClick("Submit", "Submit", NULL, "return submitClick(this);");
+    printf("<img id='loadingImg' src='../images/loading.gif' />\n");
     cgiTableFieldEnd();
     }
 cgiTableRowEnd();
@@ -336,7 +343,10 @@ cgiSimpleTableStart();
 cgiSimpleTableRowStart();
 cgiSimpleTableFieldStart();
 if (!(isUpdateForm && dataUrl))
+    {
+    printf("<span id='loadingMsg'></span>\n");
     makeClearButton(hgCtDataText);
+    }
 cgiTableFieldEnd();
 cgiTableRowEnd();
 
@@ -449,8 +459,9 @@ struct customTrack *ct;
 char buf[256];
 char *pos = NULL;
 char *dataUrl;
+int colSpan = 4;
 
-/* handle 'set all' and 'clr all' */
+/* handle 'set all' and 'clr all' (won't be used if user has javascript enabled). */
 boolean setAllDelete = FALSE;
 boolean setAllUpdate = FALSE;
 if (cartVarExists(cart, hgCtDoDeleteSet))
@@ -478,11 +489,20 @@ tableHeaderField("Description", "Long track identifier");
 tableHeaderField("Type", "Data format of track");
 tableHeaderField("Doc", "HTML track description");
 if (itemCt)
+    {
     tableHeaderField("Items", "Count of discrete items in track");
+    colSpan++;
+    }
 if (posCt)
+    {
     tableHeaderField("Pos"," Go to genome browser at default track position or first item");
+    colSpan++;
+    }
 if (errCt)
+    {
     tableHeaderField("Error"," Error in custom track");
+    colSpan++;
+    }
 
 boolean showAllButtons = FALSE;
 if (numCts > 3)
@@ -570,7 +590,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
     printf("<TD COLSPAN=%d ALIGN=CENTER>", showAllButtons ? 2 : 1);
     safef(buf, sizeof(buf), "%s_%s", hgCtDeletePrefix,
             ct->tdb->track);
-    cgiMakeCheckBox(buf, setAllDelete);
+    cgiMakeCheckBoxJS(buf, setAllDelete, "class='deleteCheckbox'");
     puts("</TD>");
 
     /* Update checkboxes */
@@ -580,7 +600,11 @@ for (ct = ctList; ct != NULL; ct = ct->next)
         safef(buf, sizeof(buf), "%s_%s", hgCtRefreshPrefix,
                 ct->tdb->track);
         if ((dataUrl = ctDataUrl(ct)) != NULL)
-            cgiMakeCheckBoxWithMsg(buf, setAllUpdate, dataUrl);
+            {
+            char js[1024];
+            safef(js, sizeof(js), "class='updateCheckbox' title='refresh data from: %s'", dataUrl);
+            cgiMakeCheckBoxJS(buf, setAllUpdate, js);
+            }
         else
             puts("&nbsp;");
 	puts("</TD>");
@@ -590,20 +614,20 @@ for (ct = ctList; ct != NULL; ct = ct->next)
 if (showAllButtons)
     {
     cgiSimpleTableRowStart();
-    puts("<TD COLSPAN=6 ALIGN='RIGHT'>check all / clear all&nbsp;</TD>");
+    printf("<TD COLSPAN=%d ALIGN='RIGHT'>check all / clear all&nbsp;</TD>", colSpan);
     cgiSimpleTableFieldStart();
-    cgiMakeButtonWithMsg(hgCtDoDeleteSet, "+", "Select all for deletion");
+    cgiMakeButtonWithOnClick(hgCtDoDeleteSet, "+", "Select all for deletion", "$('.deleteCheckbox').attr('checked', true); return false;");
     cgiTableFieldEnd();
     cgiSimpleTableFieldStart();
-    cgiMakeButtonWithMsg(hgCtDoDeleteClr, "-", "Clear all for deletion");
+    cgiMakeButtonWithOnClick(hgCtDoDeleteClr, "-", "Clear all for deletion", "$('.deleteCheckbox').attr('checked', false); return false;");
     cgiTableFieldEnd();
     if (updateCt)
         {
         cgiSimpleTableFieldStart();
-        cgiMakeButtonWithMsg(hgCtDoRefreshSet, "+", "Select all for update");
+        cgiMakeButtonWithOnClick(hgCtDoRefreshSet, "+", "Select all for update", "$('.updateCheckbox').attr('checked', true); return false;");
         cgiTableFieldEnd();
         cgiSimpleTableFieldStart();
-        cgiMakeButtonWithMsg(hgCtDoRefreshClr, "-", "Clear all for update");
+        cgiMakeButtonWithOnClick(hgCtDoRefreshClr, "-", "Clear all for update", "$('.updateCheckbox').attr('checked', false); return false;");
         cgiTableFieldEnd();
         }
     cgiTableRowEnd();
@@ -888,6 +912,7 @@ static void doManageCustom(char *warn)
  * Include warning message, if any */
 {
 cartWebStart(cart, database, "Manage Custom Tracks");
+jsIncludeFile("jquery.js", NULL);
 manageCustomForm(warn);
 webNewSection("Managing Custom Tracks");
 webIncludeHelpFile("customTrackManage", FALSE);
@@ -1033,6 +1058,22 @@ text = skipLeadingSpaces(text);
 return startsWith("track ", text) || startsWith("browser ", text);
 }
 
+int timerCounter;
+#define TIMER_INTERVAL 10
+
+static void timer(int sig)
+{
+// Per HTML 4.01 spec (http://www.w3.org/TR/html401/struct/global.html#h-7.1):
+//
+//      White space (spaces, newlines, tabs, and comments) may appear before or after each section [including the DOCTYPE].
+//
+// So we print out comments periodically to keep this process from being killed by apache or the user's web browser.
+
+printf("<!-- processing (%d seconds) -->\n", timerCounter++ * TIMER_INTERVAL);
+fflush(stdout);
+alarm(TIMER_INTERVAL);
+}
+
 void doMiddle(struct cart *theCart)
 /* create web page */
 {
@@ -1114,6 +1155,16 @@ else if (cartVarExists(cart, hgCtTable))
 else
     {
     /* get new and existing custom tracks from cart and decide what to do */
+
+    // setup a timer to periodically print out something to stdout to make sure apache or the web browser doesn't time us out (see redmine #3002).
+    // e.g. see http://stackoverflow.com/questions/5547166/how-to-avoid-cgi-timeout
+    struct sigaction *act;
+    AllocVar(act);
+    act->sa_handler = timer;
+    act->sa_flags = SA_RESTART;
+    sigaction(SIGALRM, act, NULL);
+    alarm(TIMER_INTERVAL);
+
     char *customText = fixNewData(cart);
     /* save input so we can display if there's an error */
     char *savedCustomText = saveLines(cloneString(customText),

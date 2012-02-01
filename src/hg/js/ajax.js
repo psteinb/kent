@@ -10,10 +10,14 @@ function nullProcessReqChange()
             alert("req.responseText: " + req.responseText);
 }
 
+// The ajaxWaitCount code is currently NOT used, but we are keeping it in case in the future we decide we
+// really need to support sequential AJAX calls (without just using synchronous AJAX calls).
+// 
 // When setting vars with ajax, it may be necessary to wait for response before newer calls
 // Therefore this counter is set up to allow an "outside callback" when the ajax is done
 // The typical scenario is setCartVar by ajax, followed immmediately by a form submit.
 // To avoid the race condition, the form gets submitted after the ajax returns
+
 var ajaxWaitCount = 0;
 function ajaxWaitIsDone()     { return ( ajaxWaitCount <= 0 ); }
 function ajaxWaitCountUp()    { ajaxWaitCount++; }
@@ -64,48 +68,48 @@ function ajaxWaitCountDown()
     //warn(req.readyState + " waiters:"+ajaxWaitCount);
 }
 
-var formToSubmit = null; // multistate: null, {form}, "COMPLETE", "ONCEONLY"
-var formSubmitPhase = 0;
-function formSubmit()
-{ // This will be called as a callback on timeout or ajaxWaitCallback
-
-    if(formToSubmit != null) {
-        //warn("submitting form:"+$(formToSubmit).attr('name') + ": "+ajaxWaitIsDone());
-        var form = formToSubmit;
-        formToSubmit = "GO"; // Flag to wait no longer
-        $(form).submit();
-    }
-    waitMaskClear(); // clear any outstanding waitMask.  overkill if the form has just been submitted
-}
-function formSubmitRegister(form)
-{ // Registers the form submit to be done by ajaxWaitCallback or timeout
-    if(formToSubmit != null) // Repeated submission got through, so ignore it
-        return false;
-    waitMaskSetup(5000);     // Will prevent repeated submissions, I hope.
-    formToSubmit = form;
-    //warn("Registering form to submit:"+$(form).attr('name'));
-    ajaxWaitCallbackRegister(formSubmit);
-    return false; // Don't submit until ajax is done.
-}
-
-function formSubmitWaiter(e)
-{ // Here we will wait for up to 5 seconds before continuing.
-    if(formToSubmit == null)
-        return formSubmitRegister(e.target); // register on first time through
-
-    if(formToSubmit == "GO") {  // Called again as complete
-        //warn("formSubmitWaiter(): GO");
-        formToSubmit = "STOP";  // Do this only once!
-        return true;
-    }
-    return false;
-}
-
-function formSubmitWaitOnAjax(form)
-{ // Most typically, we block a form submit until all ajax has returned
-    $(form).unbind('submit', formSubmitWaiter ); // prevents multiple bind requests
-    $(form).bind(  'submit', formSubmitWaiter );
-}
+// UNUSED but useful ?
+// var formToSubmit = null; // multistate: null, {form}, "COMPLETE", "ONCEONLY"
+// function formSubmit()
+// { // This will be called as a callback on timeout or ajaxWaitCallback
+//
+//     if(formToSubmit != null) {
+//         //warn("submitting form:"+$(formToSubmit).attr('name') + ": "+ajaxWaitIsDone());
+//         var form = formToSubmit;
+//         formToSubmit = "GO"; // Flag to wait no longer
+//         $(form).submit();
+//     }
+//     waitMaskClear(); // clear any outstanding waitMask.  overkill if the form has just been submitted
+// }
+// function formSubmitRegister(form)
+// { // Registers the form submit to be done by ajaxWaitCallback or timeout
+//     if(formToSubmit != null) // Repeated submission got through, so ignore it
+//         return false;
+//     waitMaskSetup(5000);     // Will prevent repeated submissions, I hope.
+//     formToSubmit = form;
+//     //warn("Registering form to submit:"+$(form).attr('name'));
+//     ajaxWaitCallbackRegister(formSubmit);
+//     return false; // Don't submit until ajax is done.
+// }
+//
+// function formSubmitWaiter(e)
+// { // Here we will wait for up to 5 seconds before continuing.
+//     if(formToSubmit == null)
+//         return formSubmitRegister(e.target); // register on first time through
+//
+//     if(formToSubmit == "GO") {  // Called again as complete
+//         //warn("formSubmitWaiter(): GO");
+//         formToSubmit = "STOP";  // Do this only once!
+//         return true;
+//     }
+//     return false;
+// }
+//
+// function formSubmitWaitOnAjax(form)
+// { // Most typically, we block a form submit until all ajax has returned
+//     $(form).unbind('submit', formSubmitWaiter ); // prevents multiple bind requests
+//     $(form).bind(  'submit', formSubmitWaiter );
+// }
 
 function loadXMLDoc(url)
 {
@@ -165,25 +169,30 @@ function setCartVars(names, values)
     }
     loc = loc + "/cartDump";
     var hgsid = getHgsid();
-    loc = loc + "?submit=1&noDisplay=1&hgsid=" + hgsid;
+    var data = "submit=1&noDisplay=1&hgsid=" + hgsid;
     var track = getTrack();
     if(track && track.length > 0)
-        loc = loc + "&g=" + track;
-
-    // Set up dynamic portion of url
-    var ix=0;
-    while( ix < names.length ) { // Sends multiple messages if the URL gets too long
-        var pairs = "";
-        for(  ;ix<names.length && pairs.length < 5000;ix++) {  // FIXME: How big is too big?
-            //pairs = pairs + "&cartDump.varName=" + escape(names[ix]) + "&cartDump.newValue=" + escape(values[ix]);
-            pairs = pairs + "&" + escape(names[ix]) + "=" + escape(values[ix]);
-        }
-        if(pairs.length == 0)
-            return;
-        //warn(pairs);
-        ajaxWaitCountUp();
-        loadXMLDoc(loc + pairs,ajaxWaitCountDown);
+        data = data + "&g=" + track;
+    for(var ix=0; ix<names.length; ix++) {
+        data = data + "&" + encodeURIComponent(names[ix]) + "=" + encodeURIComponent(values[ix]);
     }
+    var type;
+    // We prefer GETs so we can analyze logs, but use POSTs if data is longer than a (conservatively small) 
+    // maximum length to avoid problems on older versions of IE.
+    if((loc.length + data.length) > 2000) {
+        type = "POST";
+    } else {
+        type = "GET";
+    }
+    $.ajax({
+               type: type,
+               url: loc,
+               data: data,
+               trueSuccess: function () {},
+               success: catchErrorOrDispatch,
+               error: errorHandler,
+               cache: false
+           });
 }
 
 function setCartVar(name, value)
@@ -219,10 +228,11 @@ function setAllVars(obj,subtrackName)
     setVarsFromHash(getAllVars(obj,subtrackName));
 }
 
-function setCartVarFromObjId(obj)
-{
-    setCartVar($(obj).attr('id'),$(obj).val());
-}
+// Unused but useful
+// function setCartVarFromObjId(obj)
+// {
+//     setCartVar($(obj).attr('id'),$(obj).val());
+// }
 
 function submitMain()
 {
@@ -241,15 +251,17 @@ function setCartVarAndRefresh(name,val)
 
 function errorHandler(request, textStatus)
 {
-    var str = "encountered ajax error";
-    if(textStatus && textStatus.length) {
-        str += ": '" + textStatus + "'";
+    var str;
+    if(textStatus && textStatus.length && textStatus != "error") {
+        str = "Encountered network error : '" + textStatus + "'.";
+    } else {
+        str = "Encountered a network error."
     }
-    str += "; please retry the action you just performed";
+    str += " Please try again. If the problem persists, please check your network connection.";
     showWarning(str);
     jQuery('body').css('cursor', '');
     if(this.disabledEle) {
-        this.disabledEle.attr('disabled', '');
+        this.disabledEle.removeAttr('disabled');
     }
     if(this.loadingId) {
 	hideLoadingImage(this.loadingId);
@@ -269,6 +281,8 @@ function showWarning(str)
 {
     $("#warningText").text(str);
     $("#warning").show();
+    // reset window to the top so the user sees this message.
+    $(window).scrollTop(0);
 }
 
 // Specific calls...

@@ -11,7 +11,6 @@
 #include "encode/encodeExp.h"
 #include "cv.h"
 
-static char const rcsid[] = "$Id: hgApi.c,v 1.3 2010/05/30 21:11:47 larrym Exp $";
 
 static void fail(char *msg)
 {
@@ -58,7 +57,7 @@ static void encodeExpJson(struct dyString *json, struct encodeExp *el)
 /* Print out encodeExp in JSON format. Manually converted from autoSql which outputs
  * to file pointer.
  */
-// TODO: move to lib/encode/encodeExp.c
+// TODO: move to lib/encode/encodeExp.c, extend autoSql to support, and use json*() functions
 {
 dyStringPrintf(json, "{");
 dyStringPrintf(json, "\"ix\":%u", el->ix);
@@ -354,6 +353,27 @@ else if(!strcmp(cmd, "encodeExperiments"))
     output->string[dyStringLen(output)-1] = ']';
     dyStringPrintf(output, "\n");
     sqlDisconnect(&connExp);
+    }
+else if (!strcmp(cmd, "encodeExpId"))
+    {
+    // Return list of ENCODE expID's found in a database 
+    struct sqlResult *sr;
+    char **row;
+    char query[256];
+    struct sqlConnection *conn = hAllocConn(database);
+    safef(query, sizeof(query), "select distinct(%s) from %s where %s='%s' order by (%s + 0)",
+                        MDB_VAL, MDB_DEFAULT_NAME, MDB_VAR, MDB_VAR_ENCODE_EXP_ID, MDB_VAL);
+    sr = sqlGetResult(conn, query);
+    dyStringPrintf(output, "[\n");
+    while ((row = sqlNextRow(sr)) != NULL)
+        {
+        dyStringPrintf(output, "{\"expId\": \"%s\"},\n", row[0]);
+        }
+    output->string[dyStringLen(output)-2] = '\n';
+    output->string[dyStringLen(output)-1] = ']';
+    dyStringPrintf(output, "\n");
+    sqlFreeResult(&sr);
+    hFreeConn(&conn);
     }
 else if (!strcmp(cmd, "cv"))
     {

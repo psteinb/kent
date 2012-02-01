@@ -21,9 +21,6 @@ subTextStatic(subList, trixPath, buf, len);
 boolean isSearchTracksSupported(char *database, struct cart *cart)
 // Return TRUE if searchTracks is supported for this database and javascript is supported too
 {
-if (!advancedJavascriptFeaturesEnabled(cart))
-    return FALSE;
-
 char trixFile[HDB_MAX_PATH_STRING];
 getSearchTrixFile(database, trixFile, sizeof(trixFile));
 return fileExists(trixFile);
@@ -186,8 +183,13 @@ for(;mdbSelect != NULL; mdbSelect = mdbSelect->next)
     char buf[256];
     char *dropDownHtml = NULL;
 
-    #define PLUS_MINUS_BUTTON "<input type='button' id='%sButton%d' value='%c' style='font-size:.7em;' title='%s' onclick='findTracksMdbSelectPlusMinus(this,%d)'>"
+#ifdef BUTTONS_BY_CSS
+    #define BUTTON_PM  "<span class='pmButton' id='%sButton%d' title='%s' onclick='findTracks.mdbSelectPlusMinus(this,%d)'>%c</span>"
+    #define ADD_PM_BUTTON(type,num,value) dyStringPrintf(output,BUTTON_PM, (type), (num), ((value) == '+' ? "add another row after":"delete"), (num), (value))
+#else///ifndef BUTTONS_BY_CSS
+    #define PLUS_MINUS_BUTTON "<input type='button' id='%sButton%d' value='%c' style='font-size:.7em;' title='%s' onclick='findTracks.mdbSelectPlusMinus(this,%d)'>"
     #define ADD_PM_BUTTON(type,num,value) dyStringPrintf(output,PLUS_MINUS_BUTTON, (type), (num), (value), ((value) == '+' ? "add another row after":"delete"), (num))
+#endif///def BUTTONS_BY_CSS
 
     dyStringAppend(output,"<tr valign='top' class='mdbSelect'><td nowrap>\n");
     row++;
@@ -202,7 +204,7 @@ for(;mdbSelect != NULL; mdbSelect = mdbSelect->next)
     safef(buf, sizeof(buf), "%s%i", METADATA_NAME_PREFIX, row);
 
     // Left side select of vars
-    dropDownHtml = cgiMakeSingleSelectDropList(buf, mdbVars,mdbSelect->name, NULL,"mdbVar","style='font-size:.9em;' onchange='findTracksMdbVarChanged(this);'");
+    dropDownHtml = cgiMakeSingleSelectDropList(buf, mdbVars,mdbSelect->name, NULL,"mdbVar","style='font-size:.9em;' onchange='findTracks.mdbVarChanged(this);'");
     if (dropDownHtml)
         {
         dyStringAppend(output,dropDownHtml);
@@ -220,7 +222,7 @@ for(;mdbSelect != NULL; mdbSelect = mdbSelect->next)
         if (slCount(pairs) > 0)
             {
             char *dropDownHtml = cgiMakeSelectDropList((searchBy == cvSearchByMultiSelect),
-                    buf, pairs,mdbSelect->val, ANYLABEL,"mdbVal","style='min-width:200px; font-size:.9em;' onchange='findTracksMdbValChanged(this);'");
+                    buf, pairs,mdbSelect->val, ANYLABEL,"mdbVal","style='min-width:200px; font-size:.9em;' onchange='findTracks.mdbValChanged(this);'");
             if (dropDownHtml)
                 {
                 dyStringAppend(output,dropDownHtml);
@@ -233,14 +235,14 @@ for(;mdbSelect != NULL; mdbSelect = mdbSelect->next)
         {
         dyStringPrintf(output,"</td><td align='right' id='isLike%i' style='width:10px; white-space:nowrap;'>contains</td>\n<td nowrap id='%s' style='max-width:600px;'>\n",
                        row,buf);
-        dyStringPrintf(output,"<input type='text' name='%s' value='%s' class='mdbVal freeText' style='max-width:310px; width:310px; font-size:.9em;' onchange='findTracksMdbVarChanged(true);'>\n",
+        dyStringPrintf(output,"<input type='text' name='%s' value='%s' class='mdbVal freeText' style='max-width:310px; width:310px; font-size:.9em;' onchange='findTracks.mdbVarChanged(true);'>\n",
                 buf,(mdbSelect->val ? (char *)mdbSelect->val: ""));
         }
     else if (searchBy == cvSearchByWildList)
         {
         dyStringPrintf(output,"</td><td align='right' id='isLike%i' style='width:10px; white-space:nowrap;'>is among</td>\n<td nowrap id='%s' style='max-width:600px;'>\n",
                        row,buf);
-        dyStringPrintf(output,"<input type='text' name='%s' value='%s' class='mdbVal wildList' title='enter comma separated list of values' style='max-width:310px; width:310px; font-size:.9em;' onchange='findTracksMdbVarChanged(true);'>\n",
+        dyStringPrintf(output,"<input type='text' name='%s' value='%s' class='mdbVal wildList' title='enter comma separated list of values' style='max-width:310px; width:310px; font-size:.9em;' onchange='findTracks.mdbVarChanged(true);'>\n",
                 buf,(mdbSelect->val ? (char *)mdbSelect->val: ""));
         }
     //else if (searchBy == cvSearchByDateRange || searchBy == cvSearchByIntegerRange)

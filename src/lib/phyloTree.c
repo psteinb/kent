@@ -3,7 +3,6 @@
 #include "dystring.h"
 #include "phyloTree.h"
 
-static char const rcsid[] = "$Id: phyloTree.c,v 1.11 2009/06/24 03:25:31 galt Exp $";
 
 void freePhyloTree(struct phyloTree **pTree)
 /* Free a dynamically allocated phyloTree. */
