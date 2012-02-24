@@ -202,6 +202,14 @@ if (withHtmlHeader)
     htmlWarnBoxSetup(stdout);// Sets up a warning box which can be filled with errors as they occur
     puts(commonCssStyles());
     }
+/* Bejerano Additions for StatCounter Code */
+char *bejFile = "/cluster/www/inc/browserStatCounter.html";
+char *bejBuf = NULL;
+size_t bejBufSize;
+readInGulp(bejFile, &bejBuf, &bejBufSize);
+writeGulp("stdout", bejBuf, bejBufSize);
+freez(&bejBuf);
+/* End Bejerano Additions */
 puts(
     "<A NAME=\"TOP\"></A>" "\n"
     "" "\n"
