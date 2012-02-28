@@ -168,7 +168,6 @@ struct dyString *requestURL = dyStringCreate("http://%s/%s", cgiServerNamePort()
 struct dyString *greatRequest;
 
 /* Special handling for requests that originate from the Bejerano Lab. */
-struct dyString *requestURL;
 char hostname[256];
 gethostname(hostname, 256);
 if (sameWord(hostname, "dev.Stanford.EDU"))
