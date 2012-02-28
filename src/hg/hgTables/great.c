@@ -172,8 +172,8 @@ char hostname[256];
 gethostname(hostname, 256);
 if (sameWord(hostname, "dev.Stanford.EDU"))
 {
+dyStringFree(&requestURL);
 requestURL = dyStringCreate("http://dev.stanford.edu/greattmp/%s", rindex(path, '/') + 1);
-dyStringFree(&greatRequest);
 greatRequest = dyStringCreate(
     "<meta http-equiv='refresh' content='0;url=http://polg.stanford.edu/lab/cgi-bin/greatStart.php?requestURL=%s&requestSpecies=%s&requestName=%s&requestSender=UCSC%20Table%20Browser'>",
     dyStringContents(requestURL), database, dyStringContents(requestName));
