@@ -3,7 +3,7 @@ include inc/common.mk
 
 all: utils cgi blatSuite
 
-alpha: clean utils-alpha cgi-alpha blatSuite
+alpha: clean utils-alpha cgi-alpha blatSuite tags-all
 
 beta: check-beta clean cgi-beta
 
