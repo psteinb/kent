@@ -12689,7 +12689,6 @@ else if (sameWord(type, "psl"))
     pslMethods(track, tdb, wordCount, words);
     if (startsWith(track->table, "bejsaEnhancer"))
     	track->itemColor = bejEnhancerTrackColor;
-    }
     if (startsWith("pubs", track->track))
         pubsBlatPslMethods(track);
     }
