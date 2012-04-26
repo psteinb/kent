@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 long enteredMainTime = clock1000();
 measureTime(NULL);
 browserName = hBrowserName();
-organization = "UCSC";
+organization = "UCSC (Hiller Lab)";
 
 /* change title if this is for GSID */
 browserName = (hIsGsidServer() ? "Sequence View" : browserName);

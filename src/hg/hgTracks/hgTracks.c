@@ -78,7 +78,7 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
              TRACK_SEARCH,         TRACK_SEARCH_ADD_ROW,     TRACK_SEARCH_DEL_ROW, TRACK_SEARCH_PAGER,
             "hgt.contentType", "hgt.positionInput", "hgt.internal",
             // stanford additions
-            "hgt.out4", "hgt.out5", "hgt.to1", "hgt.to2", "hgt.to3", "hgt.to4", "hgt.to5",
+            "hgt.out4",  "hgt.to1", "hgt.to2", "hgt.to3", "hgt.to4", "hgt.to5", "hgt.to6", "hgt.to7",
                 NULL };
 
     // MERGE_GENE_SUGGEST is used for work on redmine #5933
@@ -120,7 +120,7 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
         };
 
     char *protDbName;               /* Name of proteome database for this genome. */
-#define MAX_CONTROL_COLUMNS 6
+#define MAX_CONTROL_COLUMNS 12
 #define LOW 1
 #define MEDIUM 2
 #define BRIGHT 3
@@ -4963,13 +4963,15 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
     topButton("hgt.out2", ZOOM_3X);
     topButton("hgt.out3", ZOOM_10X);
     topButton("hgt.out4", ZOOM_100X);
-    topButton("hgt.out5", ZOOM_1000X);
     hWrites(" zoom to ");
     topButton("hgt.to1", ZOOM_1K);
     topButton("hgt.to2", ZOOM_10K);
     topButton("hgt.to3", ZOOM_100K);
     topButton("hgt.to4", ZOOM_1M);
-    topButton("hgt.to5", ZOOM_10M);
+    topButton("hgt.to5", ZOOM_3M);
+    topButton("hgt.to6", ZOOM_5M);
+    topButton("hgt.to7", ZOOM_10M);
+
     hWrites("<div style='height:1em;'></div>\n");
 #endif//ndef USE_NAVIGATION_LINKS
 
@@ -5701,8 +5703,6 @@ else if (cgiVarExists("hgt.out3"))
     zoomAroundCenter(10.0);
 else if (cgiVarExists("hgt.out4"))
     zoomAroundCenter(100.0);
-else if (cgiVarExists("hgt.out5"))
-    zoomAroundCenter(1000.0);
 else if (cgiVarExists("hgt.to1"))
     zoomToSize(1000);
 else if (cgiVarExists("hgt.to2"))
@@ -5712,6 +5712,10 @@ else if (cgiVarExists("hgt.to3"))
 else if (cgiVarExists("hgt.to4"))
     zoomToSize(1000000);
 else if (cgiVarExists("hgt.to5"))
+    zoomToSize(3000000);
+else if (cgiVarExists("hgt.to6"))
+    zoomToSize(5000000);
+else if (cgiVarExists("hgt.to7"))
     zoomToSize(10000000);
 else if (cgiVarExists("hgt.dinkLL"))
     dinkWindow(TRUE, -dinkSize("dinkL"));

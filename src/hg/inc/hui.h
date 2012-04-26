@@ -120,7 +120,7 @@ char *hBackgroundImage();
 #define PSL_SEQUENCE_DEFAULT	"no"
 
 /******  Some stuff for tables of controls ******/
-#define CONTROL_TABLE_WIDTH 1200
+#define CONTROL_TABLE_WIDTH 1400
 /* this number is 10 less than hgDefaultPixWidth and DEFAULT_PIX_WIDTH
  *	defined in hCommon.h */
 
@@ -706,6 +706,8 @@ void indelEnabled(struct cart *cart, struct trackDb *tdb, float basesPerPixel,
 #define ZOOM_10K        "10K"
 #define ZOOM_100K       "100K"
 #define ZOOM_1M         "1M"
+#define ZOOM_3M         "3M"
+#define ZOOM_5M         "5M"
 #define ZOOM_10M        "10M"
 
 void zoomRadioButtons(char *var, char *curVal);
