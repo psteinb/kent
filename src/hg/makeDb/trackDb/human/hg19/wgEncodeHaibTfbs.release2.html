@@ -14,7 +14,7 @@ Enriched regions (peaks) of high sequence read density relative to input chromat
 The sequence reads with quality scores 
 (<a href="http://maq.sourceforge.net/fastq.shtml" target="_blank">fastq files</a>) 
 and alignment coordinates 
-(<a href="http://genome.ucsc.edu/FAQ/FAQformat.html#format5.1" TARGET="_BLANK">BAM files</a>) 
+(<a href="/FAQ/FAQformat.html#format5.1" TARGET="_BLANK">BAM files</a>) 
 from these experiments are available for 
 <A HREF="/cgi-bin/hgFileUi?g=wgEncodeHaibTfbs">download</A>.
 </p>
@@ -82,9 +82,9 @@ To identify likely transcription factor occupancy sites,
 peak calling was applied to the aligned sequence data sets using Model-based Analysis of ChIP-seq 
 <A HREF="http://liulab.dfci.harvard.edu/MACS/00README.html" TARGET=_BLANK>MACS</A>
 (Zhang Y,<em> et al.</em>, 2008). 
-MACS models the shift size of ChIP-seq tags empirically, 
-and uses it to improve the spatial resolution of predicted binding sites.  
-MACS also uses a dynamic Poisson distribution to capture local biases in the genome,
+The MACS method models the shift size of ChIP-seq tags empirically, 
+and uses the shift to improve the spatial resolution of predicted binding sites.  
+The MACS method also uses a dynamic Poisson distribution to capture local biases in the genome,
 allowing for  more robust predictions 
 (Zhang Y,<em> et al.</em>, 2008).
 </p>
@@ -170,7 +170,7 @@ The RNA-seq data were submitted to GEO
 <li>The entire HepG2/HEY1 (Accession: wgEncodeEH001502) and K562/HEY1 (Accession: wgEncodeEH001481) datasets have been revoked due to problems with the quality of the antibody.</li>
 <li>All experiments with the U87 cell line were remapped. Previously, the sex of the cell was unknown and was mapped to the male genome. It was discovered that the cell line is female. </li> 
 <li>Other files from the previous release also contained errors. They have been corrected with a version number appended to the name e.g. V2. </li>
-<li>shRNA validation data have been included this release. The Verification section above provides a more in-depth explanation of the method. </li>
+<li>shRNA validation data have been included in this release. The Verification section above provides a more in-depth explanation of the method. </li>
 </ul>
 </p>
 
@@ -189,28 +189,25 @@ Contact:
 <!-- above address is fpauli at hudsonalpha.org (encodeEmail.pl) -->
 </P>
 
-<h2> References </h2>
+<h2>References</h2>
 
 <p>
 Fields S.
-<a href="http://www.ncbi.nlm.nih.gov/pubmed/17556576"
- rel="nofollow" target="_blank">
+<a href="http://www.ncbi.nlm.nih.gov/pubmed/17556576" target="_blank">
 Molecular biology. Site-seeing by sequencing</a>.
 <em>Science</em>. 2007 Jun 8;316(5830):1441-2.
 </p>
 
 <p>
 Johnson DS, Mortazavi A, Myers RM, Wold B.
-<a href="http://www.ncbi.nlm.nih.gov/pubmed/17540862"
- rel="nofollow" target="_blank">
+<a href="http://www.ncbi.nlm.nih.gov/pubmed/17540862" target="_blank">
 Genome-wide mapping of in vivo protein-DNA interactions</a>.
 <em>Science</em>. 2007 Jun 8;316(5830):1497-502.
 </p>
 
 <p>
 Langmead B, Trapnell C, Pop M, Salzberg SL.
-<a href="http://www.ncbi.nlm.nih.gov/pubmed/19261174"
- rel="nofollow" target="_blank">
+<a href="http://www.ncbi.nlm.nih.gov/pubmed/19261174" target="_blank">
 Ultrafast and memory-efficient alignment of short DNA sequences to the human genome</a>.
 <em>Genome Biol</em>. 2009;10(3):R25.
 </p>
@@ -219,18 +216,17 @@ Ultrafast and memory-efficient alignment of short DNA sequences to the human gen
 Li Q, Brown JB, Huang H, Bickel PJ.
 <a href="http://projecteuclid.org/euclid.aoas/1318514284" target="_blank">
 Measuring Reproducibility of High-throughput experiments</a>.
-<em> Ann. Appl. Stat.</em> Volume 5, Number 3 (2011), 1752-1779.
+<em>Ann. Appl. Stat.</em> Volume 5, Number 3 (2011), 1752-1779.
 </p>
 
 <p>
-Zhang Y, Liu T, Meyer CA, Eeckhoute J, Johnson DS, Bernstein BE, Nusbaum C, Myers RM <em>et al</em>.
-<a href="http://www.ncbi.nlm.nih.gov/pubmed/18798982"
- rel="nofollow" target="_blank">
-Model-based analysis of ChIP-seq (MACS)</a>.
+Zhang Y, Liu T, Meyer CA, Eeckhoute J, Johnson DS, Bernstein BE, Nusbaum C, Myers RM, Brown M, Li W <em>et al</em>.
+<a href="http://www.ncbi.nlm.nih.gov/pubmed/18798982" target="_blank">
+Model-based analysis of ChIP-Seq (MACS)</a>.
 <em>Genome Biol</em>. 2008;9(9):R137.
 </p>
 
-<H2> Data Release Policy </H2>
+<H2>Data Release Policy</H2>
 
 <P>
 Data users may freely use ENCODE data, 

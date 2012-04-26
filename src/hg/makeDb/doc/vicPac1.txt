@@ -2,6 +2,10 @@
 
 # Vicugna pacos
 
+#	http://www.ncbi.nlm.nih.gov/bioproject/30567
+#	http://www.ncbi.nlm.nih.gov/genome/905
+#	http://www.ncbi.nlm.nih.gov/Traces/wgs/?val=ABRR01
+
 #########################################################################
 # DOWNLOAD SEQUENCE  (DONE braney 2008-10-07)
     ssh kolossus
@@ -231,3 +235,39 @@ skipInvalid yes
  *** Steps were performed in /hive/data/genomes/vicPac1/bed/ensGene.51
 
 ############################################################################
+# SWAP mm10 lastz (DONE - 2012-03-19 - Hiram)
+    # original alignment to mm10:
+    cat /hive/data/genomes/mm10/bed/lastzVicPac1.2012-03-16/fb.mm10.chainVicPac1Link.txt 
+    #	600477253 bases of 2652783500 (22.636%) in intersection
+
+    # and this swap
+    mkdir /hive/data/genomes/vicPac1/bed/blastz.mm10.swap
+    cd /hive/data/genomes/vicPac1/bed/blastz.mm10.swap
+    time nice -n +19 doBlastzChainNet.pl -verbose=2 \
+	/hive/data/genomes/mm10/bed/lastzVicPac1.2012-03-16/DEF \
+	-swap -syntenicNet \
+	-workhorse=hgwdev -smallClusterHub=encodek -bigClusterHub=swarm \
+	-chainMinScore=3000 -chainLinearGap=medium > swap.log 2>&1 &
+    #	real    159m21.952s
+    cat fb.vicPac1.chainMm10Link.txt 
+    #	610885692 bases of 1922910435 (31.769%) in intersection
+    # set sym link to indicate this is the lastz for this genome:
+    cd /hive/data/genomes/vicPac1/bed
+    ln -s blastz.mm10.swap lastz.mm10
+
+##############################################################################
+# cpgIslands - (DONE - 2011-04-23 - Hiram)
+    mkdir /hive/data/genomes/vicPac1/bed/cpgIslands
+    cd /hive/data/genomes/vicPac1/bed/cpgIslands
+    time doCpgIslands.pl vicPac1 > do.log 2>&1
+    #   real    897m19.342s
+    # fixing broken command in the script:
+    time ./doLoadCpg.csh
+    #   real    2m37.853s
+    time doCpgIslands.pl -continue=cleanup vicPac1 > cleanup.log 2>&1
+    #   real    119m41.201s
+
+    cat fb.vicPac1.cpgIslandExt.txt
+    #   9241028 bases of 1922910435 (0.481%) in intersection
+
+#########################################################################

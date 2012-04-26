@@ -14,24 +14,49 @@ use strict;
 
 use Carp;
 use DBI;
-
+use File::Basename;
 use vars qw(@ISA @EXPORT_OK);
 use Exporter;
+use Cwd;
 
 @ISA = qw(Exporter);
 
+sub processConfFile
+{
+    my ($ref, $include, $profile) = @_;
+    my $fh;
+    # we chdir to handle non-absolute references in includes
+    my $currentDir = getcwd();
+    my ($filename) = fileparse($include);
+    my $newDir = dirname($include);
+    chdir($newDir) || die "Couldn't chdir into '$newDir'; err: $!";
+    open($fh, $filename) or die "Can't open $newDir/$filename; err: $!\n";
+    while(<$fh>) {
+        my $line = $_;
+        chomp $line;
+        next if($line =~ /^#/ || $line =~ /^$/);
+        if ($line =~ m/^include\s+(.+)$/) {
+            processConfFile($ref, $1, $profile);
+        } else {
+            for my $name (qw(host user password db)) {
+                if ($line =~ m/^$profile\.$name\s*=\s*(.+)/) {
+                    $ref->{uc($name)} = $1;
+                }
+            }
+        }
+    }
+    close($fh);
+    chdir($currentDir);
+}
+
 sub new
 {
-# $args{DB} is required
+# $args{DB} is required (unless supplied via a profile).
 # $args{PROFILE}: let's you select db profile (optional: defaults to "db").
 # $args{USER}, $args{PASSWORD} and $args{HOST} are optional (and override .hg.conf values).
     my ($class, %args) = (@_);
     my $ref = {};
-    if(!defined($args{DB})) {
-        die "Missing \$args{DB}";
-    }
-    my $dsn = "DBI:mysql:$args{DB}";
-    
+
     my $confFile = "";
     if ($ENV{HGDB_CONF}) {
         $confFile = "$ENV{HGDB_CONF}"
@@ -42,24 +67,15 @@ sub new
         die "Cannot locate conf file: '$confFile'";
     }
     my $profile = $args{PROFILE} || "db";
-    open(CONF, $confFile);
-    for (<CONF>) {
-        next if /^#/;
-        if(/^include/) {
-            # XXXX TODO: support "include ../cgi-bin/hg.conf"
-            die "include ... syntax not currently supported";
-        }
-        for my $name (qw(host user password)) {
-            if(/^$profile\.$name\s*=\s*(.+)/) {
-                $ref->{uc($name)} = $1;
-            }
-        }
-    }
-    close(CONF);
+    processConfFile($ref, $confFile, $profile);
     for (keys %args) {
         # %args override values in conf file.
         $ref->{$_} = $args{$_};
     }
+    if(!defined($ref->{DB})) {
+        die "Missing \$args{DB}";
+    }
+    my $dsn = "DBI:mysql:$ref->{DB}";
     if($ref->{HOST}) {
         $dsn .= ";host=$ref->{HOST}";
     }

@@ -785,6 +785,9 @@ boolean endsWith(char *string, char *end);
 char lastChar(char *s);
 /* Return last character in string. */
 
+void trimLastChar(char *s);
+/* Erase last character in string. */
+
 char *lastNonwhitespaceChar(char *s);
 // Return pointer to last character in string that is not whitespace.
 
@@ -920,7 +923,7 @@ char *skipBeyondDelimit(char *s,char delimit);
    If delimit is ' ' then skips beyond first patch of whitespace. */
 
 char *skipLeadingSpaces(char *s);
-/* Return first non-white space */
+/* Return first white space or NULL if none.. */
 
 char *skipToSpaces(char *s);
 /* Return first white space. */

@@ -40,7 +40,6 @@
 #include "regexHelper.h"
 #include "chromInfo.h"
 
-
 static boolean doExtraChecking = FALSE;
 
 /*** Utility routines used by many factories. ***/
@@ -297,7 +296,21 @@ if (dbRequested)
 return track;
 }
 
-static struct bed *customTrackBed(char *db, char *row[13], int wordCount,
+static struct bed *customTrackBed(char *row[64], int wordCount, int chromSize, struct lineFile *lf)
+/* Convert a row of strings to a bed.
+ * Intended to replace old customTrackBed,
+ * currently new code is activated by hg.conf switch */
+{
+struct bed * bed;
+AllocVar(bed);
+loadAndValidateBed(row, wordCount, wordCount, lf, bed, NULL, TRUE);
+if (bed->chromEnd > chromSize)
+    lineFileAbort(lf, "chromEnd larger than chrom %s size (%d > %d)",
+    	bed->chrom, bed->chromEnd, chromSize);
+return bed;
+}
+
+static struct bed *customTrackBedOld(char *db, char *row[13], int wordCount,
 	struct hash *chromHash, struct lineFile *lf)
 /* Convert a row of strings to a bed. */
 {
@@ -447,13 +460,38 @@ static struct customTrack *bedLoader(struct customFactory *fac,
 {
 char *line;
 char *db = ctGenomeOrCurrent(track);
+char *lastChrom = NULL;
+int chromSize = -1;
+boolean newCustomTrackValidate = sameOk(cfgOption("newCustomTrackValidate"), "on");
 while ((line = customFactoryNextRealTilTrack(cpp)) != NULL)
     {
     char *row[bedKnownFields];
     int wordCount = chopLine(line, row);
     struct lineFile *lf = cpp->fileStack;
     lineFileExpectAtLeast(lf, track->fieldCount, wordCount);
-    struct bed *bed = customTrackBed(db, row, wordCount, chromHash, lf);
+
+    /* since rows are often sorted, we can reduce repetitive checking */
+    if (differentStringNullOk(row[0], lastChrom))
+	{
+	customFactoryCheckChromNameDb(db, row[0], lf);
+	chromSize = hChromSize(db, row[0]);
+	freez(&lastChrom);
+	lastChrom = cloneString(row[0]);
+	}
+
+    struct bed *bed = NULL;
+
+    /* Intended to replace old customTrackBed */
+    if (newCustomTrackValidate)
+	{
+	bed = customTrackBed(row, wordCount, chromSize, lf);
+	bed->chrom = hashStoreName(chromHash, row[0]);
+	}
+    else
+	{
+	bed = customTrackBedOld(db, row, wordCount, chromHash, lf);
+	}
+
     slAddHead(&track->bedList, bed);
     }
 slReverse(&track->bedList);
@@ -1898,22 +1936,6 @@ static struct customFactory wigFactory =
     wigLoader,
     };
 
-static void checkBigChromList(struct customTrack *track)
-{
-// check for inconsistency between chromList in the big* file and the target assembly (see redmine #2572).
-
-struct bbiChromInfo *chrom, *chromList = bbiChromList(track->bbiFile);
-char *db = ctGenomeOrCurrent(track);
-for (chrom=chromList; chrom != NULL; chrom = chrom->next)
-    {
-    int chromSize = hChromSize(db, chrom->name);
-    if (chrom->size != chromSize)
-        errAbort("%s data does not match assembly (%s) - chromSize for %s in %s (%d) does not match assembly chromSize (%d)",
-                 track->tdb->type, db, chrom->name, track->tdb->type, chrom->size, chromSize);
-    }
-bbiChromInfoFreeList(&chromList);
-}
-
 /*** Big Wig Factory - for big client-side wiggle tracks ***/
 
 static boolean bigWigRecognizer(struct customFactory *fac,
@@ -1971,7 +1993,6 @@ struct errCatch *errCatch = errCatchNew();
 if (errCatchStart(errCatch))
     {
     track->bbiFile = bigWigFileOpen(bigDataUrl);
-    checkBigChromList(track);
     setBbiViewLimits(track);
     }
 errCatchEnd(errCatch);
@@ -2020,7 +2041,6 @@ struct errCatch *errCatch = errCatchNew();
 if (errCatchStart(errCatch))
     {
     track->bbiFile = bigBedFileOpen(bigDataUrl);
-    checkBigChromList(track);
     }
 errCatchEnd(errCatch);
 if (errCatch->gotError)
@@ -2071,50 +2091,7 @@ if (doExtraChecking)
     struct errCatch *errCatch = errCatchNew();
     if (errCatchStart(errCatch))
 	{
-	if (bamFileExists(bigDataUrl))
-            {
-            // Make sure bams have matching chromosomes (redmine #2572).
-            samfile_t *fh = bamOpen(bigDataUrl, NULL);
-            if(fh == NULL)
-                errAbort("Cannot open bam file");
-            struct bamChromInfo *chrom, *chromList = bamChromList(fh);
-            if(chromList == NULL)
-                errAbort("Can't loader header from bam file");
-            char *db = ctGenomeOrCurrent(track);
-            int count = 0;
-            for (chrom=chromList; chrom != NULL; chrom = chrom->next)
-                {
-                struct chromInfo *ci = hGetChromInfo(db, chrom->name);
-                if(ci == NULL)
-                    {
-                    // Deal with (some) non-UCSC chromosome naming conventions
-                    if(sameString(chrom->name, "MT"))
-                        ci = hGetChromInfo(db, "chrM");
-                    else
-                        {
-                        // Allow 1 == chr1, X == chrX, IV == chrIV etc.
-                        char buf[512];
-                        safef(buf, sizeof(buf), "chr%s", chrom->name);
-                        ci = hGetChromInfo(db, buf);
-                        }
-                    }
-                if(ci)
-                    {
-                    if (ci->size == chrom->size)
-                        count++;
-                    else
-                        errAbort("%s data does not match assembly (%s) - chromSize for chrom '%s' in %s (%d) does not match assembly chromSize (%d)",
-                                 track->tdb->type, db, chrom->name, track->tdb->type, chrom->size, ci->size);
-                    }
-                }
-            bamChromInfoFreeList(&chromList);
-            if(!count)
-                // We tolerate non-matching chromosomes in bams (e.g. I've seen contigs used for reads that we would put on random),
-                // but we require at least one matching chrom.
-                errAbort("No matching chromosomes found in bam file");
-            bamClose(&fh);
-            }
-        else
+        if (!bamFileExists(bigDataUrl))
 	    {
             dyStringPrintf(dyErr,
 		       "Can't access %s's bigDataUrl %s and/or the associated index file %s.bai",

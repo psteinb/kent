@@ -7,9 +7,10 @@
 # http://www.ncbi.nlm.nih.gov/Traces/wgs/?val=AADN00
 #	12X coverage via a variety of methods
 
-#	I can't tell the difference here:
-#	http://www.ncbi.nlm.nih.gov/bioproject/10808
-#	http://www.ncbi.nlm.nih.gov/bioproject/13342
+#	http://www.ncbi.nlm.nih.gov/genome/111
+#	http://www.ncbi.nlm.nih.gov/bioproject/13342 - WashU
+#	http://www.ncbi.nlm.nih.gov/Traces/wgs/?val=AADN00
+#	http://www.ncbi.nlm.nih.gov/bioproject/10808 - Montreal - chrMt
 
 #############################################################################
 # Fetch sequence from genbank (DONE - 2011-12-22 - Hiram)
@@ -466,3 +467,13 @@ close (FH);
     # rmsk covers another 40 million bases 251092658-210793620 = 40299038
 
 ########################################################################
+# cpgIslands - (DONE - 2011-04-23 - Hiram)
+    mkdir /hive/data/genomes/galGal4/bed/cpgIslands
+    cd /hive/data/genomes/galGal4/bed/cpgIslands
+    time doCpgIslands.pl galGal4 > do.log 2>&1
+    #   Elapsed time: 58m41s
+
+    cat fb.galGal4.cpgIslandExt.txt
+    #   14619450 bases of 1032854810 (1.415%) in intersection
+
+#########################################################################

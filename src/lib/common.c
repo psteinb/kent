@@ -1441,6 +1441,14 @@ if (s == NULL || s[0] == 0)
 return s[strlen(s)-1];
 }
 
+void trimLastChar(char *s)
+/* Erase last character in string. */
+{
+int len = strlen(s);
+if (len > 0)
+   s[len-1] = 0;
+}
+
 char *lastNonwhitespaceChar(char *s)
 // Return pointer to last character in string that is not whitespace.
 {
@@ -2030,8 +2038,8 @@ for (;;)
     }
 }
 
-/* Return first white space or NULL if none.. */
 char *skipToSpaces(char *s)
+/* Return first white space or NULL if none.. */
 {
 char c;
 if (s == NULL)
@@ -3299,7 +3307,6 @@ char *splitOffNumber(char *db)
 {
 return cloneString(skipToNumeric(db));
 }
-
 
 time_t mktimeFromUtc (struct tm *t)
 /* Return time_t for tm in UTC (GMT)

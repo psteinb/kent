@@ -2529,8 +2529,9 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
     /* Finish map. */
     hPrintf("</MAP>\n");
 
-    jsonHashAddBoolean(jsonForClient, "inPlaceUpdate", IN_PLACE_UPDATE);
 
+	// turn off inPlaceUpdate when rows in imgTbl can arbitrarily reappear and disappear (see redmine #7306 and #6944)
+	jsonHashAddBoolean(jsonForClient, "inPlaceUpdate", withLeftLabels && withCenterLabels);
         jsonHashAddNumber(jsonForClient, "rulerClickHeight", rulerClickHeight);
     if(newWinWidth)
         {
@@ -3468,7 +3469,7 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
     boolean restrictionEnzymesOk()
     /* Check to see if it's OK to do restriction enzymes. */
     {
-    return (hTableExists("hgFixed", "cutters") &&
+    return (sqlDatabaseExists("hgFixed") && hTableExists("hgFixed", "cutters") &&
         hTableExists("hgFixed", "rebaseRefs") &&
         hTableExists("hgFixed", "rebaseCompanies"));
     }
@@ -4182,7 +4183,8 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
     loadFromTrackDb(&trackList);
     if (pcrResultParseCart(database, cart, NULL, NULL, NULL))
         slSafeAddHead(&trackList, pcrResultTg());
-    if (userSeqString != NULL) slSafeAddHead(&trackList, userPslTg());
+    if (userSeqString != NULL) 
+        slSafeAddHead(&trackList, userPslTg());
     slSafeAddHead(&trackList, oligoMatchTg());
     if (restrictionEnzymesOk())
         {
@@ -5304,6 +5306,8 @@ if (!hideControls)
 		    }
 	        if (startsWith("Bej ", track->shortLabel))
                     hPrintf(" <font color=red>Bej </font>%s", track->shortLabel + 4);
+	        else if (startsWith("HL ", track->shortLabel))
+                    hPrintf(" <font color=red>HL </font>%s", track->shortLabel + 3);
                 else
                     hPrintf(" %s", track->shortLabel);
 		if (tdbIsSuper(track->tdb))

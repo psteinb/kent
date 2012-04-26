@@ -26,6 +26,7 @@
 #include <utime.h>
 #include <htmlPage.h>
 #include <signal.h>
+#include "geoMirror.h"
 /* phoneHome business */
 
 
@@ -396,24 +397,20 @@ else if (dbIsFound)
 
 #endif
 
-#ifdef SUPPORT_EURONODE
-
-if (endsWith(scriptName, "hgGateway"))  // DEBUG
+if (endsWith(scriptName, "hgGateway") && geoMirrorEnabled())
     {
+    // Show an opt-out alert if user is on a host to which user has been automatically redirected (just once, right after they have been redirected)
     char *source = cgiOptionalString("source");
-    if (source)
+    char *redirect = cgiOptionalString("redirect");
+    if (source != NULL && redirect != NULL && sameString(redirect, "auto"))
 	{
 	char *domain = cgiServerName();
 	char *port = cgiServerPort();
-	char *uri = cgiRequestUri();
-	    //   /cgi-bin/test.cgi?x=15&y=youdog
-	int newUriSize = strlen(uri)+1024;
+        // We don't bother maintaining stuff in request URI, because it may contain items like hgsid and other host specific values
+        int newUriSize = 2048;
 	char *newUri = needMem(newUriSize);
 	// TODO what about https?
-	safef(newUri, newUriSize, "http://%s:%s%s", source, port, uri);
-	char *zTerm = rStringIn("&source=", newUri);
-	if (zTerm)
-	    *zTerm = 0;
+	safef(newUri, newUriSize, "http://%s:%s/cgi-bin/hgGateway?redirect=manual&source=%s", source, port, domain);
 
 	//empty TD disappears
 	/*
@@ -444,14 +441,13 @@ if (endsWith(scriptName, "hgGateway"))  // DEBUG
 	}
     }
 
-#endif
-
 if(!skipSectionHeader)
 /* this HTML must be in calling code if skipSectionHeader is TRUE */
     {
     puts(        // TODO: Replace nested tables with CSS (difficulty is that tables are closed elsewhere)
          "<!-- +++++++++++++++++++++ CONTENT TABLES +++++++++++++++++++ -->" "\n"
          "<TR><TD COLSPAN=3>\n"
+	 "<div id=firstSection>"
          "      <!--outer table is for border purposes-->\n"
          "      <TABLE WIDTH='100%' BGCOLOR='#" HG_COL_BORDER "' BORDER='0' CELLSPACING='0' CELLPADDING='1'><TR><TD>\n"
          "    <TABLE BGCOLOR='#" HG_COL_INSIDE "' WIDTH='100%'  BORDER='0' CELLSPACING='0' CELLPADDING='0'><TR><TD>\n"
@@ -552,6 +548,7 @@ puts(
     "	</TD></TR></TABLE>" "\n"
     "	</TD></TR></TABLE>" "\n"
     "	" );
+puts("</div>");
 }
 
 void webNewSection(char* format, ...)
@@ -561,6 +558,7 @@ va_list args;
 va_start(args, format);
 
 webEndSection();
+puts("<div>");
 puts("<!-- +++++++++++++++++++++ START NEW SECTION +++++++++++++++++++ -->");
 puts(  // TODO: Replace nested tables with CSS (difficulty is that tables are closed elsewhere)
     "<BR>\n\n"
@@ -1382,8 +1380,10 @@ dyStringFree(&fullDirName);
 char *linkFull = dyStringCannibalize(&linkWithTimestamp);
 char *link = linkFull;
 if (docRoot != NULL)
+    {
     link = cloneString(linkFull + strlen(docRoot) + 1);
-freeMem(linkFull);
+    freeMem(linkFull);
+    }
 
 if (wrapInHtml) // wrapped for christmas
     {

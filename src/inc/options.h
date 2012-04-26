@@ -4,6 +4,7 @@
  * granted for all use - public, private or commercial. */
 
 #ifndef OPTIONS_H
+#define OPTIONS_H
 
 /* Types for options */
 #define OPTION_BOOLEAN    0x01
@@ -13,6 +14,9 @@
 #define OPTION_LONG_LONG  0x20
 #define OPTION_MULTI      0x40
 #define OPTION_DOUBLE	  0x80
+
+/* Mask for option types (excluding OPTION_MULTI) */
+#define OPTION_TYPE_MASK (OPTION_BOOLEAN|OPTION_STRING|OPTION_INT|OPTION_FLOAT|OPTION_LONG_LONG|OPTION_DOUBLE)
 
 struct optionSpec
 /* Specification of a single option.  An array of these are passed

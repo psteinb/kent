@@ -1,4 +1,4 @@
-# Data Agreement File  $Revision: 1.10$
+# Data Agreement File  $Revision: 2.0$
 
 # This file specifies the data agreement between your lab and
 # the DCC.  It should not be changed unilaterally.
@@ -29,7 +29,7 @@ lab               CSHL
 dataType          RnaSeq
 compositeSuffix   CshlShortRnaSeq
 group             expression
-variables         cell, localization, rnaExtract, protocol
+variables         cell, localization, protocol
 assembly          hg19
 noAutoCreate      yes
 
@@ -39,13 +39,12 @@ validationSettings validateFiles.bam:mismatches=10,nMatch
 
 #Pooled replicates
 view             Contigs
-longLabelPrefix  CSHL RNA-seq Contigs   
 type             bedRnaElements
 sql		 bedRnaElements
 hasReplicates    no
 required         no
 
-view             ExonsGencV7
+view             ExonsGencV10
 type             gtf
 hasReplicates    no
 required         no

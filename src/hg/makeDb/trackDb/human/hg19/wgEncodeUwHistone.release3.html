@@ -1,6 +1,6 @@
 <H2>Description</H2>
 
-<P>This track is produced as part of the ENCODE Project.
+<P>This track was produced as part of the ENCODE Project.
 This track displays genome-wide maps of histone modifications in different
 <A TARGET=_BLANK HREF="/cgi-bin/hgEncodeVocab?type=cellType">cell lines</A>,
 using ChIP-seq high-throughput sequencing.
@@ -39,20 +39,23 @@ with gentle rotation. Antibody-chromatin complexes were washed and eluted.
 The cross-linking in the immunoprecipitated DNA was reversed and treated with
 RNase-A.  Following proteinase K treatment, the DNA fragments were purified
 by phenol-chloroform-isoamyl alcohol extraction and ethanol precipitation.
-20-50 ng of ChIP DNA was end-repaired, followed by the addition of adenine,
-ligated to Illumina adapters and made into a Solexa library for sequencing.
+A quantity of 20-50 ng of ChIP DNA was end-repaired, followed by the addition of adenine,
+ligation to Illumina adapters, and creation of a Solexa library for sequencing.
 <P>
-ChIP-seq affinity is directly reflected in
+ChIP-seq affinity was directly measured through the
 raw tag density (<I>Raw Signal</I>), which is shown in the track as density of tags
 mapping within a 150 bp sliding window (at a 20 bp step across the genome).
 ChIP-seq affinity zones (<I>HotSpots</I>) were identified using the
 HotSpot algorithm described in Sabo <EM>et al.</EM> (2004).
-One percent false discovery rate thresholds (FDR 0.01) were computed for each cell type by
+One percent false discovery rate thresholds (FDR 1.0%) were computed for each cell type by
 applying the HotSpot algorithm to an equivalent number of random
-uniquely mapping 36mers. ChIP-Seq affinity  (<I>Peaks</I>)
+uniquely mapping 36-mers. ChIP-Seq affinities  (<I>Peaks</I>)
 were identified as signal peaks within FDR 1.0% hypersensitive
 zones using a peak-finding algorithm.
 </P>
+<p>
+All tracks have a False Discovery Rate of 1% (FDR 1.0%).
+</p>
 
 <H2>Verification</H2>
 
@@ -63,9 +66,8 @@ coefficient &gt;0.9.
 
 <h2>Release Notes</h2>
 <p>
-Release 2 (November 2011) of this track contains 18 new experiments.
+Release 3 (February 2012) of this track adds experiments for the H7-hESC cell type and another replicate for the GM12865 experiment.
 </p>
-
 
 <H2>Credits</H2>
 
@@ -76,17 +78,16 @@ Release 2 (November 2011) of this track contains 18 new experiments.
 
 <H2>References</H2>
 
-<P>Sabo PJ, Hawrylycz M, Wallace JC, Humbert R, Yu M, Shafer A, Kawamoto J,
-Hall R, Mack J, Dorschner MO, <span style="font-style: italic;">et al</span>.
-<A TARGET=_BLANK HREF="http://www.pnas.org/content/101/48/16837">Discovery of functional noncoding elements by digital analysis of chromatin structure</A>.
-<EM>PNAS</EM>. 2004;101:16837-16842.</P>
+<p>
+Sabo PJ, Hawrylycz M, Wallace JC, Humbert R, Yu M, Shafer A, Kawamoto J, Hall R, Mack J, Dorschner MO <em>et al</em>.
+<a href="http://www.ncbi.nlm.nih.gov/pubmed/15550541" target="_blank">
+Discovery of functional noncoding elements by digital analysis of chromatin structure</a>.
+<em>Proc Natl Acad Sci U S A</em>. 2004 Nov 30;101(48):16837-42.
+</p>
 
-<H2> Data Release Policy </H2>
+<H2>Data Release Policy</H2>
 
-<P>Data users may freely use ENCODE data, but may not, without prior
-consent, submit publications that use an unpublished ENCODE dataset until
-nine months following the release of the dataset.  This date is listed in
-the <EM>Restricted Until</EM> column, above.  The full data release policy
-for ENCODE is available
-<A TARGET=_BLANK HREF="../ENCODE/terms.html" TARGET=_BLANK>here</A>.</P>
-
+<p>
+Data users may freely use ENCODE data, but may not, without prior consent, submit publications that use an unpublished ENCODE dataset until nine months following the release of the dataset. This date is listed in the Restricted Until column on the track configuration page and the download page. The full data release policy for ENCODE is available
+<A TARGET=_BLANK HREF="../ENCODE/terms.html" TARGET=_BLANK>here</A>.
+</p>

@@ -226,6 +226,7 @@ if ((row = sqlNextRow(sr)) != NULL)
 	do1Colx(row, iCol, "genbank_protein", "Genebank Protein", GBNK_PROT_URL); 
 	
 	iCol++;
+	stripString(row[iCol],"Rn.");
 	do1Colx(row, iCol, "unigene_id", "UniGene", UNIGENE_URL); 
 	
 	iCol++;
@@ -326,6 +327,6 @@ struct section *rgdGeneRawSection(struct sqlConnection *conn,
 	struct hash *sectionRa)
 /* Create RgdGene roles section. */
 {
-return rgdGeneInfoSection(conn, sectionRa, "rgdGeneRaw", "genes_rat");
+return rgdGeneInfoSection(conn, sectionRa, "rgdGeneRaw", "rgdGene2Raw");
 }
 
