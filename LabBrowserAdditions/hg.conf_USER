@@ -3,6 +3,7 @@ include ../cgi-bin/hg.conf
 db.trackDb=trackDb_hiller,trackDb_hillerlab,trackDb
 db.grp=grp_hiller,grp_hillerlab,grp
 browser.documentRoot=/var/www/html-hiller
+central.domain=genome-hiller.pks.mpg.de
 
 #JKSQL_TRACE=on
 #JKSQL_PROF=on

@@ -149,7 +149,7 @@ central.host=localhost
 #
 central.user=readwrite
 central.password=update
-central.domain=mylab.university.edu
+central.domain=genome.pks.mpg.de
 # use this cookie setting to keep your installation hguid cookie setting
 #	distinct from UCSC hguid cookie.  If you have *multiple* central
 #	databases for multiple hosts, set a distinct cookie name per
