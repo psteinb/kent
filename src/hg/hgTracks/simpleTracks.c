@@ -746,8 +746,8 @@ if (x < xEnd)
             }
         else
             {
-            safef(link,sizeof(link),"%s&o=%d&t=%d&g=%s&i=%s",
-                hgcNameAndSettings(), start, end, encodedTrack, encodedItem); // NOTE: chopped out winStart/winEnd
+            safef(link,sizeof(link),"%s&c=%s&o=%d&t=%d&g=%s&i=%s",
+                hgcNameAndSettings(), chromName, start, end, encodedTrack, encodedItem); // NOTE: chopped out winStart/winEnd
             }
         if (extra != NULL)
             safef(link+strlen(link),sizeof(link)-strlen(link),"&%s", extra);
@@ -772,8 +772,8 @@ if (x < xEnd)
             }
         else
             {
-            hPrintf("HREF=\"%s&o=%d&t=%d&g=%s&i=%s&c=%s&l=%d&r=%d&db=%s&pix=%d",
-                hgcNameAndSettings(), start, end, encodedTrack, encodedItem,
+            hPrintf("HREF=\"%s&c=%s&o=%d&t=%d&g=%s&i=%s&c=%s&l=%d&r=%d&db=%s&pix=%d",
+                hgcNameAndSettings(), chromName, start, end, encodedTrack, encodedItem,
                 chromName, winStart, winEnd,
                 database, tl.picWidth);
             }
@@ -2638,6 +2638,18 @@ if ((tallStart == 0 && tallEnd == 0) && !sameWord(tg->table, "jaxQTL3"))
 x1 = round((double)((int)lf->start-winStart)*scale) + xOff;
 x2 = round((double)((int)lf->end-winStart)*scale) + xOff;
 w = x2-x1;
+
+// are we highlighting this feature with background highlighting
+if (lf->highlightColor && (lf->highlightMode == highlightBackground))
+    {
+    // draw the background
+    hvGfxBox(hvg, x1, y, w, heightPer, lf->highlightColor);
+
+    // draw the item slightly smaller
+    y++;
+    heightPer -=2;
+    }
+
 if (!hideLine)
     {
     innerLine(hvg, x1, midY, w, color);
@@ -2646,8 +2658,12 @@ if (!hideArrows)
     {
     if ((intronGap == 0) && (vis == tvFull || vis == tvPack))
 	{
-	clippedBarbs(hvg, x1, midY, w, tl.barbHeight, tl.barbSpacing,
-		 lf->orientation, bColor, FALSE);
+	if (lf->highlightColor && (lf->highlightMode == highlightOutline))
+	    clippedBarbs(hvg, x1, midY, w, tl.barbHeight, tl.barbSpacing,
+		     lf->orientation, lf->highlightColor, FALSE);
+	else
+	    clippedBarbs(hvg, x1, midY, w, tl.barbHeight, tl.barbSpacing,
+		     lf->orientation, bColor, FALSE);
 	}
     }
 
@@ -2662,16 +2678,36 @@ for (sf = components; sf != NULL; sf = sf->next)
 	{
 	e2 = e;
 	if (e2 > tallStart) e2 = tallStart;
-	drawScaledBoxSample(hvg, s, e2, scale, xOff, y+shortOff, shortHeight,
-            color, lf->score);
+	if (lf->highlightColor && (lf->highlightMode == highlightOutline))
+	    {
+	    drawScaledBoxSample(hvg, s, e2, scale, xOff, y+shortOff , shortHeight ,
+		lf->highlightColor, lf->score);
+	    drawScaledBoxSample(hvg, s, e2, scale, xOff + 1, y+shortOff + 1, shortHeight - 2,
+		color, lf->score);
+	    }
+	else
+	    {
+	    drawScaledBoxSample(hvg, s, e2, scale, xOff, y+shortOff, shortHeight,
+		color, lf->score);
+	    }
 	s = e2;
 	}
     if (e > tallEnd)
 	{
 	s2 = s;
 	if (s2 < tallEnd) s2 = tallEnd;
-	drawScaledBoxSample(hvg, s2, e, scale, xOff, y+shortOff, shortHeight,
-            color, lf->score);
+	if (lf->highlightColor && (lf->highlightMode == highlightOutline))
+	    {
+	    drawScaledBoxSample(hvg, s2, e, scale, xOff, y+shortOff, shortHeight,
+		lf->highlightColor, lf->score);
+	    drawScaledBoxSample(hvg, s2, e, scale, xOff+1, y+shortOff+1, shortHeight-2,
+		color, lf->score);
+	    }
+	else
+	    {
+	    drawScaledBoxSample(hvg, s2, e, scale, xOff, y+shortOff, shortHeight,
+		color, lf->score);
+	    }
 	e = s2;
 	}
     /* Draw "tall" portion of exon (or codon) */
@@ -2687,8 +2723,18 @@ for (sf = components; sf != NULL; sf = sf->next)
 				  MAXPIXELS, winStart, color);
         else
             {
-            drawScaledBoxSample(hvg, s, e, scale, xOff, y, heightPer,
-                                color, lf->score );
+	    if (lf->highlightColor && (lf->highlightMode == highlightOutline))
+		{
+		drawScaledBoxSample(hvg, s, e, scale, xOff, y, heightPer,
+				    lf->highlightColor, lf->score );
+		drawScaledBoxSample(hvg, s, e, scale, xOff+1, y+1, heightPer-2,
+				    color, lf->score );
+		}
+	    else
+		{
+		drawScaledBoxSample(hvg, s, e, scale, xOff, y, heightPer,
+				    color, lf->score );
+		}
 
             if (exonArrowsAlways || (exonArrows &&
                 /* Display barbs only if no intron is visible on the item.
@@ -3031,7 +3077,6 @@ int eClp = (e > winEnd)   ? winEnd   : e;
 int x1 = round((sClp - winStart)*scale) + xOff;
 int x2 = round((eClp - winStart)*scale) + xOff;
 int textX = x1;
-char *name = tg->itemName(tg, item);
 
 if(tg->itemNameColor != NULL)
     {
@@ -3046,6 +3091,7 @@ tg->drawItemAt(tg, item, hvg, xOff, y, scale, font, color, vis);
 withLabels = (withLeftLabels && withIndividualLabels && (vis == tvPack) && !tg->drawName);
 if (withLabels)
     {
+    char *name = tg->itemName(tg, item);
     int nameWidth = mgFontStringWidth(font, name);
     int dotWidth = tl.nWidth/2;
     boolean snapLeft = FALSE;
@@ -12450,28 +12496,12 @@ if (!theImgBox || tg->limitedVis != tvDense || !tdbIsCompositeChild(tg->tdb))
 }
 }
 
-static void pubsLoadMarkerItem (struct track *tg)
-/* copy item names into extra field */
-{
-//loadSimpleBed(tg);
-loadSimpleBedAsLinkedFeaturesPerBase(tg);
-//tg->items = simpleBedListToLinkedFeatures(tg->items, tg->bedSize, TRUE, FALSE);
-//if (! (hashFindVal(tdb->settingsHash, "pubsMarkerTable")))
-enum trackVisibility vis = tg->visibility;
-if (vis == tvDense || vis == tvSquish) 
-    return;
-
-struct linkedFeatures *lf = NULL;
-for (lf = tg->items; lf != NULL; lf = lf->next)
-    lf->extra = lf->name;
-}
-
 char *pubsMarkerItemName(struct track *tg, void *item)
 /* retrieve article count from score field and return.*/
 {
-struct linkedFeatures *lf = item;
+struct bed *bed = item;
 char newName[64];
-safef(newName, sizeof(newName), "%d articles", (int) lf->score);
+safef(newName, sizeof(newName), "%d articles", (int) bed->score);
 return cloneString(newName);
 }
 
@@ -12479,9 +12509,9 @@ static void pubsMarkerMapItem(struct track *tg, struct hvGfx *hvg, void *item,
 				char *itemName, char *mapItemName, int start, int end,
 				int x, int y, int width, int height)
 {
-struct linkedFeatures *lf = item;
+struct bed *bed = item;
 genericMapItem(tg, hvg, item,
-		    lf->extra, lf->extra, start, end,
+		    bed->name, bed->name, start, end,
 		    x, y, width, height);
 }
 
@@ -12594,9 +12624,6 @@ tg->mapItem   = pubsMapItem;
 static void pubsMarkerMethods(struct track *tg)
 /* publication marker tracks are bed5 tracks of genome marker occurences like rsXXXX found in text*/
 {
-//bedMethods(tg);
-tg->bedSize   = 5;
-tg->loadItems = pubsLoadMarkerItem;
 tg->mapItem   = pubsMarkerMapItem;
 tg->itemName  = pubsMarkerItemName;
 }

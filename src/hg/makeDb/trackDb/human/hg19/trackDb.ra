@@ -58,14 +58,8 @@ origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/hg18ToHg19LiftOver.html "lifted from hg18"
 
 track gwasCatalog override
-snpTable snp132
-snpVersion 132
-release beta,public
-
-track gwasCatalog override
 snpTable snp135
 snpVersion 135
-release alpha
 
 track ucscRetroAli1
 release alpha
@@ -847,13 +841,13 @@ html hg19mammalChainNet
         type chain myoLuc1
         otherDb myoLuc1
 
-        track chainBosTau6
+        track chainBosTau7
         subTrack placentalChainNetViewchain off
         subGroups view=chain species=lCow clade=bLaura
         shortLabel $o_Organism Chain
         longLabel $o_Organism ($o_date) Chained Alignments
-        type chain bosTau6
-        otherDb bosTau6
+        type chain bosTau7
+        otherDb bosTau7
 
         track chainCavPor3
         subTrack placentalChainNetViewchain off
@@ -905,13 +899,13 @@ html hg19mammalChainNet
         type chain echTel1
         otherDb echTel1
 
-        track chainMm9
+        track chainMm10
         subTrack placentalChainNetViewchain on 
         subGroups view=chain species=bMouse clade=aEuarch
         shortLabel $o_Organism Chain
         longLabel $o_Organism ($o_date) Chained Alignments
-        type chain mm9
-        otherDb mm9
+        type chain mm10
+        otherDb mm10
 
         track chainRn4
         subTrack placentalChainNetViewchain off
@@ -1068,13 +1062,13 @@ html hg19mammalChainNet
         type netAlign myoLuc1 chainMyoLuc1
         otherDb myoLuc1
 
-        track netBosTau6
+        track netBosTau7
         subTrack placentalChainNetViewnet on 
         subGroups view=net species=lCow clade=bLaura
         shortLabel $o_Organism Net
         longLabel $o_Organism ($o_date) Alignment Net
-        type netAlign bosTau6 chainBosTau6
-        otherDb bosTau6
+        type netAlign bosTau7 chainBosTau7
+        otherDb bosTau7
 
         track netCavPor3
         subTrack placentalChainNetViewnet off
@@ -1126,13 +1120,13 @@ html hg19mammalChainNet
         type netAlign echTel1 chainEchTel1
         otherDb echTel1
 
-        track netMm9
+        track netMm10
         subTrack placentalChainNetViewnet on
         subGroups view=net species=bMouse clade=aEuarch
         shortLabel $o_Organism Net
         longLabel $o_Organism ($o_date) Alignment Net
-        type netAlign mm9 chainMm9
-        otherDb mm9
+        type netAlign mm10 chainMm10
+        otherDb mm10
 
         track netRn4
         subTrack placentalChainNetViewnet on 
@@ -1947,6 +1941,13 @@ track pgSaqqaqHc override
 origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/hg18ToHg19LiftOver.html "lifted from hg18"
 
+track tgpPhase1
+shortLabel 1000Genomes Ph 1
+longLabel 1000 Genomes Phase 1 Integrated Variant Calls: SNVs, InDels, SVs
+type vcfTabix
+group varRep
+priority 101.5
+visibility hide
 
 searchTable nscanGene
 searchType genePred
@@ -1983,7 +1984,7 @@ longLabel Vega Annotations
 group genes
 priority 37.1
 visibility hide
-chromosomes chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX,chrY
+chromosomes chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX,chrY,chr6_apd_hap1,chr6_cox_hap2,chr6_dbb_hap3,chr6_mann_hap4,chr6_mcf_hap5,chr6_qbl_hap6,chr6_ssto_hap7
 type genePred vegaPep
 urlLabel Vega Transcript:
 url http://vega.sanger.ac.uk/Homo_sapiens/transview?transcript=$$
@@ -2746,6 +2747,24 @@ priority 105
 type bigWig -15 7
 autoScale on
 maxHeightPixels 128:64:20
+
+track multizBasal
+#subTrack consDinoViewalign on
+shortLabel Basal Align
+longLabel Basal Alignments of 7 
+#subGroups view=align clade=vert
+noInherit on
+irows on
+summary multizBasalSummary
+frames multiz46wayFrames
+group x
+color 0, 10, 100
+altColor 0,90,10
+type wigMaf 0.0 1.0
+speciesCodonDefault hg19
+#speciesOrder ornAna1 galGal3 taeGut1 anoCar2 pytMol0 chrPic0 pelSin0 cheMyd0 allMis0
+speciesOrder mm9 bosTau4 monDom5 anoCar1 galGal3 xenTro2 danRer6 fr2 gasAcu1 oryLat2 calMil0
+priority 100
 
 track multizDino
 #subTrack consDinoViewalign on

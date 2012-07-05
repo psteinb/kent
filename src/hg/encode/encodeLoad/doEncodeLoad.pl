@@ -144,7 +144,7 @@ sub loadBed
     HgAutomate::verbose(2, "loadBed ($assembly, $tableName, $fileList, $pushQ)\n");
     if(!$opt_skipLoad) {
         my $catCmd = makeCatCmd("loadBed", $fileList);
-        my @cmds = ($catCmd, "egrep -v '^track|browser'", "~galt/bin/x86_64/hgLoadBed -noNameIx $assembly $tableName stdin -tmpDir=$tempDir");
+        my @cmds = ($catCmd, "egrep -v '^track|browser'", "/cluster/bin/x86_64/hgLoadBed -noNameIx $assembly $tableName stdin -tmpDir=$tempDir");
         HgAutomate::verbose(2, "loadBed cmds [".join(" ; ",@cmds)."]\n");
         my $safe = SafePipe->new(CMDS => \@cmds, STDOUT => "/dev/null", DEBUG => $opt_debug);
         if(my $err = $safe->exec()) {
@@ -521,7 +521,7 @@ for my $key (keys %ra) {
             }
 
             # Two possibilities: cat then gz or tgz
-            if (($type eq "fastq") || ($type eq "doc")) {
+            if (($type eq "fastq") || ($type eq "document")) {
                 if ( ! Encode::isTarZipped($targetFile) ) {
                     die "Target $targetFile of multiple $type files must be tgz";
                 }

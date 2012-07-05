@@ -1266,6 +1266,21 @@ urlLabel DGV Browser and Report:
 url http://projects.tcag.ca/cgi-bin/variation/xview?source=$D&view=variation&id=Variation_$$
 dataVersion v10
 
+track dgvBeta
+shortLabel DGV Beta
+longLabel Database of Genomic Variants: Structural Variation (CNV, Inversion, In/del) -- Beta Site
+group varRep
+priority 144.8
+visibility hide
+color 0,100,0
+itemRgb on
+type bed 9 +
+noScoreFilter .
+exonArrows off
+urlLabel DGV Browser and Report:
+url http://dgvbeta.tcag.ca/dgv/app/variant?id=$$&ref=$D
+dataVersion beta
+
 track covMask1kGPilotLowCov
 compositeTrack on
 shortLabel 1000Genomes Cov
@@ -3039,20 +3054,6 @@ color 200, 0, 0
 type bed 4
 hgsid on
 url http://www.sanger.ac.uk/perl/genetics/CGP/cosmic?action=mut_summary
-release beta,public
-
-track cosmic
-shortLabel COSMIC
-longLabel COSMIC: Catalogue Of Somatic Mutations In Cancer
-group phenDis
-priority 29.80
-visibility hide
-color 200, 0, 0
-type bed 4
-hgsid on
-url http://www.sanger.ac.uk/perl/genetics/CGP/cosmic?action=mut_summary
-dataVersion v57
-release alpha
 
 searchName cosmicId
 searchTable cosmic
@@ -3928,7 +3929,7 @@ urlLabel ISCA details:
     track iscaPathGainCum
     parent iscaComposite
     shortLabel ISCA Path Gain
-    longLabel ISCA CNVs: Pathogenic Gain Cumulative
+    longLabel ISCA CNVs: Pathogenic Gain Total
     type bedGraph 4
     maxHeightPixels 128:57:16
     viewLimits 0:100
@@ -3940,7 +3941,7 @@ urlLabel ISCA details:
     track iscaPathLossCum
     parent iscaComposite
     shortLabel ISCA Path Loss
-    longLabel ISCA CNVs: Pathogenic Loss Cumulative
+    longLabel ISCA CNVs: Pathogenic Loss Total
     type bedGraph 4
     maxHeightPixels 128:57:16
     viewLimits 0:100
@@ -3959,6 +3960,15 @@ urlLabel ISCA details:
     visibility hide
     priority 3
 
+    track iscaCuratedBenign
+    parent iscaComposite
+    shortLabel ISCA Curated Ben
+    longLabel ISCA CNVs: Curated Benign
+    type gvf
+    noScoreFilter .
+    url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html
+    priority 4
+
     track iscaPathogenic
     parent iscaComposite
     shortLabel ISCA Pathogenic
@@ -3967,7 +3977,7 @@ urlLabel ISCA details:
     noScoreFilter .
     url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html
     visibility pack
-    priority 4
+    priority 5
 
     track iscaLikelyPathogenic
     parent iscaComposite
@@ -3976,39 +3986,30 @@ urlLabel ISCA details:
     type gvf
     noScoreFilter .
     url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html
-    priority 5
+    priority 6
 
     track iscaUncertain
-    parent iscaComposite off
+    parent iscaComposite
     shortLabel ISCA Uncertain
     longLabel ISCA CNVs: Uncertain
     type gvf
     noScoreFilter .
     url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html
-    priority 6
+    priority 7
 
     track iscaLikelyBenign
-    parent iscaComposite off
+    parent iscaComposite
     shortLabel ISCA Uncert Ben
     longLabel ISCA CNVs: Uncertain: Likely Benign
     type gvf
     noScoreFilter .
     url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html
-    priority 7
-
-    track iscaBenign
-    parent iscaComposite off
-    shortLabel ISCA Benign
-    longLabel ISCA CNVs: Benign
-    type gvf
-    noScoreFilter .
-    url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html
     priority 8
 
-    track iscaCuratedBenign
-    parent iscaComposite off
-    shortLabel ISCA Curated Ben
-    longLabel ISCA CNVs: Curated Benign
+    track iscaBenign
+    parent iscaComposite
+    shortLabel ISCA Benign
+    longLabel ISCA CNVs: Benign
     type gvf
     noScoreFilter .
     url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html

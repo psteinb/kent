@@ -50,6 +50,22 @@ newAllele->sequence[newAllele->length] = 0;   // cut off delRear part
 return newAllele;
 }
 
+static char *addDashes(char *input, int count)
+/* add dashes at the end of a sequence to pad it out so it's length is count */
+{
+char *ret = needMem(count + 1);
+int inLen = strlen(input);
+
+safecpy(ret, count + 1, input);
+count -= inLen;
+
+char *ptr = &ret[inLen];
+while(count--)
+    *ptr++ = '-';
+
+return ret;
+}
+
 struct variant *variantFromPgSnp(struct pgSnp *pgSnp)
 /* convert pgSnp record to variant record */
 {
@@ -67,7 +83,7 @@ variant->chromEnd = pgSnp->chromEnd;
 variant->numAlleles = pgSnp->alleleCount;
 
 // get the alleles.
-char *nextAlleleString = pgSnp->name;
+char *nextAlleleString = cloneString(pgSnp->name);
 int alleleNumber = 0;
 for( ; alleleNumber < pgSnp->alleleCount; alleleNumber++)
     {
@@ -88,15 +104,21 @@ for( ; alleleNumber < pgSnp->alleleCount; alleleNumber++)
     // this check probably not right, could be different per allele
     int alleleStringLength = strlen(thisAlleleString);
     if (alleleStringLength != alleleLength)
-	errAbort("length of allele number %d is %d, should be %d", 
-	    alleleNumber, alleleStringLength, alleleLength);
+	{
+	if ( alleleStringLength < alleleLength)
+	    {
+	    thisAlleleString = addDashes(thisAlleleString, alleleLength);
+	    alleleStringLength = alleleLength;
+	    }
+	}
 
     // we have a new allele!
     struct allele *allele;
     AllocVar(allele);
     slAddHead(&variant->alleles, allele);
     allele->variant = variant;
-    allele->length = alleleStringLength;
+    allele->length = alleleStringLength; 
+    toLowerN(thisAlleleString, alleleStringLength);
     allele->sequence = cloneString(thisAlleleString);
     }
 

@@ -42,6 +42,7 @@
 #include "bbiFile.h"
 #include "ensFace.h"
 #include "microarray.h"
+#include "trackVersion.h"
 
 #define MAIN_FORM "mainForm"
 #define WIGGLE_HELP_PAGE  "../goldenPath/help/hgWiggleTrackHelp.html"
@@ -633,7 +634,7 @@ if (tdbIsComposite(tdb))
     {
     printf("<BR>&nbsp;&nbsp;&nbsp;");
     struct slRef *tdbRefList = trackDbListGetRefsToDescendantLeaves(tdb->subtracks);
-    slSort(tdbRefList, trackDbRefCmp);
+    slSort(&tdbRefList, trackDbRefCmp);
     struct slRef *tdbRef;
     for (tdbRef = tdbRefList; tdbRef != NULL; tdbRef = tdbRef->next)
 	{
@@ -641,7 +642,8 @@ if (tdbIsComposite(tdb))
 	if (hTableExists(database, subTdb->table))
 	    {
 	    safef(var, sizeof(var), "%s_inv", subTdb->track);
-	    cgiMakeCheckBox(var, cartUsualBoolean(cart, var, ldInvDefault));
+	    cgiMakeCheckBoxJS(var, cartUsualBoolean(cart, var, ldInvDefault),
+			      "class='subtrackInCompositeUi'");
 	    printf("&nbsp;Invert display for %s<BR>&nbsp;&nbsp;\n",
 		   subTdb->longLabel);
 	    }
@@ -1611,7 +1613,7 @@ if (sameString(tdb->track, "refGene"))
 
 /* Put up label line  - boxes for gene, accession or maybe OMIM. */
 printf("<B>Label:</B> ");
-labelMakeCheckBox(tdb, "gene", "gene", FALSE);
+labelMakeCheckBox(tdb, "gene", "gene", TRUE);
 labelMakeCheckBox(tdb, "acc", "accession", FALSE);
 if (omimAvail != 0)
     {
@@ -2695,8 +2697,8 @@ if (!ajax)
     webIncludeResourceFile("jquery-ui.css");
     jsIncludeFile("jquery-ui.js", NULL);
     jsIncludeFile("utils.js",NULL);
-    jsonHashAddString(NULL, "track", tdb->track);
-    jsonHashAddString(NULL, "db", database);
+    jsonObjectAdd(NULL, "track", newJsonString(tdb->track));
+    jsonObjectAdd(NULL, "db", newJsonString(database));
     }
 #define RESET_TO_DEFAULTS "defaults"
 char setting[128];
@@ -2934,11 +2936,12 @@ if (ct)
 if (!ct)
     {
     /* Print data version trackDB setting, if any */
-    char *version = trackDbSetting(tdb, "dataVersion");
+    struct trackVersion *trackVersion = getTrackVersion(database, tdb->track);
+    char *version = trackVersion == NULL ? trackDbSetting(tdb, "dataVersion") : trackVersion->version;
     if (version)
         {
         cgiDown(0.7);
-        printf("<B>Data version:</B> %s\n", version);
+        printf("<B>Data version:</B> %s <BR>\n", version);
         }
 
    /* Print lift information from trackDb, if any */

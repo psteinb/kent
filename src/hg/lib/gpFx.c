@@ -5,6 +5,81 @@
 #include "genePred.h"
 #include "gpFx.h"
 
+static unsigned countDashes(char *string)
+/* count the number of dashes in a string */
+{
+int count = 0;
+
+while(*string)
+    {
+    if (*string == '-')
+	count++;
+    string++;
+    }
+
+return count;
+}
+
+static char * mergeAllele(char *transcript, int offset, int variantWidth,
+    char *newAlleleSeq, int alleleLength)
+/* merge a variant into an allele */
+{
+char *newTranscript = transcript;
+
+if (variantWidth == alleleLength)
+    {
+    // for the moment, we're sticking the dashes into the transcripts
+    if (1) //noDashes(newAlleleSeq))
+	{
+	memcpy(&transcript[offset], newAlleleSeq, alleleLength);
+	}
+#ifdef DOESNTKNOWABOUTTHEOFFSETARGUMENT
+    // if we decide not to put the dashes into the resulting transcripts
+    // this will have to be re-written to grok the offset argument
+    else
+	{
+	char *transcriptSource = transcript;
+	int ii;
+	for(ii=0; ii < variantWidth; ii++)
+	    {
+	    if (*newAlleleSeq == '-')
+		{
+		transcriptSource++;
+		}
+	    else
+		{
+		*transcript++ = *newAlleleSeq++;
+		transcriptSource++;
+		}
+	    }
+	while(*transcriptSource)
+	    *transcript++ = *transcriptSource++;
+	*transcript = 0;
+	}
+#endif
+    }
+else  if (variantWidth > alleleLength)
+    errAbort("allele not padded");
+else 
+    {
+    int insertionSize = alleleLength - variantWidth;
+    int newLength = strlen(transcript) + insertionSize;
+    newTranscript = needMem(newLength + 1);
+    char *restOfTranscript = &transcript[offset + variantWidth];
+
+    // copy over the part before the variant
+    memcpy(newTranscript, transcript, offset);
+
+    // copy in the new allele
+    memcpy(&newTranscript[offset], newAlleleSeq, alleleLength);
+
+    // copy in the new allele
+    memcpy(&newTranscript[offset + alleleLength], restOfTranscript, 
+	strlen(restOfTranscript) + 1);
+    }
+
+return newTranscript;
+}
 
 char *gpFxModifySequence(struct allele *allele, struct genePred *pred, 
     int exonNum, struct psl *transcriptPsl, struct dnaSeq *transcriptSequence)
@@ -18,19 +93,18 @@ struct allele *clipAllele = alleleClip(allele, transcriptPsl->tStarts[exonNum],
 int exonOffset = clipAllele->variant->chromStart - transcriptPsl->tStarts[exonNum];
 int transcriptOffset = transcriptPsl->qStarts[exonNum] + exonOffset;
 
-if (clipAllele->length != clipAllele->variant->chromEnd - clipAllele->variant->chromStart)
-    errAbort("only support alleles the same length as the reference");
+int variantWidth = clipAllele->variant->chromEnd - clipAllele->variant->chromStart;
 
 char *retSequence = cloneString(transcriptSequence->dna);
 char *newAlleleSeq = cloneString(clipAllele->sequence);
 if (*pred->strand == '-')
     {
-    transcriptOffset = transcriptSequence->size - (transcriptOffset + 1);
+    transcriptOffset = transcriptSequence->size - (transcriptOffset + strlen(newAlleleSeq));
     reverseComplement(newAlleleSeq, strlen(newAlleleSeq));
     }
 
 // make the change in the sequence
-memcpy(&retSequence[transcriptOffset], newAlleleSeq, allele->length);
+retSequence = mergeAllele( retSequence, transcriptOffset, variantWidth, newAlleleSeq, allele->length);
 
 // clean up
 freeMem(newAlleleSeq);
@@ -51,12 +125,13 @@ char *ptr = transcriptSequence;
 for(ii=0; ii < pred->exonCount; ii++)
     {
     int exonSize = pred->exonEnds[ii] - pred->exonStarts[ii];
-    if ((pred->cdsStart > pred->exonStarts[ii]) &&
+    if ((pred->cdsStart >= pred->exonStarts[ii]) &&
 	(pred->cdsStart < pred->exonEnds[ii]))
 	break;
 
     ptr += exonSize;
     }
+assert (ii != pred->exonCount);
 
 // clip off part of UTR in exon that has CDS in it too
 int exonOffset = pred->cdsStart - pred->exonStarts[ii];
@@ -79,20 +154,28 @@ return newString;
 
 static int firstChange(char *string1, char *string2, int *numDifferent)
 /* return the position of the first difference between the two sequences */
+/* if numDifferent is non-NULL, return number of characters between first 
+ * difference, and the last difference */
 {
 int count = 0;
 
-while (*string1++ == *string2++)
-    count++;
+for(; *string1 == *string2; count++, string1++, string2++)
+    ;
+
+int firstChange = count;
+int lastChange = firstChange;
 
 if (numDifferent != NULL)
     {
-    *numDifferent = 1;
-    while ((*string1) && (*string2) && (*string1++ != *string2++))
-	(*numDifferent)++;
+    for (; (*string1) && (*string2); string1++, string2++, count++)
+	{
+	if (*string1 != *string2)
+	    lastChange = count;
+	}
+    *numDifferent = lastChange - firstChange + 1;
     }
 
-return count;
+return firstChange;
 }
 
 static void getSequences(struct genePred *pred, char *transcriptSequence,
@@ -218,29 +301,45 @@ else
     cc->exonNumber = exonNum;
 
 // calc codon change
-int codonPosStart = (cc->cdsPosition / 3) * 3;
-int codonPosEnd = ((cdsChangeLength + cc->cdsPosition) / 3) * 3;
-int numCodons = (codonPosEnd - codonPosStart) / 3 + 1;
-cc->codonChanges = codonChangeString( codonPosStart, numCodons, oldCodingSequence, newCodingSequence);
+int codonPosStart = (cc->cdsPosition / 3) ;
+int codonPosEnd = ((cdsChangeLength - 1 + cc->cdsPosition) / 3) ;
+int numCodons = (codonPosEnd - codonPosStart + 1);
+cc->codonChanges = codonChangeString( codonPosStart*3, numCodons, oldCodingSequence, newCodingSequence);
+// by convention we zero out these fields if they aren't used
+cc->pepPosition = 0;
+cc->aaChanges = "";
 
+int numDashes;
 if (sameString(newaa->dna, oldaa->dna))
     {
     // synonymous change
     effects->so.soNumber = synonymous_variant;
-    
-    // by convention we zero out these fields since they aren't used
-    cc->pepPosition = 0;
-    cc->aaChanges = "";
     }
 else
     {
-    // non-synonymous change
-    effects->so.soNumber = non_synonymous_variant;
-
     int numDifferent;
     cc->pepPosition = firstChange( newaa->dna, oldaa->dna, &numDifferent);
     cc->aaChanges = aaChangeString( cc->pepPosition, numDifferent, 
 	oldaa->dna, newaa->dna);
+
+    // this is assuming that deletions are marked with dashes
+    // in newCodingSequence
+    if ((numDashes = countDashes(newCodingSequence)) != 0)
+	{
+	if ((numDashes % 3) == 0)
+	    effects->so.soNumber = inframe_deletion;
+	else
+	    effects->so.soNumber = frameshift_variant;
+	}
+    else if (strlen(newaa->dna) != strlen(oldaa->dna)) 
+	{
+	effects->so.soNumber = inframe_insertion;
+	}
+    else
+	{
+	// non-synonymous change
+	effects->so.soNumber = non_synonymous_variant;
+	}
     }
 
 return effectsList;
@@ -322,12 +421,15 @@ for(; variant ; variant = variant->next)
 	    {
 	    // check if in an exon
 	    int size;
+	    int end = variant->chromEnd;
+	    if (variant->chromStart == end)
+		end++;
 	    if ((size = positiveRangeIntersection(pred->exonStarts[ii], 
 		pred->exonEnds[ii], 
-		variant->chromStart, variant->chromEnd)) > 0)
+		variant->chromStart, end)) > 0)
 		{
 
-		if (size != variant->chromEnd - variant->chromStart)
+		if (size != end - variant->chromStart)
 		    errAbort("variant crosses exon boundary");
 
 		effectsList = slCat(effectsList, gpFxInExon(allele, pred, ii,

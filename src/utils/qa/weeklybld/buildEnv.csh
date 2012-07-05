@@ -1,10 +1,10 @@
-setenv BRANCHNN 266
-setenv TODAY 2012-04-24             # v266 final
-setenv LASTWEEK 2012-03-27          # v265 final
-setenv REVIEWDAY 2012-04-10         # v266 preview
-setenv LASTREVIEWDAY  2012-03-13    # v265 preview
-setenv REVIEW2DAY 2012-04-17        # v266 preview2
-setenv LASTREVIEW2DAY 2012-03-20    # v265 preview2
+setenv BRANCHNN 269
+setenv TODAY 2012-06-26             # v269 final
+setenv LASTWEEK 2012-06-05          # v268 final
+setenv REVIEWDAY 2012-07-03         # v270 preview
+setenv LASTREVIEWDAY  2012-06-12    # v269 preview
+setenv REVIEW2DAY 2012-06-19        # v269 preview2
+setenv LASTREVIEW2DAY 2012-05-29    # v268 preview2
 
 setenv BUILDHOME /cluster/bin/build
 setenv WEEKLYBLD ${BUILDHOME}/build-kent/src/utils/qa/weeklybld

@@ -66,6 +66,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K16
@@ -77,7 +78,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3481
 tableName wgEncodeRikenCageA549CellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageA549CellPapMinusSignalRep2
 objType table
@@ -91,6 +92,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K17
@@ -102,7 +104,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3482
 tableName wgEncodeRikenCageA549CellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageA549CellPapPlusSignalRep1
 objType table
@@ -116,6 +118,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K16
@@ -127,7 +130,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3481
 tableName wgEncodeRikenCageA549CellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageA549CellPapPlusSignalRep2
 objType table
@@ -141,6 +144,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K17
@@ -152,7 +156,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3482
 tableName wgEncodeRikenCageA549CellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageA549CellPapRawDataRep1
 objType file
@@ -166,6 +170,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K16
@@ -190,6 +195,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K17
@@ -214,6 +220,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K16,K17
@@ -237,6 +244,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001158
 expId 1158
 fileName wgEncodeRikenCageA549CellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849359
 grant Gingeras
 lab RIKEN
 labExpId K16,K17
@@ -326,7 +334,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6595
 tableName wgEncodeRikenCageA549CytosolPapMinusRawRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageA549CytosolPapMinusRawRep4
 objType table
@@ -352,7 +360,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6626
 tableName wgEncodeRikenCageA549CytosolPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageA549CytosolPapPlusRawRep3
 objType table
@@ -378,7 +386,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6595
 tableName wgEncodeRikenCageA549CytosolPapPlusRawRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageA549CytosolPapPlusRawRep4
 objType table
@@ -404,7 +412,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6626
 tableName wgEncodeRikenCageA549CytosolPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageA549CytosolPapRawDataRep3
 objType file
@@ -557,7 +565,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6608
 tableName wgEncodeRikenCageA549NucleusPapMinusRawRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageA549NucleusPapMinusRawRep4
 objType table
@@ -583,7 +591,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6627
 tableName wgEncodeRikenCageA549NucleusPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageA549NucleusPapPlusRawRep3
 objType table
@@ -609,7 +617,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6608
 tableName wgEncodeRikenCageA549NucleusPapPlusRawRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageA549NucleusPapPlusRawRep4
 objType table
@@ -635,7 +643,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6627
 tableName wgEncodeRikenCageA549NucleusPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageA549NucleusPapRawDataRep3
 objType file
@@ -774,6 +782,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K12
@@ -785,7 +794,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3479
 tableName wgEncodeRikenCageAg04450CellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageAg04450CellPapMinusSignalRep2
 objType table
@@ -799,6 +808,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K13
@@ -810,7 +820,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3480
 tableName wgEncodeRikenCageAg04450CellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageAg04450CellPapPlusSignalRep1
 objType table
@@ -824,6 +834,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K12
@@ -835,7 +846,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3479
 tableName wgEncodeRikenCageAg04450CellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageAg04450CellPapPlusSignalRep2
 objType table
@@ -849,6 +860,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K13
@@ -860,7 +872,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3480
 tableName wgEncodeRikenCageAg04450CellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageAg04450CellPapRawDataRep1
 objType file
@@ -874,6 +886,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K12
@@ -898,6 +911,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K13
@@ -922,6 +936,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K12,K13
@@ -945,6 +960,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001159
 expId 1159
 fileName wgEncodeRikenCageAg04450CellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849358
 grant Gingeras
 lab RIKEN
 labExpId K12,K13
@@ -1020,6 +1036,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K18
@@ -1031,7 +1048,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3483
 tableName wgEncodeRikenCageBjCellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageBjCellPapMinusSignalRep2
 objType table
@@ -1045,6 +1062,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K19
@@ -1056,7 +1074,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3484
 tableName wgEncodeRikenCageBjCellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageBjCellPapPlusSignalRep1
 objType table
@@ -1070,6 +1088,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K18
@@ -1081,7 +1100,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3483
 tableName wgEncodeRikenCageBjCellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageBjCellPapPlusSignalRep2
 objType table
@@ -1095,6 +1114,7 @@ dateUnrestricted 2011-10-21
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K19
@@ -1106,7 +1126,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3484
 tableName wgEncodeRikenCageBjCellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageBjCellPapRawDataRep1
 objType file
@@ -1120,6 +1140,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K18
@@ -1144,6 +1165,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K19
@@ -1168,6 +1190,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K18,K19
@@ -1191,6 +1214,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001160
 expId 1160
 fileName wgEncodeRikenCageBjCellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849328
 grant Gingeras
 lab RIKEN
 labExpId K18,K19
@@ -1283,7 +1307,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6625
 tableName wgEncodeRikenCageCd20CellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageCd20CellPapMinusRawRep2
 objType table
@@ -1310,7 +1334,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6647
 tableName wgEncodeRikenCageCd20CellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageCd20CellPapPlusRawRep1
 objType table
@@ -1337,7 +1361,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6625
 tableName wgEncodeRikenCageCd20CellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageCd20CellPapPlusRawRep2
 objType table
@@ -1364,7 +1388,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6647
 tableName wgEncodeRikenCageCd20CellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageCd20CellPapRawDataRep1
 objType file
@@ -1494,7 +1518,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6618
 tableName wgEncodeRikenCageCd34mobilizedCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageCd34mobilizedCellPapPlusRawRep1
 objType table
@@ -1520,7 +1544,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6618
 tableName wgEncodeRikenCageCd34mobilizedCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageCd34mobilizedCellPapRawDataRep1
 objType file
@@ -1634,6 +1658,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J72
@@ -1645,7 +1670,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3946
 tableName wgEncodeRikenCageGm12878CellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878CellPapMinusSignalRep2
 objType table
@@ -1659,6 +1684,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J73
@@ -1670,7 +1696,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3951
 tableName wgEncodeRikenCageGm12878CellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878CellPapPlusSignalRep1
 objType table
@@ -1684,6 +1710,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J72
@@ -1695,7 +1722,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3946
 tableName wgEncodeRikenCageGm12878CellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878CellPapPlusSignalRep2
 objType table
@@ -1709,6 +1736,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J73
@@ -1720,7 +1748,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3951
 tableName wgEncodeRikenCageGm12878CellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878CellPapRawDataRep1
 objType file
@@ -1734,6 +1762,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapRawDataRep1.fastq.tgz
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J72
@@ -1758,6 +1787,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapRawDataRep2.fastq.tgz
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J73
@@ -1782,6 +1812,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J72,J73
@@ -1805,6 +1836,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001680
 expId 1680
 fileName wgEncodeRikenCageGm12878CellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849368
 grant Gingeras
 lab RIKEN
 labExpId J72,J73
@@ -1868,7 +1900,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1797
 tableName wgEncodeRikenCageGm12878CytosolLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolLongnonpolyaPlusClusters
 objType file
@@ -1894,7 +1926,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1797
 tableName wgEncodeRikenCageGm12878CytosolLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolLongnonpolyaRawData
 objType file
@@ -1908,6 +1940,7 @@ dateUnrestricted 2009-12-09
 dccAccession wgEncodeEH000338
 expId 338
 fileName wgEncodeRikenCageGm12878CytosolLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849329
 grant Gingeras
 lab RIKEN
 localization cytosol
@@ -1957,6 +1990,7 @@ dateUnrestricted 2009-12-09
 dccAccession wgEncodeEH000338
 expId 338
 fileName wgEncodeRikenCageGm12878CytosolPamMinusSignal.bigWig
+geoSampleAccession GSM849329
 grant Gingeras
 lab RIKEN
 labExpId I27
@@ -1967,7 +2001,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1797
 tableName wgEncodeRikenCageGm12878CytosolPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolPamPlusSignal
 objType table
@@ -1982,6 +2016,7 @@ dateUnrestricted 2009-12-09
 dccAccession wgEncodeEH000338
 expId 338
 fileName wgEncodeRikenCageGm12878CytosolPamPlusSignal.bigWig
+geoSampleAccession GSM849329
 grant Gingeras
 lab RIKEN
 labExpId I27
@@ -1992,7 +2027,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1797
 tableName wgEncodeRikenCageGm12878CytosolPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolPamRawData
 objType file
@@ -2006,6 +2041,7 @@ dateUnrestricted 2009-12-09
 dccAccession wgEncodeEH000338
 expId 338
 fileName wgEncodeRikenCageGm12878CytosolPamRawData.fastq.gz
+geoSampleAccession GSM849329
 grant Gingeras
 lab RIKEN
 labExpId I27
@@ -2028,6 +2064,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000338
 expId 338
 fileName wgEncodeRikenCageGm12878CytosolPamTssGencV7.gtf.gz
+geoSampleAccession GSM849329
 grant Gingeras
 lab RIKEN
 labExpId I27
@@ -2050,6 +2087,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000338
 expId 338
 fileName wgEncodeRikenCageGm12878CytosolPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849329
 grant Gingeras
 lab RIKEN
 labExpId I27
@@ -2147,6 +2185,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J84
@@ -2158,7 +2197,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3950
 tableName wgEncodeRikenCageGm12878CytosolPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolPapMinusSignalRep2
 objType table
@@ -2172,6 +2211,7 @@ dateUnrestricted 2012-01-28
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J85
@@ -2183,7 +2223,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3947
 tableName wgEncodeRikenCageGm12878CytosolPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolPapPlusSignalRep1
 objType table
@@ -2197,6 +2237,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J84
@@ -2208,7 +2249,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3950
 tableName wgEncodeRikenCageGm12878CytosolPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolPapPlusSignalRep2
 objType table
@@ -2222,6 +2263,7 @@ dateUnrestricted 2012-01-28
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J85
@@ -2233,7 +2275,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3947
 tableName wgEncodeRikenCageGm12878CytosolPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878CytosolPapRawDataRep1
 objType file
@@ -2247,6 +2289,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapRawDataRep1.fastq.tgz
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J84
@@ -2271,6 +2314,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapRawDataRep2.fastq.tgz
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J85
@@ -2295,6 +2339,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapTssGencV7.gtf.gz
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J84,J85
@@ -2318,6 +2363,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001679
 expId 1679
 fileName wgEncodeRikenCageGm12878CytosolPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849349
 grant Gingeras
 lab RIKEN
 labExpId J84,J85
@@ -2378,7 +2424,7 @@ replicate 0
 rnaExtract total
 subId 2125
 tableName wgEncodeRikenCageGm12878NucleolusTotalMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleolusTotalMinusSignal
 objType table
@@ -2393,6 +2439,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000340
 expId 340
 fileName wgEncodeRikenCageGm12878NucleolusTotalMinusSignal.bigWig
+geoSampleAccession GSM849352
 grant Gingeras
 lab RIKEN
 labExpId I69
@@ -2402,7 +2449,7 @@ project wgEncode
 rnaExtract total
 subId 2125
 tableName wgEncodeRikenCageGm12878NucleolusTotalMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleolusTotalPlusClusters
 objType file
@@ -2427,7 +2474,7 @@ replicate 0
 rnaExtract total
 subId 2125
 tableName wgEncodeRikenCageGm12878NucleolusTotalPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleolusTotalPlusSignal
 objType table
@@ -2442,6 +2489,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000340
 expId 340
 fileName wgEncodeRikenCageGm12878NucleolusTotalPlusSignal.bigWig
+geoSampleAccession GSM849352
 grant Gingeras
 lab RIKEN
 labExpId I69
@@ -2451,7 +2499,7 @@ project wgEncode
 rnaExtract total
 subId 2125
 tableName wgEncodeRikenCageGm12878NucleolusTotalPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleolusTotalRawData
 objType file
@@ -2465,6 +2513,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000340
 expId 340
 fileName wgEncodeRikenCageGm12878NucleolusTotalRawData.fastq.gz
+geoSampleAccession GSM849352
 grant Gingeras
 lab RIKEN
 labExpId I69
@@ -2487,6 +2536,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000340
 expId 340
 fileName wgEncodeRikenCageGm12878NucleolusTotalTssGencV7.gtf.gz
+geoSampleAccession GSM849352
 grant Gingeras
 lab RIKEN
 labExpId I69
@@ -2509,6 +2559,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000340
 expId 340
 fileName wgEncodeRikenCageGm12878NucleolusTotalTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849352
 grant Gingeras
 lab RIKEN
 labExpId I69
@@ -2591,7 +2642,7 @@ replicate 1
 rnaExtract longNonPolyA
 subId 2350
 tableName wgEncodeRikenCageGm12878NucleusLongnonpolyaMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusLongnonpolyaPlusClustersRep1
 objType file
@@ -2615,7 +2666,7 @@ replicate 1
 rnaExtract longNonPolyA
 subId 2350
 tableName wgEncodeRikenCageGm12878NucleusLongnonpolyaPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusLongnonpolyaRawDataRep1
 objType file
@@ -2628,6 +2679,7 @@ dateUnrestricted 2009-12-09
 dccAccession wgEncodeEH000339
 expId 339
 fileName wgEncodeRikenCageGm12878NucleusLongnonpolyaRawDataRep1.fastq.gz
+geoSampleAccession GSM849341
 grant Gingeras
 lab RIKEN
 labExpId J59
@@ -2675,6 +2727,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000339
 expId 339
 fileName wgEncodeRikenCageGm12878NucleusPamMinusSignalRep1.bigWig
+geoSampleAccession GSM849341
 grant Gingeras
 lab RIKEN
 labExpId J59
@@ -2684,7 +2737,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 2350
 tableName wgEncodeRikenCageGm12878NucleusPamMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusPamPlusSignalRep1
 objType table
@@ -2698,6 +2751,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000339
 expId 339
 fileName wgEncodeRikenCageGm12878NucleusPamPlusSignalRep1.bigWig
+geoSampleAccession GSM849341
 grant Gingeras
 lab RIKEN
 labExpId J59
@@ -2707,7 +2761,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 2350
 tableName wgEncodeRikenCageGm12878NucleusPamPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusPamRawDataRep1
 objType file
@@ -2721,6 +2775,7 @@ dateUnrestricted 2009-12-09
 dccAccession wgEncodeEH000339
 expId 339
 fileName wgEncodeRikenCageGm12878NucleusPamRawDataRep1.fastq.gz
+geoSampleAccession GSM849341
 grant Gingeras
 lab RIKEN
 labExpId J59
@@ -2743,6 +2798,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000339
 expId 339
 fileName wgEncodeRikenCageGm12878NucleusPamTssGencV7.gtf.gz
+geoSampleAccession GSM849341
 grant Gingeras
 lab RIKEN
 labExpId J59
@@ -2765,6 +2821,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000339
 expId 339
 fileName wgEncodeRikenCageGm12878NucleusPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849341
 grant Gingeras
 lab RIKEN
 labExpId J59
@@ -2863,6 +2920,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J93
@@ -2874,7 +2932,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3948
 tableName wgEncodeRikenCageGm12878NucleusPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusPapMinusSignalRep2
 objType table
@@ -2888,6 +2946,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J94
@@ -2899,7 +2958,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3949
 tableName wgEncodeRikenCageGm12878NucleusPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusPapPlusSignalRep1
 objType table
@@ -2913,6 +2972,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J93
@@ -2924,7 +2984,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3948
 tableName wgEncodeRikenCageGm12878NucleusPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusPapPlusSignalRep2
 objType table
@@ -2938,6 +2998,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J94
@@ -2949,7 +3010,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3949
 tableName wgEncodeRikenCageGm12878NucleusPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageGm12878NucleusPapRawDataRep1
 objType file
@@ -2963,6 +3024,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapRawDataRep1.fastq.tgz
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J93
@@ -2987,6 +3049,7 @@ dateUnrestricted 2012-01-29
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapRawDataRep2.fastq.tgz
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J94
@@ -3011,6 +3074,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapTssGencV7.gtf.gz
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J93,J94
@@ -3034,6 +3098,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001678
 expId 1678
 fileName wgEncodeRikenCageGm12878NucleusPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849348
 grant Gingeras
 lab RIKEN
 labExpId J93,J94
@@ -3097,7 +3162,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1799
 tableName wgEncodeRikenCageH1hescCellLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCellLongnonpolyaPlusClusters
 objType file
@@ -3123,7 +3188,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1799
 tableName wgEncodeRikenCageH1hescCellLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCellLongnonpolyaRawData
 objType file
@@ -3137,6 +3202,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000341
 expId 341
 fileName wgEncodeRikenCageH1hescCellLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849355
 grant Gingeras
 lab RIKEN
 localization cell
@@ -3186,6 +3252,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000341
 expId 341
 fileName wgEncodeRikenCageH1hescCellPamMinusSignal.bigWig
+geoSampleAccession GSM849355
 grant Gingeras
 lab RIKEN
 labExpId I67
@@ -3196,7 +3263,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1799
 tableName wgEncodeRikenCageH1hescCellPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPamPlusSignal
 objType table
@@ -3211,6 +3278,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000341
 expId 341
 fileName wgEncodeRikenCageH1hescCellPamPlusSignal.bigWig
+geoSampleAccession GSM849355
 grant Gingeras
 lab RIKEN
 labExpId I67
@@ -3221,7 +3289,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1799
 tableName wgEncodeRikenCageH1hescCellPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPamRawData
 objType file
@@ -3235,6 +3303,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000341
 expId 341
 fileName wgEncodeRikenCageH1hescCellPamRawData.fastq.gz
+geoSampleAccession GSM849355
 grant Gingeras
 lab RIKEN
 labExpId I67
@@ -3257,6 +3326,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000341
 expId 341
 fileName wgEncodeRikenCageH1hescCellPamTssGencV7.gtf.gz
+geoSampleAccession GSM849355
 grant Gingeras
 lab RIKEN
 labExpId I67
@@ -3279,6 +3349,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000341
 expId 341
 fileName wgEncodeRikenCageH1hescCellPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849355
 grant Gingeras
 lab RIKEN
 labExpId I67
@@ -3389,7 +3460,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2380
 tableName wgEncodeRikenCageH1hescCellPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapMinusClustersRep2
 objType file
@@ -3415,7 +3486,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2370
 tableName wgEncodeRikenCageH1hescCellPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapMinusSignalRep1
 objType table
@@ -3429,6 +3500,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J74
@@ -3440,7 +3512,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2380
 tableName wgEncodeRikenCageH1hescCellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapMinusSignalRep2
 objType table
@@ -3454,6 +3526,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J75
@@ -3465,7 +3538,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2370
 tableName wgEncodeRikenCageH1hescCellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapPlusClustersRep1
 objType file
@@ -3491,7 +3564,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2380
 tableName wgEncodeRikenCageH1hescCellPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapPlusClustersRep2
 objType file
@@ -3517,7 +3590,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2370
 tableName wgEncodeRikenCageH1hescCellPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapPlusSignalRep1
 objType table
@@ -3531,6 +3604,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J74
@@ -3542,7 +3616,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2380
 tableName wgEncodeRikenCageH1hescCellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapPlusSignalRep2
 objType table
@@ -3556,6 +3630,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J75
@@ -3567,7 +3642,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2370
 tableName wgEncodeRikenCageH1hescCellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCellPapRawDataRep1
 objType file
@@ -3581,6 +3656,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J74
@@ -3605,6 +3681,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J75
@@ -3629,6 +3706,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J74,J75
@@ -3652,6 +3730,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001138
 expId 1138
 fileName wgEncodeRikenCageH1hescCellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849357
 grant Gingeras
 lab RIKEN
 labExpId J74,J75
@@ -3714,7 +3793,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2379
 tableName wgEncodeRikenCageH1hescCytosolPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCytosolPapMinusSignalRep2
 objType table
@@ -3728,6 +3807,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001139
 expId 1139
 fileName wgEncodeRikenCageH1hescCytosolPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849356
 grant Gingeras
 lab RIKEN
 labExpId J86
@@ -3739,7 +3819,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2379
 tableName wgEncodeRikenCageH1hescCytosolPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescCytosolPapPlusClustersRep2
 objType file
@@ -3765,7 +3845,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2379
 tableName wgEncodeRikenCageH1hescCytosolPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCytosolPapPlusSignalRep2
 objType table
@@ -3779,6 +3859,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001139
 expId 1139
 fileName wgEncodeRikenCageH1hescCytosolPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849356
 grant Gingeras
 lab RIKEN
 labExpId J86
@@ -3790,7 +3871,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2379
 tableName wgEncodeRikenCageH1hescCytosolPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescCytosolPapRawDataRep2
 objType file
@@ -3804,6 +3885,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001139
 expId 1139
 fileName wgEncodeRikenCageH1hescCytosolPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849356
 grant Gingeras
 lab RIKEN
 labExpId J86
@@ -3865,7 +3947,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2360
 tableName wgEncodeRikenCageH1hescNucleusPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescNucleusPapMinusSignalRep2
 objType table
@@ -3879,6 +3961,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001140
 expId 1140
 fileName wgEncodeRikenCageH1hescNucleusPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849326
 grant Gingeras
 lab RIKEN
 labExpId J95
@@ -3890,7 +3973,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2360
 tableName wgEncodeRikenCageH1hescNucleusPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageH1hescNucleusPapPlusClustersRep2
 objType file
@@ -3916,7 +3999,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2360
 tableName wgEncodeRikenCageH1hescNucleusPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescNucleusPapPlusSignalRep2
 objType table
@@ -3930,6 +4013,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001140
 expId 1140
 fileName wgEncodeRikenCageH1hescNucleusPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849326
 grant Gingeras
 lab RIKEN
 labExpId J95
@@ -3941,7 +4025,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2360
 tableName wgEncodeRikenCageH1hescNucleusPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageH1hescNucleusPapRawDataRep2
 objType file
@@ -3955,6 +4039,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001140
 expId 1140
 fileName wgEncodeRikenCageH1hescNucleusPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849326
 grant Gingeras
 lab RIKEN
 labExpId J95
@@ -4046,7 +4131,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6607
 tableName wgEncodeRikenCageHaoafCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHaoafCellPapMinusRawRep2
 objType table
@@ -4073,7 +4158,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6630
 tableName wgEncodeRikenCageHaoafCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHaoafCellPapPlusRawRep1
 objType table
@@ -4100,7 +4185,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6607
 tableName wgEncodeRikenCageHaoafCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHaoafCellPapPlusRawRep2
 objType table
@@ -4127,7 +4212,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6630
 tableName wgEncodeRikenCageHaoafCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHaoafCellPapRawDataRep1
 objType file
@@ -4286,7 +4371,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6600
 tableName wgEncodeRikenCageHaoecCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHaoecCellPapMinusRawRep2
 objType table
@@ -4313,7 +4398,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6614
 tableName wgEncodeRikenCageHaoecCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHaoecCellPapPlusRawRep1
 objType table
@@ -4340,7 +4425,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6600
 tableName wgEncodeRikenCageHaoecCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHaoecCellPapPlusRawRep2
 objType table
@@ -4367,7 +4452,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6614
 tableName wgEncodeRikenCageHaoecCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHaoecCellPapRawDataRep1
 objType file
@@ -4526,7 +4611,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6645
 tableName wgEncodeRikenCageHchCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHchCellPapMinusRawRep2
 objType table
@@ -4553,7 +4638,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6648
 tableName wgEncodeRikenCageHchCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHchCellPapPlusRawRep1
 objType table
@@ -4580,7 +4665,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6645
 tableName wgEncodeRikenCageHchCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHchCellPapPlusRawRep2
 objType table
@@ -4607,7 +4692,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6648
 tableName wgEncodeRikenCageHchCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHchCellPapRawDataRep1
 objType file
@@ -4761,7 +4846,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2363
 tableName wgEncodeRikenCageHelas3CellPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapMinusClustersRep2
 objType file
@@ -4787,7 +4872,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2374
 tableName wgEncodeRikenCageHelas3CellPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapMinusSignalRep1
 objType table
@@ -4801,6 +4886,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J80
@@ -4812,7 +4898,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2363
 tableName wgEncodeRikenCageHelas3CellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapMinusSignalRep2
 objType table
@@ -4826,6 +4912,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J81
@@ -4837,7 +4924,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2374
 tableName wgEncodeRikenCageHelas3CellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapPlusClustersRep1
 objType file
@@ -4863,7 +4950,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2363
 tableName wgEncodeRikenCageHelas3CellPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapPlusClustersRep2
 objType file
@@ -4889,7 +4976,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2374
 tableName wgEncodeRikenCageHelas3CellPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapPlusSignalRep1
 objType table
@@ -4903,6 +4990,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J80
@@ -4914,7 +5002,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2363
 tableName wgEncodeRikenCageHelas3CellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapPlusSignalRep2
 objType table
@@ -4928,6 +5016,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J81
@@ -4939,7 +5028,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2374
 tableName wgEncodeRikenCageHelas3CellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CellPapRawDataRep1
 objType file
@@ -4953,6 +5042,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J80
@@ -4977,6 +5067,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J81
@@ -5001,6 +5092,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J80,J81
@@ -5024,6 +5116,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001146
 expId 1146
 fileName wgEncodeRikenCageHelas3CellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849342
 grant Gingeras
 lab RIKEN
 labExpId J80,J81
@@ -5085,7 +5178,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 2784
 tableName wgEncodeRikenCageHelas3CytosolLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolLongnonpolyaPlusClusters
 objType file
@@ -5110,7 +5203,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 2784
 tableName wgEncodeRikenCageHelas3CytosolLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolLongnonpolyaRawData
 objType file
@@ -5124,6 +5217,7 @@ dateUnrestricted 2011-07-29
 dccAccession wgEncodeEH001155
 expId 1155
 fileName wgEncodeRikenCageHelas3CytosolLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849360
 grant Gingeras
 lab RIKEN
 labExpId J56
@@ -5171,6 +5265,7 @@ dateUnrestricted 2011-07-29
 dccAccession wgEncodeEH001155
 expId 1155
 fileName wgEncodeRikenCageHelas3CytosolPamMinusSignal.bigWig
+geoSampleAccession GSM849360
 grant Gingeras
 lab RIKEN
 labExpId J56
@@ -5180,7 +5275,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 2784
 tableName wgEncodeRikenCageHelas3CytosolPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPamPlusSignal
 objType table
@@ -5194,6 +5289,7 @@ dateUnrestricted 2011-07-29
 dccAccession wgEncodeEH001155
 expId 1155
 fileName wgEncodeRikenCageHelas3CytosolPamPlusSignal.bigWig
+geoSampleAccession GSM849360
 grant Gingeras
 lab RIKEN
 labExpId J56
@@ -5203,7 +5299,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 2784
 tableName wgEncodeRikenCageHelas3CytosolPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPamRawData
 objType file
@@ -5217,6 +5313,7 @@ dateUnrestricted 2011-07-29
 dccAccession wgEncodeEH001155
 expId 1155
 fileName wgEncodeRikenCageHelas3CytosolPamRawData.fastq.gz
+geoSampleAccession GSM849360
 grant Gingeras
 lab RIKEN
 labExpId J56
@@ -5239,6 +5336,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001155
 expId 1155
 fileName wgEncodeRikenCageHelas3CytosolPamTssGencV7.gtf.gz
+geoSampleAccession GSM849360
 grant Gingeras
 lab RIKEN
 labExpId J56
@@ -5261,6 +5359,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH001155
 expId 1155
 fileName wgEncodeRikenCageHelas3CytosolPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849360
 grant Gingeras
 lab RIKEN
 labExpId J56
@@ -5370,7 +5469,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2364
 tableName wgEncodeRikenCageHelas3CytosolPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapMinusClustersRep2
 objType file
@@ -5396,7 +5495,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2355
 tableName wgEncodeRikenCageHelas3CytosolPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapMinusSignalRep1
 objType table
@@ -5410,6 +5509,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J87
@@ -5421,7 +5521,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2364
 tableName wgEncodeRikenCageHelas3CytosolPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapMinusSignalRep2
 objType table
@@ -5435,6 +5535,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J88
@@ -5446,7 +5547,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2355
 tableName wgEncodeRikenCageHelas3CytosolPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapPlusClustersRep1
 objType file
@@ -5472,7 +5573,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2364
 tableName wgEncodeRikenCageHelas3CytosolPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapPlusClustersRep2
 objType file
@@ -5498,7 +5599,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2355
 tableName wgEncodeRikenCageHelas3CytosolPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapPlusSignalRep1
 objType table
@@ -5512,6 +5613,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J87
@@ -5523,7 +5625,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2364
 tableName wgEncodeRikenCageHelas3CytosolPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapPlusSignalRep2
 objType table
@@ -5537,6 +5639,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J88
@@ -5548,7 +5651,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2355
 tableName wgEncodeRikenCageHelas3CytosolPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3CytosolPapRawDataRep1
 objType file
@@ -5562,6 +5665,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J87
@@ -5586,6 +5690,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J88
@@ -5610,6 +5715,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapTssGencV7.gtf.gz
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J87,J88
@@ -5633,6 +5739,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001144
 expId 1144
 fileName wgEncodeRikenCageHelas3CytosolPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849330
 grant Gingeras
 lab RIKEN
 labExpId J87,J88
@@ -5692,7 +5799,7 @@ replicate 0
 rnaExtract total
 subId 2783
 tableName wgEncodeRikenCageHelas3NucleolusTotalMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleolusTotalMinusSignal
 objType table
@@ -5706,6 +5813,7 @@ dateUnrestricted 2011-07-29
 dccAccession wgEncodeEH001156
 expId 1156
 fileName wgEncodeRikenCageHelas3NucleolusTotalMinusSignal.bigWig
+geoSampleAccession GSM849363
 grant Gingeras
 lab RIKEN
 labExpId J58
@@ -5715,7 +5823,7 @@ project wgEncode
 rnaExtract total
 subId 2783
 tableName wgEncodeRikenCageHelas3NucleolusTotalMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleolusTotalPlusClusters
 objType file
@@ -5740,7 +5848,7 @@ replicate 0
 rnaExtract total
 subId 2783
 tableName wgEncodeRikenCageHelas3NucleolusTotalPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleolusTotalPlusSignal
 objType table
@@ -5754,6 +5862,7 @@ dateUnrestricted 2011-07-29
 dccAccession wgEncodeEH001156
 expId 1156
 fileName wgEncodeRikenCageHelas3NucleolusTotalPlusSignal.bigWig
+geoSampleAccession GSM849363
 grant Gingeras
 lab RIKEN
 labExpId J58
@@ -5763,7 +5872,7 @@ project wgEncode
 rnaExtract total
 subId 2783
 tableName wgEncodeRikenCageHelas3NucleolusTotalPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleolusTotalRawData
 objType file
@@ -5777,6 +5886,7 @@ dateUnrestricted 2011-07-29
 dccAccession wgEncodeEH001156
 expId 1156
 fileName wgEncodeRikenCageHelas3NucleolusTotalRawData.fastq.gz
+geoSampleAccession GSM849363
 grant Gingeras
 lab RIKEN
 labExpId J58
@@ -5799,6 +5909,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001156
 expId 1156
 fileName wgEncodeRikenCageHelas3NucleolusTotalTssGencV7.gtf.gz
+geoSampleAccession GSM849363
 grant Gingeras
 lab RIKEN
 labExpId J58
@@ -5821,6 +5932,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH001156
 expId 1156
 fileName wgEncodeRikenCageHelas3NucleolusTotalTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849363
 grant Gingeras
 lab RIKEN
 labExpId J58
@@ -5907,7 +6019,7 @@ rnaExtract longNonPolyA
 seqPlatform Illumina_GA2x
 subId 6605
 tableName wgEncodeRikenCageHelas3NucleusPamMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPamPlusRawRep1
 objType table
@@ -5933,7 +6045,7 @@ rnaExtract longNonPolyA
 seqPlatform Illumina_GA2x
 subId 6605
 tableName wgEncodeRikenCageHelas3NucleusPamPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPamRawDataRep1
 objType file
@@ -6059,7 +6171,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2386
 tableName wgEncodeRikenCageHelas3NucleusPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapMinusClustersRep2
 objType file
@@ -6085,7 +6197,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2384
 tableName wgEncodeRikenCageHelas3NucleusPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapMinusSignalRep1
 objType table
@@ -6099,6 +6211,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J96
@@ -6110,7 +6223,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2386
 tableName wgEncodeRikenCageHelas3NucleusPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapMinusSignalRep2
 objType table
@@ -6124,6 +6237,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J97
@@ -6135,7 +6249,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2384
 tableName wgEncodeRikenCageHelas3NucleusPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapPlusClustersRep1
 objType file
@@ -6161,7 +6275,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2386
 tableName wgEncodeRikenCageHelas3NucleusPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapPlusClustersRep2
 objType file
@@ -6187,7 +6301,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2384
 tableName wgEncodeRikenCageHelas3NucleusPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapPlusSignalRep1
 objType table
@@ -6201,6 +6315,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J96
@@ -6212,7 +6327,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2386
 tableName wgEncodeRikenCageHelas3NucleusPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapPlusSignalRep2
 objType table
@@ -6226,6 +6341,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J97
@@ -6237,7 +6353,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2384
 tableName wgEncodeRikenCageHelas3NucleusPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHelas3NucleusPapRawDataRep1
 objType file
@@ -6251,6 +6367,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J96
@@ -6275,6 +6392,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J97
@@ -6299,6 +6417,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapTssGencV7.gtf.gz
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J96,J97
@@ -6322,6 +6441,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001145
 expId 1145
 fileName wgEncodeRikenCageHelas3NucleusPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849331
 grant Gingeras
 lab RIKEN
 labExpId J96,J97
@@ -6409,7 +6529,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2381
 tableName wgEncodeRikenCageHepg2CellPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapMinusClustersRep2
 objType file
@@ -6435,7 +6555,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2378
 tableName wgEncodeRikenCageHepg2CellPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapMinusSignalRep1
 objType table
@@ -6449,6 +6569,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K01
@@ -6460,7 +6581,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2381
 tableName wgEncodeRikenCageHepg2CellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapMinusSignalRep2
 objType table
@@ -6474,6 +6595,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K02
@@ -6485,7 +6607,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2378
 tableName wgEncodeRikenCageHepg2CellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapPlusClustersRep1
 objType file
@@ -6511,7 +6633,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2381
 tableName wgEncodeRikenCageHepg2CellPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapPlusClustersRep2
 objType file
@@ -6537,7 +6659,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2378
 tableName wgEncodeRikenCageHepg2CellPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapPlusSignalRep1
 objType table
@@ -6551,6 +6673,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K01
@@ -6562,7 +6685,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2381
 tableName wgEncodeRikenCageHepg2CellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapPlusSignalRep2
 objType table
@@ -6576,6 +6699,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K02
@@ -6587,7 +6711,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2378
 tableName wgEncodeRikenCageHepg2CellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CellPapRawDataRep1
 objType file
@@ -6601,6 +6725,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K01
@@ -6625,6 +6750,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K02
@@ -6649,6 +6775,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K01,K02
@@ -6672,6 +6799,7 @@ dateUnrestricted 2012-09-09
 dccAccession wgEncodeEH001149
 expId 1149
 fileName wgEncodeRikenCageHepg2CellPapTssHmmV2.bedRnaElements.gz
+geoSampleAccession GSM849335
 grant Gingeras
 lab RIKEN
 labExpId K01,K02
@@ -6736,7 +6864,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1801
 tableName wgEncodeRikenCageHepg2CytosolLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolLongnonpolyaPlusClusters
 objType file
@@ -6762,7 +6890,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1801
 tableName wgEncodeRikenCageHepg2CytosolLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolLongnonpolyaRawData
 objType file
@@ -6776,6 +6904,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000343
 expId 343
 fileName wgEncodeRikenCageHepg2CytosolLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849351
 grant Gingeras
 lab RIKEN
 localization cytosol
@@ -6825,6 +6954,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000343
 expId 343
 fileName wgEncodeRikenCageHepg2CytosolPamMinusSignal.bigWig
+geoSampleAccession GSM849351
 grant Gingeras
 lab RIKEN
 labExpId I42
@@ -6835,7 +6965,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1801
 tableName wgEncodeRikenCageHepg2CytosolPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPamPlusSignal
 objType table
@@ -6850,6 +6980,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000343
 expId 343
 fileName wgEncodeRikenCageHepg2CytosolPamPlusSignal.bigWig
+geoSampleAccession GSM849351
 grant Gingeras
 lab RIKEN
 labExpId I42
@@ -6860,7 +6991,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1801
 tableName wgEncodeRikenCageHepg2CytosolPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPamRawData
 objType file
@@ -6874,6 +7005,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000343
 expId 343
 fileName wgEncodeRikenCageHepg2CytosolPamRawData.fastq.gz
+geoSampleAccession GSM849351
 grant Gingeras
 lab RIKEN
 labExpId I42
@@ -6896,6 +7028,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000343
 expId 343
 fileName wgEncodeRikenCageHepg2CytosolPamTssGencV7.gtf.gz
+geoSampleAccession GSM849351
 grant Gingeras
 lab RIKEN
 labExpId I42
@@ -6918,6 +7051,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000343
 expId 343
 fileName wgEncodeRikenCageHepg2CytosolPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849351
 grant Gingeras
 lab RIKEN
 labExpId I42
@@ -7028,7 +7162,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2357
 tableName wgEncodeRikenCageHepg2CytosolPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapMinusClustersRep2
 objType file
@@ -7054,7 +7188,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2369
 tableName wgEncodeRikenCageHepg2CytosolPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapMinusSignalRep1
 objType table
@@ -7068,6 +7202,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J89
@@ -7079,7 +7214,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2357
 tableName wgEncodeRikenCageHepg2CytosolPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapMinusSignalRep2
 objType table
@@ -7093,6 +7228,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J90
@@ -7104,7 +7240,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2369
 tableName wgEncodeRikenCageHepg2CytosolPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapPlusClustersRep1
 objType file
@@ -7130,7 +7266,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2357
 tableName wgEncodeRikenCageHepg2CytosolPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapPlusClustersRep2
 objType file
@@ -7156,7 +7292,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2369
 tableName wgEncodeRikenCageHepg2CytosolPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapPlusSignalRep1
 objType table
@@ -7170,6 +7306,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J89
@@ -7181,7 +7318,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2357
 tableName wgEncodeRikenCageHepg2CytosolPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapPlusSignalRep2
 objType table
@@ -7195,6 +7332,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J90
@@ -7206,7 +7344,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2369
 tableName wgEncodeRikenCageHepg2CytosolPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2CytosolPapRawDataRep1
 objType file
@@ -7220,6 +7358,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J89
@@ -7244,6 +7383,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J90
@@ -7268,6 +7408,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapTssGencV7.gtf.gz
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J89,J90
@@ -7291,6 +7432,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001147
 expId 1147
 fileName wgEncodeRikenCageHepg2CytosolPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849343
 grant Gingeras
 lab RIKEN
 labExpId J89,J90
@@ -7351,7 +7493,7 @@ replicate 0
 rnaExtract total
 subId 2124
 tableName wgEncodeRikenCageHepg2NucleolusTotalMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleolusTotalMinusSignal
 objType table
@@ -7366,6 +7508,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000344
 expId 344
 fileName wgEncodeRikenCageHepg2NucleolusTotalMinusSignal.bigWig
+geoSampleAccession GSM849344
 grant Gingeras
 lab RIKEN
 labExpId I68
@@ -7375,7 +7518,7 @@ project wgEncode
 rnaExtract total
 subId 2124
 tableName wgEncodeRikenCageHepg2NucleolusTotalMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleolusTotalPlusClusters
 objType file
@@ -7400,7 +7543,7 @@ replicate 0
 rnaExtract total
 subId 2124
 tableName wgEncodeRikenCageHepg2NucleolusTotalPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleolusTotalPlusSignal
 objType table
@@ -7415,6 +7558,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000344
 expId 344
 fileName wgEncodeRikenCageHepg2NucleolusTotalPlusSignal.bigWig
+geoSampleAccession GSM849344
 grant Gingeras
 lab RIKEN
 labExpId I68
@@ -7424,7 +7568,7 @@ project wgEncode
 rnaExtract total
 subId 2124
 tableName wgEncodeRikenCageHepg2NucleolusTotalPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleolusTotalRawData
 objType file
@@ -7438,6 +7582,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000344
 expId 344
 fileName wgEncodeRikenCageHepg2NucleolusTotalRawData.fastq.gz
+geoSampleAccession GSM849344
 grant Gingeras
 lab RIKEN
 labExpId I68
@@ -7460,6 +7605,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000344
 expId 344
 fileName wgEncodeRikenCageHepg2NucleolusTotalTssGencV7.gtf.gz
+geoSampleAccession GSM849344
 grant Gingeras
 lab RIKEN
 labExpId I68
@@ -7482,6 +7628,7 @@ dateUnrestricted 2012-09-09
 dccAccession wgEncodeEH000344
 expId 344
 fileName wgEncodeRikenCageHepg2NucleolusTotalTssHmmV2.bedRnaElements.gz
+geoSampleAccession GSM849344
 grant Gingeras
 lab RIKEN
 labExpId I68
@@ -7569,7 +7716,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1802
 tableName wgEncodeRikenCageHepg2NucleusLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusLongnonpolyaPlusClusters
 objType file
@@ -7595,7 +7742,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1802
 tableName wgEncodeRikenCageHepg2NucleusLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusLongnonpolyaRawData
 objType file
@@ -7609,6 +7756,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000345
 expId 345
 fileName wgEncodeRikenCageHepg2NucleusLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849345
 grant Gingeras
 lab RIKEN
 localization nucleus
@@ -7658,6 +7806,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000345
 expId 345
 fileName wgEncodeRikenCageHepg2NucleusPamMinusSignal.bigWig
+geoSampleAccession GSM849345
 grant Gingeras
 lab RIKEN
 labExpId I44
@@ -7668,7 +7817,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1802
 tableName wgEncodeRikenCageHepg2NucleusPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPamPlusSignal
 objType table
@@ -7683,6 +7832,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000345
 expId 345
 fileName wgEncodeRikenCageHepg2NucleusPamPlusSignal.bigWig
+geoSampleAccession GSM849345
 grant Gingeras
 lab RIKEN
 labExpId I44
@@ -7693,7 +7843,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1802
 tableName wgEncodeRikenCageHepg2NucleusPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPamRawData
 objType file
@@ -7707,6 +7857,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000345
 expId 345
 fileName wgEncodeRikenCageHepg2NucleusPamRawData.fastq.gz
+geoSampleAccession GSM849345
 grant Gingeras
 lab RIKEN
 labExpId I44
@@ -7729,6 +7880,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000345
 expId 345
 fileName wgEncodeRikenCageHepg2NucleusPamTssGencV7.gtf.gz
+geoSampleAccession GSM849345
 grant Gingeras
 lab RIKEN
 labExpId I44
@@ -7751,6 +7903,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000345
 expId 345
 fileName wgEncodeRikenCageHepg2NucleusPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849345
 grant Gingeras
 lab RIKEN
 labExpId I44
@@ -7861,7 +8014,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2375
 tableName wgEncodeRikenCageHepg2NucleusPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapMinusClustersRep2
 objType file
@@ -7887,7 +8040,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2366
 tableName wgEncodeRikenCageHepg2NucleusPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapMinusSignalRep1
 objType table
@@ -7901,6 +8054,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J98
@@ -7912,7 +8066,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2375
 tableName wgEncodeRikenCageHepg2NucleusPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapMinusSignalRep2
 objType table
@@ -7926,6 +8080,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J99
@@ -7937,7 +8092,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2366
 tableName wgEncodeRikenCageHepg2NucleusPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapPlusClustersRep1
 objType file
@@ -7963,7 +8118,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2375
 tableName wgEncodeRikenCageHepg2NucleusPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapPlusClustersRep2
 objType file
@@ -7989,7 +8144,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2366
 tableName wgEncodeRikenCageHepg2NucleusPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapPlusSignalRep1
 objType table
@@ -8003,6 +8158,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J98
@@ -8014,7 +8170,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2375
 tableName wgEncodeRikenCageHepg2NucleusPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapPlusSignalRep2
 objType table
@@ -8028,6 +8184,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J99
@@ -8039,7 +8196,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2366
 tableName wgEncodeRikenCageHepg2NucleusPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHepg2NucleusPapRawDataRep1
 objType file
@@ -8053,6 +8210,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J98
@@ -8077,6 +8235,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J99
@@ -8101,6 +8260,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapTssGencV7.gtf.gz
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J98,J99
@@ -8124,6 +8284,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001148
 expId 1148
 fileName wgEncodeRikenCageHepg2NucleusPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849334
 grant Gingeras
 lab RIKEN
 labExpId J98,J99
@@ -8216,7 +8377,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6641
 tableName wgEncodeRikenCageHfdpcCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHfdpcCellPapMinusRawRep2
 objType table
@@ -8243,7 +8404,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6629
 tableName wgEncodeRikenCageHfdpcCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHfdpcCellPapPlusRawRep1
 objType table
@@ -8270,7 +8431,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6641
 tableName wgEncodeRikenCageHfdpcCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHfdpcCellPapPlusRawRep2
 objType table
@@ -8297,7 +8458,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6629
 tableName wgEncodeRikenCageHfdpcCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHfdpcCellPapRawDataRep1
 objType file
@@ -8429,7 +8590,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6612
 tableName wgEncodeRikenCageHmepcCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHmepcCellPapPlusRawRep1
 objType table
@@ -8456,7 +8617,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6612
 tableName wgEncodeRikenCageHmepcCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHmepcCellPapRawDataRep1
 objType file
@@ -8589,7 +8750,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6644
 tableName wgEncodeRikenCageHmscatCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHmscatCellPapMinusRawRep2
 objType table
@@ -8616,7 +8777,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6602
 tableName wgEncodeRikenCageHmscatCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHmscatCellPapPlusRawRep1
 objType table
@@ -8643,7 +8804,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6644
 tableName wgEncodeRikenCageHmscatCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHmscatCellPapPlusRawRep2
 objType table
@@ -8670,7 +8831,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6602
 tableName wgEncodeRikenCageHmscatCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHmscatCellPapRawDataRep1
 objType file
@@ -8829,7 +8990,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6624
 tableName wgEncodeRikenCageHmscbmCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHmscbmCellPapMinusRawRep2
 objType table
@@ -8856,7 +9017,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6622
 tableName wgEncodeRikenCageHmscbmCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHmscbmCellPapPlusRawRep1
 objType table
@@ -8883,7 +9044,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6624
 tableName wgEncodeRikenCageHmscbmCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHmscbmCellPapPlusRawRep2
 objType table
@@ -8910,7 +9071,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6622
 tableName wgEncodeRikenCageHmscbmCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHmscbmCellPapRawDataRep1
 objType file
@@ -9069,7 +9230,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6633
 tableName wgEncodeRikenCageHmscucCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHmscucCellPapMinusRawRep2
 objType table
@@ -9096,7 +9257,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6639
 tableName wgEncodeRikenCageHmscucCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHmscucCellPapPlusRawRep1
 objType table
@@ -9123,7 +9284,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6633
 tableName wgEncodeRikenCageHmscucCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHmscucCellPapPlusRawRep2
 objType table
@@ -9150,7 +9311,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6639
 tableName wgEncodeRikenCageHmscucCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHmscucCellPapRawDataRep1
 objType file
@@ -9309,7 +9470,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6596
 tableName wgEncodeRikenCageHobCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHobCellPapMinusRawRep2
 objType table
@@ -9336,7 +9497,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6636
 tableName wgEncodeRikenCageHobCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHobCellPapPlusRawRep1
 objType table
@@ -9363,7 +9524,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6596
 tableName wgEncodeRikenCageHobCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHobCellPapPlusRawRep2
 objType table
@@ -9390,7 +9551,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6636
 tableName wgEncodeRikenCageHobCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHobCellPapRawDataRep1
 objType file
@@ -9549,7 +9710,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6623
 tableName wgEncodeRikenCageHpcplCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHpcplCellPapMinusRawRep2
 objType table
@@ -9576,7 +9737,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6628
 tableName wgEncodeRikenCageHpcplCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHpcplCellPapPlusRawRep1
 objType table
@@ -9603,7 +9764,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6623
 tableName wgEncodeRikenCageHpcplCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHpcplCellPapPlusRawRep2
 objType table
@@ -9630,7 +9791,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6628
 tableName wgEncodeRikenCageHpcplCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHpcplCellPapRawDataRep1
 objType file
@@ -9789,7 +9950,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6610
 tableName wgEncodeRikenCageHpiepcCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHpiepcCellPapMinusRawRep2
 objType table
@@ -9816,7 +9977,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6620
 tableName wgEncodeRikenCageHpiepcCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHpiepcCellPapPlusRawRep1
 objType table
@@ -9843,7 +10004,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6610
 tableName wgEncodeRikenCageHpiepcCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHpiepcCellPapPlusRawRep2
 objType table
@@ -9870,7 +10031,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6620
 tableName wgEncodeRikenCageHpiepcCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHpiepcCellPapRawDataRep1
 objType file
@@ -10029,7 +10190,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6609
 tableName wgEncodeRikenCageHsavecCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHsavecCellPapMinusRawRep2
 objType table
@@ -10056,7 +10217,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6640
 tableName wgEncodeRikenCageHsavecCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHsavecCellPapPlusRawRep1
 objType table
@@ -10083,7 +10244,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6609
 tableName wgEncodeRikenCageHsavecCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHsavecCellPapPlusRawRep2
 objType table
@@ -10110,7 +10271,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6640
 tableName wgEncodeRikenCageHsavecCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHsavecCellPapRawDataRep1
 objType file
@@ -10264,7 +10425,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2376
 tableName wgEncodeRikenCageHuvecCellPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapMinusClustersRep2
 objType file
@@ -10290,7 +10451,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2388
 tableName wgEncodeRikenCageHuvecCellPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapMinusSignalRep1
 objType table
@@ -10304,6 +10465,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J78
@@ -10315,7 +10477,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2376
 tableName wgEncodeRikenCageHuvecCellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapMinusSignalRep2
 objType table
@@ -10329,6 +10491,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J79
@@ -10340,7 +10503,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2388
 tableName wgEncodeRikenCageHuvecCellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapPlusClustersRep1
 objType file
@@ -10366,7 +10529,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2376
 tableName wgEncodeRikenCageHuvecCellPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapPlusClustersRep2
 objType file
@@ -10392,7 +10555,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2388
 tableName wgEncodeRikenCageHuvecCellPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapPlusSignalRep1
 objType table
@@ -10406,6 +10569,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J78
@@ -10417,7 +10581,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2376
 tableName wgEncodeRikenCageHuvecCellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapPlusSignalRep2
 objType table
@@ -10431,6 +10595,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J79
@@ -10442,7 +10607,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2388
 tableName wgEncodeRikenCageHuvecCellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCellPapRawDataRep1
 objType file
@@ -10456,6 +10621,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J78
@@ -10480,6 +10646,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J79
@@ -10504,6 +10671,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J78,J79
@@ -10527,6 +10695,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001141
 expId 1141
 fileName wgEncodeRikenCageHuvecCellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849327
 grant Gingeras
 lab RIKEN
 labExpId J78,J79
@@ -10590,7 +10759,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1800
 tableName wgEncodeRikenCageHuvecCytosolLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolLongnonpolyaPlusClusters
 objType file
@@ -10616,7 +10785,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1800
 tableName wgEncodeRikenCageHuvecCytosolLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolLongnonpolyaRawData
 objType file
@@ -10630,6 +10799,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000342
 expId 342
 fileName wgEncodeRikenCageHuvecCytosolLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849350
 grant Gingeras
 lab RIKEN
 localization cytosol
@@ -10679,6 +10849,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000342
 expId 342
 fileName wgEncodeRikenCageHuvecCytosolPamMinusSignal.bigWig
+geoSampleAccession GSM849350
 grant Gingeras
 lab RIKEN
 labExpId I72
@@ -10689,7 +10860,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1800
 tableName wgEncodeRikenCageHuvecCytosolPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPamPlusSignal
 objType table
@@ -10704,6 +10875,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000342
 expId 342
 fileName wgEncodeRikenCageHuvecCytosolPamPlusSignal.bigWig
+geoSampleAccession GSM849350
 grant Gingeras
 lab RIKEN
 labExpId I72
@@ -10714,7 +10886,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1800
 tableName wgEncodeRikenCageHuvecCytosolPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPamRawData
 objType file
@@ -10728,6 +10900,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000342
 expId 342
 fileName wgEncodeRikenCageHuvecCytosolPamRawData.fastq.gz
+geoSampleAccession GSM849350
 grant Gingeras
 lab RIKEN
 labExpId I72
@@ -10750,6 +10923,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000342
 expId 342
 fileName wgEncodeRikenCageHuvecCytosolPamTssGencV7.gtf.gz
+geoSampleAccession GSM849350
 grant Gingeras
 lab RIKEN
 labExpId I72
@@ -10772,6 +10946,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000342
 expId 342
 fileName wgEncodeRikenCageHuvecCytosolPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849350
 grant Gingeras
 lab RIKEN
 labExpId I72
@@ -10882,7 +11057,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2368
 tableName wgEncodeRikenCageHuvecCytosolPapMinusClustersRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapMinusClustersRep4
 objType file
@@ -10908,7 +11083,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2354
 tableName wgEncodeRikenCageHuvecCytosolPapMinusClustersRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapMinusSignalRep3
 objType table
@@ -10922,6 +11097,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapMinusSignalRep3.bigWig
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K03
@@ -10933,7 +11109,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2368
 tableName wgEncodeRikenCageHuvecCytosolPapMinusSignalRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapMinusSignalRep4
 objType table
@@ -10947,6 +11123,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapMinusSignalRep4.bigWig
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K04
@@ -10958,7 +11135,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2354
 tableName wgEncodeRikenCageHuvecCytosolPapMinusSignalRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapPlusClustersRep3
 objType file
@@ -10984,7 +11161,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2368
 tableName wgEncodeRikenCageHuvecCytosolPapPlusClustersRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapPlusClustersRep4
 objType file
@@ -11010,7 +11187,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2354
 tableName wgEncodeRikenCageHuvecCytosolPapPlusClustersRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapPlusSignalRep3
 objType table
@@ -11024,6 +11201,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapPlusSignalRep3.bigWig
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K03
@@ -11035,7 +11213,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2368
 tableName wgEncodeRikenCageHuvecCytosolPapPlusSignalRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapPlusSignalRep4
 objType table
@@ -11049,6 +11227,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapPlusSignalRep4.bigWig
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K04
@@ -11060,7 +11239,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2354
 tableName wgEncodeRikenCageHuvecCytosolPapPlusSignalRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecCytosolPapRawDataRep3
 objType file
@@ -11074,6 +11253,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapRawDataRep3.fastq.gz
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K03
@@ -11098,6 +11278,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapRawDataRep4.fastq.gz
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K04
@@ -11122,6 +11303,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapTssGencV7.gtf.gz
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K03,K04
@@ -11145,6 +11327,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001142
 expId 1142
 fileName wgEncodeRikenCageHuvecCytosolPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849324
 grant Gingeras
 lab RIKEN
 labExpId K03,K04
@@ -11208,7 +11391,7 @@ rnaExtract longNonPolyA
 seqPlatform Illumina_GA2x
 subId 6635
 tableName wgEncodeRikenCageHuvecNucleusPamMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPamPlusRawRep1
 objType table
@@ -11234,7 +11417,7 @@ rnaExtract longNonPolyA
 seqPlatform Illumina_GA2x
 subId 6635
 tableName wgEncodeRikenCageHuvecNucleusPamPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPamRawDataRep1
 objType file
@@ -11360,7 +11543,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2377
 tableName wgEncodeRikenCageHuvecNucleusPapMinusClustersRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapMinusClustersRep4
 objType file
@@ -11386,7 +11569,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2356
 tableName wgEncodeRikenCageHuvecNucleusPapMinusClustersRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapMinusSignalRep3
 objType table
@@ -11400,6 +11583,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapMinusSignalRep3.bigWig
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K05
@@ -11411,7 +11595,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2377
 tableName wgEncodeRikenCageHuvecNucleusPapMinusSignalRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapMinusSignalRep4
 objType table
@@ -11425,6 +11609,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapMinusSignalRep4.bigWig
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K06
@@ -11436,7 +11621,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2356
 tableName wgEncodeRikenCageHuvecNucleusPapMinusSignalRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapPlusClustersRep3
 objType file
@@ -11462,7 +11647,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2377
 tableName wgEncodeRikenCageHuvecNucleusPapPlusClustersRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapPlusClustersRep4
 objType file
@@ -11488,7 +11673,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2356
 tableName wgEncodeRikenCageHuvecNucleusPapPlusClustersRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapPlusSignalRep3
 objType table
@@ -11502,6 +11687,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapPlusSignalRep3.bigWig
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K05
@@ -11513,7 +11699,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2377
 tableName wgEncodeRikenCageHuvecNucleusPapPlusSignalRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapPlusSignalRep4
 objType table
@@ -11527,6 +11713,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapPlusSignalRep4.bigWig
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K06
@@ -11538,7 +11725,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2356
 tableName wgEncodeRikenCageHuvecNucleusPapPlusSignalRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHuvecNucleusPapRawDataRep3
 objType file
@@ -11552,6 +11739,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapRawDataRep3.fastq.gz
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K05
@@ -11576,6 +11764,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapRawDataRep4.fastq.gz
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K06
@@ -11600,6 +11789,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapTssGencV7.gtf.gz
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K05,K06
@@ -11623,6 +11813,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001143
 expId 1143
 fileName wgEncodeRikenCageHuvecNucleusPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849325
 grant Gingeras
 lab RIKEN
 labExpId K05,K06
@@ -11715,7 +11906,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6594
 tableName wgEncodeRikenCageHvmfCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHvmfCellPapMinusRawRep2
 objType table
@@ -11742,7 +11933,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6611
 tableName wgEncodeRikenCageHvmfCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHvmfCellPapPlusRawRep1
 objType table
@@ -11769,7 +11960,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6594
 tableName wgEncodeRikenCageHvmfCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHvmfCellPapPlusRawRep2
 objType table
@@ -11796,7 +11987,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6611
 tableName wgEncodeRikenCageHvmfCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHvmfCellPapRawDataRep1
 objType file
@@ -11955,7 +12146,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6601
 tableName wgEncodeRikenCageHwpCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHwpCellPapMinusRawRep2
 objType table
@@ -11982,7 +12173,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6617
 tableName wgEncodeRikenCageHwpCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageHwpCellPapPlusRawRep1
 objType table
@@ -12009,7 +12200,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6601
 tableName wgEncodeRikenCageHwpCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHwpCellPapPlusRawRep2
 objType table
@@ -12036,7 +12227,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6617
 tableName wgEncodeRikenCageHwpCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageHwpCellPapRawDataRep1
 objType file
@@ -12195,7 +12386,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6637
 tableName wgEncodeRikenCageImr90CellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageImr90CellPapMinusRawRep2
 objType table
@@ -12222,7 +12413,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6643
 tableName wgEncodeRikenCageImr90CellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageImr90CellPapPlusRawRep1
 objType table
@@ -12249,7 +12440,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6637
 tableName wgEncodeRikenCageImr90CellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageImr90CellPapPlusRawRep2
 objType table
@@ -12276,7 +12467,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6643
 tableName wgEncodeRikenCageImr90CellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageImr90CellPapRawDataRep1
 objType file
@@ -12435,7 +12626,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6588
 tableName wgEncodeRikenCageImr90CytosolPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageImr90CytosolPapMinusRawRep2
 objType table
@@ -12462,7 +12653,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6642
 tableName wgEncodeRikenCageImr90CytosolPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageImr90CytosolPapPlusRawRep1
 objType table
@@ -12489,7 +12680,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6588
 tableName wgEncodeRikenCageImr90CytosolPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageImr90CytosolPapPlusRawRep2
 objType table
@@ -12516,7 +12707,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6642
 tableName wgEncodeRikenCageImr90CytosolPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageImr90CytosolPapRawDataRep1
 objType file
@@ -12675,7 +12866,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6589
 tableName wgEncodeRikenCageImr90NucleusPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageImr90NucleusPapMinusRawRep2
 objType table
@@ -12702,7 +12893,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6593
 tableName wgEncodeRikenCageImr90NucleusPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageImr90NucleusPapPlusRawRep1
 objType table
@@ -12729,7 +12920,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6589
 tableName wgEncodeRikenCageImr90NucleusPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageImr90NucleusPapPlusRawRep2
 objType table
@@ -12756,7 +12947,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6593
 tableName wgEncodeRikenCageImr90NucleusPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageImr90NucleusPapRawDataRep1
 objType file
@@ -12910,7 +13101,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2359
 tableName wgEncodeRikenCageK562CellPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CellPapMinusClustersRep2
 objType file
@@ -12936,7 +13127,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2362
 tableName wgEncodeRikenCageK562CellPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CellPapMinusSignalRep1
 objType table
@@ -12950,6 +13141,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J70
@@ -12961,7 +13153,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2359
 tableName wgEncodeRikenCageK562CellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CellPapMinusSignalRep2
 objType table
@@ -12975,6 +13167,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J71
@@ -12986,7 +13179,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2362
 tableName wgEncodeRikenCageK562CellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CellPapPlusClustersRep1
 objType file
@@ -13012,7 +13205,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2359
 tableName wgEncodeRikenCageK562CellPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CellPapPlusClustersRep2
 objType file
@@ -13038,7 +13231,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2362
 tableName wgEncodeRikenCageK562CellPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CellPapPlusSignalRep1
 objType table
@@ -13052,6 +13245,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J70
@@ -13063,7 +13257,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2359
 tableName wgEncodeRikenCageK562CellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CellPapPlusSignalRep2
 objType table
@@ -13077,6 +13271,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J71
@@ -13088,7 +13283,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2362
 tableName wgEncodeRikenCageK562CellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CellPapRawDataRep1
 objType file
@@ -13102,6 +13297,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J70
@@ -13126,6 +13322,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J71
@@ -13150,6 +13347,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J70,J71
@@ -13173,6 +13371,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001150
 expId 1150
 fileName wgEncodeRikenCageK562CellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849365
 grant Gingeras
 lab RIKEN
 labExpId J70,J71
@@ -13235,7 +13434,7 @@ replicate 0
 rnaExtract total
 subId 1804
 tableName wgEncodeRikenCageK562ChromatinTotalMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562ChromatinTotalMinusSignal
 objType table
@@ -13250,6 +13449,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000334
 expId 334
 fileName wgEncodeRikenCageK562ChromatinTotalMinusSignal.bigWig
+geoSampleAccession GSM849333
 grant Gingeras
 lab RIKEN
 labExpId I35
@@ -13260,7 +13460,7 @@ project wgEncode
 rnaExtract total
 subId 1804
 tableName wgEncodeRikenCageK562ChromatinTotalMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562ChromatinTotalPlusClusters
 objType file
@@ -13286,7 +13486,7 @@ replicate 0
 rnaExtract total
 subId 1804
 tableName wgEncodeRikenCageK562ChromatinTotalPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562ChromatinTotalPlusSignal
 objType table
@@ -13301,6 +13501,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000334
 expId 334
 fileName wgEncodeRikenCageK562ChromatinTotalPlusSignal.bigWig
+geoSampleAccession GSM849333
 grant Gingeras
 lab RIKEN
 labExpId I35
@@ -13311,7 +13512,7 @@ project wgEncode
 rnaExtract total
 subId 1804
 tableName wgEncodeRikenCageK562ChromatinTotalPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562ChromatinTotalRawData
 objType file
@@ -13325,6 +13526,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000334
 expId 334
 fileName wgEncodeRikenCageK562ChromatinTotalRawData.fastq.gz
+geoSampleAccession GSM849333
 grant Gingeras
 lab RIKEN
 labExpId I35
@@ -13347,6 +13549,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000334
 expId 334
 fileName wgEncodeRikenCageK562ChromatinTotalTssGencV7.gtf.gz
+geoSampleAccession GSM849333
 grant Gingeras
 lab RIKEN
 labExpId I35
@@ -13369,6 +13572,7 @@ dateUnrestricted 2012-09-09
 dccAccession wgEncodeEH000334
 expId 334
 fileName wgEncodeRikenCageK562ChromatinTotalTssHmmV2.bedRnaElements.gz
+geoSampleAccession GSM849333
 grant Gingeras
 lab RIKEN
 labExpId I35
@@ -13456,7 +13660,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1805
 tableName wgEncodeRikenCageK562CytosolLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolLongnonpolyaPlusClusters
 objType file
@@ -13482,7 +13686,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1805
 tableName wgEncodeRikenCageK562CytosolLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolLongnonpolyaRawData
 objType file
@@ -13497,6 +13701,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolLongnonpolyaRawData.csfasta.gz
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 localization cytosol
@@ -13521,6 +13726,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolLongnonpolyaRawData2.csqual.gz
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 localization cytosol
@@ -13570,6 +13776,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolPamMinusSignal.bigWig
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 labExpId I22
@@ -13580,7 +13787,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1805
 tableName wgEncodeRikenCageK562CytosolPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPamPlusSignal
 objType table
@@ -13595,6 +13802,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolPamPlusSignal.bigWig
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 labExpId I22
@@ -13605,7 +13813,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1805
 tableName wgEncodeRikenCageK562CytosolPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPamRawData
 objType file
@@ -13620,6 +13828,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolPamRawData.csfasta.gz
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 labExpId I22
@@ -13643,6 +13852,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolPamRawData2.csqual.gz
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 labExpId I22
@@ -13665,6 +13875,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolPamTssGencV7.gtf.gz
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 labExpId I22
@@ -13687,6 +13898,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000329
 expId 329
 fileName wgEncodeRikenCageK562CytosolPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849353
 grant Gingeras
 lab RIKEN
 labExpId I22
@@ -13823,7 +14035,7 @@ replicate 0
 rnaExtract longPolyA
 subId 1806
 tableName wgEncodeRikenCageK562CytosolPapMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapMinusClustersRep1
 objType file
@@ -13849,7 +14061,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2371
 tableName wgEncodeRikenCageK562CytosolPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapMinusClustersRep2
 objType file
@@ -13875,7 +14087,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2383
 tableName wgEncodeRikenCageK562CytosolPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapMinusSignal
 objType file
@@ -13891,6 +14103,7 @@ dateUnrestricted 2009-11-09
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapMinusSignal.bigWig
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId I40
@@ -13900,7 +14113,7 @@ md5sum 6bfd6923f449ef9a7153601d03a25c96
 project wgEncode
 rnaExtract longPolyA
 subId 1806
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapMinusSignalRep1
 objType table
@@ -13914,6 +14127,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J82
@@ -13925,7 +14139,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2371
 tableName wgEncodeRikenCageK562CytosolPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapMinusSignalRep2
 objType table
@@ -13939,6 +14153,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J83
@@ -13950,7 +14165,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2383
 tableName wgEncodeRikenCageK562CytosolPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapPlusClusters
 objType file
@@ -13976,7 +14191,7 @@ replicate 0
 rnaExtract longPolyA
 subId 1806
 tableName wgEncodeRikenCageK562CytosolPapPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapPlusClustersRep1
 objType file
@@ -14002,7 +14217,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2371
 tableName wgEncodeRikenCageK562CytosolPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapPlusClustersRep2
 objType file
@@ -14028,7 +14243,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2383
 tableName wgEncodeRikenCageK562CytosolPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapPlusSignal
 objType file
@@ -14044,6 +14259,7 @@ dateUnrestricted 2009-11-09
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapPlusSignal.bigWig
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId I40
@@ -14053,7 +14269,7 @@ md5sum 7581b8936432aa99d1ec01329e202789
 project wgEncode
 rnaExtract longPolyA
 subId 1806
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapPlusSignalRep1
 objType table
@@ -14067,6 +14283,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J82
@@ -14078,7 +14295,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2371
 tableName wgEncodeRikenCageK562CytosolPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapPlusSignalRep2
 objType table
@@ -14092,6 +14309,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J83
@@ -14103,7 +14321,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2383
 tableName wgEncodeRikenCageK562CytosolPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562CytosolPapRawData
 objType file
@@ -14118,6 +14336,7 @@ dateUnrestricted 2009-11-04
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapRawData.fastq.gz
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId I40
@@ -14140,6 +14359,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J82
@@ -14164,6 +14384,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J83
@@ -14188,6 +14409,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapTssGencV7.gtf.gz
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J82,J83
@@ -14211,6 +14433,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH000332
 expId 332
 fileName wgEncodeRikenCageK562CytosolPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849339
 grant Gingeras
 lab RIKEN
 labExpId J82,J83
@@ -14259,6 +14482,7 @@ dateUnrestricted 2011-08-09
 dccAccession wgEncodeEH000335
 expId 335
 fileName wgEncodeRikenCageK562NucleolusTotalMinusSignal.bigWig
+geoSampleAccession GSM849332
 grant Gingeras
 lab RIKEN
 labExpId I33
@@ -14268,7 +14492,7 @@ project wgEncode
 rnaExtract total
 subId 2929
 tableName wgEncodeRikenCageK562NucleolusTotalMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleolusTotalPlusSignal
 objType table
@@ -14282,6 +14506,7 @@ dateUnrestricted 2011-08-09
 dccAccession wgEncodeEH000335
 expId 335
 fileName wgEncodeRikenCageK562NucleolusTotalPlusSignal.bigWig
+geoSampleAccession GSM849332
 grant Gingeras
 lab RIKEN
 labExpId I33
@@ -14291,7 +14516,7 @@ project wgEncode
 rnaExtract total
 subId 2929
 tableName wgEncodeRikenCageK562NucleolusTotalPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleolusTotalRawData
 objType file
@@ -14305,6 +14530,7 @@ dateUnrestricted 2011-08-09
 dccAccession wgEncodeEH000335
 expId 335
 fileName wgEncodeRikenCageK562NucleolusTotalRawData.fastq.gz
+geoSampleAccession GSM849332
 grant Gingeras
 lab RIKEN
 labExpId I33
@@ -14327,6 +14553,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000335
 expId 335
 fileName wgEncodeRikenCageK562NucleolusTotalTssGencV7.gtf.gz
+geoSampleAccession GSM849332
 grant Gingeras
 lab RIKEN
 labExpId I33
@@ -14349,6 +14576,7 @@ dateUnrestricted 2012-09-09
 dccAccession wgEncodeEH000335
 expId 335
 fileName wgEncodeRikenCageK562NucleolusTotalTssHmmV2.bedRnaElements.gz
+geoSampleAccession GSM849332
 grant Gingeras
 lab RIKEN
 labExpId I33
@@ -14435,7 +14663,7 @@ replicate 0
 rnaExtract total
 subId 1808
 tableName wgEncodeRikenCageK562NucleoplasmTotalMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleoplasmTotalMinusSignal
 objType table
@@ -14450,6 +14678,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000336
 expId 336
 fileName wgEncodeRikenCageK562NucleoplasmTotalMinusSignal.bigWig
+geoSampleAccession GSM849340
 grant Gingeras
 lab RIKEN
 labExpId I34
@@ -14460,7 +14689,7 @@ project wgEncode
 rnaExtract total
 subId 1808
 tableName wgEncodeRikenCageK562NucleoplasmTotalMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleoplasmTotalPlusClusters
 objType file
@@ -14486,7 +14715,7 @@ replicate 0
 rnaExtract total
 subId 1808
 tableName wgEncodeRikenCageK562NucleoplasmTotalPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleoplasmTotalPlusSignal
 objType table
@@ -14501,6 +14730,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000336
 expId 336
 fileName wgEncodeRikenCageK562NucleoplasmTotalPlusSignal.bigWig
+geoSampleAccession GSM849340
 grant Gingeras
 lab RIKEN
 labExpId I34
@@ -14511,7 +14741,7 @@ project wgEncode
 rnaExtract total
 subId 1808
 tableName wgEncodeRikenCageK562NucleoplasmTotalPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleoplasmTotalRawData
 objType file
@@ -14525,6 +14755,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000336
 expId 336
 fileName wgEncodeRikenCageK562NucleoplasmTotalRawData.fastq.gz
+geoSampleAccession GSM849340
 grant Gingeras
 lab RIKEN
 labExpId I34
@@ -14547,6 +14778,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000336
 expId 336
 fileName wgEncodeRikenCageK562NucleoplasmTotalTssGencV7.gtf.gz
+geoSampleAccession GSM849340
 grant Gingeras
 lab RIKEN
 labExpId I34
@@ -14569,6 +14801,7 @@ dateUnrestricted 2012-09-09
 dccAccession wgEncodeEH000336
 expId 336
 fileName wgEncodeRikenCageK562NucleoplasmTotalTssHmmV2.bedRnaElements.gz
+geoSampleAccession GSM849340
 grant Gingeras
 lab RIKEN
 labExpId I34
@@ -14654,7 +14887,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 2127
 tableName wgEncodeRikenCageK562NucleusLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleusLongnonpolyaPlusClusters
 objType file
@@ -14679,7 +14912,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 2127
 tableName wgEncodeRikenCageK562NucleusLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleusLongnonpolyaRawData
 objType file
@@ -14694,6 +14927,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusLongnonpolyaRawData.csfasta.gz
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 localization nucleus
@@ -14718,6 +14952,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusLongnonpolyaRawData2.csqual.gz
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 localization nucleus
@@ -14766,6 +15001,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusPamMinusSignal.bigWig
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 labExpId I23
@@ -14775,7 +15011,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 2127
 tableName wgEncodeRikenCageK562NucleusPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPamPlusSignal
 objType table
@@ -14790,6 +15026,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusPamPlusSignal.bigWig
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 labExpId I23
@@ -14799,7 +15036,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 2127
 tableName wgEncodeRikenCageK562NucleusPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPamRawData
 objType file
@@ -14814,6 +15051,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusPamRawData.csfasta.gz
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 labExpId I23
@@ -14837,6 +15075,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusPamRawData2.csqual.gz
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 labExpId I23
@@ -14859,6 +15098,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusPamTssGencV7.gtf.gz
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 labExpId I23
@@ -14881,6 +15121,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000330
 expId 330
 fileName wgEncodeRikenCageK562NucleusPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849337
 grant Gingeras
 lab RIKEN
 labExpId I23
@@ -14991,7 +15232,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2367
 tableName wgEncodeRikenCageK562NucleusPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapMinusClustersRep2
 objType file
@@ -15017,7 +15258,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2358
 tableName wgEncodeRikenCageK562NucleusPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapMinusSignalRep1
 objType table
@@ -15031,6 +15272,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J91
@@ -15042,7 +15284,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2367
 tableName wgEncodeRikenCageK562NucleusPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapMinusSignalRep2
 objType table
@@ -15056,6 +15298,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J92
@@ -15067,7 +15310,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2358
 tableName wgEncodeRikenCageK562NucleusPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapPlusClustersRep1
 objType file
@@ -15093,7 +15336,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2367
 tableName wgEncodeRikenCageK562NucleusPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapPlusClustersRep2
 objType file
@@ -15119,7 +15362,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2358
 tableName wgEncodeRikenCageK562NucleusPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapPlusSignalRep1
 objType table
@@ -15133,6 +15376,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J91
@@ -15144,7 +15388,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2367
 tableName wgEncodeRikenCageK562NucleusPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapPlusSignalRep2
 objType table
@@ -15158,6 +15402,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J92
@@ -15169,7 +15414,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2358
 tableName wgEncodeRikenCageK562NucleusPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562NucleusPapRawDataRep1
 objType file
@@ -15183,6 +15428,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J91
@@ -15207,6 +15453,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J92
@@ -15231,6 +15478,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapTssGencV7.gtf.gz
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J91,J92
@@ -15254,6 +15502,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH000333
 expId 333
 fileName wgEncodeRikenCageK562NucleusPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849338
 grant Gingeras
 lab RIKEN
 labExpId J91,J92
@@ -15317,7 +15566,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1810
 tableName wgEncodeRikenCageK562PolysomeLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562PolysomeLongnonpolyaPlusClusters
 objType file
@@ -15343,7 +15592,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1810
 tableName wgEncodeRikenCageK562PolysomeLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562PolysomeLongnonpolyaRawData
 objType file
@@ -15357,6 +15606,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000337
 expId 337
 fileName wgEncodeRikenCageK562PolysomeLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849354
 grant Gingeras
 lab RIKEN
 localization polysome
@@ -15406,6 +15656,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000337
 expId 337
 fileName wgEncodeRikenCageK562PolysomePamMinusSignal.bigWig
+geoSampleAccession GSM849354
 grant Gingeras
 lab RIKEN
 labExpId I32
@@ -15416,7 +15667,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1810
 tableName wgEncodeRikenCageK562PolysomePamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageK562PolysomePamPlusSignal
 objType table
@@ -15431,6 +15682,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000337
 expId 337
 fileName wgEncodeRikenCageK562PolysomePamPlusSignal.bigWig
+geoSampleAccession GSM849354
 grant Gingeras
 lab RIKEN
 labExpId I32
@@ -15441,7 +15693,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1810
 tableName wgEncodeRikenCageK562PolysomePamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageK562PolysomePamRawData
 objType file
@@ -15455,6 +15707,7 @@ dateUnrestricted 2009-11-19
 dccAccession wgEncodeEH000337
 expId 337
 fileName wgEncodeRikenCageK562PolysomePamRawData.fastq.gz
+geoSampleAccession GSM849354
 grant Gingeras
 lab RIKEN
 labExpId I32
@@ -15477,6 +15730,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000337
 expId 337
 fileName wgEncodeRikenCageK562PolysomePamTssGencV7.gtf.gz
+geoSampleAccession GSM849354
 grant Gingeras
 lab RIKEN
 labExpId I32
@@ -15499,6 +15753,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000337
 expId 337
 fileName wgEncodeRikenCageK562PolysomePamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849354
 grant Gingeras
 lab RIKEN
 labExpId I32
@@ -15609,7 +15864,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2365
 tableName wgEncodeRikenCageMcf7CellPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMcf7CellPapMinusRawRep2
 objType table
@@ -15623,6 +15878,7 @@ dateUnrestricted 2012-03-17
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapMinusRawRep2.bigWig
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K11
@@ -15634,7 +15890,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 4332
 tableName wgEncodeRikenCageMcf7CellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMcf7CellPapMinusSignalRep1
 objType table
@@ -15648,6 +15904,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K07
@@ -15659,7 +15916,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2365
 tableName wgEncodeRikenCageMcf7CellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMcf7CellPapPlusClustersRep1
 objType file
@@ -15685,7 +15942,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2365
 tableName wgEncodeRikenCageMcf7CellPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMcf7CellPapPlusRawRep2
 objType table
@@ -15699,6 +15956,7 @@ dateUnrestricted 2012-03-17
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapPlusRawRep2.bigWig
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K11
@@ -15710,7 +15968,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 4332
 tableName wgEncodeRikenCageMcf7CellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMcf7CellPapPlusSignalRep1
 objType table
@@ -15724,6 +15982,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K07
@@ -15735,7 +15994,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2365
 tableName wgEncodeRikenCageMcf7CellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMcf7CellPapRawDataRep1
 objType file
@@ -15749,6 +16008,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapRawDataRep1.fastq.tgz
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K07
@@ -15773,6 +16033,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K11
@@ -15797,6 +16058,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K07,K11
@@ -15820,6 +16082,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001151
 expId 1151
 fileName wgEncodeRikenCageMcf7CellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849364
 grant Gingeras
 lab RIKEN
 labExpId K07,K11
@@ -15909,7 +16172,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6616
 tableName wgEncodeRikenCageMcf7CytosolPapMinusRawRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMcf7CytosolPapMinusRawRep4
 objType table
@@ -15935,7 +16198,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6604
 tableName wgEncodeRikenCageMcf7CytosolPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMcf7CytosolPapPlusRawRep3
 objType table
@@ -15961,7 +16224,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6616
 tableName wgEncodeRikenCageMcf7CytosolPapPlusRawRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMcf7CytosolPapPlusRawRep4
 objType table
@@ -15987,7 +16250,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6604
 tableName wgEncodeRikenCageMcf7CytosolPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMcf7CytosolPapRawDataRep3
 objType file
@@ -16140,7 +16403,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6586
 tableName wgEncodeRikenCageMcf7NucleusPapMinusRawRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMcf7NucleusPapMinusRawRep4
 objType table
@@ -16166,7 +16429,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6591
 tableName wgEncodeRikenCageMcf7NucleusPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMcf7NucleusPapPlusRawRep3
 objType table
@@ -16192,7 +16455,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6586
 tableName wgEncodeRikenCageMcf7NucleusPapPlusRawRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMcf7NucleusPapPlusRawRep4
 objType table
@@ -16218,7 +16481,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6591
 tableName wgEncodeRikenCageMcf7NucleusPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMcf7NucleusPapRawDataRep3
 objType file
@@ -16374,7 +16637,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6587
 tableName wgEncodeRikenCageMonocd14CellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMonocd14CellPapMinusRawRep2
 objType table
@@ -16401,7 +16664,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6621
 tableName wgEncodeRikenCageMonocd14CellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageMonocd14CellPapPlusRawRep1
 objType table
@@ -16428,7 +16691,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6587
 tableName wgEncodeRikenCageMonocd14CellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMonocd14CellPapPlusRawRep2
 objType table
@@ -16455,7 +16718,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6621
 tableName wgEncodeRikenCageMonocd14CellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageMonocd14CellPapRawDataRep1
 objType file
@@ -16614,7 +16877,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6631
 tableName wgEncodeRikenCageNhdfCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhdfCellPapMinusRawRep2
 objType table
@@ -16641,7 +16904,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6634
 tableName wgEncodeRikenCageNhdfCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhdfCellPapPlusRawRep1
 objType table
@@ -16668,7 +16931,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6631
 tableName wgEncodeRikenCageNhdfCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhdfCellPapPlusRawRep2
 objType table
@@ -16695,7 +16958,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6634
 tableName wgEncodeRikenCageNhdfCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhdfCellPapRawDataRep1
 objType file
@@ -16849,7 +17112,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2372
 tableName wgEncodeRikenCageNhekCellPapMinusClustersRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapMinusClustersRep2
 objType file
@@ -16875,7 +17138,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2361
 tableName wgEncodeRikenCageNhekCellPapMinusClustersRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapMinusSignalRep1
 objType table
@@ -16889,6 +17152,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapMinusSignalRep1.bigWig
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J76
@@ -16900,7 +17164,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2372
 tableName wgEncodeRikenCageNhekCellPapMinusSignalRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapMinusSignalRep2
 objType table
@@ -16914,6 +17178,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J77
@@ -16925,7 +17190,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2361
 tableName wgEncodeRikenCageNhekCellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapPlusClustersRep1
 objType file
@@ -16951,7 +17216,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2372
 tableName wgEncodeRikenCageNhekCellPapPlusClustersRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapPlusClustersRep2
 objType file
@@ -16977,7 +17242,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2361
 tableName wgEncodeRikenCageNhekCellPapPlusClustersRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapPlusSignalRep1
 objType table
@@ -16991,6 +17256,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapPlusSignalRep1.bigWig
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J76
@@ -17002,7 +17268,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2372
 tableName wgEncodeRikenCageNhekCellPapPlusSignalRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapPlusSignalRep2
 objType table
@@ -17016,6 +17282,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J77
@@ -17027,7 +17294,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2361
 tableName wgEncodeRikenCageNhekCellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCellPapRawDataRep1
 objType file
@@ -17041,6 +17308,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J76
@@ -17065,6 +17333,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J77
@@ -17089,6 +17358,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J76,J77
@@ -17112,6 +17382,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001152
 expId 1152
 fileName wgEncodeRikenCageNhekCellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849367
 grant Gingeras
 lab RIKEN
 labExpId J76,J77
@@ -17175,7 +17446,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1811
 tableName wgEncodeRikenCageNhekCytosolLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolLongnonpolyaPlusClusters
 objType file
@@ -17201,7 +17472,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1811
 tableName wgEncodeRikenCageNhekCytosolLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolLongnonpolyaRawData
 objType file
@@ -17215,6 +17486,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000346
 expId 346
 fileName wgEncodeRikenCageNhekCytosolLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849346
 grant Gingeras
 lab RIKEN
 localization cytosol
@@ -17264,6 +17536,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000346
 expId 346
 fileName wgEncodeRikenCageNhekCytosolPamMinusSignal.bigWig
+geoSampleAccession GSM849346
 grant Gingeras
 lab RIKEN
 labExpId I70
@@ -17274,7 +17547,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1811
 tableName wgEncodeRikenCageNhekCytosolPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPamPlusSignal
 objType table
@@ -17289,6 +17562,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000346
 expId 346
 fileName wgEncodeRikenCageNhekCytosolPamPlusSignal.bigWig
+geoSampleAccession GSM849346
 grant Gingeras
 lab RIKEN
 labExpId I70
@@ -17299,7 +17573,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1811
 tableName wgEncodeRikenCageNhekCytosolPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPamRawData
 objType file
@@ -17313,6 +17587,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000346
 expId 346
 fileName wgEncodeRikenCageNhekCytosolPamRawData.fastq.gz
+geoSampleAccession GSM849346
 grant Gingeras
 lab RIKEN
 labExpId I70
@@ -17335,6 +17610,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000346
 expId 346
 fileName wgEncodeRikenCageNhekCytosolPamTssGencV7.gtf.gz
+geoSampleAccession GSM849346
 grant Gingeras
 lab RIKEN
 labExpId I70
@@ -17357,6 +17633,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000346
 expId 346
 fileName wgEncodeRikenCageNhekCytosolPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849346
 grant Gingeras
 lab RIKEN
 labExpId I70
@@ -17467,7 +17744,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2373
 tableName wgEncodeRikenCageNhekCytosolPapMinusClustersRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPapMinusRawRep4
 objType table
@@ -17481,6 +17758,7 @@ dateUnrestricted 2012-03-02
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapMinusRawRep4.bigWig
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K20
@@ -17492,7 +17770,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 4166
 tableName wgEncodeRikenCageNhekCytosolPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPapMinusSignalRep3
 objType table
@@ -17506,6 +17784,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapMinusSignalRep3.bigWig
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K08
@@ -17517,7 +17796,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2373
 tableName wgEncodeRikenCageNhekCytosolPapMinusSignalRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPapPlusClustersRep3
 objType file
@@ -17543,7 +17822,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2373
 tableName wgEncodeRikenCageNhekCytosolPapPlusClustersRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPapPlusRawRep4
 objType table
@@ -17557,6 +17836,7 @@ dateUnrestricted 2012-03-02
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapPlusRawRep4.bigWig
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K20
@@ -17568,7 +17848,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 4166
 tableName wgEncodeRikenCageNhekCytosolPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPapPlusSignalRep3
 objType table
@@ -17582,6 +17862,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapPlusSignalRep3.bigWig
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K08
@@ -17593,7 +17874,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2373
 tableName wgEncodeRikenCageNhekCytosolPapPlusSignalRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekCytosolPapRawDataRep3
 objType file
@@ -17607,6 +17888,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapRawDataRep3.fastq.gz
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K08
@@ -17631,6 +17913,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapRawDataRep4.fastq.gz
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K20
@@ -17655,6 +17938,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapTssGencV7.gtf.gz
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K08,K20
@@ -17678,6 +17962,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001153
 expId 1153
 fileName wgEncodeRikenCageNhekCytosolPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849366
 grant Gingeras
 lab RIKEN
 labExpId K08,K20
@@ -17741,7 +18026,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1812
 tableName wgEncodeRikenCageNhekNucleusLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusLongnonpolyaPlusClusters
 objType file
@@ -17767,7 +18052,7 @@ replicate 0
 rnaExtract longNonPolyA
 subId 1812
 tableName wgEncodeRikenCageNhekNucleusLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusLongnonpolyaRawData
 objType file
@@ -17781,6 +18066,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000347
 expId 347
 fileName wgEncodeRikenCageNhekNucleusLongnonpolyaRawData.fastq.gz
+geoSampleAccession GSM849347
 grant Gingeras
 lab RIKEN
 localization nucleus
@@ -17830,6 +18116,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000347
 expId 347
 fileName wgEncodeRikenCageNhekNucleusPamMinusSignal.bigWig
+geoSampleAccession GSM849347
 grant Gingeras
 lab RIKEN
 labExpId I71
@@ -17840,7 +18127,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1812
 tableName wgEncodeRikenCageNhekNucleusPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPamPlusSignal
 objType table
@@ -17855,6 +18142,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000347
 expId 347
 fileName wgEncodeRikenCageNhekNucleusPamPlusSignal.bigWig
+geoSampleAccession GSM849347
 grant Gingeras
 lab RIKEN
 labExpId I71
@@ -17865,7 +18153,7 @@ project wgEncode
 rnaExtract longNonPolyA
 subId 1812
 tableName wgEncodeRikenCageNhekNucleusPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPamRawData
 objType file
@@ -17879,6 +18167,7 @@ dateUnrestricted 2010-10-13
 dccAccession wgEncodeEH000347
 expId 347
 fileName wgEncodeRikenCageNhekNucleusPamRawData.fastq.gz
+geoSampleAccession GSM849347
 grant Gingeras
 lab RIKEN
 labExpId I71
@@ -17901,6 +18190,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH000347
 expId 347
 fileName wgEncodeRikenCageNhekNucleusPamTssGencV7.gtf.gz
+geoSampleAccession GSM849347
 grant Gingeras
 lab RIKEN
 labExpId I71
@@ -17923,6 +18213,7 @@ dateUnrestricted 2012-08-04
 dccAccession wgEncodeEH000347
 expId 347
 fileName wgEncodeRikenCageNhekNucleusPamTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849347
 grant Gingeras
 lab RIKEN
 labExpId I71
@@ -18036,7 +18327,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2382
 tableName wgEncodeRikenCageNhekNucleusPapMinusClustersRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPapMinusRawRep4
 objType table
@@ -18064,7 +18355,7 @@ seqPlatform Illumina_GA2x
 sex F
 subId 6619
 tableName wgEncodeRikenCageNhekNucleusPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPapMinusSignalRep3
 objType table
@@ -18078,6 +18369,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001154
 expId 1154
 fileName wgEncodeRikenCageNhekNucleusPapMinusSignalRep3.bigWig
+geoSampleAccession GSM849361
 grant Gingeras
 lab RIKEN
 labExpId K09
@@ -18089,7 +18381,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2382
 tableName wgEncodeRikenCageNhekNucleusPapMinusSignalRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPapPlusClustersRep3
 objType file
@@ -18115,7 +18407,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2382
 tableName wgEncodeRikenCageNhekNucleusPapPlusClustersRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPapPlusRawRep4
 objType table
@@ -18143,7 +18435,7 @@ seqPlatform Illumina_GA2x
 sex F
 subId 6619
 tableName wgEncodeRikenCageNhekNucleusPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPapPlusSignalRep3
 objType table
@@ -18157,6 +18449,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001154
 expId 1154
 fileName wgEncodeRikenCageNhekNucleusPapPlusSignalRep3.bigWig
+geoSampleAccession GSM849361
 grant Gingeras
 lab RIKEN
 labExpId K09
@@ -18168,7 +18461,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 2382
 tableName wgEncodeRikenCageNhekNucleusPapPlusSignalRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhekNucleusPapRawDataRep3
 objType file
@@ -18182,6 +18475,7 @@ dateUnrestricted 2011-06-21
 dccAccession wgEncodeEH001154
 expId 1154
 fileName wgEncodeRikenCageNhekNucleusPapRawDataRep3.fastq.gz
+geoSampleAccession GSM849361
 grant Gingeras
 lab RIKEN
 labExpId K09
@@ -18207,6 +18501,7 @@ dccAccession wgEncodeEH001154
 donorId 4F1155J
 expId 1154
 fileName wgEncodeRikenCageNhekNucleusPapRawDataRep4.fastq.tgz
+geoSampleAccession GSM849361
 grant Gingeras
 lab RIKEN
 labExpId CTig10011
@@ -18233,6 +18528,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001154
 expId 1154
 fileName wgEncodeRikenCageNhekNucleusPapTssGencV7.gtf.gz
+geoSampleAccession GSM849361
 grant Gingeras
 lab RIKEN
 labExpId K09
@@ -18256,6 +18552,7 @@ dateUnrestricted 2012-09-09
 dccAccession wgEncodeEH001154
 expId 1154
 fileName wgEncodeRikenCageNhekNucleusPapTssHmmV2.bedRnaElements.gz
+geoSampleAccession GSM849361
 grant Gingeras
 lab RIKEN
 labExpId K09
@@ -18400,7 +18697,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6603
 tableName wgEncodeRikenCageNhemfm2CellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhemfm2CellPapMinusRawRep2
 objType table
@@ -18427,7 +18724,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6638
 tableName wgEncodeRikenCageNhemfm2CellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhemfm2CellPapPlusRawRep1
 objType table
@@ -18454,7 +18751,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6603
 tableName wgEncodeRikenCageNhemfm2CellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhemfm2CellPapPlusRawRep2
 objType table
@@ -18481,7 +18778,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6638
 tableName wgEncodeRikenCageNhemfm2CellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhemfm2CellPapRawDataRep1
 objType file
@@ -18640,7 +18937,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6646
 tableName wgEncodeRikenCageNhemm2CellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhemm2CellPapMinusRawRep2
 objType table
@@ -18667,7 +18964,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6592
 tableName wgEncodeRikenCageNhemm2CellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageNhemm2CellPapPlusRawRep1
 objType table
@@ -18694,7 +18991,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6646
 tableName wgEncodeRikenCageNhemm2CellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhemm2CellPapPlusRawRep2
 objType table
@@ -18721,7 +19018,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6592
 tableName wgEncodeRikenCageNhemm2CellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageNhemm2CellPapRawDataRep1
 objType file
@@ -18851,7 +19148,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1813
 tableName wgEncodeRikenCageProstateCellLongnonpolyaMinusClusters
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageProstateCellLongnonpolyaPlusClusters
 objType file
@@ -18877,7 +19174,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1813
 tableName wgEncodeRikenCageProstateCellLongnonpolyaPlusClusters
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageProstateCellLongnonpolyaRawData
 objType file
@@ -18892,6 +19189,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000331
 expId 331
 fileName wgEncodeRikenCageProstateCellLongnonpolyaRawData.csfasta.gz
+geoSampleAccession GSM849336
 grant Gingeras
 lab RIKEN
 localization cell
@@ -18916,6 +19214,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000331
 expId 331
 fileName wgEncodeRikenCageProstateCellLongnonpolyaRawData2.csqual.gz
+geoSampleAccession GSM849336
 grant Gingeras
 lab RIKEN
 localization cell
@@ -18965,6 +19264,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000331
 expId 331
 fileName wgEncodeRikenCageProstateCellPamMinusSignal.bigWig
+geoSampleAccession GSM849336
 grant Gingeras
 lab RIKEN
 labExpId I09
@@ -18975,7 +19275,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1813
 tableName wgEncodeRikenCageProstateCellPamMinusSignal
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageProstateCellPamPlusSignal
 objType table
@@ -18990,6 +19290,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000331
 expId 331
 fileName wgEncodeRikenCageProstateCellPamPlusSignal.bigWig
+geoSampleAccession GSM849336
 grant Gingeras
 lab RIKEN
 labExpId I09
@@ -19000,7 +19301,7 @@ rnaExtract longNonPolyA
 softwareVersion bedtools v2.7.1
 subId 1813
 tableName wgEncodeRikenCageProstateCellPamPlusSignal
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageProstateCellPamRawData
 objType file
@@ -19015,6 +19316,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000331
 expId 331
 fileName wgEncodeRikenCageProstateCellPamRawData.csfasta.gz
+geoSampleAccession GSM849336
 grant Gingeras
 lab RIKEN
 labExpId I09
@@ -19038,6 +19340,7 @@ dateUnrestricted 2009-09-09
 dccAccession wgEncodeEH000331
 expId 331
 fileName wgEncodeRikenCageProstateCellPamRawData2.csqual.gz
+geoSampleAccession GSM849336
 grant Gingeras
 lab RIKEN
 labExpId I09
@@ -19127,7 +19430,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6606
 tableName wgEncodeRikenCageSkmcCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSkmcCellPapMinusRawRep2
 objType table
@@ -19154,7 +19457,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6599
 tableName wgEncodeRikenCageSkmcCellPapMinusRawRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSkmcCellPapPlusRawRep1
 objType table
@@ -19181,7 +19484,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6606
 tableName wgEncodeRikenCageSkmcCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSkmcCellPapPlusRawRep2
 objType table
@@ -19208,7 +19511,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6599
 tableName wgEncodeRikenCageSkmcCellPapPlusRawRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSkmcCellPapRawDataRep1
 objType file
@@ -19364,7 +19667,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6598
 tableName wgEncodeRikenCageSknshCellPapMinusRawRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshCellPapMinusRawRep4
 objType table
@@ -19390,7 +19693,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6632
 tableName wgEncodeRikenCageSknshCellPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshCellPapPlusRawRep3
 objType table
@@ -19416,7 +19719,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6598
 tableName wgEncodeRikenCageSknshCellPapPlusRawRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshCellPapPlusRawRep4
 objType table
@@ -19442,7 +19745,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6632
 tableName wgEncodeRikenCageSknshCellPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshCellPapRawDataRep3
 objType file
@@ -19595,7 +19898,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6615
 tableName wgEncodeRikenCageSknshCytosolPapMinusRawRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshCytosolPapMinusRawRep4
 objType table
@@ -19621,7 +19924,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6590
 tableName wgEncodeRikenCageSknshCytosolPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshCytosolPapPlusRawRep3
 objType table
@@ -19647,7 +19950,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6615
 tableName wgEncodeRikenCageSknshCytosolPapPlusRawRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshCytosolPapPlusRawRep4
 objType table
@@ -19673,7 +19976,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6590
 tableName wgEncodeRikenCageSknshCytosolPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshCytosolPapRawDataRep3
 objType file
@@ -19826,7 +20129,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6613
 tableName wgEncodeRikenCageSknshNucleusPapMinusRawRep3
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshNucleusPapMinusRawRep4
 objType table
@@ -19852,7 +20155,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6597
 tableName wgEncodeRikenCageSknshNucleusPapMinusRawRep4
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshNucleusPapPlusRawRep3
 objType table
@@ -19878,7 +20181,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6613
 tableName wgEncodeRikenCageSknshNucleusPapPlusRawRep3
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshNucleusPapPlusRawRep4
 objType table
@@ -19904,7 +20207,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_HiSeq_2000
 subId 6597
 tableName wgEncodeRikenCageSknshNucleusPapPlusRawRep4
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshNucleusPapRawDataRep3
 objType file
@@ -20043,6 +20346,7 @@ dateUnrestricted 2012-03-02
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapMinusRawRep1.bigWig
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K14
@@ -20054,7 +20358,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 4167
 tableName wgEncodeRikenCageSknshraCellPapMinusRawRep1
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshraCellPapMinusSignalRep2
 objType table
@@ -20068,6 +20372,7 @@ dateUnrestricted 2011-10-19
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapMinusSignalRep2.bigWig
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K15
@@ -20079,7 +20384,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3339
 tableName wgEncodeRikenCageSknshraCellPapMinusSignalRep2
-view MinusRawSignal
+view MinusSignal
 
 metaObject wgEncodeRikenCageSknshraCellPapPlusRawRep1
 objType table
@@ -20093,6 +20398,7 @@ dateUnrestricted 2012-03-02
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapPlusRawRep1.bigWig
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K14
@@ -20104,7 +20410,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 4167
 tableName wgEncodeRikenCageSknshraCellPapPlusRawRep1
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshraCellPapPlusSignalRep2
 objType table
@@ -20118,6 +20424,7 @@ dateUnrestricted 2011-10-19
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapPlusSignalRep2.bigWig
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K15
@@ -20129,7 +20436,7 @@ rnaExtract longPolyA
 seqPlatform Illumina_GA2x
 subId 3339
 tableName wgEncodeRikenCageSknshraCellPapPlusSignalRep2
-view PlusRawSignal
+view PlusSignal
 
 metaObject wgEncodeRikenCageSknshraCellPapRawDataRep1
 objType file
@@ -20143,6 +20450,7 @@ dateUnrestricted 2011-10-20
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapRawDataRep1.fastq.gz
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K14
@@ -20167,6 +20475,7 @@ dateUnrestricted 2011-10-19
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapRawDataRep2.fastq.gz
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K15
@@ -20191,6 +20500,7 @@ dateUnrestricted 2012-04-12
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapTssGencV7.gtf.gz
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K14,K15
@@ -20214,6 +20524,7 @@ dateUnrestricted 2012-11-10
 dccAccession wgEncodeEH001157
 expId 1157
 fileName wgEncodeRikenCageSknshraCellPapTssHmm.bedRnaElements.gz
+geoSampleAccession GSM849362
 grant Gingeras
 lab RIKEN
 labExpId K14,K15
@@ -20227,4 +20538,4 @@ subId 5610
 tableName wgEncodeRikenCageSknshraCellPapTssHmm
 view TssHmm
 
-# MAGIC: -1817297051
+# MAGIC: 359478210
