@@ -24,6 +24,8 @@
 
 /* ---- Global variables. ---- */
 char msg[4096] = "";
+char *incorrectUsernameOrPassword="The username or password you entered is incorrect.";
+char *incorrectUsername="The username you entered is incorrect.";
 /* The excludeVars are not saved to the cart. */
 char *excludeVars[] = { "submit", "Submit", "debug", "fixMembers", "update", 
      "hgLogin_password", "hgLogin_password2", "hgLogin_newPassword1",
@@ -377,18 +379,23 @@ else
 void  displayMailSuccess()
 /* display mail success confirmation box */
 {
+char *sendMailTo = cartUsualString(cart, "hgLogin_sendMailTo", "");
+char *sendMailContain = cartUsualString(cart, "hgLogin_sendMailContain", "");
 hPrintf(
     "<div id=\"confirmationBox\" class=\"centeredContainer formBox\">"
-    "\n"
     "<h2>%s</h2>", brwName);
 hPrintf(
-    "<p id=\"confirmationMsg\" class=\"confirmationTxt\">An email has been sent to you \n"
-   "containing information that you requested.</p>"
-    "\n"
+    "<p id=\"confirmationMsg\" class=\"confirmationTxt\">An email has been sent to <B>%s</B> "
+  "containing %s information that you requested.<BR><BR>"
+    "  If <B>%s</B> is not your registered email address, you will not receive an email."
+    " If you can't find the message we sent you, please contact %s for help.</p>", sendMailTo, sendMailContain, sendMailTo, returnAddr);
+hPrintf(
     "<p><a href=\"hgLogin?hgLogin.do.displayLoginPage=1\">Return to Login</a></p>");
 cartRemove(cart, "hgLogin_helpWith");
 cartRemove(cart, "hgLogin_email");
 cartRemove(cart, "hgLogin_userName");
+cartRemove(cart, "hgLogin_sendMailTo");
+cartRemove(cart, "hgLogin_sendMailContain");
 }
 
 void sendMailOut(char *email, char *subject, char *msg)
@@ -798,7 +805,7 @@ else
 if (!password)
     {
     freez(&errMsg);
-    errMsg = cloneString("User not found.");
+    errMsg = cloneString(incorrectUsername);
     changePasswordPage(conn);
     return;
     }
@@ -1023,11 +1030,11 @@ if (sameString(helpWith,"username"))
         safef(query,sizeof(query),
             "select password from gbMembers where email='%s'", email);
         char *password = sqlQuickString(conn, query);
-        if (!password)
+        cartSetString(cart, "hgLogin_sendMailTo", email);
+        cartSetString(cart, "hgLogin_sendMailContain", "username(s)");
+        if (!password) /* Email address not found */
             {
-            freez(&errMsg);
-            errMsg = cloneString("Email address not found.");
-            displayAccHelpPage(conn);
+            displayMailSuccess();
             return;
             }
         sendUsername(conn, email);
@@ -1053,7 +1060,7 @@ if (sameString(helpWith,"password"))
         if (!password)
             {
             freez(&errMsg);
-            errMsg = cloneString("Username not found.");
+            errMsg = cloneString(incorrectUsername);
             displayAccHelpPage(conn);
             return;
             }
@@ -1151,9 +1158,7 @@ sr = sqlGetResult(conn, query);
 if ((row = sqlNextRow(sr)) == NULL)
     {
     freez(&errMsg);
-    char temp[256];
-    safef(temp,sizeof(temp),"User name %s not found.",userName);
-    errMsg = cloneString(temp);
+    errMsg = cloneString(incorrectUsernameOrPassword);
     displayLoginPage(conn);
     return;
     }
@@ -1184,7 +1189,7 @@ else if (usingNewPassword(conn, userName, password))
     } 
 else
     {
-    errMsg = cloneString("Invalid user name or password.");
+    errMsg = cloneString(incorrectUsernameOrPassword);
     displayLoginPage(conn);
     return;
     }
