@@ -64,7 +64,7 @@
  * Because the browser is a central program, most of it's cart
  * variables are not hgt. qualified.  It's a good idea if other
  * program's unique variables be qualified with a prefix though. */
-char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
+ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
             "hgt.in1", "hgt.in2", "hgt.in3", "hgt.inBase",
             "hgt.out1", "hgt.out2", "hgt.out3",
             "hgt.left1", "hgt.left2", "hgt.left3",
@@ -109,7 +109,7 @@ struct hvGfx *hvgSide = NULL;   // Extra pointer to a sideLabel image that can b
 char *rulerMenu[] =
 /* dropdown for ruler visibility */
     {
-    "hide",
+"hide",
     "dense",
     "full"
     };
