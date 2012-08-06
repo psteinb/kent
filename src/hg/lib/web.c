@@ -1414,11 +1414,6 @@ if(scriptName)
         link = "../goldenPath/help/hgSessionHelp.html";
         label = "Help on Sessions";
         }
-    else if (endsWith(scriptName, "pbGateway"))
-        {
-        link = "../goldenPath/help/pbTracksHelpFiles/pbTracksHelp.shtml";
-        label = "Help on Proteome Browser";
-        }
     else if (endsWith(scriptName, "hgVisiGene"))
         {
         link = "../goldenPath/help/hgTracksHelp.html#VisiGeneHelp";

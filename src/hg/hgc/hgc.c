@@ -3400,8 +3400,6 @@ struct tfbsConsFactors *tfbsConsFactor;
 struct tfbsConsFactors *tfbsConsFactorList = NULL;
 boolean firstTime = TRUE;
 char *mappedId = NULL;
-char protMapTable[256];
-char *factorDb;
 
 dupe = cloneString(tdb->type);
 genericHeader(tdb, item);
@@ -3469,21 +3467,6 @@ if (tfbsConsFactorList)
 	    printf("<BR><B>Factor:</B> %s<BR>\n", tfbsConsFactor->factor);
 	    printf("<B>Species:</B> %s<BR>\n", tfbsConsFactor->species);
 	    printf("<B>SwissProt ID:</B> %s<BR>\n", sameString(tfbsConsFactor->id, "N")? "unknown": tfbsConsFactor->id);
-
-	    factorDb = hDefaultDbForGenome(tfbsConsFactor->species);
-	    safef(protMapTable, sizeof(protMapTable), "%s.kgProtMap", factorDb);
-
-	    /* Only display link if entry exists in protein browser */
-	    if (hTableExists(database, protMapTable))
-		{
-		sprintf(query, "select * from %s where qName = '%s'", protMapTable, tfbsConsFactor->id );
-                sr = sqlGetResult(conn, query);
-                if ((row = sqlNextRow(sr)) != NULL)
-		    {
-		    printf("<A HREF=\"../cgi-bin/pbTracks?proteinID=%s&db=%s\" target=_blank><B>Proteome Browser Entry</B></A><BR>",  tfbsConsFactor->id,factorDb);
-                    sqlFreeResult(&sr);
-		    }
-		}
 	    }
 	}
     }
@@ -3570,9 +3553,6 @@ for(tfbs=tfbsConsList ; tfbs != NULL ; tfbs = tfbs->next)
 
 if (printFactors)
     {
-    char protMapTable[256];
-    char *factorDb;
-
     htmlHorizontalLine();
     printf("<B style='font-size:large;'>Transcription Factors known to bind to this site:</B><BR><BR>");
     for(tfbs=tfbsConsList ; tfbs != NULL ; tfbs = tfbs->next)
@@ -3587,20 +3567,6 @@ if (printFactors)
 	    printf("<B>Species:</B> %s<BR>\n", tfbs->species);
 	    printf("<B>SwissProt ID:</B> %s<BR>\n", sameString(tfbs->id, "N")? "unknown": tfbs->id);
 
-	    factorDb = hDefaultDbForGenome(tfbs->species);
-	    safef(protMapTable, sizeof(protMapTable), "%s.kgProtMap", factorDb);
-
-	    /* Only display link if entry exists in protein browser */
-	    if (hTableExists(database, protMapTable))
-		{
-		sprintf(query, "select * from %s where qName = '%s';", protMapTable, tfbs->id );
-                sr = sqlGetResult(conn, query);
-                if ((row = sqlNextRow(sr)) != NULL)
-		    {
-		    printf("<A HREF=\"../cgi-bin/pbTracks?proteinID=%s\" target=_blank><B>Proteome Browser</B></A><BR><BR>",  tfbs->id);
-                    sqlFreeResult(&sr);
-		    }
-		}
 	    }
 	}
     }
@@ -7374,7 +7340,7 @@ else
     wholePsl = pslLoad(row+hasBin);
     sqlFreeResult(&sr);
 
-    if (startsWith("ucscRetroAli", aliTable) || startsWith("retroMrnaAli", aliTable) || sameString("pseudoMrna", aliTable) || sameString("altSeqLiftOverPsl", aliTable))
+    if (startsWith("ucscRetroAli", aliTable) || startsWith("retroMrnaAli", aliTable) || sameString("pseudoMrna", aliTable) || startsWith("altSeqLiftOverPsl", aliTable))
 	{
         rnaSeq = NULL;
 	char *trackName = hGetTrackForTable(database, aliTable);
@@ -16858,16 +16824,17 @@ for (j = 0;  j < alleleCount;  j++)
     int alSize = sameString(al, "-") ? 0 : alIsAlpha ? strlen(al) : -1;
     if (alSize != refAlleleSize && alSize >= 0 && refAlleleSize >=0)
 	{
+
 	int diff = alSize - refAlleleSize;
 	if ((diff % 3) != 0)
-	    printf(firstTwoColumnsPctS "%s</TD></TR>\n",
+	    printf(firstTwoColumnsPctS "%s\n",
 		   geneTrack, geneName, snpMisoLinkFromFunc("frameshift"));
 	else if (diff > 0)
-	    printf(firstTwoColumnsPctS "%s (insertion of %d codon%s)</TD></TR>\n",
+	    printf(firstTwoColumnsPctS "%s (insertion of %d codon%s)\n",
 		   geneTrack, geneName, snpMisoLinkFromFunc("inframe_insertion"),
 		   (int)(diff/3), (diff > 3) ?  "s" : "");
 	else
-	    printf(firstTwoColumnsPctS "%s (deletion of %d codon%s)</TD></TR>\n",
+	    printf(firstTwoColumnsPctS "%s (deletion of %d codon%s)\n",
 		   geneTrack, geneName, snpMisoLinkFromFunc("inframe_deletion"),
 		   (int)(-diff/3), (diff < -3) ?  "s" : "");
 	}
@@ -16884,32 +16851,32 @@ for (j = 0;  j < alleleCount;  j++)
 	if (refAA != snpAA)
 	    {
 	    if (refAA == '*')
-		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)</TD></TR>\n",
+		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)\n",
 		       geneTrack, geneName, snpMisoLinkFromFunc("stop-loss"),
 		       refAA, refCodonHtml, snpAA, snpCodonHtml);
 	    else if (snpAA == '*')
-		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)</TD></TR>\n",
+		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)\n",
 		       geneTrack, geneName, snpMisoLinkFromFunc("nonsense"),
 		       refAA, refCodonHtml, snpAA, snpCodonHtml);
 	    else
-		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)</TD></TR>\n",
+		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)\n",
 		       geneTrack, geneName, snpMisoLinkFromFunc("missense"),
 		       refAA, refCodonHtml, snpAA, snpCodonHtml);
 	    }
 	else
 	    {
 	    if (refAA == '*')
-		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)</TD></TR>\n",
+		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)\n",
 		       geneTrack, geneName, snpMisoLinkFromFunc("stop_retained_variant"),
 		       refAA, refCodonHtml, snpAA, snpCodonHtml);
 	    else
-		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)</TD></TR>\n",
+		printf(firstTwoColumnsPctS "%s %c (%s) --> %c (%s)\n",
 		       geneTrack, geneName, snpMisoLinkFromFunc("coding-synon"),
 		       refAA, refCodonHtml, snpAA, snpCodonHtml);
 	    }
 	}
     else
-	printf(firstTwoColumnsPctS "%s %s --> %s</TD></TR>\n",
+	printf(firstTwoColumnsPctS "%s %s --> %s\n",
 	       geneTrack, geneName, snpMisoLinkFromFunc("cds-synonymy-unknown"), refAllele, al);
     }
 }
@@ -16935,23 +16902,40 @@ for (i = iStart;  i != iEnd;  i += iIncr)
 	    printSnp125FunctionInCDS(snp, geneTable, geneTrack, gene, i, geneName);
 	else if (cdsEnd > cdsStart)
 	    {
-	    boolean is5Prime = geneIsRc ^ (snpEnd < cdsStart);
-	    printf(firstTwoColumnsPctS "%s</TD></TR>\n", geneTrack, geneName,
+	    boolean is5Prime = ((geneIsRc && (snpStart >= cdsEnd)) ||
+				(!geneIsRc && (snpEnd < cdsStart)));
+	    printf(firstTwoColumnsPctS "%s\n", geneTrack, geneName,
 		   snpMisoLinkFromFunc((is5Prime) ? "untranslated-5" : "untranslated-3"));
 	    }
 	else
-	    printf(firstTwoColumnsPctS "%s</TD></TR>\n", geneTrack, geneName,
+	    printf(firstTwoColumnsPctS "%s\n", geneTrack, geneName,
 		   snpMisoLinkFromFunc("ncRNA"));
 	}
+    // SO term splice_region_variant applies to first/last 3 bases of exon
+    // and first/last 3-8 bases of intron
+    if ((i > 0 && snpStart < exonStart+3 && snpEnd > exonStart) ||
+	(i < gene->exonCount-1 && snpStart < exonEnd && snpEnd > exonEnd-3))
+	printf(", %s", snpMisoLinkFromFunc("splice_region_variant"));
+    puts("</TD></TR>");
     if (i > 0)
 	{
 	int intronStart = gene->exonEnds[i-1], intronEnd = gene->exonStarts[i];
+	if (snpEnd < intronStart || snpStart > intronEnd)
+	    continue;
 	if (snpStart < intronStart+2 && snpEnd > intronStart)
 	    printf(firstTwoColumnsPctS "%s</TD></TR>\n", geneTrack, geneName,
 		   snpMisoLinkFromFunc(geneIsRc ? "splice-3" : "splice-5"));
-	else if (snpStart < intronEnd-2 && snpEnd > intronStart+2)
+	else if (snpStart < intronStart+8 && snpEnd > intronStart+2)
+	    printf(firstTwoColumnsPctS "%s, %s</TD></TR>\n", geneTrack, geneName,
+		   snpMisoLinkFromFunc("intron_variant"),
+		   snpMisoLinkFromFunc("splice_region_variant"));
+	else if (snpStart < intronEnd-8 && snpEnd > intronStart+8)
 	    printf(firstTwoColumnsPctS "%s</TD></TR>\n", geneTrack, geneName,
 		   snpMisoLinkFromFunc("intron"));
+	else if (snpStart < intronEnd-2 && snpEnd > intronEnd-8)
+	    printf(firstTwoColumnsPctS "%s, %s</TD></TR>\n", geneTrack, geneName,
+		   snpMisoLinkFromFunc("intron_variant"),
+		   snpMisoLinkFromFunc("splice_region_variant"));
 	else if (snpStart < intronEnd && snpEnd > intronEnd-2)
 	    printf(firstTwoColumnsPctS "%s</TD></TR>\n", geneTrack, geneName,
 		   snpMisoLinkFromFunc(geneIsRc ? "splice-5" : "splice-3"));
