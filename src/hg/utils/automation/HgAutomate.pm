@@ -49,18 +49,18 @@ use File::Basename;
 use vars qw( %cluster %clusterFilesystem $defaultDbHost );
 
 %cluster = 
-    ( 'swarm' => ,
-        { 'enabled' => 1, 'gigaHz' => 2.33, 'ram' => 8,
-	  'hostCount' => 1024, },
+    ( 'genome' => ,
+        { 'enabled' => 1, 'gigaHz' => 2.33, 'ram' => 4,
+	  'hostCount' => 28, },
 #      'pk' =>
 #        { 'enabled' => 1, 'gigaHz' => 2.0, 'ram' => 4,
 #	  'hostCount' => 394, },
-      'memk' =>
-        { 'enabled' => 1, 'gigaHz' => 1.0, 'ram' => 32,
-	  'hostCount' => 32, },
-      'encodek' =>
-        { 'enabled' => 1, 'gigaHz' => 2.0, 'ram' => 16,
-	  'hostCount' => 48, },
+#      'memk' =>
+#        { 'enabled' => 1, 'gigaHz' => 1.0, 'ram' => 32,
+#	  'hostCount' => 32, },
+#      'encodek' =>
+#        { 'enabled' => 1, 'gigaHz' => 2.0, 'ram' => 16,
+#	  'hostCount' => 48, },
 #      'kk9' => # Guessing here since the machines are down:
 #        { 'enabled' => 0, 'gigaHz' => 1.5, 'ram' => 2,
 #	  'hostCount' => 100, },
@@ -70,14 +70,14 @@ my @allClusters = (keys %cluster);
 
 %clusterFilesystem =
     ( 'scratch' =>
-        { root => '/cluster/tmp', clusterLocality => 1.0,
+        { root => '/scratch/tmp', clusterLocality => 1.0,
 	  distrHost => [], distrCommand => '',
 	  inputFor => \@allClusters, outputFor => [], },
-      'hive' =>
-        { root => '/hive/data/genomes', clusterLocality => 0.3,
-	  distrHost => ['swarm'], distrCommand => '',
-	  inputFor => ['memk', 'encodek', 'swarm'],
-	  outputFor => ['memk', 'encodek', 'swarm'], },
+#      'hive' =>
+#        { root => '/hive/data/genomes', clusterLocality => 0.3,
+#	  distrHost => ['swarm'], distrCommand => '',
+#	  inputFor => ['memk', 'encodek', 'swarm'],
+#	  outputFor => ['memk', 'encodek', 'swarm'], },
 #        { root => '/hive/data/genomes', clusterLocality => 0.3,
 #	  distrHost => ['pk', 'swarm'], distrCommand => '',
 #	  inputFor => ['pk', 'memk', 'encodek', 'swarm'],
@@ -88,7 +88,7 @@ my @allClusters = (keys %cluster);
 #	  inputFor => ['pk', 'memk'], outputFor => ['pk', 'memk'], },
     );
 
-$defaultDbHost = 'hgwdev';
+$defaultDbHost = 'genome';
 
 sub choosePermanentStorage {
   # Return the disk drive with the most available space.
@@ -107,7 +107,7 @@ sub choosePermanentStorage {
     }
   }
   if (! defined $bestRaid) {
-    $bestRaid = "/cluster/tmp";
+    $bestRaid = "/scratch/tmp";
   }
   confess "Could not df any /cluster/store's" if (! defined $bestRaid);
   return $bestRaid;
@@ -218,9 +218,9 @@ sub getWorkhorseLoads {
   # swarm and hgwdev are now valid workhorses since they have access to hive.
   confess "Too many arguments" if (scalar(@_) != 0);
   my %horses = ();
-  foreach my $machLine ('swarm', 'kolossus', 'hgwdev',
+  foreach my $machLine ('genome',
 	`$HgAutomate::runSSH encodek parasol list machines | grep idle`,
-	`$HgAutomate::runSSH memk parasol list machines | grep idle`) {
+	`$HgAutomate::runSSH genome parasol list machines | grep idle`) {
     my $mach = $machLine;
     $mach =~ s/[\. ].*//;
     chomp $mach;
@@ -497,15 +497,15 @@ $paraRun = ("$para make jobList\n" .
 	    "$para check\n" .
 	    "$para time > run.time\n" .
 	    'cat run.time');
-$centralDbSql = "hgsql -h genome-testdb -A -N hgcentraltest";
+$centralDbSql = "hgsql -A -N hgcentral";
 $git = "/usr/bin/git";
 
-$clusterData = '/cluster/gbdb-bej';
+$clusterData = '/genome/gbdb-HL';
 $trackBuild = 'bed';
 my $apacheRoot = '/usr/local/apache';
 $goldenPath = "$apacheRoot/htdocs-hgdownload/goldenPath";
 $images = "$apacheRoot/htdocs/images";
-$gbdb = '/cluster/gbdb-bej';
+$gbdb = '/genome/gbdb-HL';
 
 # This is the max number of sequences in an assembly that we will consider
 # "chrom-based" (allow split tables; per-seq files can fit in one directory)
@@ -595,6 +595,8 @@ sub getSpecies {
   my $line = `echo '$query' | $HgAutomate::runSSH $dbHost $centralDbSql`;
   chomp $line;
   my ($scientificName) = split("\t", $line);
+  print "----------- $scientificName\n";
+
   return ($scientificName);
 } # getSpecies
 
