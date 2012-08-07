@@ -237,7 +237,9 @@ while (lineFileNext(lf, &line, NULL))
 lineFileClose(&lf);
 addTailsAndClose();
 freeFilePool();
-freez(&ending);
+/* MH: gives segmentation error on splitFileByColumn -col=1 $input.agp -ending=.agp $outputDir  --> error does not occur if -ending is omitted --> then a proper
+cloneString is done.  I assume that ending points to the argument hash value and that the free operation fails */
+/*freez(&ending);*/
 }
 
 int main(int argc, char *argv[])
