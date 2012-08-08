@@ -1,4 +1,4 @@
-#!/bin/env perl
+#!/usr/bin/env perl
 
 # DO NOT EDIT the /cluster/bin/scripts copy of this file -- 
 # edit ~/kent/src/hg/utils/automation/blastz-run-ucsc instead.
@@ -82,9 +82,7 @@ my %qSizes = ();
 my $machType = `uname -m`;
 chomp $machType;
 $machType = "i386" if ($machType eq "i686");
-my $defaultPath = ("/cluster/bin/penn/$machType:/cluster/bin/penn:" . "/cluster/group/evodevo/bin/lastz:" .
-		   "/cluster/bin/scripts:/cluster/bin/$machType:" .
-		   '/bin:/usr/bin');
+my $defaultPath = ("/genome/bin/scripts:/genome/bin/$machType:/bin:/usr/bin");
 
 sub cleanDie {
   # Clean up $TMP (if it has been created) and then die.
@@ -277,7 +275,7 @@ sub unpackForBlastz {
     # Don't use twoBitToFa's range extraction capabilities -- that 
     # confuses blastz/normalizeLav.  Just extract the whole thing as 
     # fa and tell blastz what range we're using:
-    &run("/cluster/bin/$machtype/twoBitToFa $fname:$seq $local");
+    &run("/genome/bin/$machtype/twoBitToFa $fname:$seq $local");
     $local .= &blastzRangeSpec($start, $end);
   } elsif ($fname =~ /\.fa(\.gz)?$/) {
     if ($1) {
@@ -542,7 +540,7 @@ my $seq2Len = $defVars{'SEQ2_CTGLEN'} || $defVars{'SEQ2_LEN'};
 if (exists($defVars{'TMPDIR'})) {
   $TMP = `mktemp -d $defVars{'TMPDIR'}/blastz.XXXXXX` || &cleanDie("Can't mktemp");
 } else {
-  $TMP = `mktemp -d /tmp/blastz.XXXXXX` || &cleanDie("Can't mktemp");
+  $TMP = `mktemp -d /scratch/tmp/blastz.XXXXXX` || &cleanDie("Can't mktemp");
 }
 chomp $TMP;
 print STDERR "temp files in $TMP -- will attempt cleanup before die-ing.\n";
