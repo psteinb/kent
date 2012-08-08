@@ -491,8 +491,8 @@ use vars qw( 	$gensub2 $para $paraRun $centralDbSql $git
 	   );
 use vars qw( $gensub2 $para $paraRun $clusterData $trackBuild
 	     $goldenPath $gbdb $centralDbSql $splitThreshold $runSSH );
-$gensub2 = '/parasol/bin/gensub2';
-$para = '/parasol/bin/para';
+$gensub2 = '/genome/bin/x86_64/gensub2';
+$para = '/genome/bin/x86_64/para';
 $paraRun = ("$para make jobList\n" .
 	    "$para check\n" .
 	    "$para time > run.time\n" .

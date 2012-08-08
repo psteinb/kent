@@ -16,9 +16,9 @@ use HgRemoteScript;
 use HgStepManager;
 
 # Hardcoded command path:
-my $RepeatMaskerPath = "/scratch/data/RepeatMasker";
+my $RepeatMaskerPath = "/genome/src/RepeatMasker";
 my $RepeatMasker = "$RepeatMaskerPath/RepeatMasker";
-my $liftRMAlign = "/cluster/bin/scripts/liftRMAlign.pl";
+my $liftRMAlign = "/genome/bin/scripts/liftRMAlign.pl";
 
 # Option variable names, both common and peculiar to this script:
 use vars @HgAutomate::commonOptionVars;
@@ -42,7 +42,7 @@ my $stepper = new HgStepManager(
 				);
 
 # Option defaults:
-my $dbHost = 'hgwdev';
+my $dbHost = 'genome';
 my $unmaskedSeq = "\$db.unmasked.2bit";
 my $defaultSpecies = 'scientificName from dbDb';
 
@@ -133,12 +133,16 @@ sub doCluster {
   if (! -e $unmaskedSeq) {
     die "Error: required file $unmaskedSeq does not exist.";
   }
-  my @okIn = grep !/scratch/,
-    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
-  my @okOut = &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
-  if (scalar(@okOut) > 1) {
-    @okOut = grep !/$okIn[0]/, @okOut;
-  }
+#  my @okIn = grep !/scratch/,
+#    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
+#  my @okOut = &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
+#  if (scalar(@okOut) > 1) {
+#    @okOut = grep !/$okIn[0]/, @okOut;
+#  }
+my @okIn;
+my @okOut;
+push @okIn, $buildDir;
+push @okOut, $buildDir;
   my $inHive = 0;
   $inHive = 1 if ($okIn[0] =~ m#/hive/data/genomes#);
   my $clusterSeqDir = "$okIn[0]/$db";
@@ -230,12 +234,13 @@ and runs it on the cluster with the most available bandwidth.";
   $bossScript->add(<<_EOF_
 chmod a+x dummyRun.csh
 chmod a+x RMRun.csh
-./dummyRun.csh
+#./dummyRun.csh		# do not run a dummy script
 
 # Record RM version used:
 ls -l $RepeatMaskerPath
-grep 'version of RepeatMasker\$' $RepeatMasker
-grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
+# don't do the grep's
+#grep 'version of RepeatMasker\$' $RepeatMasker
+#grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
 _EOF_
   );
   if (! $inHive) {
@@ -388,9 +393,9 @@ _EOF_
 					$runDir, $whatItDoes);
     $bossScript->add(<<_EOF_
 head -3 $db.sorted.fa.out > /tmp/rmskHead.txt
+# output to ./rmsk instead of $HgAutomate::gbdb/$db because otherwise splitFileByColumn tries to creates /genome/gbdb-HL and fails because it exists
 tail -n +4 $db.sorted.fa.out \\
-| splitFileByColumn -col=5 stdin /cluster/data/$db -chromDirs \\
-    -ending=.fa.out -head=/tmp/rmskHead.txt
+| splitFileByColumn -col=5 stdin ./rmsk -chromDirs -ending=.fa.out -head=/tmp/rmskHead.txt
 _EOF_
     );
     $bossScript->execute();

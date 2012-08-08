@@ -40,7 +40,7 @@ my $stepper = new HgStepManager(
 # Option defaults:
 my $defaultSmallClusterHub = 'most available';
 my $defaultWorkhorse = 'least loaded';
-my $dbHost = 'hgwdev';
+my $dbHost = 'genome';
 my $unmaskedSeq = "\$db.unmasked.2bit";
 
 my $base = $0;
