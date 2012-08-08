@@ -30,12 +30,12 @@ use HgStepManager;
 # Hardcoded paths/command sequences:
 
 print "BIN: $Bin\n";
-my $getFileServer = '/cluster/bin/scripts/fileServer';
+my $getFileServer = '/genome/bin/scripts/fileServer';
 my $blastzRunUcsc = "$Bin/blastz-run-ucsc";
 my $partition = "$Bin/partitionSequence.pl";
-my $clusterLocal = '/cluster/u/hillerm/doBlastzChainNet_tmp';
-my $clusterSortaLocal = '/cluster/u/hillerm/doBlastzChainNet_tmp';
-my @clusterNAS = ('/cluster/u/hillerm/doBlastzChainNet_tmp');
+my $clusterLocal = '/scratch/tmp';
+my $clusterSortaLocal = '/scratch/tmp';
+my @clusterNAS = ('/scratch/tmp');
 my $clusterNAS = join('/... or ', @clusterNAS) . '/...';
 my @clusterNoNo = ('/afs');
 my @fileServerNoNo = ('kkhome', 'kks00');
@@ -68,18 +68,18 @@ my $stepper = new HgStepManager(
       { name => 'chainRun',   func => \&doChainRun },
       { name => 'chainMerge', func => \&doChainMerge },
       { name => 'net',        func => \&netChains },
-      { name => 'load',       func => \&loadUp },
-      { name => 'download',   func => \&doDownloads },
+      { name => 'load',       func => \&loadUp },  # MH: modified to run only netClass; no chain/net loading anymore
+#      { name => 'download',   func => \&doDownloads },
       { name => 'cleanup',    func => \&cleanup },
       { name => 'syntenicNet',func => \&doSyntenicNet }
     ]
 			       );
 
 # Option defaults:
-my $bigClusterHub = 'hoxa';
-my $smallClusterHub = 'hoxa';
-my $dbHost = 'dev';
-my $workhorse = 'dev';
+my $bigClusterHub = 'genome';
+my $smallClusterHub = 'genome';
+my $dbHost = 'genome';
+my $workhorse = 'genome';
 my $defaultChainLinearGap = "loose";
 my $defaultChainMinScore = "1000";	# from axtChain itself
 my $defaultTRepeats = "";		# for netClass option tRepeats
@@ -125,7 +125,7 @@ _EOF_
   ;
 print STDERR &HgAutomate::getCommonOptionHelp('dbHost' => $dbHost,
 				      'workhorse' => $workhorse,
-				      'fileServer' => 'hoxa',
+				      'fileServer' => 'genome',
 				      'bigClusterHub' => $bigClusterHub,
 				      'smallClusterHub' => $smallClusterHub);
 print STDERR "
@@ -970,6 +970,7 @@ _EOF_
 
 
 sub loadUp {
+	# MH: modified to run only netClass; no chain/net loading anymore
   # Load chains; add repeat/gap stats to net; load nets.
   my $runDir = "$buildDir/axtChain";
   my $QDbLink = "chain$QDb" . "Link";
@@ -997,21 +998,21 @@ _EOF_
     );
   if ($opt_loadChainSplit && $splitRef) {
     $bossScript->add(<<_EOF_
-cd $runDir/chain
-foreach c (`awk '{print \$1;}' $defVars{SEQ1_LEN}`)
-    set f = \$c.chain
-    if (! -e \$f) then
-      echo no chains for \$c
-      set f = /dev/null
-    endif
-    hgLoadChain $tDb \${c}_chain$QDb \$f
-end
+#cd $runDir/chain
+#foreach c (`awk '{print \$1;}' $defVars{SEQ1_LEN}`)
+#    set f = \$c.chain
+#    if (! -e \$f) then
+#      echo no chains for \$c
+#      set f = /dev/null
+#    endif
+#    hgLoadChain $tDb \${c}_chain$QDb \$f
+#end
 _EOF_
       );
   } else {
     $bossScript->add(<<_EOF_
-cd $runDir
-hgLoadChain -tIndex $tDb chain$QDb $tDb.$qDb.all.chain.gz
+#cd $runDir
+#hgLoadChain -tIndex $tDb chain$QDb $tDb.$qDb.all.chain.gz
 _EOF_
       );
   }
@@ -1029,12 +1030,12 @@ cd $runDir
 netClass -verbose=0 $tRepeats $qRepeats -noAr noClass.net $tDb $qDb $tDb.$qDb.net
 
 # Load nets:
-netFilter -minGap=10 $tDb.$qDb.net \\
-| hgLoadNet -verbose=0 $tDb net$QDb stdin
+#netFilter -minGap=10 $tDb.$qDb.net \\
+#| hgLoadNet -verbose=0 $tDb net$QDb stdin
 
-cd $buildDir
-featureBits $tDb $QDbLink >&fb.$tDb.$QDbLink.txt
-cat fb.$tDb.$QDbLink.txt
+#cd $buildDir
+#featureBits $tDb $QDbLink >&fb.$tDb.$QDbLink.txt
+#cat fb.$tDb.$QDbLink.txt
 _EOF_
       );
   }
@@ -1397,6 +1398,7 @@ _EOF_
 }
 
 sub doDownloads {
+	return 1;
   # Create compressed files for download and make links from test server's
   # goldenPath/ area.
   &makeDownloads();
@@ -1572,7 +1574,7 @@ if (! -e "$buildDir/DEF") {
 
 #$fileServer = &HgAutomate::chooseFileServer($opt_swap ? $swapDir : $buildDir);
 # overwrite --> always take hoxa (otherwise you get hoxa5 or hoxa28, etc and then it fails because your /afs/ home is not valid 
-$fileServer = "hoxa";
+$fileServer = "genome";
 print "FILESERVER: $fileServer\n";
 
 
