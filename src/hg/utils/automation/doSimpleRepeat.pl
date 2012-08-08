@@ -125,13 +125,17 @@ sub doCluster {
 
   my $paraHub = $opt_smallClusterHub ? $opt_smallClusterHub :
     &HgAutomate::chooseSmallClusterByBandwidth();
-  my @okIn = grep !/scratch/,
-    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
-  my @okOut =
-    &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
-  if (scalar(@okOut) > 1) {
-    @okOut = grep !/$okIn[0]/, @okOut;
-  }
+#  my @okIn = grep !/scratch/,
+#    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
+#  my @okOut =
+#    &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
+#  if (scalar(@okOut) > 1) {
+#    @okOut = grep !/$okIn[0]/, @okOut;
+#  }
+my @okIn;
+my @okOut;
+push @okIn, $buildDir;
+push @okOut, $buildDir;
   my $inHive = 0;
   $inHive = 1 if ($okIn[0] =~ m#/hive/data/genomes#);
   my $clusterSeqDir = "$okIn[0]/$db";
