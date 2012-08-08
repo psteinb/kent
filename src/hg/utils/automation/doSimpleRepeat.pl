@@ -18,7 +18,7 @@ use HgStepManager;
 # Hardcoded (for now):
 my $chunkSize = 50000000;
 my $singleRunSize = 200000000;
-my $clusterBin = qw(/cluster/bin/$MACHTYPE);
+my $clusterBin = qw(/genome/bin/$MACHTYPE);
 
 # Option variable names, both common and peculiar to this script:
 use vars @HgAutomate::commonOptionVars;
