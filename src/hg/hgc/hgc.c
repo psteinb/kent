@@ -3757,6 +3757,7 @@ void genericClickHandlerPlus(
 char *dupe, *type, *words[16], *headerItem;
 int wordCount;
 int start = cartInt(cart, "o");
+int end = cartInt(cart, "t");
 struct sqlConnection *conn = hAllocConnTrack(database, tdb);
 char *imagePath = trackDbSetting(tdb, ITEM_IMAGE_PATH);
 char *container = trackDbSetting(tdb, "container");
@@ -3812,7 +3813,7 @@ else if (wordCount > 0)
 	if (wordCount > 1)
 	    num = atoi(words[1]);
 	if (num < 3) num = 3;
-        genericBigBedClick(conn, tdb, item, start, num);
+        genericBigBedClick(conn, tdb, item, start, end, num);
 	}
     else if (sameString(type, "sample"))
 	{
@@ -3874,7 +3875,7 @@ else if (wordCount > 0)
     else if (sameString(type, "encodePeak") || sameString(type, "narrowPeak") ||
 	     sameString(type, "broadPeak") || sameString(type, "gappedPeak"))
 	{
-	doEncodePeak(tdb, NULL);
+	doEncodePeak(tdb, NULL, item);
 	}
     else if (sameString(type, "encodeFiveC"))
 	{
@@ -9568,6 +9569,14 @@ if (row != NULL)
     examined_samples    = row[ii];ii++;
     mut_freq            = row[ii];ii++;
 
+    // chromosome name adjustment
+    if (sameString(chromosome, "23"))
+	chromosome = "X";    
+    if (sameString(chromosome, "24"))
+	chromosome = "Y";    
+    if (sameString(chromosome, "25"))
+	chromosome = "M";    
+
     chp = strstr(itemName, "COSM")+strlen("COSM");
     printf("<B>COSMIC ID:</B> %s", chp);
 
@@ -9579,7 +9588,7 @@ if (row != NULL)
 
     printf("<BR><B>Gene Name:</B> %s\n", gene_name);
     printf("<BR><B>Accession Number:</B> %s\n", accession_number);
-    printf("<BR><B>Genomic Position:</B> %s:%s-%s", chromosome, grch37_start, grch37_stop);
+    printf("<BR><B>Genomic Position:</B> chr%s:%s-%s", chromosome, grch37_start, grch37_stop);
     printf("<BR><B>Mutation Description:</B> %s\n", mut_description);
     printf("<BR><B>Mutation Syntax CDS:</B> %s\n", mut_syntax_cds);
     printf("<BR><B>Mutation Syntax AA:</B> %s\n", mut_syntax_aa);
@@ -20345,7 +20354,7 @@ printf("<H2>%s</H2>\n", ct->tdb->longLabel);
 if (sameWord(type, "array"))
     doExpRatio(ct->tdb, fileItem, ct);
 else if (sameWord(type, "encodePeak"))
-    doEncodePeak(ct->tdb, ct);
+    doEncodePeak(ct->tdb, ct, itemName);
 else if (sameWord(type, "bigWig"))
     bigWigCustomClick(ct->tdb);
 else if (sameWord(type, "bigBed"))
