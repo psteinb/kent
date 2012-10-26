@@ -497,7 +497,7 @@ $paraRun = ("$para make jobList\n" .
 	    "$para check\n" .
 	    "$para time > run.time\n" .
 	    'cat run.time');
-$centralDbSql = "hgsql -A -N hgcentral";
+$centralDbSql = "hgsql -A -N hgcentraltest";
 $git = "/usr/bin/git";
 
 $clusterData = '/genome/gbdb-HL';
