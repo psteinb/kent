@@ -133,7 +133,7 @@ browser.indelOptions=on
 # central.host is the name of the host of the central MySQL
 # database where stuff common to all versions of the genome
 # and the user database is stored.
-central.db=hgcentral
+central.db=hgcentraltest
 central.host=localhost
 #
 # Be sure this user has UPDATE AND INSERT privs for hgcentral
@@ -157,8 +157,8 @@ central.domain=genome.pks.mpg.de
 # central.cookie=hguid.mylab
 #	personalize the background of the browser with a specified jpg
 #	floret.jpg is the standard UCSC default
-# browser.background=../images/floret.jpg
-browser.background=../images/BrowserBG.jpg
+browser.background=../images/floret.jpg
+#browser.background=../images/BrowserBG.jpg
 
 # Change this default documentRoot if different in your installation,
 #	to allow some of the browser cgi binaries to find help text files
@@ -167,7 +167,7 @@ browser.documentRoot=/var/www/html
 
 #	personalize the background of CGIs that don't use images
 # browser.bgcolor=FFF9D2
-browser.bgcolor=E4FFE4
+#browser.bgcolor=E4FFE4
 
 # optional location of grepIndex files
 grepIndex.genbank=/data/tmp/grepIndex
@@ -178,13 +178,13 @@ hgTracks.trackReordering=on
 #	in case of failure of the above central.host machine,
 #	the following settings will be used to access a secondary
 #	mirror of the database
-backupcentral.db=hgcentral
+backupcentral.db=hgcentraltest
 backupcentral.host=localhost
 backupcentral.user=readwrite
 backupcentral.password=update
 #	archivecentral settings are used for archived assemblies
 #	that have been moved to a different machine.
-archivecentral.db=hgcentral
+archivecentral.db=hgcentraltest
 archivecentral.host=localhost
 archivecentral.user=readwrite
 archivecentral.password=update
