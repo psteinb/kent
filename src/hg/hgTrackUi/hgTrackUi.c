@@ -194,7 +194,19 @@ if (genePredTables != NULL)
     for (i = 0, gTdb = geneTdbList;  i < menuSize && gTdb != NULL;  i++, gTdb = gTdb->next)
 	{
 	values[i] = gTdb->track;
-	labels[i] = gTdb->shortLabel;
+	if (gTdb->parent != NULL)
+	    {
+	    struct dyString *dy = dyStringNew(0);
+	    if (gTdb->parent->parent != NULL &&
+		!startsWith(gTdb->parent->parent->shortLabel, gTdb->parent->shortLabel))
+		dyStringPrintf(dy, "%s: ", gTdb->parent->parent->shortLabel);
+	    if (!startsWith(gTdb->parent->shortLabel, gTdb->shortLabel))
+		dyStringPrintf(dy, "%s: ", gTdb->parent->shortLabel);
+	    dyStringPrintf(dy, "%s", gTdb->shortLabel);
+	    labels[i] = dyStringCannibalize(&dy);
+	    }
+	else
+	    labels[i] = gTdb->shortLabel;
 	}
     cgiMakeCheckboxGroupWithVals(cartVar, labels, values, menuSize, selectedGeneTracks, numCols);
     jsEndCollapsibleSection();
@@ -3144,17 +3156,6 @@ if (tdb == NULL)
    errAbort("Can't find %s in track database %s chromosome %s",
 	    track, database, chromosome);
    }
-char *super = trackDbGetSupertrackName(tdb);
-if (super)
-    {
-    /* configured as a supertrack member in trackDb */
-    if (tdb->parent && sameString(super,tdb->parent->track))
-        {              // check trackName because super is returned for any level child
-        /* the supertrack is also configured, so use supertrack defaults */
-        tdbMarkAsSuperTrack(tdb->parent);
-        trackDbSuperMemberSettings(tdb);
-        }
-    }
 char *title = (tdbIsSuper(tdb) ? "Super-track Settings" :
                tdbIsDownloadsOnly(tdb) ? DOWNLOADS_ONLY_TITLE : "Track Settings");
 if(cartOptionalString(cart, "ajax"))

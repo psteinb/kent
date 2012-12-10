@@ -1203,13 +1203,18 @@ Penn State.";
   }
 
   my $desc = $isSelf ? 
-"This directory contains alignments of $tGenome ($tDb, $tDate,
-$tSource) to itself." :
+"This directory contains alignments of
+    $tGenome ($tDb, $tDate,
+    $tSource) to itself." :
 "This directory contains alignments of the following assemblies:
 
-  - target/reference: $tGenome ($tDb, $tDate, $tSource)
+  - target/reference: $tGenome
+    ($tDb, $tDate,
+    $tSource)
 
-  - query: $qGenome ($qDb, $qDate, $qSource)";
+  - query: $qGenome
+    ($qDb, $qDate,
+    $qSource)";
 
   print $fh "$desc
 

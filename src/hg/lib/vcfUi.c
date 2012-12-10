@@ -131,8 +131,15 @@ if (udcCacheTimeout() < 300)
 #endif//def USE_TABIX && KNETFILE_HOOKS
 char *db = cartString(cart, "db");
 struct sqlConnection *conn = hAllocConnTrack(db, tdb);
-char *fileOrUrl = bbiNameFromSettingOrTableChrom(tdb, conn, tdb->table, hDefaultChrom(db));
+char *fileOrUrl = NULL;
+char *chrom = cartOptionalString(cart, "c");
+if (chrom != NULL)
+    fileOrUrl = bbiNameFromSettingOrTableChrom(tdb, conn, tdb->table, chrom);
+if (fileOrUrl == NULL)
+    fileOrUrl = bbiNameFromSettingOrTableChrom(tdb, conn, tdb->table, hDefaultChrom(db));
 hFreeConn(&conn);
+if (fileOrUrl == NULL)
+    return NULL;
 int vcfMaxErr = 100;
 struct vcfFile *vcff = NULL;
 /* protect against temporary network error */
@@ -223,7 +230,6 @@ vcfCfgHaplotypeCenter(cart, tdb, name, parentLevel, vcff, NULL, NULL, 0, "mainFo
 vcfCfgHapClusterColor(cart, tdb, name, parentLevel);
 vcfCfgHapClusterTreeAngle(cart, tdb, name, parentLevel);
 vcfCfgHapClusterHeight(cart, tdb, vcff, name, parentLevel);
-puts("<BR>");
 }
 
 static void vcfCfgMinQual(struct cart *cart, struct trackDb *tdb, struct vcfFile *vcff,

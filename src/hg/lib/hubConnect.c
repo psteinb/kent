@@ -164,6 +164,7 @@ if (row != NULL)
     hub->id = id;
     hub->hubUrl = cloneString(row[0]);
     hub->status = sqlUnsigned(row[1]);
+    hub->errorMessage = cloneString(row[2]);
 
     if (isEmpty(row[2]))
 	{
@@ -310,7 +311,8 @@ static void addOneDescription(char *trackDbFile, struct trackDb *tdb)
 {
 /* html setting should always be set because we set it at load time */
 char *htmlName = trackDbSetting(tdb, "html");
-assert(htmlName != NULL);
+if (htmlName == NULL)
+    return;
 
 char *simpleName = hubConnectSkipHubPrefix(htmlName);
 char *url = trackHubRelativeUrl(trackDbFile, simpleName);
@@ -344,6 +346,7 @@ void hubConnectAddDescription(char *database, struct trackDb *tdb)
 unsigned hubId = hubIdFromTrackName(tdb->track);
 struct trackHub *hub = trackHubFromId(hubId);
 struct trackHubGenome *hubGenome = trackHubFindGenome(hub, database);
+trackHubPolishTrackNames(hub, tdb);
 addDescription(hubGenome->trackDbFile, tdb);
 }
 
