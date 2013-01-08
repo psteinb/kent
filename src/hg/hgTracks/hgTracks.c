@@ -2129,6 +2129,8 @@ else
     if (theImgBox!=NULL)
         transparentImage = TRUE;   // transparent because BG (blue ruler lines) is separate image
 
+    if (measureTiming)
+        measureTime("Time at start of obtaining trash hgt png image file");
     trashDirFile(&gifTn, "hgt", "hgt", ".png");
     hvg = hvGfxOpenPng(pixWidth, pixHeight, gifTn.forCgi, transparentImage);
 
@@ -2585,6 +2587,8 @@ if(newWinWidth)
 if (hvgSide != hvg)
     hvGfxClose(&hvgSide);
 hvGfxClose(&hvg);
+if (measureTiming)
+    measureTime("Time completed writing trash hgt png image file");
 
 #ifdef SUPPORT_CONTENT_TYPE
 char *type = cartUsualString(cart, "hgt.contentType", "html");
@@ -5741,4 +5745,6 @@ hPrintf("<script type='text/javascript'>\n");
 jsonPrint((struct jsonElement *) jsonForClient, "hgTracks", 0);
 hPrintf("</script>\n");
 
+if (measureTiming)
+    measureTime("Time at end of doMiddle, next up cart write");
 }
