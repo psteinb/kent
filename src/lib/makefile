@@ -11,7 +11,7 @@ O = aliType.o annoColumn.o annoFilter.o annoFormatter.o annoFormatTab.o \
     cda.o chain.o chainBlock.o chainConnect.o chainToAxt.o chainToPsl.o \
     cheapcgi.o cirTree.o codebias.o colHash.o common.o correlate.o crTree.o \
     dgRange.o diGraph.o dlist.o dnaLoad.o dnaMarkov.o dnaMotif.o dnaseq.o \
-    dnautil.o dtdParse.o dyOut.o dystring.o \
+    dnautil.o dtdParse.o dyOut.o dystring.o elmTree.o \
     emblParse.o errCatch.o errabort.o \
     fa.o ffAli.o ffScore.o filePath.o fixColor.o flydna.o fof.o \
     font/mgCourier10.o font/mgCourier12.o font/mgCourier14.o font/mgCourier18.o \
@@ -25,7 +25,7 @@ O = aliType.o annoColumn.o annoFilter.o annoFormatter.o annoFormatTab.o \
     fuzzyShow.o \
     gapCalc.o gdf.o gemfont.o genomeRangeTree.o \
     gfNet.o gff.o gff3.o gfxPoly.o gifLabel.o \
-    hacTree.o hash.o histogram.o hmmPfamParse.o hmmstats.o htmlPage.o htmshell.o \
+    hacTree.o hash.o hex.o histogram.o hmmPfamParse.o hmmstats.o htmlPage.o htmshell.o \
     https.o intExp.o intValTree.o internet.o itsa.o iupac.o \
     jointalign.o jpegSize.o keys.o knetUdc.o kxTok.o linefile.o lineFileOnBigBed.o localmem.o log.o \
     maf.o mafFromAxt.o mafScore.o md5.o memalloc.o memgfx.o metaWig.o mgCircle.o \
@@ -41,7 +41,7 @@ O = aliType.o annoColumn.o annoFilter.o annoFormatter.o annoFormatTab.o \
     snofmake.o snofsig.o spaceSaver.o spacedColumn.o spacedSeed.o \
     splatAli.o sqlList.o sqlNum.o subText.o sufa.o sufx.o synQueue.o \
     tabRow.o textOut.o tokenizer.o trix.o twoBit.o \
-    udc.o vcf.o vGfx.o vPng.o verbose.o \
+    udc.o vcf.o vcfBits.o vGfx.o vPng.o verbose.o \
     wildcmp.o wormdna.o \
     xAli.o xa.o xap.o xenshow.o xmlEscape.o xp.o zlibFace.o
 

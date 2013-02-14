@@ -20,8 +20,9 @@ include wgEncodeUncBsuProt.release2.ra
 # UNC/BSU Proteogenomics (wrangler: fang)
 include wgEncodeUncBsuProtGenc.ra
 
-# Integrated Regulation (wrangler: kent)
-include wgEncodeReg.release3.ra
+# Integrated Regulation (wrangler: kate)
+# NOTE: the supertrack versioning is being retired
+include wgEncodeReg.ra
 
 # UW Repli-Seq track (wrangler: venkat)
 include wgEncodeUwRepliSeq.ra
@@ -192,5 +193,7 @@ include wgEncodeSunyRipSeq.ra
 include wgEncodeMapability.ra
 
 # Analysis tracks
-include wgEncodeAwgDnase.ra
 
+# AWG DNase & TFBS (wrangler: kate)
+include wgEncodeAwgDnaseUniform.ra
+include wgEncodeAwgTfbsUniform.ra
