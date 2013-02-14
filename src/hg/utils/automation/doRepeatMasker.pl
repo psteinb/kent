@@ -270,7 +270,8 @@ chmod a+x RMRun.csh
 
 # Record RM version used:
 ls -ld $RepeatMaskerPath $RepeatMasker
-grep 'version of RepeatMasker\$' $RepeatMasker
+# MH: lets not grep for the version. This does not return something with RM version 4. 
+#grep 'version of RepeatMasker\$' $RepeatMasker
 grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
 echo "# RepeatMasker engine: $RepeatMaskerEngine"
 _EOF_
@@ -312,9 +313,10 @@ rm -f $buildDir/RMPart
 ln -s $partDir $buildDir/RMPart
 
 $HgAutomate::gensub2 $partDir/partitions.lst single gsub jobList
-/parasol/bin/para $parasolRAM make jobList
-/parasol/bin/para check
-/parasol/bin/para time > run.time
+# para is in our path, so we don't have to call it with /parasol/bin/para
+para $parasolRAM make jobList
+para check
+para time > run.time
 cat run.time
 
 _EOF_
