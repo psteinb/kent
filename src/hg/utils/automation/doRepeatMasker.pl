@@ -452,10 +452,12 @@ _EOF_
     my $bossScript = new HgRemoteScript("$runDir/doSplit.csh", $fileServer,
 					$runDir, $whatItDoes);
     $bossScript->add(<<_EOF_
-head -3 $db.sorted.fa.out > /tmp/rmskHead.txt
+set headTemp = `mktemp -p /tmp makeGenomeDb.rmskHead.XXXXXX`;
+head -3 $db.sorted.fa.out > \$headTemp
 # output to ./rmsk instead of $HgAutomate::gbdb/$db because otherwise splitFileByColumn tries to creates /genome/gbdb-HL and fails because it exists
 tail -n +4 $db.sorted.fa.out \\
-| splitFileByColumn -col=5 stdin ./rmsk -chromDirs -ending=.fa.out -head=/tmp/rmskHead.txt
+| splitFileByColumn -col=5 stdin ./rmsk -chromDirs -ending=.fa.out -head=\$headTemp
+rm \$headTemp
 _EOF_
     );
     $bossScript->execute();
