@@ -28,6 +28,7 @@
 #include <signal.h>
 #include "geoMirror.h"
 #include <regex.h>
+#include "trackHub.h"
 /* phoneHome business */
 
 
@@ -517,6 +518,19 @@ while ((row = sqlNextRow(sr)) != NULL)
 sqlFreeResult(&sr);
 hDisconnectCentral(&conn);
 
+struct slPair *names = trackHubGetCladeLabels();
+
+for(; names; names = names->next)
+    {
+    clades[numClades] = names->name;
+    labels[numClades] = names->val;
+    if (sameWord(defaultClade, clades[numClades]))
+	defaultLabel = clades[numClades];
+    numClades++;
+    if (numClades >= ArraySize(clades))
+        internalErr();
+    }
+
 cgiMakeDropListFull(cladeCgiName, labels, clades, numClades,
                     defaultLabel, onChangeText);
 }
@@ -544,7 +558,7 @@ for (cur = dbList; cur != NULL; cur = cur->next)
 	(!doCheck || hDbExists(cur->name)))
         {
         hashAdd(hash, cur->genome, cur);
-        orgList[numGenomes] = cur->genome;
+        orgList[numGenomes] = trackHubSkipHubName(cur->genome);
         values[numGenomes] = cur->genome;
         numGenomes++;
 	if (numGenomes >= ArraySize(orgList))
@@ -661,7 +675,7 @@ for (cur = dbList; cur != NULL; cur = cur->next)
 
     if (allowInactive ||
         ((cur->active || sameWord(cur->name, db))
-                && sqlDatabaseExists(cur->name)))
+                && (trackHubDatabase(db) || sqlDatabaseExists(cur->name))))
         {
         assemblyList[numAssemblies] = cur->description;
         values[numAssemblies] = cur->name;

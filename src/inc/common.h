@@ -620,6 +620,9 @@ void refAdd(struct slRef **pRefList, void *val);
 void refAddUnique(struct slRef **pRefList, void *val);
 /* Add reference to list if not already on list. */
 
+void slRefFreeListAndVals(struct slRef **pList);
+/* Free up (with simple freeMem()) each val on list, and the list itself as well. */
+
 struct slRef *refListFromSlList(void *list);
 /* Make a reference list that mirrors a singly-linked list. */
 
@@ -1442,5 +1445,4 @@ boolean dateIsOlderBy(const char *date,const char*format, time_t seconds);
 char *dateAddTo(char *date,char *format,int addYears,int addMonths,int addDays);
 /* Add years,months,days to a formatted date and returns the new date as a cloned string
 *  format is a strptime/strftime format: %F = yyyy-mm-dd */
-
 #endif /* COMMON_H */
