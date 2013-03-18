@@ -705,7 +705,7 @@ sub doChainRun {
   }
   &HgAutomate::mustMkdir($runDir);
   &HgAutomate::makeGsub($runDir,
-	       "chain.csh \$(file1) {check out line+ chain/\$(file1).chain}");
+	       "./chain.csh \$(file1) {check out line+ chain/\$(file1).chain}");
   `touch "$runDir/para_hub_$paraHub"`;
 
   my $seq1Dir = $defVars{'SEQ1_CTGDIR'} || $defVars{'SEQ1_DIR'};
