@@ -1,0 +1,27 @@
+# sensitive parameters
+BLASTZ_H=2000
+BLASTZ_Y=3000
+BLASTZ_L=3000
+BLASTZ_K=2400
+BLASTZ_Q=/genome/src/HoxD55.q
+
+# target
+SEQ1_DIR=/genome/gbdb-HL/$ref/$ref.2bit
+SEQ1_LEN=/genome/gbdb-HL/$ref/chrom.sizes
+SEQ1_CHUNK=20000000
+SEQ1_LAP=0
+SEQ1_LIMIT=40
+
+# query
+SEQ2_DIR=/genome/gbdb-HL/$query/$query.2bit
+SEQ2_LEN=/genome/gbdb-HL/$query/chrom.sizes
+SEQ2_CHUNK=10000000
+SEQ2_LAP=10000
+SEQ2_LIMIT=50
+
+BASE=/genome/gbdb-HL/$ref/lastz/vs_$query
+TMPDIR=/scratch/tmp
+
+#SEQ_IDENT=65
+#MIN_ENTROPY=1.8
+
