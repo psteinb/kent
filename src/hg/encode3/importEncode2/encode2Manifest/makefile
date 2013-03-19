@@ -1,13 +1,13 @@
-include ../../../inc/common.mk
+include ../../../../inc/common.mk
 
 L += ${MYSQLLIBS} -lm
-MYLIBDIR = ../../../lib/${MACHTYPE}
+MYLIBDIR = ../../../../lib/${MACHTYPE}
 MYLIBS =  ${MYLIBDIR}/jkhgap.a ${MYLIBDIR}/jkweb.a
 
-A = encodeExpToCvDb
-O = encodeExpToCvDb.o
+A = encode2Manifest
+O = encode2Manifest.o
 
-encodeExpToCvDb: ${O} ${MYLIBS}
+encode2Manifest: ${O} ${MYLIBS}
 	${CC} ${COPT} -o ${DESTDIR}${BINDIR}/${A}${EXE} $O ${MYLIBS} $L
 	${STRIP} ${DESTDIR}${BINDIR}/${A}${EXE}
 
