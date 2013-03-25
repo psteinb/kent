@@ -22,6 +22,26 @@ SEQ2_LIMIT=50
 BASE=/genome/gbdb-HL/$ref/lastz/vs_$query
 TMPDIR=/scratch/tmp
 
-#SEQ_IDENT=65
-#MIN_ENTROPY=1.8
+# for psl filtering
+# flag: set to 1 if you want to filter the genome-wide lastz psl output
+FILTERPSL=1
+SEQ_IDENT=60
+MIN_ENTROPY=1.8
+WIN_SIZE=30
 
+# for patch chains
+# flag: set to 1 if you want to patch chains
+PATCHCHAIN=1
+# consider only chains with at least that score
+CHAIN_MINSCORE=5000
+# consider only gaps in the Target (reference) and Query of that size
+GAPMAXSIZE_T=500000
+GAPMAXSIZE_Q=500000
+GAPMINSIZE_T=20
+GAPMINSIZE_Q=20
+# number of cluster jobs to be generated
+NUM_JOBS=1000
+# lastz parameters for patching (should be more sensitive than the global parameters)
+PATCHBLASTZ_K=1500
+PATCHBLASTZ_L=2300
+PATCHBLASTZ_W=5
