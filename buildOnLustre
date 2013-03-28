@@ -1,2 +1,13 @@
-source LustreEnvironment
-cd src; make alphalustre;
+#!/bin/bash
+
+path=/projects/genome/src/kent
+cd $path
+source ./LustreEnvironment
+cd $KENTHOME/src
+make alphalustre
+
+if [ $? != 0 ]; then
+ echo "building kent source on lustre failed" | /usr/sbin/sendmail hiller@mpi-cbg.de
+else
+ echo "building kent source on lustre succeeded" | /usr/sbin/sendmail hiller@mpi-cbg.de
+fi
