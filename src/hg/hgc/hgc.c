@@ -694,7 +694,7 @@ if (featDna && end > start)
     printf("<A HREF=\"%s&o=%d&g=getDna&i=%s&c=%s&l=%d&r=%d&strand=%s&table=%s\">"
 	   "View DNA for this feature</A>  (%s/%s)<BR>\n",  hgcPathAndSettings(),
 	   start, (item != NULL ? cgiEncode(item) : ""),
-	   chrom, start, end, strand, tbl, database, hGenome(database));
+	   chrom, start, end, strand, tbl, trackHubSkipHubName(database), trackHubSkipHubName(hGenome(database)));
     }
 }
 
@@ -2888,6 +2888,8 @@ printf("<P><A HREF=\"../cgi-bin/hgTrackUi?g=%s&%s\">"
 static void printDataVersion(struct trackDb *tdb)
 /* If this annotation has a dataVersion trackDb setting, print it */
 {
+if (trackHubDatabase(database))
+    return;
 metadataForTable(database,tdb,NULL);
 const char *version = metadataFindValue(tdb,"dataVersion");
 if(version == NULL)
@@ -3777,10 +3779,12 @@ char *dupe, *type, *words[16], *headerItem;
 int wordCount;
 int start = cartInt(cart, "o");
 int end = cartInt(cart, "t");
-struct sqlConnection *conn = hAllocConnTrack(database, tdb);
+struct sqlConnection *conn = NULL;
 char *imagePath = trackDbSetting(tdb, ITEM_IMAGE_PATH);
 char *container = trackDbSetting(tdb, "container");
 
+if (!trackHubDatabase(database))
+    conn = hAllocConnTrack(database, tdb);
 if (itemForUrl == NULL)
     itemForUrl = item;
 dupe = cloneString(tdb->type);
@@ -4046,7 +4050,8 @@ if (dbIsFound)
     char rootName[256];
     char parsedChrom[32];
     hParseTableName(database, tbl, rootName, parsedChrom);
-    hti = hFindTableInfo(database, seqName, rootName);
+    if (!trackHubDatabase(database))
+	hti = hFindTableInfo(database, seqName, rootName);
     }
 char *thisOrg = hOrganism(database);
 cartWebStart(cart, database, "Get DNA in Window (%s/%s)", database, thisOrg);
@@ -4253,11 +4258,11 @@ void doGetDnaExtended1()
 struct trackDb *tdbList = hTrackDb(database), *tdb;
 struct trackDb *ctdbList = tdbForCustomTracks();
 struct trackDb *utdbList = tdbForUserPsl();
-boolean isRc     = cartUsualBoolean(cart, "hgc.dna.rc", FALSE);
 boolean revComp  = cartUsualBoolean(cart, "hgSeq.revComp", FALSE);
 boolean maskRep  = cartUsualBoolean(cart, "hgSeq.maskRepeats", FALSE);
 int padding5     = cartUsualInt(cart, "hgSeq.padding5", 0);
 int padding3     = cartUsualInt(cart, "hgSeq.padding3", 0);
+int lineWidth    = cartUsualInt(cart, "lineWidth", 60);
 char *casing     = cartUsualString(cart, "hgSeq.casing", "");
 char *repMasking = cartUsualString(cart, "hgSeq.repMasking", "");
 boolean caseUpper= FALSE;
@@ -4285,11 +4290,6 @@ puts(
      "details about color, and for examples. <B>Tracks in "
      "&quot;hide&quot; display mode are not shown in the grid below.</B> <P>");
 
-if (cgiBooleanDefined("hgSeq.revComp"))
-    {
-    isRc = revComp;
-    /* don't set revComp in cart -- it shouldn't be a default. */
-    }
 if (cgiBooleanDefined("hgSeq.maskRepeats"))
     cartSetBoolean(cart, "hgSeq.maskRepeats", maskRep);
 if (*repMasking != 0)
@@ -4328,14 +4328,14 @@ if (NULL != (pos = stripCommas(cartOptionalString(cart, "getDnaPos"))))
 puts("Position ");
 savePosInTextBox(seqName, winStart+1 - (revComp ? padding3 : padding5), winEnd + (revComp ? padding5 : padding3));
 printf(" Reverse complement ");
-cgiMakeCheckBox("hgc.dna.rc", isRc);
+cgiMakeCheckBox("hgSeq.revComp", revComp);
 printf("<BR>\n");
 printf("Letters per line ");
-cgiMakeIntVar("lineWidth", 60, 3);
+cgiMakeIntVar("lineWidth", lineWidth, 3);
 printf(" Default case: ");
-cgiMakeRadioButton("case", "upper", caseUpper);
+cgiMakeRadioButton("hgSeq.casing", "upper", caseUpper);
 printf(" Upper ");
-cgiMakeRadioButton("case", "lower", !caseUpper);
+cgiMakeRadioButton("hgSeq.casing", "lower", !caseUpper);
 printf(" Lower ");
 cgiMakeButton("Submit", "submit");
 printf("<BR>\n");
@@ -4416,88 +4416,88 @@ for (tdb = tdbList; tdb != NULL; tdb = tdb->next)
 printf("</TABLE>\n");
 printf("</FORM>\n");
 if (hIsGsidServer())
-{
-printf("<H3>Coloring Information and Examples</H3>\n");
-puts("The color values range from 0 (darkest) to 255 (lightest) and are additive.\n");
-puts("The examples below show a few ways to highlight individual tracks, "
-     "and their interplay. It's good to keep it simple at first. It's easy "
-     "to make pretty, but completely cryptic, displays with this feature.");
-puts(
-     "<UL>"
-     "<LI>To put Genes in upper case red text, check the "
-     "appropriate box in the Toggle Case column and set the color to pure "
-     "red, RGB (255,0,0). Upon submitting, any Gene within the "
-     "designated chromosomal interval will now appear in red capital letters.\n"
-     "<LI>To see the overlap between Genes and InterPro Domains try "
-     "setting the Genes/Regions to red (255,0,0) and InterPro to green (0,255,0). "
-     "Places where the Genes and InterPro Domains overlap will be painted yellow "
-     "(255,255,0).\n"
-     "<LI>To get a level-of-coverage effect for tracks like Genes with "
-     "multiple overlapping items, initially select a darker color such as deep "
-     "green, RGB (0,64,0). Nucleotides covered by a single Gene will appear dark "
-     "green, while regions covered with more Genes get progressively brighter &mdash; "
-     "saturating at 4 Genes."
-     "<LI>Another track can be used to mask unwanted features. Setting the "
-     "InterPro track to RGB (255,255,255) will white-out Genes within InterPro "
-     "domains. "
-     "</UL>");
-puts("<H3>Further Details and Ideas</H3>");
-puts("<P>Copying and pasting the web page output to a text editor such as Word "
-     "will retain upper case but lose colors and other formatting. That is still "
-     "useful because other web tools such as "
-     "<A HREF=\"http://www.ncbi.nlm.nih.gov/blast\" TARGET=_BLANK>NCBI Blast</A> "
-     "can be set to ignore lower case.  To fully capture formatting such as color "
-     "and underlining, view the output as \"source\" in your web browser, or download "
-     "it, or copy the output page into an html editor.</P>");
-puts("<P>The default line width of 60 characters is standard, but if you have "
-     "a reasonable sized monitor it's useful to set this higher - to 125 characters "
-     "or more.  You can see more DNA at once this way, and fewer line breaks help "
-     "in finding DNA strings using the web browser search function.</P>");
-}
+    {
+    printf("<H3>Coloring Information and Examples</H3>\n");
+    puts("The color values range from 0 (darkest) to 255 (lightest) and are additive.\n");
+    puts("The examples below show a few ways to highlight individual tracks, "
+	 "and their interplay. It's good to keep it simple at first. It's easy "
+	 "to make pretty, but completely cryptic, displays with this feature.");
+    puts(
+	 "<UL>"
+	 "<LI>To put Genes in upper case red text, check the "
+	 "appropriate box in the Toggle Case column and set the color to pure "
+	 "red, RGB (255,0,0). Upon submitting, any Gene within the "
+	 "designated chromosomal interval will now appear in red capital letters.\n"
+	 "<LI>To see the overlap between Genes and InterPro Domains try "
+	 "setting the Genes/Regions to red (255,0,0) and InterPro to green (0,255,0). "
+	 "Places where the Genes and InterPro Domains overlap will be painted yellow "
+	 "(255,255,0).\n"
+	 "<LI>To get a level-of-coverage effect for tracks like Genes with "
+	 "multiple overlapping items, initially select a darker color such as deep "
+	 "green, RGB (0,64,0). Nucleotides covered by a single Gene will appear dark "
+	 "green, while regions covered with more Genes get progressively brighter &mdash; "
+	 "saturating at 4 Genes."
+	 "<LI>Another track can be used to mask unwanted features. Setting the "
+	 "InterPro track to RGB (255,255,255) will white-out Genes within InterPro "
+	 "domains. "
+	 "</UL>");
+    puts("<H3>Further Details and Ideas</H3>");
+    puts("<P>Copying and pasting the web page output to a text editor such as Word "
+	 "will retain upper case but lose colors and other formatting. That is still "
+	 "useful because other web tools such as "
+	 "<A HREF=\"http://www.ncbi.nlm.nih.gov/blast\" TARGET=_BLANK>NCBI Blast</A> "
+	 "can be set to ignore lower case.  To fully capture formatting such as color "
+	 "and underlining, view the output as \"source\" in your web browser, or download "
+	 "it, or copy the output page into an html editor.</P>");
+    puts("<P>The default line width of 60 characters is standard, but if you have "
+	 "a reasonable sized monitor it's useful to set this higher - to 125 characters "
+	 "or more.  You can see more DNA at once this way, and fewer line breaks help "
+	 "in finding DNA strings using the web browser search function.</P>");
+    }
 else
-{
-printf("<H3>Coloring Information and Examples</H3>\n");
-puts("The color values range from 0 (darkest) to 255 (lightest) and are additive.\n");
-puts("The examples below show a few ways to highlight individual tracks, "
-     "and their interplay. It's good to keep it simple at first.  It's easy "
-     "to make pretty, but completely cryptic, displays with this feature.");
-puts(
-     "<UL>"
-     "<LI>To put exons from RefSeq Genes in upper case red text, check the "
-     "appropriate box in the Toggle Case column and set the color to pure "
-     "red, RGB (255,0,0). Upon submitting, any RefSeq Gene within the "
-     "designated chromosomal interval will now appear in red capital letters.\n"
-     "<LI>To see the overlap between RefSeq Genes and Genscan predictions try "
-     "setting the RefSeq Genes to red (255,0,0) and Genscan to green (0,255,0). "
-     "Places where the RefSeq Genes and Genscan overlap will be painted yellow "
-     "(255,255,0).\n"
-     "<LI>To get a level-of-coverage effect for tracks like Spliced Ests with "
-     "multiple overlapping items, initially select a darker color such as deep "
-     "green, RGB (0,64,0). Nucleotides covered by a single EST will appear dark "
-     "green, while regions covered with more ESTs get progressively brighter &mdash; "
-     "saturating at 4 ESTs."
-     "<LI>Another track can be used to mask unwanted features. Setting the "
-     "RepeatMasker track to RGB (255,255,255) will white-out Genscan predictions "
-     "of LINEs but not mainstream host genes; masking with RefSeq Genes will show "
-     "what is new in the gene prediction sector."
-     "</UL>");
-puts("<H3>Further Details and Ideas</H3>");
-puts("<P>Copying and pasting the web page output to a text editor such as Word "
-     "will retain upper case but lose colors and other formatting. That is still "
-     "useful because other web tools such as "
-     "<A HREF=\"http://www.ncbi.nlm.nih.gov/blast\" TARGET=_BLANK>NCBI Blast</A> "
-     "can be set to ignore lower case.  To fully capture formatting such as color "
-     "and underlining, view the output as \"source\" in your web browser, or download "
-     "it, or copy the output page into an html editor.</P>");
-puts("<P>The default line width of 60 characters is standard, but if you have "
-     "a reasonable sized monitor it's useful to set this higher - to 125 characters "
-     "or more.  You can see more DNA at once this way, and fewer line breaks help "
-     "in finding DNA strings using the web browser search function.</P>");
-puts("<P>Be careful about requesting complex formatting for a very large "
-     "chromosomal region.  After all the html tags are added to the output page, "
-     "the file size may exceed size limits that your browser, clipboard, and "
-     "other software can safely display.  The tool will format 10 Mb and more, however.</P>");
-}
+    {
+    printf("<H3>Coloring Information and Examples</H3>\n");
+    puts("The color values range from 0 (darkest) to 255 (lightest) and are additive.\n");
+    puts("The examples below show a few ways to highlight individual tracks, "
+	 "and their interplay. It's good to keep it simple at first.  It's easy "
+	 "to make pretty, but completely cryptic, displays with this feature.");
+    puts(
+	 "<UL>"
+	 "<LI>To put exons from RefSeq Genes in upper case red text, check the "
+	 "appropriate box in the Toggle Case column and set the color to pure "
+	 "red, RGB (255,0,0). Upon submitting, any RefSeq Gene within the "
+	 "designated chromosomal interval will now appear in red capital letters.\n"
+	 "<LI>To see the overlap between RefSeq Genes and Genscan predictions try "
+	 "setting the RefSeq Genes to red (255,0,0) and Genscan to green (0,255,0). "
+	 "Places where the RefSeq Genes and Genscan overlap will be painted yellow "
+	 "(255,255,0).\n"
+	 "<LI>To get a level-of-coverage effect for tracks like Spliced Ests with "
+	 "multiple overlapping items, initially select a darker color such as deep "
+	 "green, RGB (0,64,0). Nucleotides covered by a single EST will appear dark "
+	 "green, while regions covered with more ESTs get progressively brighter &mdash; "
+	 "saturating at 4 ESTs."
+	 "<LI>Another track can be used to mask unwanted features. Setting the "
+	 "RepeatMasker track to RGB (255,255,255) will white-out Genscan predictions "
+	 "of LINEs but not mainstream host genes; masking with RefSeq Genes will show "
+	 "what is new in the gene prediction sector."
+	 "</UL>");
+    puts("<H3>Further Details and Ideas</H3>");
+    puts("<P>Copying and pasting the web page output to a text editor such as Word "
+	 "will retain upper case but lose colors and other formatting. That is still "
+	 "useful because other web tools such as "
+	 "<A HREF=\"http://www.ncbi.nlm.nih.gov/blast\" TARGET=_BLANK>NCBI Blast</A> "
+	 "can be set to ignore lower case.  To fully capture formatting such as color "
+	 "and underlining, view the output as \"source\" in your web browser, or download "
+	 "it, or copy the output page into an html editor.</P>");
+    puts("<P>The default line width of 60 characters is standard, but if you have "
+	 "a reasonable sized monitor it's useful to set this higher - to 125 characters "
+	 "or more.  You can see more DNA at once this way, and fewer line breaks help "
+	 "in finding DNA strings using the web browser search function.</P>");
+    puts("<P>Be careful about requesting complex formatting for a very large "
+	 "chromosomal region.  After all the html tags are added to the output page, "
+	 "the file size may exceed size limits that your browser, clipboard, and "
+	 "other software can safely display.  The tool will format 10 Mb and more, however.</P>");
+    }
 trackDbFreeList(&tdbList);
 }
 
@@ -4627,7 +4627,8 @@ else
      * or bigBed if it is in the database but has only one column called 'fileName';
      * in which case, just get DNA as if no table were given. */
     hParseTableName(database, tbl, rootName, parsedChrom);
-    hti = hFindTableInfo(database, seqName, rootName);
+    if (!trackHubDatabase(database))
+	hti = hFindTableInfo(database, seqName, rootName);
     if (hti == NULL || hti->startField[0] == 0)
 	{
 	itemCount = 1;
@@ -4869,8 +4870,8 @@ void doGetDna3()
 struct dnaSeq *seq;
 struct cfm *cfm;
 int i;
-boolean isRc = cgiBoolean("hgc.dna.rc");
-boolean defaultUpper = sameString(cartString(cart, "case"), "upper");
+boolean isRc = cartUsualBoolean(cart, "hgSeq.revComp", FALSE);
+boolean defaultUpper = sameString(cartString(cart, "hgSeq.casing"), "upper");
 int winSize;
 int lineWidth = cartInt(cart, "lineWidth");
 struct rgbColor *colors;
@@ -5234,31 +5235,6 @@ if (row != NULL)
     }
 }
 
-void printStanSource(char *acc, char *type)
-/* Print out a link (Human/Mouse/Rat only) to Stanford's SOURCE web resource.
-   Types known are: est,mrna,unigene,locusLink. */
-{
-if (startsWith("Human", organism) || startsWith("Mouse", organism) ||
-    startsWith("Rat", organism))
-    {
-    char *stanSourceLink = "http://smd.stanford.edu/cgi-bin/source/sourceResult?";
-    if(sameWord(type, "est"))
-	{
-	printf("<B>Stanford SOURCE:</B> %s <A HREF=\"%soption=Number&criteria=%s&choice=Gene\" TARGET=_blank>[Gene Info]</A> ",acc,stanSourceLink,acc);
-	printf("<A HREF=\"%soption=Number&criteria=%s&choice=cDNA\" TARGET=_blank>[Clone Info]</A><BR>\n",stanSourceLink,acc);
-	}
-    else if(sameWord(type,"unigene"))
-	{
-	printf("<B>Stanford SOURCE:</B> %s <A HREF=\"%soption=CLUSTER&criteria=%s&choice=Gene\" TARGET=_blank>[Gene Info]</A> ",acc,stanSourceLink,acc);
-	printf("<A HREF=\"%soption=CLUSTER&criteria=%s&choice=cDNA\" TARGET=_blank>[Clone Info]</A><BR>\n",stanSourceLink,acc);
-	}
-    else if(sameWord(type,"mrna"))
-	printf("<B>Stanford SOURCE:</B> <A HREF=\"%soption=Number&criteria=%s&choice=Gene\" TARGET=_blank>%s</A><BR>\n",stanSourceLink,acc,acc);
-    else if(sameWord(type,"locusLink"))
-	printf("<B>Stanford SOURCE Locus Link:</B> <A HREF=\"%soption=LLID&criteria=%s&choice=Gene\" TARGET=_blank>%s</A><BR>\n",stanSourceLink,acc,acc);
-    }
-}
-
 void printGeneCards(char *geneName)
 /* Print out a link to GeneCards (Human only). */
 {
@@ -5504,7 +5480,6 @@ if (row != NULL)
                 }
             }
         }
-    printStanSource(acc, type);
     if (isEst && hTableExists(database, "estOrientInfo") && (psl != NULL))
         {
         int estOrient = getEstTranscriptionDir(conn2, psl);
@@ -9597,13 +9572,11 @@ if (row != NULL)
 	chromosome = "M";    
 
     chp = strstr(itemName, "COSM")+strlen("COSM");
-    printf("<B>COSMIC ID:</B> %s", chp);
-
-    printf(" (click <A HREF=\"%s&id=%s\" TARGET=_BLANK>here</A> for more details at COSMIC site)\n", url, chp);
+    printf("<B>COSMIC ID:</B> <A HREF=\"%s%s\" TARGET=_BLANK>%s</A> (details at COSMIC site)", url, chp, chp);
 
     // Embed URL to COSMIC site per COSMICT request.
-    printf("<BR><B>Source:</B> ");
-    printf("<A HREF=\"http://www.sanger.ac.uk/cosmic/\" TARGET=_BLANK>%s</A>\n", source);
+    // printf("<BR><B>Source:</B> ");
+    // printf("<A HREF=\"http://cancer.sanger.ac.uk/cancergenome/projects/cosmic/\" TARGET=_BLANK>%s</A>\n", source);
 
     printf("<BR><B>Gene Name:</B> %s\n", gene_name);
     printf("<BR><B>Accession Number:</B> %s\n", accession_number);
@@ -9648,7 +9621,7 @@ if (row != NULL)
         mut_freq                = row2[ii];ii++;
 
         if (multipleTumorSites) printf("<BR>");
-        printf("<BR><B>%sTumour Site:</B> %s\n",        indentString, tumour_site);
+        printf("<BR><B>%sTumor Site:</B> %s\n",         indentString, tumour_site);
         printf("<BR><B>%sMutated Samples:</B> %s\n",    indentString, mutated_samples);
         printf("<BR><B>%sExamined Samples:</B> %s\n",   indentString, examined_samples);
         printf("<BR><B>%sMutation Frequency:</B> %s\n", indentString, mut_freq);
@@ -9758,7 +9731,7 @@ sqlFreeResult(&sr);
 printf("<B>Patient View: </B>\n");
 printf("More details on patient %s at ", itemName);
 printf("<A HREF=\"%s%s\" target=_blank>",
-       "https://decipher.sanger.ac.uk/application/patient/", itemName);
+       "https://decipher.sanger.ac.uk/patient/", itemName);
 printf("DECIPHER</A>.<BR><BR>");
 
 /* print position info */
@@ -10780,7 +10753,6 @@ if (rl->locusLinkId != 0)
            rl->locusLinkId);
     printf("%d</A><BR>\n", rl->locusLinkId);
     }
-printStanSource(rl->mrnaAcc, "mrna");
 
 htmlHorizontalLine();
 
@@ -11208,7 +11180,6 @@ if (startsWith("hg", database))
 	   rl->name);
     printf("%s</A><BR>\n", rl->name);
     }
-printStanSource(rl->mrnaAcc, "mrna");
 prGRShortRefGene(rl->name);
 
 }
@@ -11287,7 +11258,6 @@ if (rl->locusLinkId != 0)
 	sqlFreeResult(&sr);
 	}
     }
-printStanSource(rl->mrnaAcc, "mrna");
 }
 
 void doKnownGene(struct trackDb *tdb, char *rnaName)
@@ -16347,10 +16317,14 @@ struct sqlResult *sr;
 char **row;
 char query[512];
 int rowOffset = hOffsetPastBin(database, seqName, tdb->table);
+int start = cartInt(cart, "o");
+int end = cartInt(cart, "t");
 genericHeader(tdb, id);
 printCustomUrl(tdb, id, FALSE);
 
-safef(query, sizeof(query), "select * from %s where name = '%s'", tdb->table, id);
+safef(query, sizeof(query), "select * from %s where name = '%s' "
+      "and chrom = '%s' and chromStart = %d and chromEnd = %d",
+      tdb->table, id, seqName, start, end);
 sr = sqlGetResult(conn, query);
 while ((row = sqlNextRow(sr)) != NULL)
     {
@@ -19733,7 +19707,6 @@ for(sg=sgList; sg != NULL; sg = sg->next)
     {
     char buff[256];
     sprintf(buff,"Hs.%d",sg->uni);
-    printStanSource(buff, "unigene");
     }
 featureCount= slCount(sgList);
 printf("<basefont size=-1>\n");
@@ -24188,10 +24161,11 @@ if ((row = sqlNextRow(sr)) != NULL)
     bedPrintPos((struct bed*)r, bedPart, tdb);
     if (r->id != NULL)
         {
-        printf("<B>ID:</B> %s <BR>\n", r->id);
+        if (!sameString("qPcrPrimers", table))
+            printf("<B>ID:</B> %s <BR>\n", r->id);
         printCustomUrl(tdb, r->id, TRUE);
-        }
-    if (r->description != NULL)
+        } 
+    if  (isNotEmpty(r->description))
         printf("%s <BR>\n", r->description);
     }
 sqlFreeResult(&sr);
@@ -24316,6 +24290,13 @@ while ((row = sqlNextRow(sr)) != NULL)
      sqlFreeResult(&sr);
 } /* end of prGRShortRefGene */
 
+void doQPCRPrimers(struct trackDb *tdb, char *itemName)
+/* Put up page for QPCRPrimers. */
+{
+genericHeader(tdb, itemName);
+doBedDetail(tdb, NULL, itemName);
+} /* end of doQPCRPrimers */
+
 void doMiddle()
 /* Generate body of HTML. */
 {
@@ -24335,9 +24316,8 @@ getDbAndGenome(cart, &database, &genome, NULL);
 organism = hOrganism(database);
 scientificName = hScientificName(database);
 
-setUdcCacheDir();
 
-dbIsFound = sqlDatabaseExists(database);
+dbIsFound = trackHubDatabase(database) || sqlDatabaseExists(database);
 
 if (dbIsFound)
     seqName = hgOfficialChromName(database, cartString(cart, "c"));
@@ -25173,6 +25153,7 @@ else if (sameWord(table, "transRegCodeProbe"))
                         "transRegCodeCondition", "growthCondition");
     }
 else if (sameWord(table, "wgEncodeRegDnaseClustered")
+     ||  sameWord(table, "wgEncodeRegDnaseClusteredV2")
      ||  sameWord(table, "wgEncodeRegDnaseClusteredOn7"))
     {
     doPeakClusters(tdb, item);
@@ -25540,6 +25521,11 @@ else if (sameString("geneReviews", table))
     {
     doGeneReviews(tdb, item);
     }
+else if (startsWith("qPcrPrimers", table))
+    {
+    doQPCRPrimers(tdb, item);
+    }
+
 else if (tdb != NULL)
     {
     genericClickHandler(tdb, item, NULL);
@@ -25573,12 +25559,15 @@ cart = theCart;
 doMiddle();
 }
 
-char *excludeVars[] = {"hgSeq.revComp", "bool.hcg.dna.rc", "Submit", "submit", "g", "i", "aliTable", "addp", "pred", NULL};
+char *excludeVars[] = {"Submit", "submit", "g", "i", "aliTable", "addp", "pred", NULL};
 
 int main(int argc, char *argv[])
 {
+long enteredMainTime = clock1000();
 pushCarefulMemHandler(LIMIT_2or6GB);
 cgiSpoof(&argc,argv);
+setUdcCacheDir();
 cartEmptyShell(cartDoMiddle, hUserCookie(), excludeVars, NULL);
+cgiExitTime("hgc", enteredMainTime);
 return 0;
 }

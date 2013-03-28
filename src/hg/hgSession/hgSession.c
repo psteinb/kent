@@ -17,6 +17,7 @@
 #include "wikiLink.h"
 #include "customTrack.h"
 #include "customFactory.h"
+#include "udc.h"
 #include "hgSession.h"
 
 
@@ -648,6 +649,9 @@ if (sqlTableExists(conn, namedSessionTable))
     dyStringPrintf(dy, "%s, now(), %d);", firstUse, useCount);
     sqlUpdate(conn, dy->string);
     dyStringFree(&dy);
+
+    /* Prevent modification of custom tracks just saved to namedSessionDb: */
+    cartCopyCustomTracks(cart, cartUsualString(cart, "db", hDefaultDb()));
 
     if (useCount > INITIAL_USE_COUNT)
 	dyStringPrintf(dyMessage,
@@ -1284,9 +1288,12 @@ cartCheckout(&cart);
 int main(int argc, char *argv[])
 /* Process command line. */
 {
+long enteredMainTime = clock1000();
 htmlPushEarlyHandlers();
 cgiSpoof(&argc, argv);
+setUdcCacheDir();
 hgSession();
+cgiExitTime("hgSession", enteredMainTime);
 return 0;
 }
 

@@ -5,65 +5,74 @@
 #include "hash.h"
 #include "options.h"
 #include "ra.h"
-#include "jksql.h"
-#include "trackDb.h"
-#include "hui.h"
-#include "rainbow.h"
+#include "basicBed.h"
 
 void usage()
 {
 errAbort("freen - test some hairbrained thing.\n"
-         "usage:  freen input\n");
+         "usage:  freen val desiredVal\n");
 }
 
-struct rgbColor saturatedRainbowTable[28] = {
-/* This table was built by hand for the default Autodesk Animator palette. */
-    {255, 0, 64},
-    {255, 0, 0},
-    {255, 64, 0},
-    {255, 128, 0},
-    {255, 164, 0},
-    {255, 210, 0},
-    {255, 255, 0},
-    {210, 255, 0},
-    {164, 255, 0},
-    {128, 255, 0},
-    {0, 255, 0},
-    {0, 255, 128},
-    {0, 255, 164},
-    {0, 255, 210},
-    {0, 255, 255},
-    {0, 210, 255},
-    {0, 164, 255},
-    {0, 128, 255},
-    {0, 64, 255},
-    {0, 0, 255},
-    {64, 0, 255},
-    {128, 0, 255},
-    {164, 0, 255},
-    {210, 0, 255},
-    {255, 0, 255},
-    {255, 0, 210},
-    {255, 0, 164},
-    {255, 0, 128},
-    };
 
-int lighten(int col)
-/* Return shade blended with 50% parts 255. */
-{
-return round(col * 0.5 + 255 * 0.5);
-}
+char *fields[] = {
+//id
+//updateTime
+//series
+//accession
+"organism",
+"lab",
+"dataType",
+"cellType",
+#ifdef SOON
+"ab",
+"age",
+"attic",
+"category",
+"control",
+"fragSize",
+"grantee",
+"insertLength",
+"localization",
+"mapAlgorithm",
+"objStatus",
+"phase",
+"platform",
+"promoter",
+"protocol",
+"readType",
+"region",
+"restrictionEnzyme",
+"rnaExtract",
+"seqPlatform",
+"sex",
+"strain",
+"tissueSourceType",
+"treatment",
+#endif /* SOON */
+};
 
 void freen(char *input)
 /* Test some hair-brained thing. */
 {
+/* Make huge sql query */
+printf("select e.id,updateTime,series,accession,version");
 int i;
-for (i=0; i<28; ++i)
-   {
-   struct rgbColor *c = &saturatedRainbowTable[i];
-   printf("   {%d,%d,%d},\n", lighten(c->r), lighten(c->g), lighten(c->b));
-   }
-      
+for (i=0; i<ArraySize(fields); ++i)
+    printf(",cvDb_%s.tag %s", fields[i], fields[i]);
+printf("\n");
+printf("from cvDb_experiment e");
+for (i=0; i<ArraySize(fields); ++i)
+    printf(",cvDb_%s", fields[i]);
+printf("\n");
+printf("where ");
+for (i=0; i<ArraySize(fields); ++i)
+    {
+    if (i != 0)
+        printf(" and ");
+    printf("cvDb_%s.id = e.%s\n", fields[i], fields[i]);
+    }
+printf("\n");
+printf("limit 10\n");
 }
 
 int main(int argc, char *argv[])

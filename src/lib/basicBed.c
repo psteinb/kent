@@ -1344,19 +1344,15 @@ return result;
 }
 
 
-void loadAndValidateBed(char *row[], int wordCount, int fieldCount, struct lineFile *lf, struct bed * bed, struct asObject *as, boolean isCt)
+void loadAndValidateBed(char *row[], int bedFieldCount, int fieldCount, struct lineFile *lf, struct bed * bed, struct asObject *as, boolean isCt)
 /* Convert a row of strings to a bed and validate the contents.  Abort with message if invalid data. Optionally validate bedPlus via asObject.
  * If a customTrack, then some errors are tolerated. */
 {
 int count;
 int *blockSizes = NULL;
-int tempBlockSizes[1024];
 int *chromStarts;
-int tempChromStarts[1024];
 int *expIds;
-int tempExpIds[1024];
 float *expScores;
-float tempExpScores[1024];
 
 bed->chrom = row[0];  // note this value is not cloned for speed, callers may need to clone it.
 
@@ -1374,7 +1370,7 @@ lineFileAllInts(lf, row, 2, &bed->chromEnd, FALSE, 4, "integer", FALSE);
 if (bed->chromEnd < bed->chromStart)
     lineFileAbort(lf, "chromStart after chromEnd (%u > %u)",
     	bed->chromStart, bed->chromEnd);
-if (wordCount > 3)
+if (bedFieldCount > 3)
     {
     bed->name = row[3];
     if (strlen(bed->name) > 255)
@@ -1382,14 +1378,14 @@ if (wordCount > 3)
     if (isCt)
 	bed->name = cloneString(bed->name);
     }
-if (wordCount > 4)
+if (bedFieldCount > 4)
     {
     lineFileAllInts(lf, row, 4, &bed->score, TRUE, 4, "integer", FALSE);
     if (!isCt && (bed->score < 0 || bed->score > 1000))
 	    lineFileAbort(lf, "score (%d) must be between 0 and 1000", bed->score);
     }
 
-if (wordCount > 5)
+if (bedFieldCount > 5)
     {
     if (!isCt && strlen(row[5]) > 1)
       lineFileAbort(lf, "Expecting + or - or . in strand, found [%s]",row[5]);
@@ -1398,11 +1394,11 @@ if (wordCount > 5)
     if (bed->strand[0] != '+' && bed->strand[0] != '-' && bed->strand[0] != '.')
       lineFileAbort(lf, "Expecting + or - or . in strand, found [%s]",row[5]);
     }
-if (wordCount > 6)
+if (bedFieldCount > 6)
     lineFileAllInts(lf, row, 6, &bed->thickStart, FALSE, 4, "integer", FALSE);
 else
     bed->thickStart = bed->chromStart;
-if (wordCount > 7)
+if (bedFieldCount > 7)
     {
     lineFileAllInts(lf, row, 7, &bed->thickEnd, FALSE, 4, "integer", FALSE);
     if (bed->thickEnd < bed->thickStart)
@@ -1423,7 +1419,7 @@ if (wordCount > 7)
 else
      bed->thickEnd = bed->chromEnd;
 
-if (wordCount > 8)
+if (bedFieldCount > 8)
     {
     if (strchr(row[8],','))
 	{
@@ -1444,14 +1440,19 @@ if (wordCount > 8)
 	}
     }
 
-if (wordCount > 9)
+int tempArraySize = 1;	// How big arrays are below
+if (bedFieldCount > 9)
     {
     lineFileAllInts(lf, row, 9, &bed->blockCount, FALSE, 4, "integer", FALSE);
     if (!(bed->blockCount >= 1))
 	lineFileAbort(lf, "Expecting blockCount (%d) to be 1 or more.", bed->blockCount);
-    
+    tempArraySize = bed->blockCount;
     }
-if (wordCount > 10)
+int tempBlockSizes[tempArraySize];
+int tempChromStarts[tempArraySize];
+int tempExpIds[tempArraySize];
+float tempExpScores[tempArraySize];
+if (bedFieldCount > 10)
     {
     if (isCt)
 	{
@@ -1461,7 +1462,7 @@ if (wordCount > 10)
 	}
     else
 	{
-        count = lineFileAllIntsArray(lf, row, 10, tempBlockSizes, sizeof tempBlockSizes, TRUE, 4, "integer", TRUE);
+        count = lineFileAllIntsArray(lf, row, 10, tempBlockSizes, tempArraySize, TRUE, 4, "integer", TRUE);
 	blockSizes = tempBlockSizes;
 	}
     if (count != bed->blockCount)
@@ -1473,7 +1474,7 @@ if (wordCount > 10)
 		lineFileAbort(lf, "BED blockSizes must be greater than 0, blockSize[%d] = %d", i, blockSizes[i]);
 	}
     }
-if (wordCount > 11)
+if (bedFieldCount > 11)
     {
     int i;
     if (isCt)
@@ -1484,7 +1485,7 @@ if (wordCount > 11)
 	}
     else
 	{
-        count = lineFileAllIntsArray(lf, row, 11, tempChromStarts, sizeof tempChromStarts, TRUE, 4, "integer", TRUE);
+        count = lineFileAllIntsArray(lf, row, 11, tempChromStarts, tempArraySize, TRUE, 4, "integer", TRUE);
 	chromStarts = tempChromStarts;
 	}
     if (count != bed->blockCount)
@@ -1527,7 +1528,7 @@ printf("%d:%d %s %s s:%d c:%u cs:%u ce:%u csI:%d bsI:%d ls:%d le:%d<BR>\n", line
 	}
     }
 
-if (wordCount > 12)
+if (bedFieldCount > 12)
     // get the microarray/colored-exon fields
     {
     lineFileAllInts(lf, row, 12, &bed->expCount, TRUE, 4, "integer", TRUE);
@@ -1541,12 +1542,12 @@ if (wordCount > 12)
 	}
     else
 	{
-        count = lineFileAllIntsArray(lf, row, 13, tempExpIds, sizeof tempExpIds, TRUE, 4, "integer", TRUE);
+        count = lineFileAllIntsArray(lf, row, 13, tempExpIds, tempArraySize, TRUE, 4, "integer", TRUE);
 	expIds = tempExpIds;
 	}
     if (count != bed->expCount)
 	lineFileAbort(lf, "expecting %d elements in expIds list (bed field 14)", bed->expCount);
-    if (wordCount == 15)
+    if (bedFieldCount == 15)
 	{
 	if (isCt)
 	    {
@@ -1555,7 +1556,7 @@ if (wordCount > 12)
 	    }
 	else
 	    {
-	    count = sqlFloatArray(row[14], tempExpScores, sizeof tempExpScores);
+	    count = sqlFloatArray(row[14], tempExpScores, tempArraySize);
 	    expScores = tempExpScores;
 	    }
 	if (count != bed->expCount)
@@ -1593,8 +1594,8 @@ if (as)
 	asCol = asCol->next;
 	}    
     /* Validate bed-plus fields */
-    asCol = slElementFromIx(as->columnList, wordCount);
-    for (i=wordCount; i<fieldCount; ++i)
+    asCol = slElementFromIx(as->columnList, bedFieldCount);
+    for (i=bedFieldCount; i<fieldCount; ++i)
 	{
 	enum asTypes type = asCol->lowType->type;
 	if (! (asCol->isList || asCol->isArray))

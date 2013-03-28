@@ -429,6 +429,14 @@ void slUniqify(void *pList, CmpFunction *compare, void (*free)());
  * pointers to pointers to elements.  Free should take a simple
  * pointer to dispose of duplicate element, and can be NULL. */
 
+void slSortMerge(void *pA, void *b, CmpFunction *compare);
+// Merges and sorts a pair of singly linked lists using slSort.
+
+void slSortMergeUniq(void *pA, void *b, CmpFunction *compare, void (*free)());
+// Merges and sorts a pair of singly linked lists leaving only unique
+// items via slUniqufy.  duplicate itens are defined by the compare routine
+// returning 0. If free is provided, items dropped from list can disposed of.
+
 boolean slRemoveEl(void *vpList, void *vToRemove);
 /* Remove element from doubly linked list.  Usage:
  *    slRemove(&list, el);
@@ -611,6 +619,9 @@ void refAdd(struct slRef **pRefList, void *val);
 
 void refAddUnique(struct slRef **pRefList, void *val);
 /* Add reference to list if not already on list. */
+
+void slRefFreeListAndVals(struct slRef **pList);
+/* Free up (with simple freeMem()) each val on list, and the list itself as well. */
 
 struct slRef *refListFromSlList(void *list);
 /* Make a reference list that mirrors a singly-linked list. */
@@ -1434,5 +1445,4 @@ boolean dateIsOlderBy(const char *date,const char*format, time_t seconds);
 char *dateAddTo(char *date,char *format,int addYears,int addMonths,int addDays);
 /* Add years,months,days to a formatted date and returns the new date as a cloned string
 *  format is a strptime/strftime format: %F = yyyy-mm-dd */
-
 #endif /* COMMON_H */

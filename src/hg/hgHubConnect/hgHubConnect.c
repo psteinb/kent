@@ -75,7 +75,7 @@ struct trackHubGenome *genomes = thub->genomeList;
 struct dyString *dy = newDyString(100);
 
 for(; genomes; genomes = genomes->next)
-    dyStringPrintf(dy,"%s,", genomes->name);
+    dyStringPrintf(dy,"%s,", trackHubSkipHubName(genomes->name));
 ourPrintCell(removeLastComma( dyStringCannibalize(&dy)));
 }
 
@@ -459,7 +459,7 @@ if (survey && differentWord(survey, "off"))
 hPutc('\n');
 
 // check to see if we have any new hubs
-hubCheckForNew(database, cart);
+hubCheckForNew(cart);
 
 // grab all the hubs that are listed in the cart
 struct hubConnectStatus *hubList =  hubConnectStatusListFromCartAll(cart);
@@ -504,7 +504,7 @@ hgHubConnectUnlisted(hubList, publicHash);
 printf("</div>");
 
 printf("<div class=\"tabFooter\">");
-cgiMakeButton("Submit", "Load Selected Hubs");
+cgiMakeButton("Submit", "Use Selected Hubs");
 
 char *emailAddress = cfgOptionDefault("hub.emailAddress","genome@soe.ucsc.edu");
 printf("<span class=\"small\">"
@@ -526,9 +526,11 @@ char *excludeVars[] = {"Submit", "submit", "hc_one_url",
 int main(int argc, char *argv[])
 /* Process command line. */
 {
+long enteredMainTime = clock1000();
 oldVars = hashNew(10);
 cgiSpoof(&argc, argv);
 cartEmptyShell(doMiddle, hUserCookie(), excludeVars, oldVars);
+cgiExitTime("hgHubConnect", enteredMainTime);
 return 0;
 }
 

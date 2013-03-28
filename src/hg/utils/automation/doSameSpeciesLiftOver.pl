@@ -33,7 +33,7 @@ my $stepper = new HgStepManager(
 				);
 
 # Option defaults:
-my $dbHost = 'hgwdev';
+my $dbHost = 'genome';
 
 # This could be made into an option:
 # BLAT -fastMap will not work with query chunks greater than 5000
@@ -254,7 +254,7 @@ _EOF_
   &HgAutomate::run("chmod a+x $runDir/job.csh");
 
   &HgAutomate::makeGsub($runDir,
-			'job.csh $(path1) $(path2) {check out line ' .
+			'./job.csh $(path1) $(path2) {check out line ' .
 			 $pslDir . '/$(file1)/$(file2).psl}');
 
   my $whatItDoes = "It performs a cluster run of blat -fastMap.";
@@ -389,7 +389,7 @@ _EOF_
   &HgAutomate::run("chmod a+x $runDir/job.csh");
 
   &HgAutomate::makeGsub($runDir,
-			'job.csh $(path1) ' .
+			'./job.csh $(path1) ' .
 			'{check out line+ chainRaw/$(path1).chain}');
   my $whatItDoes = "It does a cluster run to chain the blat alignments.";
   my $bossScript = new HgRemoteScript("$runDir/doChain.csh", $paraHub,
@@ -484,18 +484,18 @@ rm -f $liftOverChainPath
 ln -s $buildDir/$liftOverChainFile $liftOverChainPath
 
 # Link from download area:
-mkdir -p $HgAutomate::goldenPath/$tDb/liftOver
-rm -f $HgAutomate::goldenPath/$tDb/liftOver/$liftOverChainFile
-ln -s $liftOverChainPath $HgAutomate::goldenPath/$tDb/liftOver/
+#mkdir -p $HgAutomate::goldenPath/$tDb/liftOver
+#rm -f $HgAutomate::goldenPath/$tDb/liftOver/$liftOverChainFile
+#ln -s $liftOverChainPath $HgAutomate::goldenPath/$tDb/liftOver/
 
 # Link from genome browser fileserver:
-mkdir -p $HgAutomate::gbdb/$tDb/liftOver
-rm -f $HgAutomate::gbdb/$tDb/liftOver/$liftOverChainFile
-ln -s $liftOverChainPath $HgAutomate::gbdb/$tDb/liftOver/
+#mkdir -p $HgAutomate::gbdb/$tDb/liftOver
+#rm -f $HgAutomate::gbdb/$tDb/liftOver/$liftOverChainFile
+#ln -s $liftOverChainPath $HgAutomate::gbdb/$tDb/liftOver/
 
 # Add an entry to liftOverChain table in central database (specified in
 # ~/.hg.conf) so that hgLiftOver will know that this is available:
-hgAddLiftOverChain $tDb $qDb
+#hgAddLiftOverChain $tDb $qDb
 _EOF_
   );
   $bossScript->execute();

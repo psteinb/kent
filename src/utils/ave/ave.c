@@ -99,6 +99,11 @@ if (tableOut)
     }
 else
     {
+/* MH default output now is on a single line */
+    printf("Q1 %.3f\tmedian %.3f\tQ3 %.3f\tave %.3f\tmin-max %.3f - %.3f\tcount %d\tsum %.3f\tsd %.3f\n", 
+      q1,array[count/2],q3,average,minVal,maxVal,count,total,stdDev);
+
+/*
     printf("Q1 %f\n", q1);
     printf("median %f\n", array[count/2]);
     printf("Q3 %f\n", q3);
@@ -108,6 +113,7 @@ else
     printf("count %d\n", count);
     printf("total %f\n", total);
     printf("standard deviation %f\n", stdDev);
+*/
     }
 }
 

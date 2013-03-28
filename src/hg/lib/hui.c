@@ -37,8 +37,9 @@
 #include "bedDetail.h"
 #include "pgSnp.h"
 #include "memgfx.h"
+#include "trackHub.h"
 
-#define SMALLBUF 128
+#define SMALLBUF 256
 #define MAX_SUBGROUP 9
 #define ADD_BUTTON_LABEL        "add"
 #define CLEAR_BUTTON_LABEL      "clear"
@@ -143,7 +144,7 @@ boolean makeSchemaLink(char *db,struct trackDb *tdb,char *label)
 #define SCHEMA_LINKED "<A HREF=\"../cgi-bin/hgTables?db=%s&hgta_group=%s&hgta_track=%s" \
                       "&hgta_table=%s&hgta_doSchema=describe+table+schema\" " \
                       "TARGET=ucscSchema%s>%s</A>"
-if (hTableOrSplitExists(db, tdb->table))
+if (!trackHubDatabase(db) && hTableOrSplitExists(db, tdb->table))
     {
     char *tbOff = trackDbSetting(tdb, "tableBrowser");
     if (isNotEmpty(tbOff) && sameString(nextWord(&tbOff), "off"))
@@ -287,10 +288,10 @@ return TRUE;
 void extraUiLinks(char *db,struct trackDb *tdb)
 // Show downlaods, schema and metadata links where appropriate
 {
-boolean schemaLink = (!tdbIsDownloadsOnly(tdb)
+boolean schemaLink = (!tdbIsDownloadsOnly(tdb) && !trackHubDatabase(db)
                   && isCustomTrack(tdb->table) == FALSE)
                   && (hTableOrSplitExists(db, tdb->table));
-boolean metadataLink = (!tdbIsComposite(tdb)
+boolean metadataLink = (!tdbIsComposite(tdb) && !trackHubDatabase(db)
                   && metadataForTable(db, tdb, NULL) != NULL);
 boolean downloadLink = (trackDbSetting(tdb, "wgEncode") != NULL && !tdbIsSuperTrack(tdb));
 int links = 0;
@@ -3936,7 +3937,7 @@ if (metadataForTable(db,trackDb,NULL) != NULL)
     if (date != NULL)
         date = strSwapChar(date, ' ', 0);   // Truncate time (not expected, but just in case)
 
-    if (excludePast && !isEmpty(date) && dateIsOld(date,"%F"))
+    if (excludePast && !isEmpty(date) && dateIsOld(date, MDB_ENCODE_DATE_FORMAT))
         freez(&date);
     }
 return date;
@@ -3978,8 +3979,10 @@ char buffer[SMALLBUF];
 char *displaySubs = NULL;
 int subCount = slCount(subtrackRefList);
 #define LARGE_COMPOSITE_CUTOFF 30
-if (subCount > LARGE_COMPOSITE_CUTOFF)
+if (subCount > LARGE_COMPOSITE_CUTOFF && membersForAll->dimensions != NULL)
     {
+    // ignore displaySubtracks setting for large composites with a matrix as
+    // matrix effectively shows all
     safef(buffer,SMALLBUF,"%s.displaySubtracks",parentTdb->track);
     displaySubs = cartUsualString(cart, buffer,"some"); // track specific defaults to only selected
     }
@@ -4395,7 +4398,7 @@ for (subtrackRef = subtrackRefList; subtrackRef != NULL; subtrackRef = subtrackR
         char *dateDisplay = encodeRestrictionDate(db,subtrack,FALSE); // includes dates in the past
         if (dateDisplay)
             {
-            if (dateIsOld(dateDisplay,"%F"))
+            if (dateIsOld(dateDisplay, MDB_ENCODE_DATE_FORMAT))
                 printf("</TD>\n<TD align='center' nowrap style='color: #BBBBBB;'>&nbsp;%s&nbsp;",
                        dateDisplay);
             else
@@ -7738,6 +7741,8 @@ void printUpdateTime(char *database, struct trackDb *tdb,
     struct customTrack *ct)
 /* display table update time */
 {
+if (trackHubDatabase(database))
+    return;
 /* have not decided what to do for a composite container */
 if (tdbIsComposite(tdb))
     return;
@@ -7915,7 +7920,7 @@ else if (tdbIsBam(tdb))
     asObj = bamAsObj();
 else if (tdbIsVcf(tdb))
     asObj = vcfAsObj();
-if (startsWithWord("makeItems", tdb->type))
+else if (startsWithWord("makeItems", tdb->type))
     asObj = makeItemsItemAsObj();
 else if (sameWord("bedDetail", tdb->type))
     asObj = bedDetailAsObj();

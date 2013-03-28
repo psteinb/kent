@@ -18,7 +18,9 @@ use HgStepManager;
 # Hardcoded command path:
 my $RepeatMaskerPath = "/genome/src/RepeatMasker";
 my $RepeatMasker = "$RepeatMaskerPath/RepeatMasker";
-my $liftRMAlign = "/genome/bin/scripts/liftRMAlign.pl";
+my $RepeatMaskerEngine = "-engine crossmatch -s";
+# Let parasol pick defaults
+my $parasolRAM = "";
 
 # Option variable names, both common and peculiar to this script:
 use vars @HgAutomate::commonOptionVars;
@@ -28,6 +30,9 @@ use vars qw/
     $opt_species
     $opt_unmaskedSeq
     $opt_customLib
+    $opt_useHMMER
+    $opt_useRMBlastn
+    $opt_splitTables
     $opt_noSplit
     /;
 
@@ -68,7 +73,10 @@ options:
     -unmaskedSeq seq.2bit Use seq.2bit as the unmasked input sequence instead
                           of default ($unmaskedSeq).
     -customLib lib.fa     Use custom repeat library instead of RepeatMaskers\'s.
-    -noSplit              Do not load split _rmsk tables even if chrom based.
+    -useRMBlastn          Use NCBI rmblastn instead of crossmatch
+    -useHMMER             Use hmmer instead of crossmatch ( currently for human only )
+    -splitTables          split the _rmsk tables (default is not split)
+    -noSplit              default behavior, this option no longer required.
 _EOF_
   ;
   print STDERR &HgAutomate::getCommonOptionHelp('dbHost' => $dbHost,
@@ -102,7 +110,7 @@ Assumptions:
 # Command line args: db
 my ($db);
 # Other:
-my ($buildDir, $chromBased);
+my ($buildDir, $chromBased, $secondsStart, $secondsEnd);
 
 sub checkOptions {
   # Make sure command line options are valid/supported.
@@ -111,6 +119,9 @@ sub checkOptions {
 		      'species=s',
 		      'unmaskedSeq=s',
 		      'customLib=s',
+                      'useRMBlastn',
+                      'useHMMER',
+		      'splitTables',
 		      'noSplit',
 		      @HgAutomate::commonOptionSpec,
 		      );
@@ -160,6 +171,16 @@ push @okOut, $buildDir;
   else {
      $repeatLib = "-species \'$species\'";
   }
+  if ( $opt_useRMBlastn ) {
+    $RepeatMaskerEngine = "-engine rmblast -pa 1";
+    $parasolRAM = "-ram=2g";
+  }
+
+  if ( $opt_useHMMER ) {
+    # NOTE: This is only applicable for 8gb one-job-per-node scheduling
+    $RepeatMaskerEngine = "-engine hmmer -pa 4";
+    $parasolRAM = "-ram=8g";
+  }
 
   # Script to do a dummy run of RepeatMasker, to test our invocation and
   # unpack library files before kicking off a large cluster run.
@@ -170,7 +191,7 @@ push @okOut, $buildDir;
   print $fh <<_EOF_
 #!/bin/csh -ef
 
-$RepeatMasker $repeatLib /dev/null
+$RepeatMasker $RepeatMaskerEngine $repeatLib /dev/null
 _EOF_
   ;
   close($fh);
@@ -185,6 +206,7 @@ set finalOut = \$1
 set inLst = \$finalOut:r
 set inLft = \$inLst:r.lft
 set alignOut = \$finalOut:r.align
+set catOut = \$finalOut:r.cat
 
 # Use local disk for output, and move the final result to \$outPsl
 # when done, to minimize I/O.
@@ -192,7 +214,7 @@ set tmpDir = `mktemp -d -p /scratch/tmp doRepeatMasker.cluster.XXXXXX`
 pushd \$tmpDir
 
 # Initialize local library
-$RepeatMasker $repeatLib /dev/null
+$RepeatMasker $RepeatMaskerEngine $repeatLib /dev/null
 
 foreach spec (`cat \$inLst`)
   # Remove path and .2bit filename to get just the seq:start-end spec:
@@ -202,15 +224,24 @@ foreach spec (`cat \$inLst`)
   # seq:start-end for liftUp's sake:
   twoBitToFa \$spec stdout \\
   | sed -e "s/^>.*/>\$base/" > \$base.fa
-  $RepeatMasker -align -s $repeatLib \$base.fa
+  $RepeatMasker $RepeatMaskerEngine -align $repeatLib \$base.fa
+  if (-e \$base.fa.cat) then
+    mv \$base.fa.cat \$catOut
+  endif
 end
 
 # Lift up (leave the RepeatMasker header in place because we'll liftUp
 # again later):
-liftUp -type=.out stdout \$inLft error *.out \\
-  > tmpOut__out
+liftUp -type=.out stdout \$inLft error *.fa.out > tmpOut__out
 
-$liftRMAlign \$inLft > tmpOut__align
+set nonomatch
+set alignFiles = ( *.align )
+if ( \${#alignFiles} && -e \$alignFiles[1] ) then
+  liftUp -type=.align stdout \$inLft error *.align \\
+    > tmpOut__align
+else
+  touch tmpOut__align
+endif
 
 # Move final result into place:
 mv tmpOut__out \$finalOut
@@ -225,7 +256,7 @@ _EOF_
   &HgAutomate::makeGsub($runDir,
       "./RMRun.csh {check out line $partDir/\$(path1).out}");
 
-  my $whatItDoes = 
+  my $whatItDoes =
 "It computes a logical partition of unmasked 2bit into 500k chunks
 and runs it on the cluster with the most available bandwidth.";
   my $bossScript = new HgRemoteScript("$runDir/doCluster.csh", $paraHub,
@@ -237,12 +268,36 @@ chmod a+x RMRun.csh
 #./dummyRun.csh		# do not run a dummy script
 
 # Record RM version used:
-ls -l $RepeatMaskerPath
-# don't do the grep's
+ls -ld $RepeatMaskerPath $RepeatMasker
+# MH: lets not grep for the version. This does not return something with RM version 4. 
 #grep 'version of RepeatMasker\$' $RepeatMasker
-#grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
+grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
+echo "# RepeatMasker engine: $RepeatMaskerEngine"
 _EOF_
   );
+  if ($opt_useRMBlastn) {
+    $bossScript->add(<<_EOF_
+echo "# useRMBlastn: rmblastn:"
+grep RMBLAST_DIR $RepeatMaskerPath/RepeatMaskerConfig.pm | awk '{print \$NF}'
+_EOF_
+    );
+  }
+  if ($opt_useHMMER) {
+    $bossScript->add(<<_EOF_
+echo "# useHMMER: Dfam library: "
+ls -ld $RepeatMaskerPath/Libraries/Dfam.hmm
+grep Release: $RepeatMaskerPath/Libraries/Dfam.hmm
+echo "# useHMMER: HMMER3: "
+grep -m 1 ^HMMER3 $RepeatMaskerPath/Libraries/Dfam.hmm
+_EOF_
+    );
+  }
+  if (length($repeatLib) > 0) {
+    $bossScript->add(<<_EOF_
+echo "# RepeatMasker library options: '$repeatLib'"
+_EOF_
+    );
+  }
   if (! $inHive) {
     $bossScript->add(<<_EOF_
 mkdir -p $clusterSeqDir
@@ -257,7 +312,11 @@ rm -f $buildDir/RMPart
 ln -s $partDir $buildDir/RMPart
 
 $HgAutomate::gensub2 $partDir/partitions.lst single gsub jobList
-$HgAutomate::paraRun
+# para is in our path, so we don't have to call it with /parasol/bin/para
+para $parasolRAM make jobList
+para check
+para time > run.time
+cat run.time
 
 _EOF_
   );
@@ -277,7 +336,7 @@ sub doCat {
   &HgAutomate::checkExistsUnlessDebug('cluster', 'cat',
 				      "$buildDir/run.cluster/run.time");
 
-  my $whatItDoes = 
+  my $whatItDoes =
 "It concatenates .out files from cluster run into a single $db.sorted.fa.out.\n" .
 "liftUp (with no lift specs) is used to concatenate .out files because it\n" .
 "uniquifies (per input file) the .out IDs which can then be used to join\n" .
@@ -309,7 +368,7 @@ _EOF_
   for (my $l = 0;  $l <= $levels - 2;  $l++) {
     $bossScript->add(<<_EOF_
 ${indent}  liftUp ${path}cat.out /dev/null carry ${path}???/*.out
-${indent}  cat ${path}???/*.align > ${path}cat.align
+${indent}  liftUp ${path}cat.align /dev/null carry ${path}???/*.align
 ${indent}end
 _EOF_
     );
@@ -319,7 +378,7 @@ _EOF_
   $bossScript->add(<<_EOF_
 
 liftUp $db.fa.out /dev/null carry $partDir/???/*.out
-cat $partDir/???/*.align >> $db.fa.align
+liftUp $db.fa.align /dev/null carry $partDir/???/*.align
 head -3 $db.fa.out > $db.sorted.fa.out
 tail -n +4 $db.fa.out | sort -k5,5 -k6,6n >> $db.sorted.fa.out
 _EOF_
@@ -361,16 +420,16 @@ sub doInstall {
   my $runDir = "$buildDir";
   &HgAutomate::checkExistsUnlessDebug('cat', 'install', "$buildDir/$db.sorted.fa.out");
 
-  my $split = $chromBased ? " (split)" : "";
-  $split = "" if ($opt_noSplit);
+  my $split = "";
+  $split = " (split)" if ($opt_splitTables);
   my $whatItDoes =
 "It loads $db.sorted.fa.out into the$split rmsk table and $db.nestedRepeats.bed\n" .
 "into the nestedRepeats table.  It also installs the masked 2bit.";
   my $bossScript = new HgRemoteScript("$runDir/doLoad.csh", $dbHost,
 				      $runDir, $whatItDoes);
 
-  $split = $chromBased ? "-split" : "-nosplit";
-  $split = "-nosplit" if ($opt_noSplit);
+  $split = "-nosplit";
+  $split = "-split" if ($opt_splitTables);
   my $installDir = "$HgAutomate::clusterData/$db";
   $bossScript->add(<<_EOF_
 hgLoadOut -table=rmsk $split $db $db.sorted.fa.out
@@ -392,10 +451,12 @@ _EOF_
     my $bossScript = new HgRemoteScript("$runDir/doSplit.csh", $fileServer,
 					$runDir, $whatItDoes);
     $bossScript->add(<<_EOF_
-head -3 $db.sorted.fa.out > /tmp/rmskHead.txt
+set headTemp = `mktemp -p /tmp makeGenomeDb.rmskHead.XXXXXX`;
+head -3 $db.sorted.fa.out > \$headTemp
 # output to ./rmsk instead of $HgAutomate::gbdb/$db because otherwise splitFileByColumn tries to creates /genome/gbdb-HL and fails because it exists
 tail -n +4 $db.sorted.fa.out \\
-| splitFileByColumn -col=5 stdin ./rmsk -chromDirs -ending=.fa.out -head=/tmp/rmskHead.txt
+| splitFileByColumn -col=5 stdin ./rmsk -chromDirs -ending=.fa.out -head=\$headTemp
+rm \$headTemp
 _EOF_
     );
     $bossScript->execute();
@@ -433,6 +494,8 @@ _EOF_
 # Make sure we have valid options and exactly 1 argument:
 &checkOptions();
 &usage(1) if (scalar(@ARGV) != 1);
+$secondsStart = `date "+%s"`;
+chomp $secondsStart;
 ($db) = @ARGV;
 
 # Now that we know the $db, figure out our paths:
@@ -453,9 +516,15 @@ my $stopStep = $stepper->getStopStep();
 my $upThrough = ($stopStep eq 'cleanup') ? "" :
   "  (through the '$stopStep' step)";
 
+$secondsEnd = `date "+%s"`;
+chomp $secondsEnd;
+my $elapsedSeconds = $secondsEnd - $secondsStart;
+my $elapsedMinutes = int($elapsedSeconds/60);
+$elapsedSeconds -= $elapsedMinutes * 60;
+
 &HgAutomate::verbose(1, <<_EOF_
 
- *** All done!$upThrough
+ *** All done!$upThrough - Elapsed time: ${elapsedMinutes}m${elapsedSeconds}s
  *** Steps were performed in $buildDir
 _EOF_
 );

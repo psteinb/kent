@@ -212,7 +212,9 @@ boolean canPack = (sameString("psl", s) || sameString("chain", s) ||
 		   sameString("bed6FloatScore", s) || sameString("altGraphX", s) ||
 		   sameString("bam", s) || sameString("bedDetail", s) ||
 		   sameString("bed8Attrs", s) || sameString("gvf", s) ||
-		   sameString("vcfTabix", s) || sameString("pgSnp", s));
+		   sameString("vcfTabix", s) || sameString("pgSnp", s) ||
+		   sameString("narrowPeak", s) || sameString("broadPeak", s) || 
+                   sameString("peptideMapping", s));
 freeMem(t);
 return canPack;
 }
@@ -582,11 +584,12 @@ for (tdb = tdbList; tdb != NULL; tdb = tdb->next)
         continue;
     wordCt = chopLine(cloneString(setting), words);
     assert(differentString("on", words[0])); // already weeded out "superTrack on"
-    tdb->parent = hashFindVal(superHash, words[0]);
+    char *parentName = maybeSkipHubPrefix(words[0]);
+    tdb->parent = hashFindVal(superHash, parentName);
     if (tdb->parent)
         {
         tdbMarkAsSuperTrackChild(tdb);
-        tdb->parentName = cloneString(words[0]);
+        tdb->parentName = cloneString(parentName);
         if (wordCt > 1)
             tdb->visibility = max(0, hTvFromStringNoAbort(words[1]));
         }

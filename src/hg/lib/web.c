@@ -21,13 +21,14 @@
 #include "googleAnalytics.h"
 #include "jsHelper.h"
 #endif /* GBROWSE */
-#include "errabort.h"  // FIXME tmp hack to try to find source of popWarnHandler underflows in browse
+#include "errabort.h"  // FIXME tmp hack to try to find source of popWarnHandler underflows in browser
 /* phoneHome business */
 #include <utime.h>
 #include <htmlPage.h>
 #include <signal.h>
 #include "geoMirror.h"
 #include <regex.h>
+#include "trackHub.h"
 /* phoneHome business */
 
 
@@ -233,17 +234,6 @@ if (withLogo)
 char *menuStr = menuBar(theCart);
 if(menuStr)
     {
-    // NOTE: this jsInclude may be gratuitous (menuBar does it already).
-    jsIncludeFile("jquery.js", NULL);
-    if (geoMirrorEnabled())
-        {
-        // notify client to provide Geo mirror functionality (e.g. in nav bar)
-        printf("<script type='text/javascript'>var GB_geoMirror = %d;</script>\n", 
-                sqlUnsigned(geoMirrorNode()));
-        /* TODO: consider dumping hgcentral.gbNode table here as well so UI
-                can share w/ browser GEO mirror redirect code
-                */
-        }
     puts(menuStr);
     }
 
@@ -528,6 +518,19 @@ while ((row = sqlNextRow(sr)) != NULL)
 sqlFreeResult(&sr);
 hDisconnectCentral(&conn);
 
+struct slPair *names = trackHubGetCladeLabels();
+
+for(; names; names = names->next)
+    {
+    clades[numClades] = names->name;
+    labels[numClades] = names->val;
+    if (sameWord(defaultClade, clades[numClades]))
+	defaultLabel = clades[numClades];
+    numClades++;
+    if (numClades >= ArraySize(clades))
+        internalErr();
+    }
+
 cgiMakeDropListFull(cladeCgiName, labels, clades, numClades,
                     defaultLabel, onChangeText);
 }
@@ -555,7 +558,7 @@ for (cur = dbList; cur != NULL; cur = cur->next)
 	(!doCheck || hDbExists(cur->name)))
         {
         hashAdd(hash, cur->genome, cur);
-        orgList[numGenomes] = cur->genome;
+        orgList[numGenomes] = trackHubSkipHubName(cur->genome);
         values[numGenomes] = cur->genome;
         numGenomes++;
 	if (numGenomes >= ArraySize(orgList))
@@ -672,7 +675,7 @@ for (cur = dbList; cur != NULL; cur = cur->next)
 
     if (allowInactive ||
         ((cur->active || sameWord(cur->name, db))
-                && sqlDatabaseExists(cur->name)))
+                && (trackHubDatabase(db) || sqlDatabaseExists(cur->name))))
         {
         assemblyList[numAssemblies] = cur->description;
         values[numAssemblies] = cur->name;
@@ -1391,6 +1394,16 @@ freez(&menuStr);
 menuStr = dyStringCannibalize(&dy);
 if(!loginSystemEnabled())
     stripRegEx(menuStr, "<\\!-- LOGIN_START -->.*<\\!-- LOGIN_END -->", REG_ICASE);
+
+if(scriptName)
+    {  // Provide optional official mirror servers menu items
+    char *geoMenu = geoMirrorMenu();
+    char *pattern = "<!-- OPTIONAL_MIRROR_MENU -->";
+    char *newMenuStr = replaceChars(menuStr, pattern, geoMenu);
+    freez(&menuStr);
+    menuStr = newMenuStr;
+    }
+
 
 if(scriptName)
     {
