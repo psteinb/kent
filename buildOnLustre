@@ -1,0 +1,2 @@
+source LustreEnvironment
+cd src; make alphalustre;
