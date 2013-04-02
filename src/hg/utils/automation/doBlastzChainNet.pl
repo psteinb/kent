@@ -1118,7 +1118,7 @@ gzip $buildDir/axtChain/$tDb.$qDb.allpatched.chain
 _EOF_
     );
 }
-exit;
+
   $bossScript->execute();
 }	#	sub doPatchChains {}
 ######################################################################
