@@ -1064,10 +1064,22 @@ mv patched$filterFlag.psl $outputDir/
 find $pslPartsDir -name \"*.psl.gz\" | xargs -i zcat {} > $outputDir/old.psl
 cat $outputDir/old.psl $outputDir/patched$filterFlag.psl | gzip -c > $outputDir/oldAndPatched.psl.gz
 rm $outputDir/old.psl
+_EOF_
+    );
+
+###########
+# see if we can afford to run per-chrom chaining jobs (depends on number of reference chroms)
+my $numRefChroms = `wc -l < $defVars{SEQ1_LEN}`; chomp($numRefChroms);
+if ($numRefChroms < 4096) {
+  print "--> run chaining on ref-chrom-split psl files (reference has $numRefChroms chromsomes)\n"; 
+  $bossScript->add(<<_EOF_
 
 # split by target chrom
 # pslSplitOnTarget has problems if the psl file contains ##aligner=lastz lines
-zcat $outputDir/oldAndPatched.psl.gz | egrep "^##" -v | pslSplitOnTarget stdin pslOnTarget
+# pslSplitOnTarget also opens a file for every reference chrom/scaffold --> for zfish we exceed the max 1024 of file handles
+# as a temp fix, set the limit to 4096. If that fails for a references species, we run chaining on all non-split psl files. 
+limit descriptors 4096
+zcat $outputDir/oldAndPatched.psl.gz | egrep "^##" -v | pslSplitOnTarget stdin pslOnTarget -maxTargetCount=4096
 
 # create a new chain
 # cluster job: run for every target chrom
@@ -1086,6 +1098,27 @@ find chain -name \"*.chain\" | chainMergeSort -inputList=stdin | gzip -c > $buil
 rm -rf chain pslOnTarget
 _EOF_
     );
+######### 
+# run just a single chaining job
+}else{
+  print "--> run chaining on unsplit psl input (single job) because reference has $numRefChroms chromsomes\n"; 
+  $bossScript->add(<<_EOF_
+
+chmod +x rechain.csh
+
+echo "./rechain.csh $outputDir/oldAndPatched.psl.gz $buildDir/axtChain/$tDb.$qDb.allpatched.chain" > jobListReChain
+para make jobListReChain
+para check
+para time > run.timeReChain
+cat run.timeReChain
+
+# gzip
+gzip $buildDir/axtChain/$tDb.$qDb.allpatched.chain
+
+_EOF_
+    );
+}
+exit;
   $bossScript->execute();
 }	#	sub doPatchChains {}
 ######################################################################
