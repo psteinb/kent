@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
-
+ 
 # DO NOT EDIT the /cluster/bin/scripts copy of this file -- 
 # edit ~/kent/src/hg/utils/automation/doBlastzChainNet.pl instead.
-
+ 
 # $Id: doBlastzChainNet.pl,v 1.33 2010/04/12 16:33:12 hiram Exp $
-
+ 
 # to-do items:
 # - lots of testing
 # - better logging: right now it just passes stdout and stderr,
@@ -17,7 +17,7 @@
 # - 2bit / multi-sequence support when abridging?
 # - reciprocal best?
 # - hgLoadSeq of query instead of assuming there's a $qDb database?
-
+ 
 use Getopt::Long;
 use warnings;
 use strict;
@@ -26,7 +26,7 @@ use lib "$Bin";
 use HgAutomate;
 use HgRemoteScript;
 use HgStepManager;
-
+ 
 # Hardcoded paths/command sequences:
 
 print "BIN: $Bin\n";
