@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
- 
+
 # DO NOT EDIT the /cluster/bin/scripts copy of this file -- 
 # edit ~/kent/src/hg/utils/automation/doBlastzChainNet.pl instead.
 
@@ -30,11 +30,9 @@ use HgStepManager;
 # Hardcoded paths/command sequences:
 
 print "BIN: $Bin\n";
-my $getFileServer = 'fileServer';   		#PL
- 			# add path for LSF cluster
-my $blastzRunUcsc = "blastz-run-ucsc"; 		#PL
-my $partition = "partitionSequence.pl"; 	#PL
-
+my $getFileServer = '/genome/bin/scripts/fileServer';
+my $blastzRunUcsc = "$Bin/blastz-run-ucsc";
+my $partition = "$Bin/partitionSequence.pl";
 my $clusterLocal = '/scratch/tmp';
 my $clusterSortaLocal = '/scratch/tmp';
 my @clusterNAS = ('/scratch/tmp');
@@ -67,8 +65,10 @@ my $stepper = new HgStepManager(
     [ { name => 'partition',  func => \&doPartition },
       { name => 'blastz',     func => \&doBlastzClusterRun },
       { name => 'cat',        func => \&doCatRun },
+      { name => 'filterPsl',  func => \&doFilterPsl },
       { name => 'chainRun',   func => \&doChainRun },
       { name => 'chainMerge', func => \&doChainMerge },
+      { name => 'patchChains', func => \&doPatchChains },
       { name => 'net',        func => \&netChains },
       { name => 'load',       func => \&loadUp },  # MH: modified to run only netClass; no chain/net loading anymore
 #      { name => 'download',   func => \&doDownloads },
@@ -78,24 +78,20 @@ my $stepper = new HgStepManager(
 			       );
 
 # Option defaults:
-my $bigClusterHub = 'genome';   	
-																		
-my $smallClusterHub = 'genome'; 										
-my $dbHost = 'genome';          										
-my $workhorse = 'genome';		
-
-my $workhorseLSF = 'scuba_cluster1'	  		#PL
-my $bigClusterLSF= 'scuba_cluster1';		#PL
-my $smallClusterLSF= 'scuba_cluster1';		#PL							
-
+my $bigClusterHub = 'genome';
+my $smallClusterHub = 'genome';
+my $dbHost = 'genome';
+my $workhorse = 'genome';
 my $defaultChainLinearGap = "loose";
 my $defaultChainMinScore = "1000";	# from axtChain itself
 my $defaultTRepeats = "";		# for netClass option tRepeats
 my $defaultQRepeats = "";		# for netClass option qRepeats
 my $defaultSeq1Limit = 30;
 my $defaultSeq2Limit = 100;
+my $filterPsl = 0;			# flag for filtering psls for seq identity and entropy
+my $patchChains = 0;			# flag for patching chains
 
-sub usage {																#its about the documentation/help section
+sub usage {
   # Usage / help / self-documentation:
   my ($status, $detailed) = @_;
   my $base = $0;
@@ -131,7 +127,7 @@ print STDERR <<_EOF_
     -loadChainSplit       load split chain tables, default is not split tables
 _EOF_
   ;
-print STDERR &HgAutomate::getCommonOptionHelp('dbHost' => $dbHost, 		# add entry for LSF cluster   ask *************
+print STDERR &HgAutomate::getCommonOptionHelp('dbHost' => $dbHost,
 				      'workhorse' => $workhorse,
 				      'fileServer' => 'genome',
 				      'bigClusterHub' => $bigClusterHub,
@@ -251,20 +247,21 @@ BLASTZ_Q=$HgAutomate::clusterData/blastz/HoxD55.q
   exit $status;
 }
 
-# Globals:																#global variable declaration
+
+# Globals:
 my %defVars = ();
-my ($DEF, $tDb, $qDb, $QDb, $isSelf, $selfSplit, $buildDir, $fileServer, $fileserverLSF, $clusterType);  #PL
+my ($DEF, $tDb, $qDb, $QDb, $isSelf, $selfSplit, $buildDir, $fileServer);
 my ($swapDir, $splitRef, $inclHap, $secondsStart, $secondsEnd);
 
-sub isInDirList {														#to check if xxx exits in xxx directory ?? not sure
+sub isInDirList {
   # Return TRUE if $dir is under (begins with) something in dirList.
   my ($dir, @dirList) = @_;
   my $pat = '^(' . join('|', @dirList) . ')(/.*)?$';
   return ($dir =~ m@$pat@);
 }
 
-sub enforceClusterNoNo {												#Checks where is the cluster output is been put. Not sure if 
-  # Die right away if user is trying to put cluster output somewhere 	#Not sure if we need changes here
+sub enforceClusterNoNo {
+  # Die right away if user is trying to put cluster output somewhere 
   # off-limits.
   my ($dir, $desc) = @_;
   if (&isInDirList($dir, @clusterNoNo)) {
@@ -280,7 +277,7 @@ sub enforceClusterNoNo {												#Checks where is the cluster output is been 
   }
 }
 
-sub checkOptions {														#validating the command line options ?
+sub checkOptions {
   # Make sure command line options are valid/supported.
   my $ok = GetOptions(@HgStepManager::optionSpec,
 		      @HgAutomate::commonOptionSpec,
@@ -337,7 +334,7 @@ sub checkOptions {														#validating the command line options ?
 	"and use $opt_blastzOutRoot\n\n";
     }
   }
-  $workhorse = $opt_workhorse if ($opt_workhorse);     					## ***** ask
+  $workhorse = $opt_workhorse if ($opt_workhorse);
   $bigClusterHub = $opt_bigClusterHub if ($opt_bigClusterHub);
   $smallClusterHub = $opt_smallClusterHub if ($opt_smallClusterHub);
 }
@@ -350,7 +347,7 @@ sub checkOptions {														#validating the command line options ?
 # script will not be run on the cluster, we should fully expect files to 
 # be immediately visible.  
 
-sub loadDef {																	#load the DEF file and validate
+sub loadDef {
   # Read parameters from a bash script with Scott's param variable names:
   my ($def) = @_;
   my $fh = &HgAutomate::mustOpen("$def");
@@ -380,7 +377,7 @@ sub loadDef {																	#load the DEF file and validate
   
 }
 
-sub loadSeqSizes {															#loading the sequences size
+sub loadSeqSizes {
   # Load up sequence -> size mapping from $sizeFile into $hashRef.
   my ($sizeFile, $hashRef) = @_;
   my $fh = &HgAutomate::mustOpen("$sizeFile");
@@ -395,13 +392,12 @@ sub loadSeqSizes {															#loading the sequences size
 # end shared stuff from blastz-run-ucsc
 #########################################################################
 
-sub requireVar {															#check if all required variables have been specified.
+sub requireVar {
   my ($var) = @_;
   die "Error: $DEF is missing variable $var\n" if (! defined $defVars{$var});
 }
 
-sub requirePath {															#check if all required paths are specified completely
-																			# Check that directory is not empty or is a valid directory
+sub requirePath {
   my ($var) = @_;
   my $val = $defVars{$var};
   die "Error: $DEF $var=$val must specify a complete path\n"
@@ -417,15 +413,16 @@ sub requirePath {															#check if all required paths are specified compl
   }
 }
 
-sub requireNum {														#check if a specific field that requires a number as input has been provided.
+sub requireNum {
   my ($var) = @_;
   my $val = $defVars{$var};
   die "Error: $DEF variable $var=$val must specify a number.\n"
     if ($val !~ /^\d+$/);
 }
+
 my $oldDbFormat = '[a-z][a-z](\d+)?';
 my $newDbFormat = '[a-z][a-z][a-z][A-Z][a-z][a-z0-9](\d+)?';
-sub getDbFromPath {																??????? check database
+sub getDbFromPath {
   # Require that $val is a full path that contains a recognizable db as 
   # one of its elements (possibly the last one).
   my ($var) = @_;
@@ -453,7 +450,8 @@ sub getDbFromPath {																??????? check database
   }
 return $db;
 }
-sub checkDef {																# validated the DEF fields
+
+sub checkDef {
   # Make sure %defVars contains what we need and looks consistent with 
   # our assumptions.  
   foreach my $s ('SEQ1_', 'SEQ2_') {
@@ -492,17 +490,15 @@ sub checkDef {																# validated the DEF fields
 
 
 sub doPartition {
-  # Partition the sequence up before blastz.										# Partition the sequence
-  my $paraHub = $bigClusterHub;						??? 						
+  # Partition the sequence up before blastz.
+  my $paraHub = $bigClusterHub;
   my $runDir = "$buildDir/run.blastz";
   my $targetList = "$tDb.lst";
   my $queryList = $isSelf ? $targetList :
 	($opt_ignoreSelf ? "$qDb.ignoreSelf.lst" : "$qDb.lst");
-  
   if ($selfSplit) {
     $queryList = "$qDb.selfSplit.lst"
   }
-  
   my $tPartDir = '-lstDir tParts';
   my $qPartDir = '-lstDir qParts';
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : '../psl';
@@ -517,27 +513,22 @@ sub doPartition {
     $defaultSeq2Limit;
 
   my $partitionTargetCmd = 
-    ("$partition $defVars{SEQ1_CHUNK} $defVars{SEQ1_LAP} " .			#cmd to partition the target sequence
+    ("$partition $defVars{SEQ1_CHUNK} $defVars{SEQ1_LAP} " .
      "$seq1Dir $seq1Len -xdir xdir.sh -rawDir $outRoot $seq1Limit " .
      "$tPartDir > $targetList");
-  
-  my $partitionQueryCmd = 												#cmd to partition query seq
+  my $partitionQueryCmd = 
     (($isSelf && (! $selfSplit)) ?
      '# Self-alignment ==> use target partition for both.' :
      "$partition $defVars{SEQ2_CHUNK} $defVars{SEQ2_LAP} " .
      "$seq2Dir $seq2Len $seq2Limit " .
      "$qPartDir > $queryList");
-  
-  &HgAutomate::mustMkdir($runDir);     									 #create a dir where partition will be executed
-  
+  &HgAutomate::mustMkdir($runDir);
   my $whatItDoes =
 "It computes partitions of target and query sequences into chunks of the
 specified size for the blastz cluster run.  The actual splitting of
 sequence is not performed here, but later on by blastz cluster jobs.";
-  
-  my $bossScript = new HgRemoteScript("$runDir/doPartition.csh", $paraHub,	# main script that will create a csh to partition the target n query sequences
+  my $bossScript = new HgRemoteScript("$runDir/doPartition.csh", $paraHub,
 				      $runDir, $whatItDoes, $DEF);
-  
   $bossScript->add(<<_EOF_
 $partitionTargetCmd
 set L1 = `wc -l < $targetList`
@@ -548,10 +539,8 @@ echo "cluster batch jobList size: \$L = \$L1 * \$L2"
 _EOF_
     );
   $bossScript->execute();
-  
   my $mkOutRootHost = $opt_blastzOutRoot ? $paraHub : $fileServer;
   my $mkOutRoot =     $opt_blastzOutRoot ? "mkdir -p $opt_blastzOutRoot;" : "";
-  
   &HgAutomate::run("$HgAutomate::runSSH $mkOutRootHost " .
 		   "'(cd $runDir; $mkOutRoot csh -ef xdir.sh)'");
 }
@@ -559,29 +548,23 @@ _EOF_
 sub doBlastzClusterRun {
   # Set up and perform the big-cluster blastz run.
   my $paraHub = $bigClusterHub;
-  my $bsubHub = $bigClusterLSF;   													#PL 
-
   my $runDir = "$buildDir/run.blastz";
   my $targetList = "$tDb.lst";
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : '../psl';
   my $queryList = $isSelf ? $targetList :
 	($opt_ignoreSelf ? "$qDb.ignoreSelf.lst" : "$qDb.lst");
-  
   if ($selfSplit) {
     $queryList = "$qDb.selfSplit.lst"
   }
-  
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
     die "doBlastzClusterRun: looks like this was run successfully already " .
       "(run.time exists).  Either run with -continue cat or some later " .
 	"stage, or move aside/remove $runDir/ and run again.\n";
-  } 
-  elsif ((-e "$runDir/gsub" || -e "$runDir/jobList") && ! $opt_debug) {
+  } elsif ((-e "$runDir/gsub" || -e "$runDir/jobList") && ! $opt_debug) {
     die "doBlastzClusterRun: looks like we are not starting with a clean " .
-      "slate.  Please move aside or remove $runDir/ and run again.\n";
-    }
-  
+      "state.  Please move aside or remove $runDir/ and run again.\n";
+  }
   # Second, make sure we got through the partitioning already
   if (! -e "$runDir/$targetList" && ! $opt_debug) {
     die "doBlastzClusterRun: there's no target list file " .
@@ -591,41 +574,23 @@ sub doBlastzClusterRun {
     die "doBlastzClusterRun: there's no query list file" .
         "so start over without the -continue align.\n";
   }
-  
   my $templateCmd = ("$blastzRunUcsc -outFormat psl " .
-		     ($isSelf ? '-dropSelf ' : '') .									#this steps generates the doClusterRun.csh
+		     ($isSelf ? '-dropSelf ' : '') .
 		     '$(path1) $(path2) ../DEF ' .
 		     '{check out exists ' .
 		     $outRoot . '/$(file1)/$(file1)_$(file2).psl }');
-  
-  &HgAutomate::makeGsub($runDir, $templateCmd);									# cluster command is generated 
+  &HgAutomate::makeGsub($runDir, $templateCmd);
   `touch "$runDir/para_hub_$paraHub"`;
   my $whatItDoes = "It sets up and performs the big cluster blastz run.";
-  
-  															#PL 
-if ($clusterType eq "genome"){
-		my $bossScript = new HgRemoteScript("$runDir/doClusterRun.csh", $paraHub,$runDir, $whatItDoes, $DEF);
-  		$bossScript->add(<<_EOF_
-		$HgAutomate::gensub2 $targetList $queryList gsub jobList
-		$HgAutomate::paraRun
+  my $bossScript = new HgRemoteScript("$runDir/doClusterRun.csh", $paraHub,
+				      $runDir, $whatItDoes, $DEF);
+  $bossScript->add(<<_EOF_
+$HgAutomate::gensub2 $targetList $queryList gsub jobList
+$HgAutomate::paraRun
 _EOF_
-    			);
-  }
-    															#PL 
-  elsif ($clusterType eq "scuba_cluster1" ){
-   my $bossScript= new HgRemoteScript("$runDir/doClusterRun.csh", $bsubHub, $runDir, $whatItDoes, $DEF);
-   $bossScript->add(<<_EOF_
-		$HgAutomate::gensub2 $targetList $queryList gsub jobList
-		$HgAutomate::bsubRun
-_EOF_
-    			);
-  }
-
-$bossScript->execute();
-
+    );
+  $bossScript->execute();
 }	#	sub doBlastzClusterRun {}
-
-
 
 sub doCatRun {
   # Do a small cluster run to concatenate the lowest level of chunk result 
@@ -634,10 +599,7 @@ sub doCatRun {
   # concatenated into per-target-sequence in the next step after this one -- 
   # chaining.
   my $paraHub = $smallClusterHub;
-  my $bsubHub = $smallClusterLSF ;   											#PL 
-
   my $runDir = "$buildDir/run.cat";
- 
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
     die "doCatRun: looks like this was run successfully already " .
@@ -645,9 +607,8 @@ sub doCatRun {
 	"stage, or move aside/remove $runDir/ and run again.\n";
   } elsif ((-e "$runDir/gsub" || -e "$runDir/jobList") && ! $opt_debug) {
     die "doCatRun: looks like we are not starting with a clean " .
-      "slate.  Please move aside or remove $runDir/ and run again.\n";
+      "state.  Please move aside or remove $runDir/ and run again.\n";
   }
-  
   # Make sure previous stage was successful.
   my $successFile = "$buildDir/run.blastz/run.time";
   if (! -e $successFile && ! $opt_debug) {
@@ -655,7 +616,8 @@ sub doCatRun {
       "$successFile).\n";
   }
   &HgAutomate::mustMkdir($runDir);
-  &HgAutomate::makeGsub($runDir,"./cat.csh \$(path1) {check out exists ../pslParts/\$(file1).psl.gz}");
+  &HgAutomate::makeGsub($runDir,
+      "./cat.csh \$(path1) {check out exists ../pslParts/\$(file1).psl.gz}");
   `touch "$runDir/para_hub_$paraHub"`;
 
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : '../psl';
@@ -671,36 +633,77 @@ _EOF_
   my $whatItDoes =
 "It sets up and performs a small cluster run to concatenate all files in
 each subdirectory of $outRoot into a per-target-chunk file.";
-  
-    															#PL 
-if ($clusterType eq "genome")  {
-  my $bossScript = new HgRemoteScript("$runDir/doCatRun.csh", $paraHub,$runDir, $whatItDoes, $DEF);
+  my $bossScript = new HgRemoteScript("$runDir/doCatRun.csh", $paraHub,
+				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 (cd $outRoot; find . -maxdepth 1 -type d | grep '^./') \\
         | sed -e 's#/\$##; s#^./##' > tParts.lst
 chmod a+x cat.csh
-$HgAutomate::gensub2 tParts.lst single gsub jobList											#add new variable for LSF cluster							
+$HgAutomate::gensub2 tParts.lst single gsub jobList
 mkdir ../pslParts
-$HgAutomate::paraRun                            							
+$HgAutomate::paraRun
 _EOF_
-    ); 
-}
-  															#PL 
-
-elsif ($clusterType eq "scuba_cluster1") {
-my $bossScript = new HgRemoteScript("$runDir/doCatRun.csh", $bsubHub,$runDir, $whatItDoes, $DEF);
-  $bossScript->add(<<_EOF_
-(cd $outRoot; find . -maxdepth 1 -type d | grep '^./') \\
-        | sed -e 's#/\$##; s#^./##' > tParts.lst
-chmod a+x cat.csh
-$HgAutomate::gensub2 tParts.lst single gsub jobList											#add new variable for LSF cluster							
-mkdir ../pslParts
-$HgAutomate::bsubRun                            							
-_EOF_
-    ); 
-}
-$bossScript->execute();
+    );
+  $bossScript->execute();
 }	#	sub doCatRun {}
+
+
+#######################################################################
+# added by Michael Hiller
+#######################################################################
+sub doFilterPsl {
+  if ($filterPsl == 0) {
+  	print "skip filtering psls\n";
+	return;
+  }
+
+  # Do a cluster to filter each psl file for seq identity and entropy.
+  # The seq identity and entropy parameters are read from the DEF file. 
+  my $paraHub = $smallClusterHub;
+  my $runDir = "$buildDir/run.filterPsl";
+  # First, make sure we're starting clean.
+  if (-e "$runDir/run.time") {
+    die "doFilterPsl: looks like this was run successfully already " .
+      "(run.time exists).  Either run with -continue chainRun or some later " .
+	"stage, or move aside/remove $runDir/ and run again.\n";
+  } elsif ((-e "$runDir/gsub" || -e "$runDir/jobList") && ! $opt_debug) {
+    die "doFilterPsl: looks like we are not starting with a clean " .
+      "state.  Please move aside or remove $runDir/ and run again.\n";
+  }
+  # Make sure previous stage was successful.
+  my $successFile = "$buildDir/run.blastz/run.time";
+  if (! -e $successFile && ! $opt_debug) {
+    die "doFilterPsl: looks like previous stage was not successful (can't find " .
+      "$successFile).\n";
+  }
+  &HgAutomate::mustMkdir($runDir);
+  &HgAutomate::makeGsub($runDir, "./filterPsl.csh ../pslParts/\$(file1) {check out exists ../pslPartsFiltered/\$(file1)}");
+  `touch "$runDir/para_hub_$paraHub"`;
+
+  my $fh = &HgAutomate::mustOpen(">$runDir/filterPsl.csh");
+  print $fh <<_EOF_
+#!/bin/csh -ef
+zcat \$1 | filterPslIdentityEntropy.py /dev/stdin $defVars{'SEQ_IDENT'} $defVars{'MIN_ENTROPY'} $defVars{'WIN_SIZE'} $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} /dev/stdout | gzip -c > \$2
+_EOF_
+  ;
+  close($fh);
+
+  my $whatItDoes =
+"It sets up and performs a cluster run to filter all psl files in $buildDir/pslParts and outputs to $buildDir/pslPartsFiltered.";
+  my $bossScript = new HgRemoteScript("$runDir/doFilterPsl.csh", $paraHub,
+				      $runDir, $whatItDoes, $DEF);
+  $bossScript->add(<<_EOF_
+(cd $buildDir/pslParts; find . -maxdepth 1 -type f | grep '.psl.gz' ) > tParts.lst
+chmod a+x filterPsl.csh
+$HgAutomate::gensub2 tParts.lst single gsub jobList
+mkdir ../pslPartsFiltered
+$HgAutomate::paraRun
+_EOF_
+    );
+  $bossScript->execute();
+}	#	sub doFilterPsl {}
+######################################################################
+######################################################################
 
 
 sub makePslPartsLst {
@@ -711,11 +714,17 @@ sub makePslPartsLst {
   # target seqs glommed together by partitionSequences) make one .lst
   # line per partition.
   return if ($opt_debug);
-  opendir(P, "$buildDir/pslParts")									
-    || die "Couldn't open directory $buildDir/pslParts for reading: $!\n";					
+  # if we have filtered the psl files, then read from pslPartsFiltered
+  if ($filterPsl == 1) {
+  	opendir(P, "$buildDir/pslPartsFiltered")
+	    || die "Couldn't open directory $buildDir/pslPartsFiltered for reading: $!\n";
+  } else {
+  	opendir(P, "$buildDir/pslParts")
+	    || die "Couldn't open directory $buildDir/pslParts for reading: $!\n";
+  }
   my @parts = readdir(P);
   closedir(P);
-  my $partsLst = "$buildDir/axtChain/run/pslParts.lst";					
+  my $partsLst = "$buildDir/axtChain/run/pslParts.lst";
   my $fh = &HgAutomate::mustOpen(">$partsLst");
   my %seqs = ();
   my $count = 0;
@@ -738,7 +747,8 @@ sub makePslPartsLst {
   }
   close($fh);
   if ($count < 1) {
-    die "makePslPartsLst: didn't find any pslParts/ items.";
+    die "makePslPartsLst: didn't find any pslParts/ items." if ($filterPsl == 0);
+    die "makePslPartsLst: didn't find any pslPartsFiltered/ items." if ($filterPsl == 1);
   }
 }
 
@@ -746,25 +756,26 @@ sub makePslPartsLst {
 sub doChainRun {
   # Do a small cluster run to chain alignments to each target sequence.
   my $paraHub = $smallClusterHub;
-  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/axtChain/run";
- 
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
     die "doChainRun: looks like this was run successfully already " .
       "(run.time exists).  Either run with -continue chainMerge or some " .
 	"later stage, or move aside/remove $runDir/ and run again.\n";
   } elsif ((-e "$runDir/gsub" || -e "$runDir/jobList") && ! $opt_debug) {
-    die "doChainRun: looks like we are not starting with a clean " . "slate.  Please move aside or remove $runDir/ and run again.\n";
+    die "doChainRun: looks like we are not starting with a clean " .
+      "state.  Please move aside or remove $runDir/ and run again.\n";
   }
- 
   # Make sure previous stage was successful.
   my $successFile = "$buildDir/run.cat/run.time";
+  $successFile = "$buildDir/run.filterPsl/run.time" if ($filterPsl == 1);
   if (! -e $successFile && ! $opt_debug) {
-    die "doChainRun: looks like previous stage was not successful (can't " ."find $successFile).\n";
+    die "doChainRun: looks like previous stage was not successful (can't " .
+      "find $successFile).\n";
   }
   &HgAutomate::mustMkdir($runDir);
-  &HgAutomate::makeGsub($runDir,"chain.csh \$(file1) {check out line+ chain/\$(file1).chain}");
+  &HgAutomate::makeGsub($runDir,
+	       "./chain.csh \$(file1) {check out line+ chain/\$(file1).chain}");
   `touch "$runDir/para_hub_$paraHub"`;
 
   my $seq1Dir = $defVars{'SEQ1_CTGDIR'} || $defVars{'SEQ1_DIR'};
@@ -773,10 +784,13 @@ sub doChainRun {
   my $minScore = $opt_chainMinScore ? "-minScore=$opt_chainMinScore" : "";
   my $linearGap = $opt_chainLinearGap ? "-linearGap=$opt_chainLinearGap" :
 	"-linearGap=$defaultChainLinearGap";
+
   my $fh = &HgAutomate::mustOpen(">$runDir/chain.csh");
+  my $pslPartsDir = "pslParts";
+  $pslPartsDir = "pslPartsFiltered" if ($filterPsl == 1);
   print $fh  <<_EOF_
 #!/bin/csh -ef
-zcat ../../pslParts/\$1*.psl.gz \\
+zcat ../../$pslPartsDir/\$1*.psl.gz \\
 | axtChain -psl -verbose=0 $matrix $minScore $linearGap stdin \\
     $seq1Dir \\
     $seq2Dir \\
@@ -815,11 +829,8 @@ _EOF_
   my $whatItDoes =
 "It sets up and performs a small cluster run to chain all alignments
 to each target sequence.";
- 
-   														#PL 
-
- if ($clusterType eq "genome") {
-  my $bossScript = new HgRemoteScript("$runDir/doChainRun.csh", $paraHub,$runDir, $whatItDoes, $DEF);
+  my $bossScript = new HgRemoteScript("$runDir/doChainRun.csh", $paraHub,
+				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 chmod a+x chain.csh
 $HgAutomate::gensub2 pslParts.lst single gsub jobList
@@ -827,22 +838,7 @@ mkdir chain liftedChain
 $HgAutomate::paraRun
 rmdir liftedChain
 _EOF_
-  ); 
-  }
-    															#PL 
-
-  elsif ($clusterType eq "scuba_cluster1") {
-  my $bossScript = new HgRemoteScript("$runDir/doChainRun.csh", $bsubHub,$runDir, $whatItDoes, $DEF);
-  $bossScript->add(<<_EOF_
-chmod a+x chain.csh
-$HgAutomate::gensub2 pslParts.lst single gsub jobList
-mkdir chain liftedChain
-$HgAutomate::bsubRun
-rmdir liftedChain
-_EOF_
-  ); 
-  }
- 
+  );
   $bossScript->execute();
 }	#	sub doChainRun {}
 
@@ -851,50 +847,40 @@ sub postProcessChains {
   # chainMergeSort etc.
   my $runDir = "$buildDir/axtChain";
   my $chain = "$tDb.$qDb.all.chain.gz";
-  
   # First, make sure we're starting clean.
   if (-e "$runDir/$chain") {
     die "postProcessChains: looks like this was run successfully already " .
       "($chain exists).  Either run with -continue net or some later " .
       "stage, or move aside/remove $runDir/$chain and run again.\n";
-  } 
-  elsif (-e "$runDir/all.chain" || -e "$runDir/all.chain.gz") {
+  } elsif (-e "$runDir/all.chain" || -e "$runDir/all.chain.gz") {
     die "postProcessChains: looks like this was run successfully already " .
       "(all.chain[.gz] exists).  Either run with -continue net or some later " .
       "stage, or move aside/remove $runDir/all.chain[.gz] and run again.\n";
-  } 
-  elsif (-e "$runDir/chain" && ! $opt_debug) {
+  } elsif (-e "$runDir/chain" && ! $opt_debug) {
     die "postProcessChains: looks like we are not starting with a clean " .
-      "slate.  Please move aside or remove $runDir/chain and run again.\n";
+      "state.  Please move aside or remove $runDir/chain and run again.\n";
   }
-  
   # Make sure previous stage was successful.
   my $successFile = "$buildDir/axtChain/run/run.time";
   if (! -e $successFile && ! $opt_debug) {
     die "postProcessChains: looks like previous stage was not successful " .
       "(can't find $successFile).\n";
   }
-  
   my $cmd="$HgAutomate::runSSH $workhorse nice ";
-  
-  																			# could be added in cluster job.. to interactive queue
   $cmd .= "'find $runDir/run/chain -name \"*.chain\" ";
   $cmd .= "| chainMergeSort -inputList=stdin ";
   $cmd .= "| nice gzip -c > $runDir/$chain'";
-  
   &HgAutomate::run($cmd);
-  
   if ($splitRef) {
     &HgAutomate::run("$HgAutomate::runSSH $fileServer nice " .
 	 "chainSplit $runDir/chain $runDir/$chain");
   }
-  
   &HgAutomate::nfsNoodge("$runDir/$chain");
 }	#	sub postProcessChains {}
 
 
 sub getAllChain {
-  												# Find the most likely candidate for all.chain from a previous run/step.
+  # Find the most likely candidate for all.chain from a previous run/step.
   my ($runDir) = @_;
   my $chain;
   if (-e "$runDir/$tDb.$qDb.all.chain.gz") {
@@ -917,28 +903,22 @@ sub swapChains {
   my $runDir = "$swapDir/axtChain";
   my $inChain = &getAllChain("$buildDir/axtChain");
   my $swappedChain = "$qDb.$tDb.all.chain.gz";
-  
   # First, make sure we're starting clean.
   if (-e "$runDir/$swappedChain") {
     die "swapChains: looks like this was run successfully already " .
      "($runDir/$swappedChain exists).  Either run with -continue net or some " .
      "later stage, or move aside/remove $runDir/$swappedChain and run again.\n";
-  } 
-  elsif (-e "$runDir/all.chain" || -e "$runDir/all.chain.gz") {
+  } elsif (-e "$runDir/all.chain" || -e "$runDir/all.chain.gz") {
     die "swapChains: looks like this was run successfully already " .
      "($runDir/all.chain[.gz] exists).  Either run with -continue net or some " .
      "later stage, or move aside/remove $runDir/all.chain[.gz] and run again.\n";
   }
-  
   # Main routine already made sure that $buildDir/axtChain/all.chain is there.
-  
   &HgAutomate::run("$HgAutomate::runSSH $workhorse nice " .
        "'chainSwap $buildDir/axtChain/$inChain stdout " .
        "| nice chainSort stdin stdout " .
        "| nice gzip -c > $runDir/$swappedChain'");
-  
   &HgAutomate::nfsNoodge("$runDir/$swappedChain");
-  
   if ($splitRef) {
     &HgAutomate::run("$HgAutomate::runSSH $fileServer nice " .
 	 "chainSplit $runDir/chain $runDir/$swappedChain");
@@ -954,7 +934,6 @@ sub swapGlobals {
   $qDb = $tDb;
   $tDb = $tmp;
   $QDb = $isSelf ? 'Self' : ucfirst($qDb);
-  
   foreach my $var ('DIR', 'LEN', 'CHUNK', 'LAP', 'SMSK') {
     $tmp = $defVars{"SEQ1_$var"};
     $defVars{"SEQ1_$var"} = $defVars{"SEQ2_$var"};
@@ -976,42 +955,212 @@ sub doChainMerge {
 }
 
 
-sub netChains {						#change it to a cluster job
+
+#######################################################################
+# added by Michael Hiller
+#######################################################################
+sub doPatchChains {
+  if ($patchChains == 0) {
+  	print "skip patchingChains\n";
+	return;
+  }
+
+  # Do a cluster run to patch the all.chains and filter the new local alignments
+  # Then rebuild the patchedChains from the all and newly-added psl entries.
+  my $paraHub = $smallClusterHub;
+  my $runDir = "$buildDir/run.patchChain";
+
+  # First, make sure we're starting clean.
+  if (-e "$runDir/run.time") {
+    die "doPatchChain: looks like this was run successfully already " .
+      "(run.time exists).  Either run with -continue net or some later " .
+	"stage, or move aside/remove $runDir/ and run again.\n";
+  } elsif ((-e "$runDir/gsub" || -e "$runDir/jobList") && ! $opt_debug) {
+    die "doPatchChain: looks like we are not starting with a clean " .
+      "state.  Please move aside or remove $runDir/ and run again.\n";
+  }
+  # Make sure previous stage was successful.
+  my $chain = &getAllChain("$buildDir/axtChain");
+  if (! defined $chain && ! $opt_debug) {
+    die "patchChain: looks like previous stage was not successful " .
+      "(can't find [$tDb.$qDb.]all.chain[.gz]).\n";
+  }
+
+  &HgAutomate::mustMkdir($runDir);
+  `touch "$runDir/para_hub_$paraHub"`;
+
+  # filtering parameters to be added if the flag FILTERPSL=1
+  my $filterParameters = ""; 
+  $filterParameters = "-minEntropy $defVars{'MIN_ENTROPY'} -windowSize $defVars{'WIN_SIZE'} -minIdentity $defVars{'SEQ_IDENT'}" if ($filterPsl == 1);
+  my $filterFlag = "";
+  $filterFlag = ".filtered" if ($filterPsl == 1);
+  
+  # output dir
+  my $outputDir = "../pslPartsPatched";
+  $outputDir = "../pslPartsPatchedFiltered" if ($filterPsl == 1);
+  my $absOutputDir = "$buildDir/pslPartsPatched"; 
+  $absOutputDir = "$buildDir/pslPartsPatchedFiltered" if ($filterPsl == 1);
+ 
+  # dir where the pslParts are 
+  my $pslPartsDir = "../pslParts"; 
+  $pslPartsDir = "../pslPartsFiltered" if ($filterPsl == 1);
+
+  if (-e "$absOutputDir") {
+    die "doPatchChain: looks like this was run successfully already ($absOutputDir exists). Either run with -continue net or some later stage, or move aside/remove $absOutputDir and run again.\n";
+  }
+
+  my $cat = "cat";
+  $cat = "zcat" if ($chain =~ /\.gz$/);	
+
+  # create the script that chains the new and old psls
+  my $seq1Dir = $defVars{'SEQ1_CTGDIR'} || $defVars{'SEQ1_DIR'};
+  my $seq2Dir = $defVars{'SEQ2_CTGDIR'} || $defVars{'SEQ2_DIR'};
+  my $matrix = $defVars{'BLASTZ_Q'} ? "-scoreScheme=$defVars{BLASTZ_Q} " : "";
+  my $minScore = $opt_chainMinScore ? "-minScore=$opt_chainMinScore" : "";
+  my $linearGap = $opt_chainLinearGap ? "-linearGap=$opt_chainLinearGap" : "-linearGap=$defaultChainLinearGap";
+  my $fh = &HgAutomate::mustOpen(">$runDir/rechain.csh");
+  print $fh  <<_EOF_
+#!/bin/csh -ef
+axtChain -psl -verbose=0 $matrix $minScore $linearGap \$1 \\
+    $seq1Dir \\
+    $seq2Dir \\
+    stdout \\
+| chainAntiRepeat $seq1Dir \\
+    $seq2Dir \\
+    stdin \$2
+_EOF_
+    ;
+  close($fh);
+
+
+  
+  my $whatItDoes =
+"It sets up and performs a cluster run to patch chains and rebuild chains using the old and new alignments. ";
+  my $bossScript = new HgRemoteScript("$runDir/doPatchChain.csh", $paraHub,
+				      $runDir, $whatItDoes, $DEF);
+  $bossScript->add(<<_EOF_
+# first run patchChain to create the cluster run joblist
+$cat $buildDir/axtChain/$chain | \\
+    patchChain.perl /dev/stdin $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} $defVars{'SEQ1_LEN'} $defVars{'SEQ2_LEN'} \\
+        $defVars{'CHAIN_MINSCORE'} $defVars{'GAPMAXSIZE_T'} $defVars{'GAPMAXSIZE_Q'} $defVars{'GAPMINSIZE_T'} $defVars{'GAPMINSIZE_Q'} $defVars{'NUM_JOBS'} \\
+        -jobDir jobs -outputDir $outputDir $filterParameters \\
+        -lastzParameters "--format=axt Q=$defVars{'BLASTZ_Q'} K=$defVars{'PATCHBLASTZ_K'} L=$defVars{'PATCHBLASTZ_L'} M=0 T=0 W=$defVars{'PATCHBLASTZ_W'}" 
+
+# create the output dir (we test above if that dir exist, so no mkdir -p is necessary)
+mkdir $outputDir
+
+$HgAutomate::paraRun
+
+# concatenate all new results
+find $outputDir -name \"*$filterFlag.psl\" | xargs -i cat {} > patched$filterFlag.psl
+
+# delete the individual files
+find $outputDir -name \"*$filterFlag.psl\" | xargs -i rm {}
+
+# mv file 
+mv patched$filterFlag.psl $outputDir/
+
+# combine old and new psl files
+find $pslPartsDir -name \"*.psl.gz\" | xargs -i zcat {} > $outputDir/old.psl
+cat $outputDir/old.psl $outputDir/patched$filterFlag.psl | gzip -c > $outputDir/oldAndPatched.psl.gz
+rm $outputDir/old.psl
+_EOF_
+    );
+
+###########
+# see if we can afford to run per-chrom chaining jobs (depends on number of reference chroms)
+my $numRefChroms = `wc -l < $defVars{SEQ1_LEN}`; chomp($numRefChroms);
+if ($numRefChroms < 4096) {
+  print "--> run chaining on ref-chrom-split psl files (reference has $numRefChroms chromsomes)\n"; 
+  $bossScript->add(<<_EOF_
+
+# split by target chrom
+# pslSplitOnTarget has problems if the psl file contains ##aligner=lastz lines
+# pslSplitOnTarget also opens a file for every reference chrom/scaffold --> for zfish we exceed the max 1024 of file handles
+# as a temp fix, set the limit to 4096. If that fails for a references species, we run chaining on all non-split psl files. 
+limit descriptors 4096
+zcat $outputDir/oldAndPatched.psl.gz | egrep "^##" -v | pslSplitOnTarget stdin pslOnTarget -maxTargetCount=4096
+
+# create a new chain
+# cluster job: run for every target chrom
+mkdir chain
+chmod +x rechain.csh
+find pslOnTarget -name \"*.psl\" | sed 's/.psl\$//g' | sed 's/pslOnTarget\\///g' | awk '{print "./rechain.csh pslOnTarget/"\$1".psl chain/"\$1".chain"}' > jobListReChain
+para make jobListReChain
+para check
+para time > run.timeReChain
+cat run.timeReChain
+
+# merge
+find chain -name \"*.chain\" | chainMergeSort -inputList=stdin | gzip -c > $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz
+
+# cleanup a bit and gzip
+rm -rf chain pslOnTarget
+_EOF_
+    );
+######### 
+# run just a single chaining job
+}else{
+  print "--> run chaining on unsplit psl input (single job) because reference has $numRefChroms chromsomes\n"; 
+  $bossScript->add(<<_EOF_
+
+chmod +x rechain.csh
+
+echo "./rechain.csh $outputDir/oldAndPatched.psl.gz $buildDir/axtChain/$tDb.$qDb.allpatched.chain" > jobListReChain
+para make jobListReChain
+para check
+para time > run.timeReChain
+cat run.timeReChain
+
+# gzip
+gzip $buildDir/axtChain/$tDb.$qDb.allpatched.chain
+
+_EOF_
+    );
+}
+
+  $bossScript->execute();
+}	#	sub doPatchChains {}
+######################################################################
+######################################################################
+
+
+
+sub netChains {
   # Turn chains into nets (,axt,maf,.over.chain).
   # Don't do this for self alignments.
   return if ($isSelf);
   my $runDir = "$buildDir/axtChain";
-  
   # First, make sure we're starting clean.
   if (-d "$buildDir/mafNet") {
     die "netChains: looks like this was run successfully already " .
       "(mafNet exists).  Either run with -continue load or some later " .
 	"stage, or move aside/remove $buildDir/mafNet " . 
 	  "and $runDir/noClass.net and run again.\n";
-  } 
-  elsif (-e "$runDir/noClass.net") {
+  } elsif (-e "$runDir/noClass.net") {
     die "netChains: looks like we are not starting with a " .
-      "clean slate.  Please move aside or remove $runDir/noClass.net " .
+      "clean state.  Please move aside or remove $runDir/noClass.net " .
 	"and run again.\n";
   }
-  
   # Make sure previous stage was successful.
   my $chain = &getAllChain($runDir);
   if (! defined $chain && ! $opt_debug) {
     die "netChains: looks like previous stage was not successful " .
       "(can't find [$tDb.$qDb.]all.chain[.gz]).\n";
   }
+  # Make sure previous stage was successful. Special check if patching was done
+  if ($patchChains == 1) {
+  	die "netChains: looks like previous stage was not successful (can't find $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz)\n" if (! -e "$buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz");
+  	die "netChains: looks like previous stage was not successful (can't find $buildDir/run.patchChain/run.timeReChain)\n" if (! -e "$buildDir/run.patchChain/run.timeReChain");
+	# use the allpatched.chain later
+	$chain = "$buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz";
+  }
   
   my $whatItDoes =
 "It generates nets (without repeat/gap stats -- those are added later on
 $dbHost) from chains, and generates axt, maf and .over.chain from the nets.";
-    															#PL 
-
-  if ($clusterType eq "genome") 
-  {my $bossScript = new HgRemoteScript("$runDir/netChains.csh", $workhorse,$runDir, $whatItDoes, $DEF);}
-  elsif ($clusterType eq "scuba_cluster1") 
-  {my $bossScript = new HgRemoteScript("$runDir/netChains.csh", $workhorseLSF,$runDir, $whatItDoes, $DEF);}
-  
+  my $bossScript = new HgRemoteScript("$runDir/netChains.csh", $workhorse,
+				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # Make nets ("noClass", i.e. without rmsk/class stats which are added later):
 chainPreNet $inclHap $chain $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} stdout \\
@@ -1024,11 +1173,18 @@ netChainSubset -verbose=0 noClass.net $chain stdout \\
 
 _EOF_
     );
-  
   my $seq1Dir = $defVars{'SEQ1_DIR'};
   my $seq2Dir = $defVars{'SEQ2_DIR'};
-  
   if ($splitRef) {
+  	# if we have patched chains, we need to remove the axtChain/chain dir and split the allpatched chains
+	if ($patchChains == 1) {
+		$bossScript->add(<<_EOF_
+rm -rf $runDir/chain
+chainSplit $runDir/chain $chain
+_EOF_
+	);
+	}
+
     $bossScript->add(<<_EOF_
 # Make axtNet for download: one .axt per $tDb seq.
 netSplit noClass.net net
@@ -1095,8 +1251,7 @@ sub loadUp {
   my $whatItDoes =
 "It loads the chain tables into $tDb, adds gap/repeat stats to the .net file,
 and loads the net table.";
-  
-  my $bossScript = new HgRemoteScript("$runDir/loadUp.csh", $dbHost,       # *******ask
+  my $bossScript = new HgRemoteScript("$runDir/loadUp.csh", $dbHost,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # Load chains:
@@ -1522,7 +1677,6 @@ sub doDownloads {
 sub cleanup {
   # Remove intermediate files.
   my $runDir = $buildDir;
-  $fileServerLSF ='scuba_cluster1' ;
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : "$buildDir/psl";
   my $rootCanal = ($opt_blastzOutRoot ?
 		   "rmdir --ignore-fail-on-non-empty $opt_blastzOutRoot" :
@@ -1531,15 +1685,8 @@ sub cleanup {
 "It cleans up files after a successful blastz/chain/net/install series.
 It uses rm -f so failures should be ignored (e.g. if a partial cleanup has
 already been performed).";
-#PL 
-
- if ($clusterType eq "genome"){
-  my $bossScript = new HgRemoteScript("$buildDir/cleanUp.csh", $fileServer,$runDir, $whatItDoes, $DEF);
- }
- elsif ($clusterType eq "scuba_cluster1"){
- my $bossScript = new HgRemoteScript("$buildDir/cleanUp.csh", $fileServerLSF,$runDir, $whatItDoes, $DEF);
- }
- 
+  my $bossScript = new HgRemoteScript("$buildDir/cleanUp.csh", $fileServer,
+				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 rm -fr $outRoot/
 $rootCanal
@@ -1551,6 +1698,10 @@ rm -f  $buildDir/axtChain/noClass.net
 rm -f  $buildDir/run.blastz/batch.bak
 rm -f  $buildDir/run.cat/batch.bak
 rm -f  $buildDir/axtChain/run/batch.bak
+rm -rf $buildDir/run.filterPsl/err/
+rm -rf $buildDir/run.patchChain/err/
+rm -f $buildDir/run.filterPsl/batch.bak
+rm -f $buildDir/run.patchChain/batch.bak
 _EOF_
     );
   if ($splitRef) {
@@ -1586,15 +1737,8 @@ too distant from the reference.  Suppressed unless -syntenicNet is included.";
       die "doSyntenicNet: looks like previous stage was not successful " .
           "(can't find $successFile).\n";
   }
-
-#PL  
-  if ($clusterType eq "genome"){
-  my $bossScript = new HgRemoteScript("$runDir/netSynteny.csh", $workhorse,$runDir, $whatItDoes, $DEF);
-  }
-  elsif ($clusterType eq "scuba_cluster1") {
-  my $bossScript = new HgRemoteScript("$runDir/netSynteny.csh", $workhorseLSF,$runDir, $whatItDoes, $DEF);
-  }                                    
-
+  my $bossScript = new HgRemoteScript("$runDir/netSynteny.csh", $workhorse,
+                                    $runDir, $whatItDoes, $DEF);
   if ($splitRef) {
     $bossScript->add(<<_EOF_
 # filter net for synteny and create syntenic net mafs
@@ -1631,7 +1775,7 @@ netToAxt $tDb.$qDb.syn.net.gz $tDb.$qDb.all.chain.gz \\
 _EOF_
       );
   }
- 	  
+  $bossScript->execute();
 }
 
 #########################################################################
@@ -1639,21 +1783,11 @@ _EOF_
 # -- main --
 
 # Prevent "Suspended (tty input)" hanging:
-
-&HgAutomate::closeStdin();  
-										 # If we don't do this, the script can hang ("Suspended (tty input)")
-  										 # when it is run backgrounded (&) and then something is typed into the
-  										 # terminal... or something like that.  Anyway, doesn't hurt.  It does not
-  										 # prevent hanging on ssh prompts, however.
+&HgAutomate::closeStdin();
 
 #$opt_debug = 1;
 
-#PL 
-print "Enter the name of clustertype: genome or scuba_cluster1";
-$clusterType= <STDIN> ;
-
-&checkOptions();      					 # Make sure command line options are valid/supported.
-
+&checkOptions();
 
 &usage(1) if (scalar(@ARGV) != 1);
 $secondsStart = `date "+%s"`;
@@ -1662,8 +1796,37 @@ chomp $secondsStart;
 
 $inclHap = "";
 $inclHap = "-inclHap" if ($opt_inclHap);
-&loadDef($DEF);							#  Load DEF file
-&checkDef();							# check for parameters/fields in DEF file
+&loadDef($DEF);
+&checkDef();
+
+$filterPsl = 1 if (exists $defVars{'FILTERPSL'} && $defVars{'FILTERPSL'} == 1);
+if ($filterPsl == 1) {
+	print "Will Filter PSL for sequence identity and entropy. \n";
+	# check if the seq id, entropy and winsize is given
+	die "ERROR: $DEF doesn't specify WIN_SIZE\n" if ( ! exists $defVars{'WIN_SIZE'});
+	die "ERROR: $DEF doesn't specify SEQ_IDENT\n" if ( ! exists $defVars{'SEQ_IDENT'});
+	die "ERROR: $DEF doesn't specify MIN_ENTROPY\n" if ( ! exists $defVars{'MIN_ENTROPY'});
+}else{
+	print "NO PSL filtering. \n";
+}
+
+$patchChains = 1 if (exists $defVars{'PATCHCHAIN'} && $defVars{'PATCHCHAIN'} == 1);
+if ($patchChains == 1) {
+	print "Will patch Chains. \n";
+	# check if the parameters are given
+	die "ERROR: $DEF doesn't specify CHAIN_MINSCORE\n" if ( ! exists $defVars{'CHAIN_MINSCORE'});
+	die "ERROR: $DEF doesn't specify GAPMAXSIZE_T\n" if ( ! exists $defVars{'GAPMAXSIZE_T'});
+	die "ERROR: $DEF doesn't specify GAPMAXSIZE_Q\n" if ( ! exists $defVars{'GAPMAXSIZE_Q'});
+	die "ERROR: $DEF doesn't specify GAPMINSIZE_T\n" if ( ! exists $defVars{'GAPMINSIZE_T'});
+	die "ERROR: $DEF doesn't specify GAPMINSIZE_Q\n" if ( ! exists $defVars{'GAPMINSIZE_Q'});
+	die "ERROR: $DEF doesn't specify NUM_JOBS\n" if ( ! exists $defVars{'NUM_JOBS'});
+	die "ERROR: $DEF doesn't specify PATCHBLASTZ_K\n" if ( ! exists $defVars{'PATCHBLASTZ_K'});
+	die "ERROR: $DEF doesn't specify PATCHBLASTZ_L\n" if ( ! exists $defVars{'PATCHBLASTZ_L'});
+	die "ERROR: $DEF doesn't specify PATCHBLASTZ_W\n" if ( ! exists $defVars{'PATCHBLASTZ_W'});
+}else{
+	print "NO chain patching. \n";
+}
+
 
 my $seq1IsSplit = (`wc -l < $defVars{SEQ1_LEN}` <=
 		   $HgAutomate::splitThreshold);
@@ -1678,23 +1841,18 @@ if ($opt_readmeOnly) {
   exit 0;
 }
 
-
 my $date = `date +%Y-%m-%d`;
 chomp $date;
 $buildDir = $defVars{'BASE'} ||
-  
-  "$HgAutomate::clusterData/$tDb/$HgAutomate::trackBuild/blastz.$qDb.$date"; 				#Ask Michael**************
-  
-  
+  "$HgAutomate::clusterData/$tDb/$HgAutomate::trackBuild/blastz.$qDb.$date";
 
 if ($opt_swap) {
-  my $inChain = &getAllChain("$buildDir/axtChain");        	# Find the most likely candidate for all.chain from a previous run/step.
-
+  my $inChain = &getAllChain("$buildDir/axtChain");
   if (! defined $inChain) {
     die "-swap: Can't find $buildDir/axtChain/[$tDb.$qDb.]all.chain[.gz]\n" .
         "which is required for -swap.\n";
   }
-  $swapDir = "$HgAutomate::clusterData/$qDb/$HgAutomate::trackBuild/blastz.$tDb.swap";   #Ask Michael
+  $swapDir = "$HgAutomate::clusterData/$qDb/$HgAutomate::trackBuild/blastz.$tDb.swap";
   &HgAutomate::mustMkdir("$swapDir/axtChain");
   $splitRef = $seq2IsSplit;
   &HgAutomate::verbose(1, "Swapping from $buildDir/axtChain/$inChain\n" .
@@ -1703,10 +1861,8 @@ if ($opt_swap) {
   if (! -d $buildDir) {
     &HgAutomate::mustMkdir($buildDir);
   }
-if (! $opt_blastzOutRoot &&
-  $stepper->stepPrecedes($stepper->getStartStep(), 'chainRun')) {
-    &enforceClusterNoNo($buildDir,
-	    'blastz/chain/net build directory (or use -blastzOutRoot)');
+  if (! $opt_blastzOutRoot && $stepper->stepPrecedes($stepper->getStartStep(), 'chainRun')) {
+    &enforceClusterNoNo($buildDir, 'blastz/chain/net build directory (or use -blastzOutRoot)');
   }
   $splitRef = $seq1IsSplit;
   &HgAutomate::verbose(1, "Building in $buildDir\n");
@@ -1718,17 +1874,10 @@ if (! -e "$buildDir/DEF") {
 
 #$fileServer = &HgAutomate::chooseFileServer($opt_swap ? $swapDir : $buildDir);
 # overwrite --> always take hoxa (otherwise you get hoxa5 or hoxa28, etc and then it fails because your /afs/ home is not valid 
-
-#PL 
-
-if ($clusterType eq "genome"){
-$fileServer = "genome"; 
+$fileServer = "genome";
 print "FILESERVER: $fileServer\n";
-}
-elsif ($clusterType eq "scuba_cluster1"){
-$fileServerLSF = "scuba_cluster1"; print "FILESERVER: $fileServerLSF\n";
-}
-																								
+
+
 # When running -swap, swapGlobals() happens at the end of the chainMerge step.
 # However, if we also use -continue with some step later than chainMerge, we
 # need to call swapGlobals before executing the remaining steps.
