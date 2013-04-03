@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+# comment from local dir
 
 # DO NOT EDIT the /cluster/bin/scripts copy of this file -- 
 # edit ~/kent/src/hg/utils/automation/doBlastzChainNet.pl instead.
