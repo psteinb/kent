@@ -2,52 +2,37 @@
 #include "common.h"
 #include "linefile.h"
 #include "hash.h"
-#include "intValTree.h"
 #include "options.h"
+#include "portable.h"
+#include "jksql.h"
 #include "encode/encodeExp.h"
+#include "encode3/encode3Valid.h"
 #include "mdb.h"
 
-char *expDb = "hgFixed";
 char *metaDbs[] = {"hg19", "mm9"};
-char *expTable = "encodeExp";
 char *metaTable = "metaDb";
+
+/* Command line variables. */
+char *fileRootDir = NULL;   /* If set we look at files a bit. */
 
 void usage()
 /* Explain usage and exit. */
 {
 errAbort(
-  "encode2Manifest - Create a encode3 manifest file for encode2 files\n"
+  "encode2Manifest - Create a encode3 manifest file for encode2 files by looking\n"
+  "at the metaDb tables in hg19 and mm9.\n"
   "usage:\n"
   "   encode2Manifest manifest.tab\n"
   "options:\n"
-  "   -xxx=XXX\n"
+  "   -checkExists=/root/dir/for/encode/downloads\n"
   );
 }
 
 /* Command line validation table. */
 static struct optionSpec options[] = {
+   {"checkExists", OPTION_STRING},
    {NULL, 0},
 };
-
-struct rbTree *makeExpContainer()
-/* Create rbTree container of expression objects keyed by ix */
-{
-struct rbTree *container = intValTreeNew();
-struct sqlConnection *expDbConn = sqlConnect(expDb);
-char query[256];
-safef(query, sizeof(query), "select * from %s", expTable);
-struct sqlResult *sr = sqlGetResult(expDbConn, query);
-char **row;
-while ((row = sqlNextRow(sr)) != NULL)
-    {
-    /* Read in database structure. */
-    struct encodeExp *ee = encodeExpLoad(row);
-    intValTreeAdd(container, ee->ix, ee);
-    }
-sqlFreeResult(&sr);
-sqlDisconnect(&expDbConn);
-return container;
-}
 
 struct mdbObj *getMdbList(char *database)
 /* Get list of metaDb objects for a database. */
@@ -59,6 +44,9 @@ return list;
 }
 
 int unknownFormatCount = 0;
+int totalFileCount = 0;
+int missingFileCount = 0;
+int foundFileCount = 0;
 
 boolean isHistoneModAntibody(char *antibody)
 /* Returns TRUE if it looks something like H3K4Me3 */
@@ -74,10 +62,10 @@ if (composite == NULL || dataType == NULL)
 char *guess = "unknown";
 if (sameString(dataType, "AffyExonArray")) guess = "exon";
 else if (sameString(dataType, "Cage")) guess = "exon";
-else if (sameString(dataType, "ChipSeq")) guess = "regulatory";
+else if (sameString(dataType, "ChipSeq")) guess = "open";
 else if (sameString(dataType, "DnaseDgf")) guess = "promoter";
 else if (sameString(dataType, "DnaseSeq")) guess = "promoter";
-else if (sameString(dataType, "FaireSeq")) guess = "regulatory";
+else if (sameString(dataType, "FaireSeq")) guess = "open";
 else if (sameString(dataType, "Gencode")) guess = "exon";
 else if (sameString(dataType, "MethylArray")) guess = "promoter";
 else if (sameString(dataType, "MethylRrbs")) guess = "promoter";
@@ -89,8 +77,8 @@ else if (sameString(dataType, "RipTiling")) guess = "exon";
 else if (sameString(dataType, "RnaChip")) guess = "exon";
 else if (sameString(dataType, "RnaPet")) guess = "exon";
 else if (sameString(dataType, "RnaSeq")) guess = "exon";
-else if (sameString(dataType, "Switchtear")) guess = "regulatory";
-else if (sameString(dataType, "TfbsValid")) guess = "regulatory";
+else if (sameString(dataType, "Switchtear")) guess = "open";
+else if (sameString(dataType, "TfbsValid")) guess = "open";
 
 /* Do some fine tuning within Chip-seq to treat histone mods differently. */
 if (sameString(dataType, "ChipSeq"))
@@ -137,15 +125,18 @@ if (suffix != NULL)
         result = "gtf";
     else if (sameString(suffix, "narrowPeak"))
         result = "narrowPeak";
+    else
+        ++unknownFormatCount;
+    ++totalFileCount;
     }
 freeMem(name);
 return result;
 }
 
-void addGenomeToManifest(char *genome, struct rbTree *expsByIx, FILE *f)
+void addGenomeToManifest(char *genome, struct mdbObj *mdbList,
+    char *rootDir, FILE *f)
 /* Get metaDb table for genome and write out relevant bits of it to f */
 {
-struct mdbObj *mdbList = getMdbList(genome);
 verbose(1, "processing %s\n", genome);
 struct mdbObj *mdb;
 for (mdb = mdbList; mdb != NULL; mdb = mdb->next)
@@ -159,6 +150,7 @@ for (mdb = mdbList; mdb != NULL; mdb = mdb->next)
     char *objType = NULL;
     char *antibody = NULL;
     char *md5sum = NULL;
+    char *view = NULL;
     struct mdbVar *v;
     for (v = mdb->vars; v != NULL; v = v->next)
          {
@@ -179,6 +171,8 @@ for (mdb = mdbList; mdb != NULL; mdb = mdb->next)
 	     antibody = val;
 	 else if (sameString("md5sum", var))
 	     md5sum = val;
+	 else if (sameString("view", var))
+	     view = val;
 	 }
 
     /* If we have the fields we need,  fake the rest if need be and output. */
@@ -201,13 +195,42 @@ for (mdb = mdbList; mdb != NULL; mdb = mdb->next)
 		    *comma = 0;
 		}
 
+	    /* Check file size (which also checks if file exists */
+	    char *validationKey = "n/a";
+	    off_t size = 0;
+	    time_t updateTime = 0;
+	    if (rootDir)
+		{
+		char path[PATH_LEN];
+		safef(path, sizeof(path), "%s/%s/%s/%s", rootDir, genome, composite, fileName);
+		size = fileSize(path);
+		if (size == -1)
+		    {
+		    verbose(2, "%s doesn't exist\n", path);
+		    ++missingFileCount;
+		    continue;
+		    }
+		++foundFileCount;
+		updateTime = fileModTime(path); 
+		if (md5sum != NULL)
+		    validationKey = encode3CalcValidationKey(md5sum, size);
+		}
+
 	    /* Output each field. */ 
 	    fprintf(f, "%s/%s/%s\t", genome, composite, fileName);
 	    fprintf(f, "%s\t", guessFormatFromFileName(fileName));
+	    fprintf(f, "%s\t", naForNull(view));
 	    fprintf(f, "%s\t", dccAccession);
 	    fprintf(f, "%s\t", naForNull(replicate));
-	    fprintf(f, "%s\t", guessEnrichedIn(composite, dataType, antibody));
-	    fprintf(f, "%s\n", naForNull(md5sum));
+	    fprintf(f, "%s", guessEnrichedIn(composite, dataType, antibody));
+	    if (rootDir)
+		{
+		fprintf(f, "\t%s", naForNull(md5sum));
+		fprintf(f, "\t%lld", (long long)size);
+		fprintf(f, "\t%ld", (long)updateTime);
+		fprintf(f, "\t%s", validationKey);
+		}
+	    fprintf(f, "\n");
 	    }
 	}
     }
@@ -216,15 +239,33 @@ for (mdb = mdbList; mdb != NULL; mdb = mdb->next)
 void encode2Manifest(char *outFile)
 /* encode2Manifest - Create a encode3 manifest file for encode2 files. */
 {
-struct rbTree *expsByIx = makeExpContainer();
-verbose(1, "%d experiments\n", expsByIx->n);
-FILE *f = mustOpen(outFile, "w");
 int i;
-fputs("#file_name\tformat\texperiment\treplicate\tenriched_in\tmd5sum\n", f);
+struct mdbObj *mdbLists[ArraySize(metaDbs)];
+for (i=0; i<ArraySize(metaDbs); ++i)
+    {
+    char *db = metaDbs[i];
+    mdbLists[i] = getMdbList(db);
+    verbose(1, "%d meta objects in %s\n", slCount(mdbLists[i]), db);
+    }
+
+/* Open output and write header */
+FILE *f = mustOpen(outFile, "w");
+fputs("#file_name\tformat\toutput_type\texperiment\treplicate\tenriched_in", f);
+if (fileRootDir)
+    fputs("\tmd5_sum\tsize\tmodified\tvalid_key\n", f);
+else
+    fputs("\n", f);
+
 for (i=0; i<ArraySize(metaDbs); ++i)
    {
-   addGenomeToManifest(metaDbs[i], expsByIx, f);
+   addGenomeToManifest(metaDbs[i], mdbLists[i], fileRootDir, f);
    }
+verbose(1, "%d total files including %d of unknown format\n", totalFileCount, unknownFormatCount);
+if (fileRootDir)
+    {
+    verbose(1, "%d files in metaDb not found in %s,  run with verbose=2 to see list\n", 
+	missingFileCount, fileRootDir);
+    }
 carefulClose(&f);
 }
 
@@ -234,6 +275,7 @@ int main(int argc, char *argv[])
 optionInit(&argc, argv, options);
 if (argc != 2)
     usage();
+fileRootDir = optionVal("checkExists", fileRootDir);
 encode2Manifest(argv[1]);
 return 0;
 }

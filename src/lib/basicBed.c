@@ -451,14 +451,17 @@ slReverse(&list);
 return list;
 }
 
-void bedLoadAllReturnFieldCount(char *fileName, struct bed **retList, int *retFieldCount)
+void bedLoadAllReturnFieldCountAndRgb(char *fileName, struct bed **retList, int *retFieldCount, 
+    boolean *retRgb)
 /* Load bed of unknown size and return number of fields as well as list of bed items.
- * Ensures that all lines in bed file have same field count. */
+ * Ensures that all lines in bed file have same field count.  Also returns whether 
+ * column 9 is being used as RGB or not. */
 {
 struct bed *list = NULL;
 struct lineFile *lf = lineFileOpen(fileName, TRUE);
 char *line, *row[bedKnownFields];
 int fieldCount = 0;
+boolean isRgb = FALSE;
 
 while (lineFileNextReal(lf, &line))
     {
@@ -467,7 +470,11 @@ while (lineFileNextReal(lf, &line))
 	errAbort("file %s doesn't appear to be in bed format. At least 4 fields required, got %d", 
 		fileName, numFields);
     if (fieldCount == 0)
+	{
         fieldCount = numFields;
+	if (fieldCount >= 9)
+	    isRgb =  (strchr(row[8], ',') != NULL);
+	}
     else
         if (fieldCount != numFields)
 	    errAbort("Inconsistent number of fields in file. %d on line %d of %s, %d previously.",
@@ -478,12 +485,20 @@ lineFileClose(&lf);
 slReverse(&list);
 *retList = list;
 *retFieldCount = fieldCount;
+if (retRgb != NULL)
+   *retRgb = isRgb;
 }
 
-static void bedOutputN_Opt(struct bed *el, int wordCount, FILE *f,
+void bedLoadAllReturnFieldCount(char *fileName, struct bed **retList, int *retFieldCount)
+/* Load bed of unknown size and return number of fields as well as list of bed items.
+ * Ensures that all lines in bed file have same field count. */
+{
+bedLoadAllReturnFieldCountAndRgb(fileName, retList, retFieldCount, NULL);
+}
+
+void bedOutFlexible(struct bed *el, int wordCount, FILE *f,
 	char sep, char lastSep, boolean useItemRgb)
-/* Write a bed of wordCount fields, optionally interpreting field nine
-	as R,G,B values. */
+/* Write a bed of wordCount fields, optionally interpreting field nine as R,G,B values. */
 {
 int i;
 if (sep == ',') fputc('"',f);
@@ -621,14 +636,14 @@ fputc(lastSep,f);
 void bedOutputN(struct bed *el, int wordCount, FILE *f, char sep, char lastSep)
 /* Write a bed of wordCount fields. */
 {
-bedOutputN_Opt(el, wordCount, f, sep, lastSep, FALSE);
+bedOutFlexible(el, wordCount, f, sep, lastSep, FALSE);
 }
 
 void bedOutputNitemRgb(struct bed *el, int wordCount, FILE *f,
 	char sep, char lastSep)
 /* Write a bed of wordCount fields, interpret column 9 as RGB. */
 {
-bedOutputN_Opt(el, wordCount, f, sep, lastSep, TRUE);
+bedOutFlexible(el, wordCount, f, sep, lastSep, TRUE);
 }
 
 
@@ -1642,5 +1657,58 @@ if (as)
     hashFree(&linkHash);
     }
 
+}
+
+struct bed3 *bed3LoadAll(char *fileName)
+/* Load three columns from file as bed3. */
+{
+struct lineFile *lf = lineFileOpen(fileName, TRUE);
+char *row[3];
+struct bed3 *list = NULL, *el;
+while (lineFileRow(lf, row))
+    {
+    AllocVar(el);
+    el->chrom = cloneString(row[0]);
+    el->chromStart = sqlUnsigned(row[1]);
+    el->chromEnd = sqlUnsigned(row[2]);
+    slAddHead(&list, el);
+    }
+lineFileClose(&lf);
+slReverse(&list);
+return list;
+}
+
+void bed3Free(struct bed3 **pBed)
+/* Free up bed3 */
+{
+struct bed3 *bed = *pBed;
+if (bed != NULL)
+    {
+    freeMem(bed->chrom);
+    freez(pBed);
+    }
+}
+
+void bed3FreeList(struct bed3 **pList)
+/* Free a list of dynamically allocated bed3's */
+{
+struct bed3 *el, *next;
+
+for (el = *pList; el != NULL; el = next)
+    {
+    next = el->next;
+    bed3Free(&el);
+    }
+*pList = NULL;
+}
+
+long long bed3TotalSize(struct bed3 *bedList)
+/* Return sum of chromEnd-chromStart. */
+{
+long long sum = 0;
+struct bed3 *bed;
+for (bed = bedList; bed != NULL; bed = bed->next)
+    sum += bed->chromEnd - bed->chromStart;
+return sum;
 }
 

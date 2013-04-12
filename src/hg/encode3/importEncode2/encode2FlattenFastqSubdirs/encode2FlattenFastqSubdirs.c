@@ -6,6 +6,7 @@
 #include "hash.h"
 #include "options.h"
 #include "portable.h"
+#include "errCatch.h"
 
 void usage()
 /* Explain usage and exit. */
@@ -15,8 +16,6 @@ errAbort(
   "destroy subdirs.  Complain and die if any of non-dir files are anything but fastq.\n"
   "usage:\n"
   "   encode2FlattenFastqSubdirs rootDir\n"
-  "options:\n"
-  "   -xxx=XXX\n"
   );
 }
 
@@ -78,7 +77,13 @@ if (lineFileNext(lf, &line, NULL))
 	    }
 	}
     }
-lineFileClose(&lf);
+struct errCatch *errCatch = errCatchNew();
+if (errCatchStart(errCatch))
+    lineFileClose(&lf);	// This throws!
+errCatchEnd(errCatch);
+if (errCatch->gotError)
+    warn("lineFileClose warning: %s", errCatch->message->string);
+errCatchFree(&errCatch);
 return result;
 }
 

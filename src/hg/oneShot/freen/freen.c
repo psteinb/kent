@@ -4,82 +4,42 @@
 #include "localmem.h"
 #include "hash.h"
 #include "options.h"
-#include "ra.h"
-#include "basicBed.h"
+#include "jksql.h"
+#include "pipeline.h"
 
 void usage()
 {
 errAbort("freen - test some hairbrained thing.\n"
-         "usage:  freen val desiredVal\n");
+         "usage:  freen input output stderr\n");
 }
 
 
-char *fields[] = {
-//id
-//updateTime
-//series
-//accession
-"organism",
-"lab",
-"dataType",
-"cellType",
-#ifdef SOON
-"ab",
-"age",
-"attic",
-"category",
-"control",
-"fragSize",
-"grantee",
-"insertLength",
-"localization",
-"mapAlgorithm",
-"objStatus",
-"phase",
-"platform",
-"promoter",
-"protocol",
-"readType",
-"region",
-"restrictionEnzyme",
-"rnaExtract",
-"seqPlatform",
-"sex",
-"strain",
-"tissueSourceType",
-"treatment",
-#endif /* SOON */
-};
-
-void freen(char *input)
+void freen(char *input, char *output, char *errOutput)
 /* Test some hair-brained thing. */
 {
-/* Make huge sql query */
-printf("select e.id,updateTime,series,accession,version");
-int i;
-for (i=0; i<ArraySize(fields); ++i)
-    printf(",cvDb_%s.tag %s", fields[i], fields[i]);
-printf("\n");
-printf("from cvDb_experiment e");
-for (i=0; i<ArraySize(fields); ++i)
-    printf(",cvDb_%s", fields[i]);
-printf("\n");
-printf("where ");
-for (i=0; i<ArraySize(fields); ++i)
+FILE *f = mustOpen(output, "w");
+char *progAndOpts[] = {"wordLine", "-xxx", "stdin", NULL};
+struct pipeline *pl = pipelineOpen1(progAndOpts, pipelineRead|pipelineNoAbort, input,  errOutput);
+struct lineFile *lf = lineFileAttach(input, TRUE, pipelineFd(pl));
+char *line;
+int count = 0;
+while (lineFileNext(lf, &line, NULL))
     {
-    if (i != 0)
-        printf(" and ");
-    printf("cvDb_%s.id = e.%s\n", fields[i], fields[i]);
+    count += 1;
     }
-printf("\n");
-printf("limit 10\n");
+fprintf(f, "count is %d\n", count);
+uglyf("Seem to be done\n");
+int err = pipelineWait(pl);
+uglyf("Past the wait err = %d\n", err);
+pipelineFree(&pl);
+uglyf("Past the free\n");
 }
 
 int main(int argc, char *argv[])
 /* Process command line. */
 {
-if (argc != 2)
+if (argc != 4)
     usage();
-freen(argv[1]);
+freen(argv[1], argv[2], argv[3]);
 return 0;
 }
