@@ -350,14 +350,20 @@ for (i=0;;++i)
 return fileName;
 }
 
+/* MH: this function gives an error and it was added in the last commit from April 9. If we remove it, it works. 
+
+/genome/src/kent/src/lib/osunix.c:355: multiple definition of `mustRename'
+trackDbPatch.o:/genome/src/kent/src/hg/makeDb/trackDbPatch/trackDbPatch.c:225:
+first defined here
+
 void mustRename(char *oldName, char *newName)
 /* Rename file or die trying. */
-{
+/*{
 int err = rename(oldName, newName);
 if (err < 0)
     errnoAbort("Couldn't rename %s to %s", oldName, newName);
 }
-
+*/
 static void eatSlashSlashInPath(char *path)
 /* Convert multiple // to single // */
 {
