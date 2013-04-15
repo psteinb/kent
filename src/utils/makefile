@@ -12,15 +12,15 @@ all:
 
 scripts:
 	@for F in ${SCRIPT_FILES}; do \
-	    chmod +x $$F; \
 	    rm -f ${SCRIPTS}/$${F}; \
 	    echo cp -p $$F ${SCRIPTS}; \
 	    cp -p $$F ${SCRIPTS}; \
+	    chmod +x ${SCRIPTS}/$$F; \
 	 done
-	chmod +x genePredToBed/genePredToBed;
 	rm -f ${SCRIPTS}/genePredToBed;
 	echo cp -p genePredToBed/genePredToBed ${SCRIPTS};
 	@cp -p genePredToBed/genePredToBed ${SCRIPTS};
+	chmod +x ${SCRIPTS}/genePredToBed;
 
 alpha: scripts all
 
