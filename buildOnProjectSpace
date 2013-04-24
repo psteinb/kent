@@ -1,0 +1,13 @@
+#!/bin/bash
+
+path=/projects/hillerlab/genome/src/kent
+cd $path
+source ./ProjectSpaceEnvironment 
+cd $KENTHOME/src
+make alpha
+
+if [ $? != 0 ]; then
+ echo "building kent source on project space failed" | /usr/sbin/sendmail hiller@mpi-cbg.de
+else
+ echo "building kent source on project space succeeded" | /usr/sbin/sendmail hiller@mpi-cbg.de
+fi
