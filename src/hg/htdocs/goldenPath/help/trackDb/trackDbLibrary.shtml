@@ -610,7 +610,7 @@
     when the user's mouse pointer hovers over the icon.</LI>
     </UL>
     <P><B>Example:</B></P>
-    <pre>    pennantIcon 18.jpg ../goldenPath/help/hg18ToHg19LiftOver.html "lifted from hg18"</pre>
+    <pre>    pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"</pre>
 </DIV>
 
 <DIV class="priority"><span class="types all"></span>
@@ -760,6 +760,51 @@
     <pre>
     url http://www.ncbi.nlm.nih.gov/htbin-post/Entrez/query?form=4&amp;db=n&amp;term=$$
     urlLabel NCBI Details:    </pre>
+</DIV>
+
+<DIV class="urls"><span class="types bigBed"></span>
+    <div class="format">
+        <code>urls &lt;fieldName1&gt;="&lt;url1&gt;" &lt;fieldName2&gt;="&lt;url2&gt;" ...</code><BR>
+    </div>
+        
+    <P>This is similar to the <A onclick="jumpTo(this)" HREF="#">url</A> tag, but allows urls on fields
+    that are not the "name" field. Use this statement if you need multiple
+    linkouts on the details page or if your linkout is not
+    based on the name field. </P>
+    <P>
+    Put the identifiers for these links into extended
+    bigBed fields as explained in example 3 of the <a href="/goldenPath/help/bigBed.html">bigBed documentation</a>.
+    The field names from your .as file are the field names referenced in this statement.
+    The urls in this statement support the same wildcards as the <A
+    onclick="jumpTo(this)" HREF="#">url</A> statement.  Make sure to enclose
+    the URLs in double quotes.  The default label for the identifier is the field
+    description in the .as file (all text after the # mark). 
+    </P> 
+
+    <P><B>Example:</B></P>
+    <pre>
+    urls pmid="http://www.ncbi.nlm.nih.gov/pubmed/$$" hgncId="http://www.genenames.org/data/hgnc_data.php?hgnc_id=$$"
+    </pre>
+</DIV>
+
+<DIV class="mouseOverField"><span class="types bigBed"></span>
+    <div class="format">
+        <code>mouseOverField &lt;fieldName1&gt;</code><BR>
+    </div>
+        
+    <P>This adds mouse over text that are different from the name field of a bigBed file.
+    If a particular row does not contain a value in this field, the mouse over will fallback 
+    to the name field. </P>
+    <P>
+    Put the identifiers for the mouse over text into extended
+    bigBed fields as explained in example 3 of the <a href="/goldenPath/help/bigBed.html">bigBed documentation</a>.
+    A field name from your .as file is thefield name referenced in this statement.
+    </P> 
+
+    <P><B>Example:</B></P>
+    <pre>
+    mouseOverField comment
+    </pre>
 </DIV>
 
 <DIV class="wgEncode"><span class="types all"></span>
@@ -3668,13 +3713,13 @@ inputTrackTable myCellLineAssociations
 inputTableFieldDisplay cellType treatment lab
     ...</pre>
 <P>This track will show transcription factor (TF)
-binding evidence found in multiple cell lines.  Each item will be
-for a one particlular TF, and also all the cell lines that show
+binding evidence found in multiple cell lines.  Each item represents
+a particular TF, along with the cell lines that show
 evidence of binding in that location.  The secondary <code>sourceTable</code>
 holds the definitions of each cell line abbreviation.  A third
 table is declared with <code>inputTrackTable</code> and carries details for
 each cell line that should be seen in the Browser.  When viewed in
-item detail, 3 fields (cellLine, treatment and lab) will be seen
+item detail, 3 fields (cellType, treatment and lab) will be seen
 for each cell associated with the particular TF binding location.</P>
 </DIV>
 
@@ -4028,7 +4073,7 @@ for each cell associated with the particular TF binding location.</P>
     <li> <code>tag</code>: Used in the code to select
     and sort subtracks based upon their membership.  Tag names
     must be alphanumeric, begin with a letter, and be formed such that the
-    desired sort order of the members will result.</li>
+    desired sort order of the member subtracks will result.</li>
     <li> <code>title</code>: Label of the subgroup as it appears on the 
     selection matrix that is displayed to the user, e.g.,"Antibody". Spaces within
     titles must be replaced by '<code>_</code>'.  A limited amount
@@ -4056,7 +4101,10 @@ for each cell associated with the particular TF binding location.</P>
     selecting subtracks based upon groups, additional settings are
     needed at the composite level.  For a one- or two-dimensional array of
     checkboxes, declare the dimensions X and Y.  Additional dimensions (called
-    "abc") can be declared with this setting as dimA, dimB, etc.</P>
+    "abc") can be declared with this setting as dimA, dimB, etc.</P>  
+    <P>Note that the order of the subgroups in a dimension is exactly the same as 
+    the order they appear in the <code>subGroup#</code> setting, regardless of whether
+    the subtrack list is sorted by tags.</P>
 </DIV>
 
 <DIV class="filterComposite"><span class="types subGroups"></span>
@@ -4121,7 +4169,9 @@ for each cell associated with the particular TF binding location.</P>
     <A onclick="return jumpTo(this);" HREF="#">dragAndDrop</a> may be a better option.
     Currently only subgroups can be defined in the sortOrder, but it
     is anticipated that this will expand to include short and long
-    labels as well.</P>
+    labels as well.  Sorting will occur on the tag values defined in the 
+    <code>subGroup#</code> and <code>subGroups</code> settings.  By sorting
+    on tags, non-alphanumeric orders can be defined.</P>
 </DIV>
 
 <DIV class="fileSortOrder"><span class="types subGroups downloadsOnly"></span>
@@ -4172,8 +4222,8 @@ for each cell associated with the particular TF binding location.</P>
     title of the cellLine subgroup contains a blank space filled in
     with '<code>_</code>'.  The second cell line, "CD14+", includes an HTML encoding
     for '<code>+</code>' in its title, The two subgroups participate in the default
-    sort order, but they each have non-standard sort orders.  In the cellLine subgroup, 
-    GM12878 sorts first by starting its tag with "A".  The 
+    sort order of subtracks, but they each have non-standard sort orders.  In the 
+    cellLine subgroup, GM12878 sorts first by starting its tag with "A".  The 
     antibodies have numbers in their titles, but the tags expand
     the number with "0" to pad the spacing.  This ensures
     H3K4me3 sorts before H3K36me3.</P>
@@ -4213,7 +4263,7 @@ for each cell associated with the particular TF binding location.</P>
     declared as the "A"
     dimension; the user will be able to select subtracks for this
     dimension via a dropdown multi-select filter box.  All three subgroups 
-    participate in the default sort order, and the treatment subgroup is 
+    participate in the default sort order of subtracks, and the treatment subgroup is 
     sorted in reverse order by default.  The "None" treatment
     sorts before all others (in reverse order) by beginning the tag with
     a "Z".  Note that for this "A" dimension,
@@ -4276,8 +4326,8 @@ for each cell associated with the particular TF binding location.</P>
     title of the cellLine subgroup contains a blank space filled in
     with '<code>_</code>'.  The second cell line, "CD14+", includes an HTML encoding
     for '<code>+</code>' in its title, The two subgroups participate in the default
-    sort order, but they each have non-standard sort orders.  In the cellLine subgroup, 
-    GM12878 sorts first by starting its tag with "A".  The 
+    sort order of subtracks, but they each have non-standard sort orders.  In the 
+    cellLine subgroup,  GM12878 sorts first by starting its tag with "A".  The 
     antibodies have numbers in their titles, but the tags expand
     the number with "0" to pad the spacing.  This ensures
     H3K4me3 sorts before H3K36me3.</P>
@@ -4311,7 +4361,7 @@ for each cell associated with the particular TF binding location.</P>
     declared as the "A"
     dimension; the user will be able to select subtracks for this
     dimension via a dropdown multi-select filter box.  All three subgroups 
-    participate in the default sort order, and the treatment subgroup is 
+    participate in the default sort order of subtracks, and the treatment subgroup is 
     sorted in reverse order by default.  The "None" treatment
     sorts before all others (in reverse order) by beginning the tag with
     a "Z".  Note that for this "A" dimension,

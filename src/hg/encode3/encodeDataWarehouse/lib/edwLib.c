@@ -7,8 +7,13 @@
 #include "jksql.h"
 #include "openssl/sha.h"
 #include "base64.h"
+#include "basicBed.h"
+#include "bigBed.h"
 #include "portable.h"
+#include "cheapcgi.h"
+#include "genomeRangeTree.h"
 #include "md5.h"
+#include "htmshell.h"
 #include "obscure.h"
 #include "encodeDataWarehouse.h"
 #include "edwLib.h"
@@ -16,13 +21,22 @@
 /* System globals - just a few ... for now.  Please seriously not too many more. */
 char *edwDatabase = "encodeDataWarehouse";
 char *edwLicensePlatePrefix = "ENCFF";
+int edwSingleFileTimeout = 60*60;   // How many seconds we give ourselves to fetch a single file
 
-char *edwRootDir = "/scratch/kent/encodeDataWarehouse/";
-char *edwValDataDir = "/scratch/kent/encValData/";
-#ifdef AT_SDSC
 char *edwRootDir = "/data/encode3/encodeDataWarehouse/";
 char *edwValDataDir = "/data/encode3/encValData/";
-#endif
+
+struct sqlConnection *edwConnect()
+/* Returns a read only connection to database. */
+{
+return sqlConnect(edwDatabase);
+}
+
+struct sqlConnection *edwConnectReadWrite()
+/* Returns read/write connection to database. */
+{
+return sqlConnectProfile("encodeDataWarehouse", edwDatabase);
+}
 
 char *edwPathForFileId(struct sqlConnection *conn, long long fileId)
 /* Return full path (which eventually should be freeMem'd) for fileId */
@@ -42,12 +56,36 @@ char *edwTempDir()
 static char path[PATH_LEN];
 if (path[0] == 0)
     {
+    /* Note code elsewhere depends on tmp dire being inside of edwRootDir - also good
+     * to have it there so move to a permanent file is quick and unlikely to fail. */
     safef(path, sizeof(path), "%s%s", edwRootDir, "tmp");
     makeDirsOnPath(path);
     strcat(path, "/");
     }
 return path;
 }
+
+char *edwTempDirForToday(char dir[PATH_LEN])
+/* Fills in dir with temp dir of the day, and returns a pointer to it. */
+{
+char dayDir[PATH_LEN];
+edwDirForTime(edwNow(), dayDir);
+safef(dir, PATH_LEN, "%s%stmp/", edwRootDir, dayDir);
+
+/* Bracket time consuming call to makeDirsOnPath with check that we didn't just do same
+ * thing. */
+static char lastDayDir[PATH_LEN] = "";
+if (!sameString(dayDir, lastDayDir))
+    {
+    strcpy(lastDayDir, dayDir);
+    int len = strlen(dir);
+    dir[len-1] = 0;
+    makeDirsOnPath(dir);
+    dir[len-1] = '/';
+    }
+return dir;
+}
+
 
 long edwGettingFile(struct sqlConnection *conn, char *submitDir, char *submitFileName)
 /* See if we are in process of getting file.  Return file record id if it exists even if
@@ -61,15 +99,13 @@ if (submitDirId <= 0)
     return -1;
 
 /* Then see if we have file that matches submitDir and submitFileName. */
-int hourInSeconds = 60*60;
 safef(query, sizeof(query), 
     "select id from edwFile "
-    "where submitFileName='%s' and submitDirId = %d "
+    "where submitFileName='%s' and submitDirId = %d and errorMessage = '' and deprecated=''"
     " and (endUploadTime > startUploadTime or startUploadTime < %lld) "
     "order by submitId desc limit 1"
     , submitFileName, submitDirId
-    , (long long)edwNow() - hourInSeconds);
-uglyf("query=%s\n", query);
+    , (long long)edwNow() - edwSingleFileTimeout);
 long id = sqlQuickLongLong(conn, query);
 if (id == 0)
     return -1;
@@ -114,88 +150,24 @@ long long edwNow()
 return time(NULL);
 }
 
-static void makeShaBase64(unsigned char *inputBuf, int inputSize, char out[EDW_ACCESS_SIZE])
+/* This is size of base64 encoded hash plus 1 for the terminating zero. */
+#define EDW_SID_SIZE 65   
+
+static void makeShaBase64(unsigned char *inputBuf, int inputSize, char out[EDW_SID_SIZE])
 /* Make zero terminated printable cryptographic hash out of in */
 {
 unsigned char shaBuf[48];
 SHA384(inputBuf, inputSize, shaBuf);
 char *base64 = base64Encode((char*)shaBuf, sizeof(shaBuf));
-memcpy(out, base64, EDW_ACCESS_SIZE);
-out[EDW_ACCESS_SIZE-1] = 0; 
+memcpy(out, base64, EDW_SID_SIZE);
+out[EDW_SID_SIZE-1] = 0; 
 freeMem(base64);
 }
 
-void edwMakeAccess(char *password, char access[EDW_ACCESS_SIZE])
-/* Convert password + salt to an access code */
-{
-/* Salt it well with stuff that is reproducible but hard to guess, and some
- * one time true random stuff. Sneak in password too. */
-unsigned char inputBuf[512];
-memset(inputBuf, 0, sizeof(inputBuf));
-int i;
-for (i=0; i<ArraySize(inputBuf); i += 2)
-    {
-    inputBuf[i] = i ^ 0x3f;
-    inputBuf[i+1] = -i*i;
-    }
-safef((char*)inputBuf, sizeof(inputBuf), 
-    "f186ed79bae8MNKLKEDSP*O:OHe364d73%s<*#$*(#)!DSDFOUIHLjksdfOP:J>KEJWYGk",
-    password);
-makeShaBase64(inputBuf, sizeof(inputBuf), access);
-}
-
-#define edwMaxUserNameSize 128     /* Maximum size of an email handle */
-
-int edwCheckUserNameSize(char *user)
-/* Make sure user name not too long. Returns size or aborts if too long. */
-{
-int size = strlen(user);
-if (size > edwMaxUserNameSize)
-   errAbort("size of user name too long: %s", user);
-return size;
-}
-
-int edwCheckAccess(struct sqlConnection *conn, char *user, char *password)
-/* Make sure user exists and password checks out. Returns (non-zero) user ID on success*/
-{
-/* Make escaped version of email string since it may be raw user input. */
-int nameSize  = edwCheckUserNameSize(user);
-char escapedUser[2*nameSize+1];
-sqlEscapeString2(escapedUser, user);
-
-char access[EDW_ACCESS_SIZE];
-edwMakeAccess(password, access);
-
-char query[256];
-safef(query, sizeof(query), "select access,id from edwUser where name='%s'", escapedUser);
-struct sqlResult *sr = sqlGetResult(conn, query);
-int userId = 0;
-char **row;
-if ((row = sqlNextRow(sr)) != NULL)
-    {
-    if (memcmp(row[0], access, sizeof(access)) == 0)
-	{
-	userId = sqlUnsigned(row[1]);
-	}
-    }
-sqlFreeResult(&sr);
-return userId;
-}
-
-int edwMustHaveAccess(struct sqlConnection *conn, char *user, char *password)
-/* Check user has access and abort with an error message if not. Returns user id. */
-{
-int id = edwCheckAccess(conn, user, password);
-if (id == 0)
-    errAbort("User/password combination doesn't give access to database");
-return id;
-}
-
-void edwMakeSid(char *user, char sid[EDW_ACCESS_SIZE])
+void edwMakeSid(char *user, char sid[EDW_SID_SIZE])
 /* Convert users to sid */
 {
-/* Salt it well with stuff that is reproducible but hard to guess, and some
- * one time true random stuff. Sneak in user too and time. */
+/* Salt it well with stuff that is reproducible but hard to guess */
 unsigned char inputBuf[512];
 memset(inputBuf, 0, sizeof(inputBuf));
 int i;
@@ -207,6 +179,55 @@ for (i=0; i<ArraySize(inputBuf); i += 2)
 safef((char*)inputBuf, sizeof(inputBuf), 
 	"186ED79BAEXzeusdioIsdklnw88e86cd73%s<*#$*(#)!DSDFOUIHLjksdf", user);
 makeShaBase64(inputBuf, sizeof(inputBuf), sid);
+}
+
+static void edwVerifySid(char *user, char *sidToCheck)
+/* Make sure sid/user combo is good. */
+{
+char sid[EDW_SID_SIZE];
+edwMakeSid(user, sid);
+if (sidToCheck == NULL || memcmp(sidToCheck, sid, EDW_SID_SIZE) != 0)
+    errAbort("Authentication failed, sid %s", (sidToCheck ? "fail" : "miss"));
+}
+
+char *edwGetEmailAndVerify()
+/* Get email from persona-managed cookies and validate them.
+ * Return email address if all is good and user is logged in.
+ * If user not logged in return NULL.  If user logged in but
+ * otherwise things are wrong abort. */
+{
+char *email = findCookieData("email");
+if (email)
+    {
+    char *sid = findCookieData("sid");
+    edwVerifySid(email, sid);
+    }
+return email;
+}
+
+
+struct edwUser *edwUserFromEmail(struct sqlConnection *conn, char *email)
+/* Return user associated with that email or NULL if not found */
+{
+char query[256];
+char *escapedEmail = sqlEscapeString(email);
+safef(query, sizeof(query), "select * from edwUser where email='%s'", escapedEmail);
+freez(&escapedEmail);
+struct edwUser *user = edwUserLoadByQuery(conn, query);
+return user;
+}
+
+struct edwUser *edwMustGetUserFromEmail(struct sqlConnection *conn, char *email)
+/* Return user associated with email or put up error message. */
+{
+struct edwUser *user = edwUserFromEmail(conn, email);
+if (user == NULL)
+    errAbort("No user exists with email %s.  If you need an account please contact your "
+             "ENCODE DCC data wrangler, or someone you know who already does have an "
+	     "ENCODE Data Warehouse account, and have them create an account for you with "
+	     "http://%s/cgi-bin/edwWebCreateUser"
+	     , email, getenv("SERVER_NAME"));
+return user;
 }
 
 int edwGetHost(struct sqlConnection *conn, char *hostName)
@@ -550,7 +571,7 @@ return edwFileLoadByQuery(conn, query);
 
 struct edwFile *edwFileAllIntactBetween(struct sqlConnection *conn, int startId, int endId)
 /* Return list of all files that are intact (finished uploading and MD5 checked) 
- * with file IDs between startId and endId - including endId*/
+ * with file IDs between startId and endId - including endId */
 {
 char query[128];
 safef(query, sizeof(query), 
@@ -583,5 +604,247 @@ struct edwValidFile *edwValidFileFromFileId(struct sqlConnection *conn, long lon
 char query[128];
 safef(query, sizeof(query), "select * from edwValidFile where fileId=%lld", fileId);
 return edwValidFileLoadByQuery(conn, query);
+}
+
+struct genomeRangeTree *edwMakeGrtFromBed3List(struct bed3 *bedList)
+/* Make up a genomeRangeTree around bed file. */
+{
+struct genomeRangeTree *grt = genomeRangeTreeNew();
+struct bed3 *bed;
+for (bed = bedList; bed != NULL; bed = bed->next)
+    genomeRangeTreeAdd(grt, bed->chrom, bed->chromStart, bed->chromEnd);
+return grt;
+}
+
+struct edwAssembly *edwAssemblyForUcscDb(struct sqlConnection *conn, char *ucscDb)
+/* Get assembly for given UCSC ID or die trying */
+{
+char query[256];
+safef(query, sizeof(query), "select * from edwAssembly where ucscDb='%s'", ucscDb);
+struct edwAssembly *assembly = edwAssemblyLoadByQuery(conn, query);
+if (assembly == NULL)
+    errAbort("Can't find assembly for %s", ucscDb);
+return assembly;
+}
+
+struct genomeRangeTree *edwGrtFromBigBed(char *fileName)
+/* Return genome range tree for simple (unblocked) bed */
+{
+struct bbiFile *bbi = bigBedFileOpen(fileName);
+struct bbiChromInfo *chrom, *chromList = bbiChromList(bbi);
+struct genomeRangeTree *grt = genomeRangeTreeNew();
+for (chrom = chromList; chrom != NULL; chrom = chrom->next)
+    {
+    struct rbTree *tree = genomeRangeTreeFindOrAddRangeTree(grt, chrom->name);
+    struct lm *lm = lmInit(0);
+    struct bigBedInterval *iv, *ivList = NULL;
+    ivList = bigBedIntervalQuery(bbi, chrom->name, 0, chrom->size, 0, lm);
+    for (iv = ivList; iv != NULL; iv = iv->next)
+        rangeTreeAdd(tree, iv->start, iv->end);
+    lmCleanup(&lm);
+    }
+bigBedFileClose(&bbi);
+bbiChromInfoFreeList(&chromList);
+return grt;
+}
+
+boolean edwIsSupportedBigBedFormat(char *format)
+/* Return TRUE if it's one of the bigBed formats we support. */
+{
+return sameString(format, "broadPeak") || sameString(format, "narrowPeak") || 
+	 sameString(format, "bedLogR") || sameString(format, "bigBed") ||
+	 sameString(format, "bedRnaElements") || sameString(format, "bedRrbs") ||
+	 sameString(format, "openChromCombinedPeaks") || sameString(format, "peptideMapping") ||
+	 sameString(format, "shortFrags");
+}
+
+void edwWriteErrToTable(struct sqlConnection *conn, char *table, int id, char *err)
+/* Write out error message to errorMessage field of table. */
+{
+char *trimmedError = trimSpaces(err);
+char escapedErrorMessage[2*strlen(trimmedError)+1];
+sqlEscapeString2(escapedErrorMessage, trimmedError);
+struct dyString *query = dyStringNew(0);
+dyStringPrintf(query, "update %s set errorMessage='%s' where id=%d", 
+    table, escapedErrorMessage, id);
+sqlUpdate(conn, query->string);
+dyStringFree(&query);
+}
+
+void edwWriteErrToStderrAndTable(struct sqlConnection *conn, char *table, int id, char *err)
+/* Write out error message to errorMessage field of table and through stderr. */
+{
+warn("%s", trimSpaces(err));
+edwWriteErrToTable(conn, table, id, err);
+}
+
+
+void edwAddJob(struct sqlConnection *conn, char *command)
+/* Add job to queue to run. */
+{
+char query[256+strlen(command)];
+safef(query, sizeof(query), "insert into edwJob (commandLine) values('%s')", command);
+sqlUpdate(conn, query);
+}
+
+void edwAddQaJob(struct sqlConnection *conn, long long fileId)
+/* Create job to do QA on this and add to queue */
+{
+char command[64];
+safef(command, sizeof(command), "edwQaAgent %lld", fileId);
+edwAddJob(conn, command);
+}
+
+struct edwSubmit *edwMostRecentSubmission(struct sqlConnection *conn, char *url)
+/* Return most recent submission, possibly in progress, from this url */
+{
+int urlSize = strlen(url);
+char escapedUrl[2*urlSize+1];
+sqlEscapeString2(escapedUrl, url);
+int escapedSize = strlen(escapedUrl);
+char query[128 + escapedSize];
+safef(query, sizeof(query), 
+    "select * from edwSubmit where url='%s' order by id desc limit 1", escapedUrl);
+return edwSubmitLoadByQuery(conn, query);
+}
+
+long long edwSubmitMaxStartTime(struct edwSubmit *submit, struct sqlConnection *conn)
+/* Figure out when we started most recent single file in the upload, or when
+ * we started if not files started yet. */
+{
+char query[256];
+safef(query, sizeof(query), 
+    "select max(startUploadTime) from edwFile where submitId=%u", submit->id);
+long long maxStartTime = sqlQuickLongLong(conn, query);
+if (maxStartTime == 0)
+    maxStartTime = submit->startUploadTime;
+return maxStartTime;
+}
+
+int edwSubmitCountNewValid(struct edwSubmit *submit, struct sqlConnection *conn)
+/* Count number of new files in submission that have been validated. */
+{
+char query[256];
+safef(query, sizeof(query), 
+    "select count(*) from edwFile e,edwValidFile v where e.id = v.fileId and e.submitId=%u",
+    submit->id);
+return sqlQuickNum(conn, query);
+}
+
+void edwAddSubmitJob(struct sqlConnection *conn, char *userEmail, char *url)
+/* Add submission job to table and wake up daemon. */
+{
+/* Create command and add it to edwSubmitJob table. */
+char command[strlen(url) + strlen(userEmail) + 256];
+safef(command, sizeof(command), "edwSubmit '%s' %s", url, userEmail);
+char escapedCommand[2*strlen(command) + 1];
+sqlEscapeString2(escapedCommand, command);
+char query[strlen(escapedCommand)+128];
+safef(query, sizeof(query), "insert edwSubmitJob (commandLine) values('%s')", escapedCommand);
+sqlUpdate(conn, query);
+
+/* Write sync signal (any string ending with newline) to fifo to wake up daemon. */
+FILE *fifo = mustOpen("../userdata/edwSubmit.fifo", "w");
+fputc('\n', fifo);
+carefulClose(&fifo);
+}
+
+
+struct edwValidFile *edwFindElderReplicates(struct sqlConnection *conn, struct edwValidFile *vf)
+/* Find all replicates of same output and format type for experiment that are elder
+ * (fileId less than your file Id).  Younger replicates are responsible for taking care 
+ * of correlations with older ones.  Sorry younguns, it's like social security. */
+{
+if (sameString(vf->format, "unknown"))
+    return NULL;
+char query[256];
+safef(query, sizeof(query), 
+    "select * from edwValidFile where id<%d and experiment='%s' and format='%s'"
+    " and outputType='%s'"
+    , vf->id, vf->experiment, vf->format, vf->outputType);
+return edwValidFileLoadByQuery(conn, query);
+}
+
+void edwWebHeaderWithPersona(char *title)
+/* Print out HTTP and HTML header through <BODY> tag with persona info */
+{
+printf("Content-Type:text/html\r\n");
+printf("\r\n\r\n");
+puts("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" "
+	      "\"http://www.w3.org/TR/html4/loose.dtd\">");
+printf("<HTML><HEAD><TITLE>%s</TITLE>\n", title);
+puts("<meta http-equiv='X-UA-Compatible' content='IE=Edge'>");
+puts("<script type='text/javascript' SRC='/js/jquery.js'></script>");
+puts("<script type='text/javascript' SRC='/js/jquery.cookie.js'></script>");
+puts("<script type='text/javascript' src='https://login.persona.org/include.js'></script>");
+puts("<script type='text/javascript' src='/js/edwPersona.js'></script>");
+puts("</HEAD><BODY>");
+}
+
+void edwWebFooterWithPersona()
+/* Print out end tags and persona script stuff */
+{
+htmlEnd();
+}
+
+
+void edwCreateNewUser(char *email)
+/* Create new user, checking that user does not already exist. */
+{
+/* Now make sure user is not already in user table. */
+struct sqlConnection *conn = edwConnectReadWrite();
+struct dyString *query = dyStringNew(0);
+char *escapedEmail = sqlEscapeString(email);
+dyStringPrintf(query, "select count(*) from edwUser where email = '%s'", escapedEmail);
+if (sqlQuickNum(conn, query->string) > 0)
+    errAbort("User %s already exists", email);
+
+/* Do database insert. */
+dyStringClear(query);
+dyStringPrintf(query, "insert into edwUser (email) values('%s')", escapedEmail);
+sqlUpdate(conn, query->string);
+
+sqlDisconnect(&conn);
+}
+
+void edwPrintLogOutButton()
+/* Print log out button */
+{
+printf("<INPUT TYPE=button NAME=\"signOut\" VALUE=\"sign out\" id=\"signout\">");
+}
+
+struct dyString *edwFormatDuration(long long seconds)
+/* Convert seconds to days/hours/minutes. Return result in a dyString you can free */
+{
+struct dyString *dy = dyStringNew(0);
+int days = seconds/(3600*24);
+if (days > 0)
+    dyStringPrintf(dy, "%d days, ", days);
+seconds -= days*3600*24;
+
+int hours = seconds/3600;
+if (hours > 0)
+    dyStringPrintf(dy, "%d hours", hours);
+seconds -= hours*3600;
+
+if (days == 0)
+    {
+    int minutes = seconds/60;
+    if (minutes > 0)
+	{
+	if (hours > 0)
+	   dyStringPrintf(dy, ", ");
+	dyStringPrintf(dy, "%d minutes", minutes);
+	}
+
+    if (hours == 0)
+	{
+	if (minutes > 0)
+	   dyStringPrintf(dy, ", ");
+	seconds -= minutes*60;
+	dyStringPrintf(dy, "%d seconds", (int)seconds);
+	}
+    }
+return dy;
 }
 

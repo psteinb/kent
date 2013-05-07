@@ -121,7 +121,7 @@ test:: $(testDirs:%=%.test)
 %.test:
 	cd $* && ${MAKE} test
 
-LIB_TAGS_IN = lib/*.[hc] hg/lib/*.[hc] jkOwnLib/*.c inc/*.h hg/inc/*.h
+LIB_TAGS_IN = lib/*.[hc] */lib/*.[hc] */*/lib/*.[hc] jkOwnLib/*.c inc/*.h hg/inc/*.h hg/encode3/encodeDataWarehouse/lib/*.c hg/encode3/encodeDataWarehouse/inc/*.h
 
 # build tags for libraries
 .PHONY: tags
@@ -146,6 +146,7 @@ etags-all:
 utils: libs
 	${MKDIR} ${SCRIPTS}
 	${MKDIR} ${DESTDIR}${BINDIR}
+	cd parasol && ${MAKE}
 	@for D in ${DIRS} x; do \
             if test "$$D" != "x" ; then \
                 ( cd $$D && echo $$D && ${MAKE} ) ;\
@@ -165,8 +166,26 @@ utils-alpha: libs
 	cd utils && ${MAKE} alpha
 	cd hg && ${MAKE} utils
 
-DIRS = ameme blat cdnaAli index reformat xenoAli \
-       dnaDust protDust idbQuery scanIntrons tracks weblet \
-       aladdin getgene primeMate wormAli fuse meta
+DIRS = ameme blat index dnaDust protDust weblet aladdin primeMate fuse meta
 
+##  cellar archive for obsolete programs
 
+cellarDirs = cdnaAli getgene idbQuery reformat scanIntrons tracks wormAli \
+	xenoAli
+
+buildCellar: libs
+	${MKDIR} ${DESTDIR}${BINDIR}
+	@for D in ${cellarDirs} x; do \
+            if test "$$D" != "x" ; then \
+                ( cd $$D && echo $$D && ${MAKE} ) ;\
+                x=$$? ; if [ $$x -ne 0 ]; then exit $$x ; fi \
+            fi ;\
+	done
+
+cleanCellar:
+	@for D in ${cellarDirs} x; do \
+            if test "$$D" != "x" ; then \
+                ( cd $$D && echo $$D && ${MAKE} clean ) ;\
+                x=$$? ; if [ $$x -ne 0 ]; then exit $$x ; fi \
+            fi ;\
+	done

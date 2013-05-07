@@ -60,7 +60,7 @@ while (end > start)
     }
 }
 
-static struct annoRow *agwIntegrate(struct annoGrator *gSelf, struct annoRow *primaryRow,
+static struct annoRow *agwIntegrate(struct annoGrator *gSelf, struct annoStreamRows *primaryData,
 				    boolean *retRJFilterFailed, struct lm *callerLm)
 /* Return wig annoRows that overlap primaryRow position, with NANs weeded out. */
 {
@@ -73,11 +73,12 @@ if (self->lmRowCount >= 4096)
     }
 if (self->lm == NULL)
     self->lm = lmInit(0);
-struct annoRow *rowsIn = annoGratorIntegrate(self->mySource, primaryRow, retRJFilterFailed,
+struct annoRow *rowsIn = annoGratorIntegrate(self->mySource, primaryData, retRJFilterFailed,
 					     self->lm);
 self->lmRowCount += slCount(rowsIn);
 if (retRJFilterFailed && *retRJFilterFailed)
     return NULL;
+struct annoRow *primaryRow = primaryData->rowList;
 struct annoRow *rowIn, *rowOutList = NULL;;
 for (rowIn = rowsIn;  rowIn != NULL;  rowIn = rowIn->next)
     tidyUp(rowIn, &rowOutList, primaryRow->start, primaryRow->end, callerLm);
@@ -89,8 +90,8 @@ struct annoGrator *annoGrateWigNew(struct annoStreamer *wigSource)
 /* Create an annoGrator subclass for source with rowType == arWig. */
 {
 if (wigSource->rowType != arWig)
-    errAbort("annoGrateWigNew: expected source->rowType arWig (%d), got %d",
-	     arWig, wigSource->rowType);
+    errAbort("annoGrateWigNew: expected source->rowType arWig (%d), got %d from source %s",
+	     arWig, wigSource->rowType, wigSource->name);
 struct annoGrateWig *self;
 AllocVar(self);
 struct annoGrator *gSelf = (struct annoGrator *)self;
@@ -100,9 +101,9 @@ self->mySource = annoGratorNew(wigSource);
 return gSelf;
 }
 
-struct annoGrator *annoGrateBigWigNew(char *fileOrUrl)
+struct annoGrator *annoGrateBigWigNew(char *fileOrUrl, struct annoAssembly *aa)
 /* Create an annoGrator subclass for bigWig file or URL. */
 {
-struct annoStreamer *bigWigSource = annoStreamBigWigNew(fileOrUrl);
+struct annoStreamer *bigWigSource = annoStreamBigWigNew(fileOrUrl, aa);
 return annoGrateWigNew(bigWigSource);
 }

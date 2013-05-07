@@ -313,7 +313,7 @@ struct linkedFeatures
     int grayIx;				/* Average of components. */
     int filterColor;			/* Filter color (-1 for none) */
     float score;                        /* score for this feature */
-    char *name;				/* Accession of query seq. */
+    char *name;				/* Accession of query seq. Usually also the label. */
     int orientation;                    /* Orientation. */
     struct simpleFeature *components;   /* List of component simple features. */
     struct simpleFeature *codons;       /* If zoomed to CDS or codon level.*/
@@ -323,6 +323,7 @@ struct linkedFeatures
     struct itemAttr *itemAttr;          /* itemAttr object for this lf, or NULL */
     unsigned highlightColor;            /* highlight color,0 if no highlight */
     enum highlightMode highlightMode;   /* highlight mode,0 if no highlight */
+    char* mouseOver;                    /* mouse over text */
     };
 
 struct linkedFeaturesSeries
@@ -810,9 +811,15 @@ void cytoBandIdeoMethods(struct track *tg);
 void cytoBandMethods(struct track *tg);
 /* Make track for simple repeats. */
 
+#ifdef USE_HAL
+void halSnakeMethods(struct track *track, struct trackDb *tdb,
+                                int wordCount, char *words[]);
+/* Make track group for hal-based snake alignment. */
+#endif
+
 void snakeMethods(struct track *track, struct trackDb *tdb,
                                 int wordCount, char *words[]);
-/* Make track group for snake alignment. */
+/* Make track group for chain-based snake alignment. */
 
 void chainMethods(struct track *track, struct trackDb *tdb,
                                 int wordCount, char *words[]);
