@@ -1149,7 +1149,7 @@ sub netChains {
       "(can't find [$tDb.$qDb.]all.chain[.gz]).\n";
   }
   # Make sure previous stage was successful. Special check if patching was done
-  if ($patchChains == 1) {
+  if ($patchChains == 1 && ! $opt_debug) {
   	die "netChains: looks like previous stage was not successful (can't find $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz)\n" if (! -e "$buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz");
   	die "netChains: looks like previous stage was not successful (can't find $buildDir/run.patchChain/run.timeReChain)\n" if (! -e "$buildDir/run.patchChain/run.timeReChain");
 	# use the allpatched.chain later
