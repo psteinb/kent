@@ -6,6 +6,14 @@ source ./ProjectSpaceEnvironment
 cd $KENTHOME/src
 make alpha
 
+# change to hillerlab and g+w unless we are compiling on genome or newton
+if [ $HOSTNAME != "genome" ] && [ $HOSTNAME != "newton" ]; then
+	chgrp hillerlab ${genomePath}/bin/x86_64/* -R
+	chgrp hillerlab ${genomePath}/bin/scripts/* -R
+	chmod g+w ${genomePath}/bin/x86_64/* -R
+	chmod g+w ${genomePath}/bin/scripts/* -R
+fi
+
 if [ $? != 0 ]; then
  echo "building kent source on project space failed" | /usr/sbin/sendmail hiller@mpi-cbg.de
 else
