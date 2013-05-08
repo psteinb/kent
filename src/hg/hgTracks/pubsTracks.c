@@ -3,6 +3,7 @@
 #include "hgTracks.h"
 #include "hgFind.h"
 #include "bedCart.h"
+#include <stdbool.h>
 
 // we distinguish between four levels of impact factors <1, <3, <10 and >10
 static struct rgbColor impact1Color  = {80, 80, 80};
