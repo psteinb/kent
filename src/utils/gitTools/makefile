@@ -14,7 +14,7 @@ scripts: ${GITSCRIPTS:%=${SCRIPTS}/%}
 
 ${SCRIPTS}/%: %
 	@${MKDIR} ${SCRIPTS}
-	chmod a+rx $<
+#	chmod a+rx $<
 	rm -f $@
 	cp -pf $< $@
 
