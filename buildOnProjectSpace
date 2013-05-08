@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o errexit
 
 path=/projects/hillerlab/genome/src/kent
 cd $path

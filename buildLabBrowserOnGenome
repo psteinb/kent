@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o errexit
 
 path=/genome/src/kent
 cd $path
