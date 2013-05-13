@@ -11,7 +11,7 @@ cd $KENTHOME/src
 make alpha
 
 if [ $? != 0 ]; then
- echo "building kent source on lustre failed" | /usr/sbin/sendmail vsharma@mpi-cbg.de
+ echo "building kent source on lustre failed" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
 else
- echo "building kent source on lustre succeeded" | /usr/sbin/sendmail vsharma@mpi-cbg.de
+ echo "building kent source on lustre succeeded" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
 fi
