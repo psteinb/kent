@@ -7,6 +7,11 @@ source ./ProjectSpaceEnvironment
 cd $KENTHOME/src
 make alpha
 
+# we need gensub2 from parasol. Compile and install only that binary. 
+cd $KENTHOME/src/parasol/gensub2
+make
+cp ../bin/gensub2 ${genomePath}/bin/x86_64/
+
 # change to hillerlab and g+w unless we are compiling on genome or newton
 if [ $HOSTNAME != "genome" ] && [ $HOSTNAME != "newton" ]; then
 	chgrp hillerlab ${genomePath}/bin/x86_64/* -R
@@ -16,7 +21,7 @@ if [ $HOSTNAME != "genome" ] && [ $HOSTNAME != "newton" ]; then
 fi
 
 if [ $? != 0 ]; then
- echo "building kent source on project space failed" | /usr/sbin/sendmail hiller@mpi-cbg.de
+ echo "building kent source on project space failed" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
 else
- echo "building kent source on project space succeeded" | /usr/sbin/sendmail hiller@mpi-cbg.de
+ echo "building kent source on project space succeeded" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
 fi
