@@ -82,7 +82,7 @@ my %qSizes = ();
 my $machType = `uname -m`;
 chomp $machType;
 $machType = "i386" if ($machType eq "i686");
-my $defaultPath = ("/genome/bin/scripts:/genome/bin/$machType:/bin:/usr/bin");
+my $defaultPath = ("$ENV{'PATH'}:/genome/bin/scripts:/genome/bin/$machType:/bin:/usr/bin");
 
 sub cleanDie {
   # Clean up $TMP (if it has been created) and then die.
