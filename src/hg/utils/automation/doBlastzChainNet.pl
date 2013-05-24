@@ -59,8 +59,9 @@ use vars qw/
     $opt_inclHap
     $opt_noLoadChainSplit
     $opt_loadChainSplit
-    $opt_clusterType
+	 $opt_clusterType
     /;
+$opt_clusterType = "";
 
 # Specify the steps supported with -continue / -stop:
 my $stepper = new HgStepManager(
@@ -262,8 +263,9 @@ BLASTZ_Q=$HgAutomate::clusterData/blastz/HoxD55.q
 
 # Globals:
 my %defVars = ();
-my ($DEF, $tDb, $qDb, $QDb, $isSelf, $selfSplit, $buildDir,$paraHub,$hub,$bsubHub,$clusterRun,$paraRun,$paraReChain,$paraNetChain,$clusterType);
+my ($DEF, $tDb, $qDb, $QDb, $isSelf, $selfSplit, $buildDir,$hub,$clusterRun,$paraRun,$paraReChain,$paraNetChain);
 my ($swapDir, $splitRef, $inclHap, $secondsStart, $secondsEnd);
+my $clusterType = "";
 
 sub isInDirList {
   # Return TRUE if $dir is under (begins with) something in dirList.
@@ -301,11 +303,11 @@ sub checkOptions {
 		      "qRepeats=s",
 		      "readmeOnly",
 		      "ignoreSelf",
-                      "syntenicNet",
-                      "noDbNameCheck",
-                      "inclHap",
-                      "noLoadChainSplit",
-                      "loadChainSplit",
+            "syntenicNet",
+            "noDbNameCheck",
+            "inclHap",
+            "noLoadChainSplit",
+            "loadChainSplit",
 		      "clusterType=s"
 		     );
   &usage(1) if (!$ok);
@@ -504,8 +506,6 @@ sub checkDef {
 
 sub doPartition {
   # Partition the sequence up before blastz.
-  my $paraHub = $bigClusterHub;
-  my $bsubHub= $bigClusterLSF;
   my $runDir = "$buildDir/run.blastz";
   my $targetList = "$tDb.lst";
   my $queryList = $isSelf ? $targetList :
@@ -537,15 +537,6 @@ sub doPartition {
      "$seq2Dir $seq2Len $seq2Limit " .
      "$qPartDir > $queryList");
 
-##Depending upon the clustertype the $hub variable will either madmax or genome
-  if ($clusterType eq "genome") { 
-   $hub = $paraHub;
-   $fileServer = $fileServerGenome;	
-  } elsif ($clusterType eq "madmax") {
-    $hub = $bsubHub;
-    $fileServer = $fileServerLSF;
-  }
-
   &HgAutomate::mustMkdir($runDir);
   my $whatItDoes =
 "It computes partitions of target and query sequences into chunks of the
@@ -563,7 +554,7 @@ echo "cluster batch jobList size: \$L = \$L1 * \$L2"
 _EOF_
     );
   $bossScript->execute();
-  my $mkOutRootHost = $opt_blastzOutRoot ? $paraHub : $fileServer;
+  my $mkOutRootHost = $opt_blastzOutRoot ? $hub : $fileServer;
   my $mkOutRoot =     $opt_blastzOutRoot ? "mkdir -p $opt_blastzOutRoot;" : "";
   &HgAutomate::run("$HgAutomate::runSSH $mkOutRootHost " .
 		   "'(cd $runDir; $mkOutRoot csh -ef xdir.sh)'");
@@ -571,8 +562,6 @@ _EOF_
 
 sub doBlastzClusterRun {
   # Set up and perform the big-cluster blastz run.
-  my $paraHub = $bigClusterHub;
-  my $bsubHub = $bigClusterLSF;
   my $runDir = "$buildDir/run.blastz";
   my $targetList = "$tDb.lst";
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : '../psl';
@@ -601,25 +590,15 @@ sub doBlastzClusterRun {
   }
 my $checkOutExists ="$outRoot" . '/$(file1)/$(file1)_$(file2).psl';
 if($clusterType eq "genome"){
-$checkOutExists = "{check out exists "."$outRoot" . '/$(file1)/$(file1)_$(file2).psl }';
+	$checkOutExists = "{check out exists "."$outRoot" . '/$(file1)/$(file1)_$(file2).psl }';
 }
-
-  
+ 
   my $templateCmd = ("$blastzRunUcsc -outFormat psl " .
 		     ($isSelf ? '-dropSelf ' : '') .
 		     '$(path1) $(path2) ../DEF ' .
 		     $checkOutExists);
   &HgAutomate::makeGsub($runDir, $templateCmd);
 
- #customize the $hub variable depending upon the clusterType: 
- if ($clusterType eq "genome") {
-   $hub = $paraHub;
-   $fileServer = $fileServerGenome; 
-  } elsif ($clusterType eq "madmax") {
-    $hub = $bsubHub;
-    $fileServer = $fileServerLSF; 
-  }
- 
   `touch "$runDir/para_hub_$hub"`;
  
  #customize the $myparaRun variable depending upon the clusterType: 
@@ -651,8 +630,6 @@ sub doCatRun {
   # next level: per-target-chunk results, which may still need to be 
   # concatenated into per-target-sequence in the next step after this one -- 
   # chaining.
-  my $paraHub = $smallClusterHub;
-  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/run.cat";
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
@@ -672,21 +649,12 @@ sub doCatRun {
   
   my $checkOutExists =" ../pslParts/\$(file1).psl.gz";
 if($clusterType eq "genome"){
-$checkOutExists = "{check out exists ../pslParts/\$(file1).psl.gz } ";
+	$checkOutExists = "{check out exists ../pslParts/\$(file1).psl.gz } ";
 }
   &HgAutomate::mustMkdir($runDir);
   &HgAutomate::makeGsub($runDir,
       "./cat.csh \$(path1) $checkOutExists");
  
- #customize the $hub variable depending upon the clusterType:  
-if ($clusterType eq "genome") {
-   $hub = $paraHub;
-   $fileServer = $fileServerGenome; 
-  } elsif ($clusterType eq "madmax") {
-    $hub = $bsubHub;
-    $fileServer = $fileServerLSF; 
-  }
-  
  `touch "$runDir/para_hub_$hub"`;
 
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : '../psl';
@@ -737,8 +705,6 @@ sub doFilterPsl {
 
   # Do a cluster to filter each psl file for seq identity and entropy.
   # The seq identity and entropy parameters are read from the DEF file. 
-  my $paraHub = $smallClusterHub;
-  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/run.filterPsl";
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
@@ -762,14 +728,6 @@ $checkOutExists = "{check out exists" . " ../pslPartsFiltered/\$(file1)}";
 }
   &HgAutomate::mustMkdir($runDir);
   &HgAutomate::makeGsub($runDir, "./filterPsl.csh ../pslParts/\$(file1) $checkOutExists");
-#customize the $hub variable depending upon the clusterType:   
-  if ($clusterType eq "genome") {
-   $hub = $paraHub;
-   $fileServer = $fileServerGenome; 
-  } elsif ($clusterType eq "madmax") {
-   $hub = $bsubHub;
-   $fileServer = $fileServerLSF; 
-  } 
   
   `touch "$runDir/para_hub_$hub"`;
 
@@ -857,8 +815,6 @@ sub makePslPartsLst {
 
 sub doChainRun {
   # Do a small cluster run to chain alignments to each target sequence.
-  my $paraHub = $smallClusterHub;
-  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/axtChain/run";
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
@@ -880,19 +836,11 @@ sub doChainRun {
  
   my $checkOutExists = " chain/\$(file1).chain";
 if($clusterType eq "genome"){
-$checkOutExists = " {check out line+ chain/\$(file1).chain}";
+	$checkOutExists = " {check out line+ chain/\$(file1).chain}";
 }
 
   &HgAutomate::makeGsub($runDir,
 	       "./chain.csh \$(file1) $checkOutExists");
-#customize the $hub variable depending upon the clusterType:   
-if ($clusterType eq "genome") {
-   $hub = $paraHub;
-   $fileServer = $fileServerGenome; 
-  } elsif ($clusterType eq "madmax") {
-   $hub = $bsubHub;
-   $fileServer = $fileServerLSF; 
-  }	      
   `touch "$runDir/para_hub_$hub"`;
 
   my $seq1Dir = $defVars{'SEQ1_CTGDIR'} || $defVars{'SEQ1_DIR'};
@@ -1095,8 +1043,6 @@ sub doPatchChains {
 
   # Do a cluster run to patch the all.chains and filter the new local alignments
   # Then rebuild the patchedChains from the all and newly-added psl entries.
-  my $paraHub = $smallClusterHub;
-  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/run.patchChain";
 
   # First, make sure we're starting clean.
@@ -1116,14 +1062,6 @@ sub doPatchChains {
   }
 
   &HgAutomate::mustMkdir($runDir);
-  #customize the $hub variable depending upon the clusterType:
-  if ($clusterType eq "genome") {
-   $hub = $paraHub;
-   $fileServer = $fileServerGenome; 
-  } elsif ($clusterType eq "madmax") {
-   $hub = $bsubHub;
-   $fileServer = $fileServerLSF; 
-  }
   `touch "$runDir/para_hub_$hub"`;
 
   # filtering parameters to be added if the flag FILTERPSL=1
@@ -1283,7 +1221,6 @@ sub netChains {
   # Don't do this for self alignments.
   return if ($isSelf);
   my $runDir = "$buildDir/axtChain";
-  #my $runNet = "$buildDir/run.net";
   
   # First, make sure we're starting clean.
   if (-d "$buildDir/mafNet") {
@@ -1342,9 +1279,9 @@ _EOF_
   if ($splitRef) {
   	# if we have patched chains, we need to remove the axtChain/chain dir and split the allpatched chains
 	if ($patchChains == 1) {
-  		print $fh <<_EOF_  
+  		print $fh <<_EOF_
 rm -rf $runDir/chain
-chainSplit $runDir/chain $chain  
+chainSplit $runDir/chain $chain
 _EOF_
  ;
  	}  
@@ -1384,7 +1321,7 @@ mkdir ../mafNet
 axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. ../axtNet/$tDb.$qDb.net.axt.gz \\
   $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
   stdout \\
-| gzip -c > ../mafNet/$tDb.$qDb.net.maf.gz    
+| gzip -c > ../mafNet/$tDb.$qDb.net.maf.gz
 _EOF_
     ;      
   }  
@@ -1467,13 +1404,13 @@ _EOF_
 # create a tmp dir on genome first
 # in that dir we will scp the noClass.net and run netClass
 # then we copy the resulting net file back and delete that tmp dir		
-set remoteTempDir=`ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' genome.pks.mpg.de nice mktemp -d`
-echo "created remote temp dir \$remoteTempDir on genome.pks.mpg.de" 
+set remoteTempDir=`ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' $dbHost nice mktemp -d`
+echo "created remote temp dir \$remoteTempDir on $dbHost" 
 cd $runDir
-scp noClass.net genome.pks.mpg.de:\$remoteTempDir
-ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' genome.pks.mpg.de nice netClass -verbose=0 -noAr \$remoteTempDir/noClass.net $tDb $qDb \$remoteTempDir/$tDb.$qDb.net
-scp genome.pks.mpg.de:\$remoteTempDir/$tDb.$qDb.net .
-ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' genome.pks.mpg.de nice rm -rf \$remoteTempDir
+scp noClass.net $dbHost:\$remoteTempDir
+ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' $dbHost nice netClass -verbose=0 -noAr \$remoteTempDir/noClass.net $tDb $qDb \$remoteTempDir/$tDb.$qDb.net
+scp $dbHost:\$remoteTempDir/$tDb.$qDb.net .
+ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' $dbHost nice rm -rf \$remoteTempDir
 
 # Add gap/repeat stats to the net file using database tables:
 #cd $runDir
@@ -1934,13 +1871,13 @@ too distant from the reference.  Suppressed unless -syntenicNet is included.";
           "move aside/remove $successDir and run again.\n";
   }
   # Make sure previous stage was successful.
-  
-  #if (-e "$runDir/$tDb.$qDb.net" || -e "$runDir/$tDb.$qDb.net.gz") {
-   #$successFile = "$runDir/$tDb.$qDb.net.gz";
-  #} else {
-   #$successFile = "$runDir/$tDb.$qDb.net";
-  #}
   my $successFile = "$runDir/$tDb.$qDb.net";
+  my $successFileWithoutPath = "$tDb.$qDb.net";
+	if (! -e "$runDir/$tDb.$qDb.net" && -e "$runDir/$tDb.$qDb.net.gz") {
+   	$successFile = "$runDir/$tDb.$qDb.net.gz";
+		$successFileWithoutPath = "$tDb.$qDb.net.gz";
+ 	}
+  
   if (! -e "$successFile" && ! $opt_debug) {
       die "doSyntenicNet: looks like previous stage was not successful " .
           "(can't find $successFile).\n";
@@ -1951,7 +1888,7 @@ too distant from the reference.  Suppressed unless -syntenicNet is included.";
   if ($splitRef) {
     $bossScript->add(<<_EOF_
 # filter net for synteny and create syntenic net mafs
-netFilter -syn $tDb.$qDb.net  \\
+netFilter -syn $successFileWithoutPath  \\
     | netSplit stdin synNet
 chainSplit chain $tDb.$qDb.all.chain.gz
 cd ..
@@ -1963,7 +1900,7 @@ netToAxt \$f axtChain/chain/\$f:t:r.chain \\
   | axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. stdin \\
     $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
     stdout \\
-| gzip -c > mafSynNet/\$f:t:r:r:r:r:r.maf
+| gzip -c > mafSynNet/\$f:t:r:r:r:r:r.maf.gz
 end
 rm -fr $runDir/synNet
 rm -fr $runDir/chain
@@ -1973,7 +1910,7 @@ _EOF_
 # scaffold-based assembly
 # filter net for synteny and create syntenic net mafs
     $bossScript->add(<<_EOF_
-netFilter -syn $tDb.$qDb.net | gzip -c > $tDb.$qDb.syn.net.gz
+netFilter -syn $successFileWithoutPath | gzip -c > $tDb.$qDb.syn.net.gz
 netToAxt $tDb.$qDb.syn.net.gz $tDb.$qDb.all.chain.gz \\
     $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} stdout \\
   | axtSort stdin stdout \\
@@ -1997,6 +1934,28 @@ _EOF_
 #$opt_debug = 1;
 
 &checkOptions();
+
+# initializations depending on the cluster type
+$clusterType = $opt_clusterType;
+# first, check if clusterType is specified
+die "ERROR: you have to specify -clusterType parameter. Should be either genome or madmax\n" if ($clusterType eq "");
+# second check if clusterType is either genome or madmax
+die "ERROR: -clusterType must be either genome or madmax. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "madmax")) );
+# third check if the script is executed at the given $clusterType
+die "ERROR: you gave clusterType $clusterType but you execute the code on $ENV{'HOSTNAME'}\n" if ($clusterType ne $ENV{'HOSTNAME'});
+
+#customize the $fileServer and $workhorse and $hub variable depending upon the clusterType:
+if ($clusterType eq 'genome'){
+    $fileServer = $fileServerGenome;
+    $workhorse = $workhorseGenome;
+	 $hub = $bigClusterHub;
+}elsif($clusterType eq 'madmax'){
+    $workhorse = $workhorseLSF;
+    $fileServer = $fileServerLSF;
+    $hub = $bigClusterLSF;
+}
+print "FILESERVER: $fileServer  WORKHORSE $workhorse  HUB $hub\n";
+
 
 &usage(1) if (scalar(@ARGV) != 1);
 $secondsStart = `date "+%s"`;
@@ -2081,22 +2040,6 @@ if (! -e "$buildDir/DEF") {
   &HgAutomate::run("cp $DEF $buildDir/DEF");
 }
 
-#$fileServer = &HgAutomate::chooseFileServer($opt_swap ? $swapDir : $buildDir);
-# overwrite --> always take hoxa (otherwise you get hoxa5 or hoxa28, etc and then it fails because your /afs/ home is not valid 
-
-#customize the $fileServer variable depending upon the clusterType:
-$clusterType = $opt_clusterType;
-die "ERROR: you gave clusterType $clusterType but you execute the code on $ENV{'HOSTNAME'}\n" if ($clusterType ne $ENV{'HOSTNAME'});
-
-
-if ($clusterType eq 'genome'){
-    $fileServer = $fileServerGenome;
-    $workhorse = $workhorseGenome;
-    print "FILESERVER: $fileServer  WORKHORSE $workhorse\n";
-}elsif($clusterType eq 'madmax'){
-    $workhorse = $workhorseLSF;
-    $fileServer = $fileServerLSF;
-}
  
 # When running -swap, swapGlobals() happens at the end of the chainMerge step.
 # However, if we also use -continue with some step later than chainMerge, we
