@@ -40,7 +40,8 @@ SCRIPT_FILES = \
 	simplePartition.pl \
 	partitionSequence.pl \
 	updateIgtc.pl \
-	unigene.csh
+	unigene.csh\
+	fileServer
 
 all: mkDir libFiles $(SCRIPT_FILES:%=%.all)
 
