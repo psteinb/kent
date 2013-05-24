@@ -21,6 +21,7 @@
 use Getopt::Long;
 use warnings;
 use strict;
+use diagnostics;
 use FindBin qw($Bin);
 use lib "$Bin";
 use HgAutomate;
@@ -30,9 +31,9 @@ use HgStepManager;
 # Hardcoded paths/command sequences:
 
 print "BIN: $Bin\n";
-my $getFileServer = '/genome/bin/scripts/fileServer';
-my $blastzRunUcsc = "$Bin/blastz-run-ucsc";
-my $partition = "$Bin/partitionSequence.pl";
+my $getFileServer = 'fileServer';
+my $blastzRunUcsc = "blastz-run-ucsc";
+my $partition = "partitionSequence.pl";
 my $clusterLocal = '/scratch/tmp';
 my $clusterSortaLocal = '/scratch/tmp';
 my @clusterNAS = ('/scratch/tmp');
@@ -58,6 +59,7 @@ use vars qw/
     $opt_inclHap
     $opt_noLoadChainSplit
     $opt_loadChainSplit
+    $opt_clusterType
     /;
 
 # Specify the steps supported with -continue / -stop:
@@ -80,8 +82,15 @@ my $stepper = new HgStepManager(
 # Option defaults:
 my $bigClusterHub = 'genome';
 my $smallClusterHub = 'genome';
-my $dbHost = 'genome';
-my $workhorse = 'genome';
+my $dbHost = 'genome.pks.mpg.de';
+my $workhorseGenome = 'genome';
+my $fileServerGenome= 'genome';
+
+my $bigClusterLSF = 'madmax';
+my $smallClusterLSF = 'madmax';
+my $workhorseLSF = 'madmax';
+my $fileServerLSF = 'madmax';
+
 my $defaultChainLinearGap = "loose";
 my $defaultChainMinScore = "1000";	# from axtChain itself
 my $defaultTRepeats = "";		# for netClass option tRepeats
@@ -90,7 +99,9 @@ my $defaultSeq1Limit = 30;
 my $defaultSeq2Limit = 100;
 my $filterPsl = 0;			# flag for filtering psls for seq identity and entropy
 my $patchChains = 0;			# flag for patching chains
-
+my $workhorse = "";
+my $fileServer = "";
+  
 sub usage {
   # Usage / help / self-documentation:
   my ($status, $detailed) = @_;
@@ -103,6 +114,7 @@ options:
 ";
   print STDERR $stepper->getOptionHelp();
 print STDERR <<_EOF_
+    -clusterType	  MANDATORY: Specify the clusterType as either genome or madmax
     -blastzOutRoot dir    Directory path where outputs of the blastz cluster
                           run will be stored.  By default, they will be
                           stored in the $HgAutomate::clusterData build directory , but
@@ -250,7 +262,7 @@ BLASTZ_Q=$HgAutomate::clusterData/blastz/HoxD55.q
 
 # Globals:
 my %defVars = ();
-my ($DEF, $tDb, $qDb, $QDb, $isSelf, $selfSplit, $buildDir, $fileServer);
+my ($DEF, $tDb, $qDb, $QDb, $isSelf, $selfSplit, $buildDir,$paraHub,$hub,$bsubHub,$clusterRun,$paraRun,$paraReChain,$paraNetChain,$clusterType);
 my ($swapDir, $splitRef, $inclHap, $secondsStart, $secondsEnd);
 
 sub isInDirList {
@@ -293,7 +305,8 @@ sub checkOptions {
                       "noDbNameCheck",
                       "inclHap",
                       "noLoadChainSplit",
-                      "loadChainSplit"
+                      "loadChainSplit",
+		      "clusterType=s"
 		     );
   &usage(1) if (!$ok);
   &usage(0, 1) if ($opt_help);
@@ -492,6 +505,7 @@ sub checkDef {
 sub doPartition {
   # Partition the sequence up before blastz.
   my $paraHub = $bigClusterHub;
+  my $bsubHub= $bigClusterLSF;
   my $runDir = "$buildDir/run.blastz";
   my $targetList = "$tDb.lst";
   my $queryList = $isSelf ? $targetList :
@@ -522,12 +536,22 @@ sub doPartition {
      "$partition $defVars{SEQ2_CHUNK} $defVars{SEQ2_LAP} " .
      "$seq2Dir $seq2Len $seq2Limit " .
      "$qPartDir > $queryList");
+
+##Depending upon the clustertype the $hub variable will either madmax or genome
+  if ($clusterType eq "genome") { 
+   $hub = $paraHub;
+   $fileServer = $fileServerGenome;	
+  } elsif ($clusterType eq "madmax") {
+    $hub = $bsubHub;
+    $fileServer = $fileServerLSF;
+  }
+
   &HgAutomate::mustMkdir($runDir);
   my $whatItDoes =
 "It computes partitions of target and query sequences into chunks of the
 specified size for the blastz cluster run.  The actual splitting of
 sequence is not performed here, but later on by blastz cluster jobs.";
-  my $bossScript = new HgRemoteScript("$runDir/doPartition.csh", $paraHub,
+  my $bossScript = new HgRemoteScript("$runDir/doPartition.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 $partitionTargetCmd
@@ -548,6 +572,7 @@ _EOF_
 sub doBlastzClusterRun {
   # Set up and perform the big-cluster blastz run.
   my $paraHub = $bigClusterHub;
+  my $bsubHub = $bigClusterLSF;
   my $runDir = "$buildDir/run.blastz";
   my $targetList = "$tDb.lst";
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : '../psl';
@@ -574,19 +599,47 @@ sub doBlastzClusterRun {
     die "doBlastzClusterRun: there's no query list file" .
         "so start over without the -continue align.\n";
   }
+my $checkOutExists ="$outRoot" . '/$(file1)/$(file1)_$(file2).psl';
+if($clusterType eq "genome"){
+$checkOutExists = "{check out exists "."$outRoot" . '/$(file1)/$(file1)_$(file2).psl }';
+}
+
+  
   my $templateCmd = ("$blastzRunUcsc -outFormat psl " .
 		     ($isSelf ? '-dropSelf ' : '') .
 		     '$(path1) $(path2) ../DEF ' .
-		     '{check out exists ' .
-		     $outRoot . '/$(file1)/$(file1)_$(file2).psl }');
+		     $checkOutExists);
   &HgAutomate::makeGsub($runDir, $templateCmd);
-  `touch "$runDir/para_hub_$paraHub"`;
+
+ #customize the $hub variable depending upon the clusterType: 
+ if ($clusterType eq "genome") {
+   $hub = $paraHub;
+   $fileServer = $fileServerGenome; 
+  } elsif ($clusterType eq "madmax") {
+    $hub = $bsubHub;
+    $fileServer = $fileServerLSF; 
+  }
+ 
+  `touch "$runDir/para_hub_$hub"`;
+ 
+ #customize the $myparaRun variable depending upon the clusterType: 
+  my $myParaRun = $HgAutomate::paraRun;
+  if ($clusterType eq "madmax") {
+	$myParaRun = "
+para.pl make blastz_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl check blastz_$tDb$qDb\n
+para.pl time blastz_$tDb$qDb > run.time\n
+cat run.time\n";
+}
+
   my $whatItDoes = "It sets up and performs the big cluster blastz run.";
-  my $bossScript = new HgRemoteScript("$runDir/doClusterRun.csh", $paraHub,
+  
+  my $bossScript = new HgRemoteScript("$runDir/doClusterRun.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
+## Never indent the content of the add() function!
   $bossScript->add(<<_EOF_
 $HgAutomate::gensub2 $targetList $queryList gsub jobList
-$HgAutomate::paraRun
+$myParaRun
 _EOF_
     );
   $bossScript->execute();
@@ -599,6 +652,7 @@ sub doCatRun {
   # concatenated into per-target-sequence in the next step after this one -- 
   # chaining.
   my $paraHub = $smallClusterHub;
+  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/run.cat";
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
@@ -615,10 +669,25 @@ sub doCatRun {
     die "doCatRun: looks like previous stage was not successful (can't find " .
       "$successFile).\n";
   }
+  
+  my $checkOutExists =" ../pslParts/\$(file1).psl.gz";
+if($clusterType eq "genome"){
+$checkOutExists = "{check out exists ../pslParts/\$(file1).psl.gz } ";
+}
   &HgAutomate::mustMkdir($runDir);
   &HgAutomate::makeGsub($runDir,
-      "./cat.csh \$(path1) {check out exists ../pslParts/\$(file1).psl.gz}");
-  `touch "$runDir/para_hub_$paraHub"`;
+      "./cat.csh \$(path1) $checkOutExists");
+ 
+ #customize the $hub variable depending upon the clusterType:  
+if ($clusterType eq "genome") {
+   $hub = $paraHub;
+   $fileServer = $fileServerGenome; 
+  } elsif ($clusterType eq "madmax") {
+    $hub = $bsubHub;
+    $fileServer = $fileServerLSF; 
+  }
+  
+ `touch "$runDir/para_hub_$hub"`;
 
   my $outRoot = $opt_blastzOutRoot ? "$opt_blastzOutRoot/psl" : '../psl';
 
@@ -628,12 +697,21 @@ sub doCatRun {
 find $outRoot/\$1/ -name "*.psl" | xargs cat | gzip -c > \$2
 _EOF_
   ;
-  close($fh);
+  close($fh); 
 
+#customize the $myparaRun variable depending upon the clusterType: 
+my $myParaRun = $HgAutomate::paraRun;
+  if ($clusterType eq "madmax") {
+	$myParaRun = "
+para.pl make catRun_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl check catRun_$tDb$qDb\n
+para.pl time catRun_$tDb$qDb > run.time\n
+cat run.time\n";
+}
   my $whatItDoes =
 "It sets up and performs a small cluster run to concatenate all files in
 each subdirectory of $outRoot into a per-target-chunk file.";
-  my $bossScript = new HgRemoteScript("$runDir/doCatRun.csh", $paraHub,
+  my $bossScript = new HgRemoteScript("$runDir/doCatRun.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 (cd $outRoot; find . -maxdepth 1 -type d | grep '^./') \\
@@ -641,7 +719,7 @@ each subdirectory of $outRoot into a per-target-chunk file.";
 chmod a+x cat.csh
 $HgAutomate::gensub2 tParts.lst single gsub jobList
 mkdir ../pslParts
-$HgAutomate::paraRun
+$myParaRun
 _EOF_
     );
   $bossScript->execute();
@@ -660,6 +738,7 @@ sub doFilterPsl {
   # Do a cluster to filter each psl file for seq identity and entropy.
   # The seq identity and entropy parameters are read from the DEF file. 
   my $paraHub = $smallClusterHub;
+  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/run.filterPsl";
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
@@ -676,9 +755,23 @@ sub doFilterPsl {
     die "doFilterPsl: looks like previous stage was not successful (can't find " .
       "$successFile).\n";
   }
+  
+  my $checkOutExists = " ../pslPartsFiltered/\$(file1)";
+if($clusterType eq "genome"){
+$checkOutExists = "{check out exists" . " ../pslPartsFiltered/\$(file1)}";
+}
   &HgAutomate::mustMkdir($runDir);
-  &HgAutomate::makeGsub($runDir, "./filterPsl.csh ../pslParts/\$(file1) {check out exists ../pslPartsFiltered/\$(file1)}");
-  `touch "$runDir/para_hub_$paraHub"`;
+  &HgAutomate::makeGsub($runDir, "./filterPsl.csh ../pslParts/\$(file1) $checkOutExists");
+#customize the $hub variable depending upon the clusterType:   
+  if ($clusterType eq "genome") {
+   $hub = $paraHub;
+   $fileServer = $fileServerGenome; 
+  } elsif ($clusterType eq "madmax") {
+   $hub = $bsubHub;
+   $fileServer = $fileServerLSF; 
+  } 
+  
+  `touch "$runDir/para_hub_$hub"`;
 
   my $fh = &HgAutomate::mustOpen(">$runDir/filterPsl.csh");
   print $fh <<_EOF_
@@ -687,17 +780,26 @@ zcat \$1 | filterPslIdentityEntropy.py /dev/stdin $defVars{'SEQ_IDENT'} $defVars
 _EOF_
   ;
   close($fh);
-
+#customize the $myparaRun variable depending upon the clusterType: 
+my $myParaRun = $HgAutomate::paraRun;
+  if ($clusterType eq "madmax") {
+	$myParaRun = "
+para.pl make filterPsl_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl check filterPsl_$tDb$qDb\n
+para.pl time filterPsl_$tDb$qDb > run.time\n
+cat run.time\n";
+}
+  
   my $whatItDoes =
 "It sets up and performs a cluster run to filter all psl files in $buildDir/pslParts and outputs to $buildDir/pslPartsFiltered.";
-  my $bossScript = new HgRemoteScript("$runDir/doFilterPsl.csh", $paraHub,
+  my $bossScript = new HgRemoteScript("$runDir/doFilterPsl.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 (cd $buildDir/pslParts; find . -maxdepth 1 -type f | grep '.psl.gz' ) > tParts.lst
 chmod a+x filterPsl.csh
 $HgAutomate::gensub2 tParts.lst single gsub jobList
 mkdir ../pslPartsFiltered
-$HgAutomate::paraRun
+$myParaRun
 _EOF_
     );
   $bossScript->execute();
@@ -756,6 +858,7 @@ sub makePslPartsLst {
 sub doChainRun {
   # Do a small cluster run to chain alignments to each target sequence.
   my $paraHub = $smallClusterHub;
+  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/axtChain/run";
   # First, make sure we're starting clean.
   if (-e "$runDir/run.time") {
@@ -774,9 +877,23 @@ sub doChainRun {
       "find $successFile).\n";
   }
   &HgAutomate::mustMkdir($runDir);
+ 
+  my $checkOutExists = " chain/\$(file1).chain";
+if($clusterType eq "genome"){
+$checkOutExists = " {check out line+ chain/\$(file1).chain}";
+}
+
   &HgAutomate::makeGsub($runDir,
-	       "./chain.csh \$(file1) {check out line+ chain/\$(file1).chain}");
-  `touch "$runDir/para_hub_$paraHub"`;
+	       "./chain.csh \$(file1) $checkOutExists");
+#customize the $hub variable depending upon the clusterType:   
+if ($clusterType eq "genome") {
+   $hub = $paraHub;
+   $fileServer = $fileServerGenome; 
+  } elsif ($clusterType eq "madmax") {
+   $hub = $bsubHub;
+   $fileServer = $fileServerLSF; 
+  }	      
+  `touch "$runDir/para_hub_$hub"`;
 
   my $seq1Dir = $defVars{'SEQ1_CTGDIR'} || $defVars{'SEQ1_DIR'};
   my $seq2Dir = $defVars{'SEQ2_CTGDIR'} || $defVars{'SEQ2_DIR'};
@@ -825,17 +942,26 @@ _EOF_
   close($fh);
 
   &makePslPartsLst();
+#customize the $myparaRun variable depending upon the clusterType: 
+my $myParaRun = $HgAutomate::paraRun;
+  if ($clusterType eq "madmax") {
+	$myParaRun = "
+para.pl make chainRun_$tDb$qDb jobList -allowSpecialCharJobs -q long\n
+para.pl check chainRun_$tDb$qDb\n
+para.pl time chainRun_$tDb$qDb > run.time\n
+cat run.time\n";
+}
 
   my $whatItDoes =
 "It sets up and performs a small cluster run to chain all alignments
 to each target sequence.";
-  my $bossScript = new HgRemoteScript("$runDir/doChainRun.csh", $paraHub,
+  my $bossScript = new HgRemoteScript("$runDir/doChainRun.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 chmod a+x chain.csh
 $HgAutomate::gensub2 pslParts.lst single gsub jobList
 mkdir chain liftedChain
-$HgAutomate::paraRun
+$myParaRun
 rmdir liftedChain
 _EOF_
   );
@@ -866,6 +992,7 @@ sub postProcessChains {
     die "postProcessChains: looks like previous stage was not successful " .
       "(can't find $successFile).\n";
   }
+ 
   my $cmd="$HgAutomate::runSSH $workhorse nice ";
   $cmd .= "'find $runDir/run/chain -name \"*.chain\" ";
   $cmd .= "| chainMergeSort -inputList=stdin ";
@@ -914,6 +1041,7 @@ sub swapChains {
      "later stage, or move aside/remove $runDir/all.chain[.gz] and run again.\n";
   }
   # Main routine already made sure that $buildDir/axtChain/all.chain is there.
+ 
   &HgAutomate::run("$HgAutomate::runSSH $workhorse nice " .
        "'chainSwap $buildDir/axtChain/$inChain stdout " .
        "| nice chainSort stdin stdout " .
@@ -968,6 +1096,7 @@ sub doPatchChains {
   # Do a cluster run to patch the all.chains and filter the new local alignments
   # Then rebuild the patchedChains from the all and newly-added psl entries.
   my $paraHub = $smallClusterHub;
+  my $bsubHub = $smallClusterLSF;
   my $runDir = "$buildDir/run.patchChain";
 
   # First, make sure we're starting clean.
@@ -987,7 +1116,15 @@ sub doPatchChains {
   }
 
   &HgAutomate::mustMkdir($runDir);
-  `touch "$runDir/para_hub_$paraHub"`;
+  #customize the $hub variable depending upon the clusterType:
+  if ($clusterType eq "genome") {
+   $hub = $paraHub;
+   $fileServer = $fileServerGenome; 
+  } elsif ($clusterType eq "madmax") {
+   $hub = $bsubHub;
+   $fileServer = $fileServerLSF; 
+  }
+  `touch "$runDir/para_hub_$hub"`;
 
   # filtering parameters to be added if the flag FILTERPSL=1
   my $filterParameters = ""; 
@@ -1031,12 +1168,19 @@ axtChain -psl -verbose=0 $matrix $minScore $linearGap \$1 \\
 _EOF_
     ;
   close($fh);
-
-
-  
-  my $whatItDoes =
+#customize the $myparaRun variable depending upon the clusterType:
+my $myParaRun = $HgAutomate::paraRun;
+  if ($clusterType eq "madmax") {
+	$myParaRun = "
+para.pl make patchChain_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl check patchChain_$tDb$qDb\n
+para.pl time patchChain_$tDb$qDb > run.time\n
+cat run.time\n";
+}
+ 
+ my $whatItDoes =
 "It sets up and performs a cluster run to patch chains and rebuild chains using the old and new alignments. ";
-  my $bossScript = new HgRemoteScript("$runDir/doPatchChain.csh", $paraHub,
+  my $bossScript = new HgRemoteScript("$runDir/doPatchChain.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # first run patchChain to create the cluster run joblist
@@ -1049,7 +1193,7 @@ $cat $buildDir/axtChain/$chain | \\
 # create the output dir (we test above if that dir exist, so no mkdir -p is necessary)
 mkdir $outputDir
 
-$HgAutomate::paraRun
+$myParaRun
 
 # concatenate all new results
 find $outputDir -name \"*$filterFlag.psl\" | xargs -i cat {} > patched$filterFlag.psl
@@ -1070,6 +1214,20 @@ _EOF_
 ###########
 # see if we can afford to run per-chrom chaining jobs (depends on number of reference chroms)
 my $numRefChroms = `wc -l < $defVars{SEQ1_LEN}`; chomp($numRefChroms);
+
+my $paraReChain = "
+para make jobListReChain\n
+para check\n
+para time > run.timeReChain\n
+cat run.timeReChain\n";
+   if ($clusterType eq "madmax") {
+	$paraReChain = "
+para.pl make ReChain_$tDb$qDb jobListReChain -allowSpecialCharJobs -q long\n
+para.pl check ReChain_$tDb$qDb\n
+para.pl time ReChain_$tDb$qDb > run.timeReChain\n
+cat run.time\n";
+}
+
 if ($numRefChroms < 4096) {
   print "--> run chaining on ref-chrom-split psl files (reference has $numRefChroms chromsomes)\n"; 
   $bossScript->add(<<_EOF_
@@ -1086,10 +1244,7 @@ zcat $outputDir/oldAndPatched.psl.gz | egrep "^##" -v | pslSplitOnTarget stdin p
 mkdir chain
 chmod +x rechain.csh
 find pslOnTarget -name \"*.psl\" | sed 's/.psl\$//g' | sed 's/pslOnTarget\\///g' | awk '{print "./rechain.csh pslOnTarget/"\$1".psl chain/"\$1".chain"}' > jobListReChain
-para make jobListReChain
-para check
-para time > run.timeReChain
-cat run.timeReChain
+$paraReChain
 
 # merge
 find chain -name \"*.chain\" | chainMergeSort -inputList=stdin | gzip -c > $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz
@@ -1107,10 +1262,7 @@ _EOF_
 chmod +x rechain.csh
 
 echo "./rechain.csh $outputDir/oldAndPatched.psl.gz $buildDir/axtChain/$tDb.$qDb.allpatched.chain" > jobListReChain
-para make jobListReChain
-para check
-para time > run.timeReChain
-cat run.timeReChain
+$paraReChain
 
 # gzip
 gzip $buildDir/axtChain/$tDb.$qDb.allpatched.chain
@@ -1131,6 +1283,8 @@ sub netChains {
   # Don't do this for self alignments.
   return if ($isSelf);
   my $runDir = "$buildDir/axtChain";
+  #my $runNet = "$buildDir/run.net";
+  
   # First, make sure we're starting clean.
   if (-d "$buildDir/mafNet") {
     die "netChains: looks like this was run successfully already " .
@@ -1155,13 +1309,24 @@ sub netChains {
 	# use the allpatched.chain later
 	$chain = "$buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz";
   }
-  
-  my $whatItDoes =
-"It generates nets (without repeat/gap stats -- those are added later on
-$dbHost) from chains, and generates axt, maf and .over.chain from the nets.";
-  my $bossScript = new HgRemoteScript("$runDir/netChains.csh", $workhorse,
-				      $runDir, $whatItDoes, $DEF);
-  $bossScript->add(<<_EOF_
+
+  #customise the $paraNetChain depending upon the clusterType and create joblist file to run net step on  MADMAX cluster ONLY
+  my $paraNetChain='./netChains.csh';
+  if ($clusterType eq "madmax"){
+  	$paraNetChain = "
+para.pl make netChain_$tDb$qDb jobList -allowSpecialCharJobs -q long\n
+para.pl check netChain_$tDb$qDb\n
+para.pl time netChain_$tDb$qDb > run.time\n
+cat run.time\n";
+   open FILE, ">$runDir/jobList" or die $!; 
+   print FILE './netChains.csh'."\n";
+   close FILE;
+ }
+
+  #Creating a netChains.csh script that will actually exceute the netting step
+  my $fh = &HgAutomate::mustOpen(">$runDir/netChains.csh");
+  print $fh <<_EOF_
+#!/bin/csh -ef
 # Make nets ("noClass", i.e. without rmsk/class stats which are added later):
 chainPreNet $inclHap $chain $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} stdout \\
 | chainNet $inclHap stdin -minSpace=1 $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} stdout /dev/null \\
@@ -1170,22 +1335,20 @@ chainPreNet $inclHap $chain $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} stdout \\
 # Make liftOver chains:
 netChainSubset -verbose=0 noClass.net $chain stdout \\
 | chainStitchId stdin stdout | gzip -c > $tDb.$qDb.over.chain.gz
-
 _EOF_
-    );
+  ;
   my $seq1Dir = $defVars{'SEQ1_DIR'};
   my $seq2Dir = $defVars{'SEQ2_DIR'};
   if ($splitRef) {
   	# if we have patched chains, we need to remove the axtChain/chain dir and split the allpatched chains
 	if ($patchChains == 1) {
-		$bossScript->add(<<_EOF_
+  		print $fh <<_EOF_  
 rm -rf $runDir/chain
-chainSplit $runDir/chain $chain
+chainSplit $runDir/chain $chain  
 _EOF_
-	);
-	}
-
-    $bossScript->add(<<_EOF_
+ ;
+ 	}  
+  	print $fh <<_EOF_ 
 # Make axtNet for download: one .axt per $tDb seq.
 netSplit noClass.net net
 cd ..
@@ -1196,7 +1359,6 @@ netToAxt \$f axtChain/chain/\$f:t:r.chain \\
   | axtSort stdin stdout \\
   | gzip -c > axtNet/\$f:t:r.$tDb.$qDb.net.axt.gz
 end
-
 # Make mafNet for multiz: one .maf per $tDb seq.
 mkdir mafNet
 foreach f (axtNet/*.$tDb.$qDb.net.axt.gz)
@@ -1204,11 +1366,12 @@ foreach f (axtNet/*.$tDb.$qDb.net.axt.gz)
         $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
         stdout \\
   | gzip -c > mafNet/\$f:t:r:r:r:r:r.maf.gz
-end
+end    
 _EOF_
-      );
-  } else {
-    $bossScript->add(<<_EOF_
+;
+  } 
+  else {
+    print $fh <<_EOF_ 
 # Make axtNet for download: one .axt for all of $tDb.
 mkdir ../axtNet
 netToAxt -verbose=0 noClass.net $chain \\
@@ -1221,11 +1384,24 @@ mkdir ../mafNet
 axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. ../axtNet/$tDb.$qDb.net.axt.gz \\
   $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
   stdout \\
-| gzip -c > ../mafNet/$tDb.$qDb.net.maf.gz
+| gzip -c > ../mafNet/$tDb.$qDb.net.maf.gz    
 _EOF_
-      );
-  }
-
+    ;      
+  }  
+  close($fh);
+  
+  my $whatItDoes =
+"It generates nets (without repeat/gap stats -- those are added later on
+$dbHost) from chains, and generates axt, maf and .over.chain from the nets.";
+  my $bossScript = new HgRemoteScript("$runDir/doNetChains.csh", $workhorse,
+				      $runDir, $whatItDoes, $DEF);
+  
+  $bossScript->add(<<_EOF_
+chmod a+x netChains.csh
+$paraNetChain
+_EOF_
+     ); 
+ 
   $bossScript->execute();
 }	#	sub netChains {}
 
@@ -1251,7 +1427,7 @@ sub loadUp {
   my $whatItDoes =
 "It loads the chain tables into $tDb, adds gap/repeat stats to the .net file,
 and loads the net table.";
-  my $bossScript = new HgRemoteScript("$runDir/loadUp.csh", $dbHost,
+  my $bossScript = new HgRemoteScript("$runDir/loadUp.csh", $workhorse,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # Load chains:
@@ -1278,17 +1454,30 @@ _EOF_
       );
   }
   if (! $isSelf) {
-  my $tRepeats = $opt_tRepeats ? "-tRepeats=$opt_tRepeats" : $defaultTRepeats;
-  my $qRepeats = $opt_qRepeats ? "-qRepeats=$opt_qRepeats" : $defaultQRepeats;
-  if ($opt_swap) {
-    $tRepeats = $opt_qRepeats ? "-tRepeats=$opt_qRepeats" : $defaultQRepeats;
-    $qRepeats = $opt_tRepeats ? "-qRepeats=$opt_tRepeats" : $defaultTRepeats;
-  }
-    $bossScript->add(<<_EOF_
+  	my $tRepeats = $opt_tRepeats ? "-tRepeats=$opt_tRepeats" : $defaultTRepeats;
+  	my $qRepeats = $opt_qRepeats ? "-qRepeats=$opt_qRepeats" : $defaultQRepeats;
+  	if ($opt_swap) {
+    		$tRepeats = $opt_qRepeats ? "-tRepeats=$opt_qRepeats" : $defaultQRepeats;
+    	$qRepeats = $opt_tRepeats ? "-qRepeats=$opt_tRepeats" : $defaultTRepeats;
+  	}
+
+ 	if ($clusterType eq "madmax") {
+   		$bossScript->add(<<_EOF_
+# Add gap/repeat stats to the net file using database tables:
+# create a tmp dir on genome first
+# in that dir we will scp the noClass.net and run netClass
+# then we copy the resulting net file back and delete that tmp dir		
+set remoteTempDir=`ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' genome.pks.mpg.de nice mktemp -d`
+echo "created remote temp dir \$remoteTempDir on genome.pks.mpg.de" 
+cd $runDir
+scp noClass.net genome.pks.mpg.de:\$remoteTempDir
+ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' genome.pks.mpg.de nice netClass -verbose=0 -noAr \$remoteTempDir/noClass.net $tDb $qDb \$remoteTempDir/$tDb.$qDb.net
+scp genome.pks.mpg.de:\$remoteTempDir/$tDb.$qDb.net .
+ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' genome.pks.mpg.de nice rm -rf \$remoteTempDir
 
 # Add gap/repeat stats to the net file using database tables:
-cd $runDir
-netClass -verbose=0 $tRepeats $qRepeats -noAr noClass.net $tDb $qDb $tDb.$qDb.net
+#cd $runDir
+#netClass -verbose=0 $tRepeats $qRepeats -noAr noClass.net $tDb $qDb $tDb.$qDb.net
 
 # Load nets:
 #netFilter -minGap=10 $tDb.$qDb.net \\
@@ -1299,7 +1488,17 @@ netClass -verbose=0 $tRepeats $qRepeats -noAr noClass.net $tDb $qDb $tDb.$qDb.ne
 #cat fb.$tDb.$QDbLink.txt
 _EOF_
       );
+  	# on genome: just execute netClass    
+  	}else{
+	    $bossScript->add(<<_EOF_
+# Add gap/repeat stats to the net file using database tables:
+cd $runDir
+netClass -verbose=0 $tRepeats $qRepeats -noAr noClass.net $tDb $qDb $tDb.$qDb.net
+_EOF_
+); 
+  	}
   }
+  
   $bossScript->execute();
 # maybe also peek in trackDb and see if entries need to be added for chain/net
 }	#	sub loadUp {}
@@ -1309,6 +1508,7 @@ sub makeDownloads {
   # Compress the netClassed .net for download (other files should have been
   # compressed already).
   my $runDir = "$buildDir/axtChain";
+  
   if (-e "$runDir/$tDb.$qDb.net") {
     &HgAutomate::run("$HgAutomate::runSSH $fileServer nice " .
 	 "gzip $runDir/$tDb.$qDb.net");
@@ -1681,6 +1881,7 @@ sub cleanup {
   my $rootCanal = ($opt_blastzOutRoot ?
 		   "rmdir --ignore-fail-on-non-empty $opt_blastzOutRoot" :
 		   '');
+ 
   my $whatItDoes =
 "It cleans up files after a successful blastz/chain/net/install series.
 It uses rm -f so failures should be ignored (e.g. if a partial cleanup has
@@ -1716,7 +1917,7 @@ _EOF_
 
 sub doSyntenicNet {
   # Create syntenic net mafs for multiz 
-  my $whatItDoes =
+   my $whatItDoes =
 "It filters the net for synteny and creates syntenic net MAF files for 
 multiz. Use this option when the query genome is high-coverage and not
 too distant from the reference.  Suppressed unless -syntenicNet is included.";
@@ -1724,6 +1925,7 @@ too distant from the reference.  Suppressed unless -syntenicNet is included.";
     return;
   }
   my $runDir = "$buildDir/axtChain";
+
   # First, make sure we're starting clean.
   my $successDir = "$buildDir/mafSynNet";
   if (-e $successDir) {
@@ -1732,29 +1934,36 @@ too distant from the reference.  Suppressed unless -syntenicNet is included.";
           "move aside/remove $successDir and run again.\n";
   }
   # Make sure previous stage was successful.
-  my $successFile = "$runDir/$tDb.$qDb.net.gz";
+  
+  #if (-e "$runDir/$tDb.$qDb.net" || -e "$runDir/$tDb.$qDb.net.gz") {
+   #$successFile = "$runDir/$tDb.$qDb.net.gz";
+  #} else {
+   #$successFile = "$runDir/$tDb.$qDb.net";
+  #}
+  my $successFile = "$runDir/$tDb.$qDb.net";
   if (! -e "$successFile" && ! $opt_debug) {
       die "doSyntenicNet: looks like previous stage was not successful " .
           "(can't find $successFile).\n";
   }
+  
   my $bossScript = new HgRemoteScript("$runDir/netSynteny.csh", $workhorse,
                                     $runDir, $whatItDoes, $DEF);
   if ($splitRef) {
     $bossScript->add(<<_EOF_
 # filter net for synteny and create syntenic net mafs
-netFilter -syn $tDb.$qDb.net.gz  \\
+netFilter -syn $tDb.$qDb.net  \\
     | netSplit stdin synNet
 chainSplit chain $tDb.$qDb.all.chain.gz
 cd ..
 mkdir $successDir
 foreach f (axtChain/synNet/*.net)
-  netToAxt \$f axtChain/chain/\$f:t:r.chain \\
+netToAxt \$f axtChain/chain/\$f:t:r.chain \\
     $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} stdout \\
   | axtSort stdin stdout \\
   | axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. stdin \\
     $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
     stdout \\
-| gzip -c > mafSynNet/\$f:t:r:r:r:r:r.maf.gz
+| gzip -c > mafSynNet/\$f:t:r:r:r:r:r.maf
 end
 rm -fr $runDir/synNet
 rm -fr $runDir/chain
@@ -1764,7 +1973,7 @@ _EOF_
 # scaffold-based assembly
 # filter net for synteny and create syntenic net mafs
     $bossScript->add(<<_EOF_
-netFilter -syn $tDb.$qDb.net.gz | gzip -c > $tDb.$qDb.syn.net.gz
+netFilter -syn $tDb.$qDb.net | gzip -c > $tDb.$qDb.syn.net.gz
 netToAxt $tDb.$qDb.syn.net.gz $tDb.$qDb.all.chain.gz \\
     $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} stdout \\
   | axtSort stdin stdout \\
@@ -1874,10 +2083,21 @@ if (! -e "$buildDir/DEF") {
 
 #$fileServer = &HgAutomate::chooseFileServer($opt_swap ? $swapDir : $buildDir);
 # overwrite --> always take hoxa (otherwise you get hoxa5 or hoxa28, etc and then it fails because your /afs/ home is not valid 
-$fileServer = "genome";
-print "FILESERVER: $fileServer\n";
+
+#customize the $fileServer variable depending upon the clusterType:
+$clusterType = $opt_clusterType;
+die "ERROR: you gave clusterType $clusterType but you execute the code on $ENV{'HOSTNAME'}\n" if ($clusterType ne $ENV{'HOSTNAME'});
 
 
+if ($clusterType eq 'genome'){
+    $fileServer = $fileServerGenome;
+    $workhorse = $workhorseGenome;
+    print "FILESERVER: $fileServer  WORKHORSE $workhorse\n";
+}elsif($clusterType eq 'madmax'){
+    $workhorse = $workhorseLSF;
+    $fileServer = $fileServerLSF;
+}
+ 
 # When running -swap, swapGlobals() happens at the end of the chainMerge step.
 # However, if we also use -continue with some step later than chainMerge, we
 # need to call swapGlobals before executing the remaining steps.
@@ -1904,4 +2124,3 @@ HgAutomate::verbose(1,
   if ($stepper->stepPrecedes('net', $stepper->getStopStep()));
 HgAutomate::verbose(1,
 	"\n\n");
-
