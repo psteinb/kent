@@ -275,7 +275,7 @@ sub unpackForBlastz {
     # Don't use twoBitToFa's range extraction capabilities -- that 
     # confuses blastz/normalizeLav.  Just extract the whole thing as 
     # fa and tell blastz what range we're using:
-    &run("/genome/bin/$machtype/twoBitToFa $fname:$seq $local");
+    &run("twoBitToFa $fname:$seq $local");
     $local .= &blastzRangeSpec($start, $end);
   } elsif ($fname =~ /\.fa(\.gz)?$/) {
     if ($1) {
