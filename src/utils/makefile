@@ -167,16 +167,18 @@ userAppsB: $(UTILS_APPLIST:%=%.userApps)
 	cd $* && echo $* && $(MAKE)
 
 scripts: $(SCRIPT_FILES:%=%.scripts)
-	chmod +x genePredToBed/genePredToBed;
+#	chmod +x genePredToBed/genePredToBed;
 	rm -f ${SCRIPTS}/genePredToBed;
 	echo cp -p genePredToBed/genePredToBed ${SCRIPTS};
 	@cp -p genePredToBed/genePredToBed ${SCRIPTS};
+	chmod +x ${SCRIPTS}/genePredToBed
 
 %.scripts:
-	chmod +x $*
+#	chmod +x $*
 	rm -f ${SCRIPTS}/$*
 	echo cp -p $* ${SCRIPTS}
 	cp -p $* ${SCRIPTS}
+	chmod +x ${SCRIPTS}/$*
 
 alpha: scripts all
 
