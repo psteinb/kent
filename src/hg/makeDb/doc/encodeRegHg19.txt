@@ -861,21 +861,47 @@ cat > getMetaHuge.csh << 'EOF'
         -cellLetter=cellCodesTop.txt -noLetterOk clusters.target.cfg
     # format is:
     # target   cell[+treatment]+lab+ab  cell_char   file   score_column   normalization   filename
-    hgBedsToBedExps -dupeLetterOk clusters.target.cfg clusters.target.bed clusters.target.exps >&! logs/clusters.target.out &
+    hgBedsToBedExps -dupeLetterOk clusters.target.cfg clusters.target.bed clusters.target.exps >&! \
+                logs/clusters.target.out &
     # 4 dupes:  3 HudsonAlpha (2 protocols), 1 Stanford (2 controls)
     # hand-edit fileCellAbTarget.tab to add V04 and Iggrab to cell field to uniquify
-    regClusterBedExpCfg -noNormalize -useTarget -tabList fileCellAbTarget.uniq.tab \
-        -cellLetter=cellCodesTop.txt -noLetterOk clusters.target.cfg
-    hgBedsToBedExps -dupeLetterOk clusters.target.cfg clusters.target.bed clusters.target.exps >&! logs/clusters.target.out &
-    hgLoadBed hg19 wgEncodeRegTfbsClusteredV5 clusters.target.bed
-    # Read 4385242 elements of size 15 from clusters.target.bed
-    hgLoadSqlTab hg19 wgEncodeRegTfbsCellsV5 ~/kent/src/hg/lib/expRecord.sql clusters.target.exps
-    # too many! must adapt clusterer to merge repetitive items
-    # same inputs as V4 (690 total)
-    hgLoadSqlTab hg19 wgEncodeRegTfbsClusteredInputsV5 \
-        ~/kent/src/hg/lib/clusterInputTrackTable4.sql wgEncodeRegTfbsClusteredInputsV4.tab
 
-    # compare coverage of V2-V5
+    # create cluster config file
+    regClusterBedExpCfg -noNormalize -useTarget -tabList fileCellAbTarget.uniq.tab \
+                -cellLetter=cellCodesTop.txt -noLetterOk clusters.target.cfg
+
+    # next step is the actual clustering, and takes some time (minutes)
+    hgBedsToBedExps -dupeLetterOk clusters.target.cfg clusters.target.bed clusters.target.exps >&! \
+                logs/clusters.target.out &
+    #Loaded 690 records from clusters.target.cfg
+    #Got 690 sources
+    #Got 161 factors
+
+    hgLoadBed hg19 wgEncodeRegTfbsClusteredV6 clusters.target.bed
+    # V5 with separate HA-E2F1 factor: Read 4385242 elements of size 15 from clusters.target.bed
+    # Read 4380444 elements of size 15 from clusters.target.bed
+    hgLoadSqlTab hg19 wgEncodeRegTfbsCellsV6 ~/kent/src/hg/lib/expRecord.sql clusters.target.exps
+
+    # Create inputTrackTable - six columns: <table> <source> <factor> <cell> <treatment> <lab>
+    # For target-based, include antibody in source field
+cat > getTargetInputs.csh << 'EOF'
+    foreach p (`cat $1`)
+        set obj = $p:t:r:r
+        echo -n "$obj\t"
+        # note: strip off treatment=None
+        mdbPrint hg19 -obj=$obj | raToTab stdin -cols=cell,treatment,lab,antibody,target stdout | \
+            perl -wne '($cell, $treat, $lab, $ab, $target) = split; \
+                $source = $cell . "+" . $treat . "+" . $lab . "+" . $ab; \
+                $source =~ s/\+None//; \
+                print $source, "\t", $target, "\t", $ab, "\t", \
+                        $cell, "\t", $treat, "\t", $lab, "\n";'
+    end
+'EOF'
+    csh getTargetInputs.csh peak.lst > wgEncodeRegTfbsClusteredInputsV6.tab
+    hgLoadSqlTab hg19 wgEncodeRegTfbsClusteredInputsV6 \
+        ~/kent/src/hg/lib/clusterInputTrackTable5.sql wgEncodeRegTfbsClusteredInputsV6.tab
+
+    # compare coverage of V2-V6  (V5 is same as 6, except clusters HA-E2F1 as separate target)
     # V2 - current version.  June 2011 TFBS (425 inputs)
     featureBits hg19 -noRandom -enrichment wgEncodeRegDnaseClusteredV2 wgEncodeRegTfbsClusteredV2
     # wgEncodeRegDnaseClusteredV2 13.390%, wgEncodeRegTfbsClusteredV2 7.797%, both 4.706%, cover 35.14%, enrich 4.51x
@@ -895,13 +921,15 @@ cat > getMetaHuge.csh << 'EOF'
     featureBits hg19 -noRandom -enrichment wgEncodeRegDnaseClusteredV2 wgEncodeRegTfbsClusteredV5
     # wgEncodeRegDnaseClusteredV2 13.390%, wgEncodeRegTfbsClusteredV5 13.156%, both 6.690%, cover 49.96%, enrich 3.80x
 
+    # 'V6' - clustered by target. Mar 2012 TFBS, all datasets passing Anshul's qual filter (690)
+    featureBits hg19 -noRandom -enrichment wgEncodeRegDnaseClusteredV2 wgEncodeRegTfbsClusteredV6
+    # wgEncodeRegDnaseClusteredV2 13.390%, wgEncodeRegTfbsClusteredV6 13.156%, both 6.690%, cover 49.96%, enrich 3.80x
+
     featureBits hg19 -noRandom -enrichment wgEncodeRegTfbsClusteredV5 wgEncodeRegDnaseClusteredV2 
     # wgEncodeRegTfbsClusteredV5 13.156%, wgEncodeRegDnaseClusteredV2 13.390%, both 6.690%, cover 50.86%, enrich 3.80x
 
+# V6 is release target -- rename the antibody clustering to V3a, and rename V6 to V3
 
-    # TODO?
-    # Remove dupes "old-style" (pick best quality dataset for each cell/ab, using
-    #   Anshul's quality score) ?
 
 #### GOT HERE ####
 
@@ -1025,4 +1053,26 @@ cat > getMetaHuge.csh << 'EOF'
     hgLoadBed hg19 tfbsFimoTransfac TfMotifsFIMO_Transfac.hg19.bed
     # Read 3665198 elements of size 6 from TfMotifsFIMO_Transfac.hg19.bed
 #######################################################################
+
+# more motif exploratory work  -- give Larry M's transRegCode a ride
+
+    cd /hive/data/genomes/hg19/bed/wgEncodeRegV2/tfbs2012
+    mkdir motifs
+    cd motifs
+
+    # lift motif localizations from hg18 (where did they come from originally ?)
+    hgsql hg18 -Ne "select * from wgEncodeRegTfbsClusteredMotifs" | \
+        cut --complement -f 1 | \
+        liftOver -bedPlus=4 stdin /gbdb/hg18/liftOver/hg18ToHg19.over.chain.gz \
+                motifs.bed motifs.unmapped
+    hgLoadBed hg19 -as=~/kent/src/hg/lib/bed6FloatScore.as wgEncodeRegTfbsClustered motifs.bed
+    # Read 1750827 elements of size 6 from motifs.bed
+
+
+
+
+
+ 
+
+
 

@@ -46,13 +46,16 @@ def run(cmd):
 
 threeToOne = \
     {'Cys': 'C', 'Asp': 'D', 'Ser': 'S', 'Gln': 'Q', 'Lys': 'K',
-     'Ile': 'I', 'Pro': 'P', 'Thr': 'T', 'Phe': 'F', 'Asn': 'N', 
-     'Gly': 'G', 'His': 'H', 'Leu': 'L', 'Arg': 'R', 'Trp': 'W', 
-     'Ala': 'A', 'Val':'V',  'Glu': 'E', 'Tyr': 'Y', 'Met': 'M'}
+     'Ile': 'I', 'Pro': 'P', 'Thr': 'T', 'Phe': 'F', 'Asn': 'N',
+     'Gly': 'G', 'His': 'H', 'Leu': 'L', 'Arg': 'R', 'Trp': 'W',
+     'Ala': 'A', 'Val':'V',  'Glu': 'E', 'Tyr': 'Y', 'Met': 'M',
+     'Sec': 'U' # very very rare amino acid (=stop codon)
+     }
 
 oneToThree = dict([[v,k] for k,v in threeToOne.items()])
 
 def aaToLong(seq):
+    " convert amino acid to three letter code "
     res = []
     for aa in seq:
         longAa = oneToThree.get(aa, aa)
@@ -61,7 +64,8 @@ def aaToLong(seq):
         res.append(longAa)
     return "-".join(res)
 
-featTypeColors = { "modified residue" : "200,200,0",
+featTypeColors = {
+"modified residue" : "200,200,0",
 "transmembrane region" : "0,0,100",
 "glycosylation site" : "0,100,100",
 "disulfide bond" : "100,100,100",
@@ -72,7 +76,7 @@ featTypeColors = { "modified residue" : "200,200,0",
 # ------ MAIN ------
 if __name__ == '__main__':
     parser = optparse.OptionParser("usage: %prog [options] - lift uniprot variant annotations to genome") 
-    parser.add_option("", "--annot", dest="annot", action="store_true", help="lift other, non-variant annotations") 
+    parser.add_option("", "--annot", dest="annot", action="store_true", help="lift other, non-variant annotations")
     (options, args) = parser.parse_args()
 
     if options.annot:
@@ -230,7 +234,8 @@ if __name__ == '__main__':
     else:
         asFname = "bed12UniProtMut.as"
 
-    cmd = "bedToBigBed -as=%s %s.bed /scratch/data/%s/chrom.sizes %s.bb -type=bed12+ -tab" % (asFname, outFname, db, outFname)
+    cmd = "bedToBigBed -as=%s %s.bed /hive/data/genomes/%s/chrom.sizes %s.bb -type=bed12+ -tab" % \
+        (asFname, outFname, db, outFname)
     run(cmd)
 
     cmd = "rm -rf work"

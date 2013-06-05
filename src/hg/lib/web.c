@@ -504,7 +504,7 @@ int numClades = 0;
 
 struct sqlConnection *conn = hConnectCentral();  // after hClade since it access hgcentral too
 // get only the clades that have actual active genomes
-struct sqlResult *sr = sqlGetResult(conn, "SELECT DISTINCT(c.name), c.label FROM clade c, genomeClade g, dbDb d WHERE c.name=g.clade AND d.organism=g.genome AND d.active=1 ORDER BY c.priority");
+struct sqlResult *sr = sqlGetResult(conn, "NOSQLINJ SELECT DISTINCT(c.name), c.label FROM clade c, genomeClade g, dbDb d WHERE c.name=g.clade AND d.organism=g.genome AND d.active=1 ORDER BY c.priority");
 while ((row = sqlNextRow(sr)) != NULL)
     {
     clades[numClades] = cloneString(row[0]);
@@ -1143,7 +1143,7 @@ void webPrintWideLabelCell(char *label, int colSpan)
 printf("<TD BGCOLOR='#"HG_COL_TABLE_LABEL"'");
 if (colSpan > 1)
     printf(" COLSPAN=%d", colSpan);
-printf("><span style='color:#FFFFFF;'><B>%s</B></spanT></TD>", label);
+printf("><span style='color:#FFFFFF;'><B>%s</B></span></TD>", label);
 }
 
 void webPrintWideCenteredLabelCell(char *label, int colSpan)
