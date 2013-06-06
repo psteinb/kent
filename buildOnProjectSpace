@@ -5,7 +5,7 @@ path=/projects/hillerlab/genome/src/kent
 cd $path
 source ./ProjectSpaceEnvironment 
 cd $KENTHOME/src
-make alpha
+make alphanoclean
 
 # we need gensub2 from parasol. Compile and install only that binary. 
 cd $KENTHOME/src/parasol/gensub2
