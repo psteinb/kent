@@ -86,7 +86,8 @@ if (retValidCount != NULL)
     *retValidCount = validCount;
 }
 
-static struct annoRow *aswNextRow(struct annoStreamer *vSelf, struct lm *callerLm)
+static struct annoRow *aswNextRow(struct annoStreamer *vSelf, char *minChrom, uint minEnd,
+				  struct lm *callerLm)
 /* Return an annoRow encoding the next chunk of wiggle data, or NULL if there are no more items. */
 {
 struct annoStreamWig *self = (struct annoStreamWig *)vSelf;
@@ -94,7 +95,7 @@ struct annoRow *rowOut = NULL;
 boolean done = FALSE;
 while (!done)
     {
-    struct annoRow *wigRow = self->wigStr->nextRow(self->wigStr, callerLm);
+    struct annoRow *wigRow = self->wigStr->nextRow(self->wigStr, minChrom, minEnd, callerLm);
     if (wigRow == NULL)
 	return NULL;
     struct wiggle wiggle;
@@ -133,7 +134,7 @@ struct annoStreamer *annoStreamWigDbNew(char *db, char *table, struct annoAssemb
 {
 struct annoStreamWig *self = NULL;
 AllocVar(self);
-self->wigStr = annoStreamDbNew(db, table, aa, asParseText(wiggleAsText));
+self->wigStr = annoStreamDbNew(db, table, aa, asParseText(wiggleAsText), maxOutput);
 struct annoStreamer *streamer = &(self->streamer);
 annoStreamerInit(streamer, aa, asParseText(annoRowWigAsText), self->wigStr->name);
 streamer->rowType = arWig;

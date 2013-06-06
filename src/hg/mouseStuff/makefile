@@ -1,18 +1,53 @@
 # Build all directories in makeDb 
 
-include ../../inc/common.mk
+kentSrc = ../..
 
-# List of directories to build
-USE_DIRS = ${DIRS}
+include ${kentSrc}/inc/localEnvironment.mk
+include ${kentSrc}/inc/common.mk
 
 BADDIRS = \
         correctEst
 
+# List of directories to build for userApps
+UTILS_APPLIST = \
+	axtChain \
+	axtSort \
+	axtSwap \
+	axtToMaf \
+	axtToPsl \
+	bedCoverage \
+	chainAntiRepeat \
+	chainFilter \
+	chainMergeSort \
+	chainNet \
+	chainPreNet \
+	chainSort \
+	chainSplit \
+	chainStitchId \
+	chainSwap \
+	chainToAxt \
+	chainToPsl \
+	lavToAxt \
+	lavToPsl \
+	mafCoverage \
+	mafFetch \
+	mafRanges \
+	mafToAxt \
+	mafToPsl \
+	netChainSubset \
+	netClass \
+	netFilter \
+	netSplit \
+	netSyntenic \
+	netToAxt \
+	netToBed \
+	pslMrnaCover
+
+# List of directories to build at UCSC
 DIRS = \
 	axtAndBed \
 	axtBest \
 	axtCalcMatrix \
-	axtChain \
 	axtDropOverlap \
 	axtDropSelf \
 	axtFilter \
@@ -21,51 +56,20 @@ DIRS = \
 	axtQueryCount \
 	axtRecipBest \
 	axtRescore \
-	axtSort \
 	axtSplitByTarget \
-	axtSwap \
 	axtToBed \
 	axtToChain \
-	axtToMaf \
-	axtToPsl \
-	bedCoverage \
 	calcGap \
-	chainAntiRepeat \
 	chainDbToFile \
-	chainFilter \
-	chainMergeSort \
-	chainNet \
-	chainPreNet \
-	chainSort \
-	chainSplit \
 	chainStats \
-	chainStitchId \
-	chainSwap \
-	chainToAxt \
-	chainToPsl \
 	gcForBed \
 	knownVsBlat \
-	lavToAxt \
-	lavToPsl \
 	libScan \
-	mafCoverage \
-	mafFetch \
-	mafRanges \
-	mafToAxt \
-	mafToPsl \
 	mousePoster \
-	netChainSubset \
-	netClass \
-	netFilter \
-	netSplit \
 	netStats \
-	netSyntenic \
-	netToAxt \
-	netToBed \
 	netToBedWithId \
-	orthologBySynteny \
+        orthologBySynteny \
 	phToPsl \
-	pslMrnaCover \
 	regionPicker \
 	rikenBestInCluster \
 	simpleChain \
@@ -74,9 +78,16 @@ DIRS = \
 	subsetTraces \
 	whyConserved 
 
+# List of directories to build
+USE_DIRS = $(DIRS) $(UTILS_APPLIST)
+
 all: ${USE_DIRS:%=%.all}
 %.all:
-	( cd $* && echo $* && ${MAKE} )
+	cd $* && echo $* && ${MAKE}
+
+userApps: $(UTILS_APPLIST:%=%.userApp)
+%.userApp:
+	cd $* && echo $* && $(MAKE)
 
 clean::
 	cd simpleChain && ${MAKE} clean

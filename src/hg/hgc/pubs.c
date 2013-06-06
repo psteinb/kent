@@ -23,9 +23,9 @@ bool pubsHasSupp = TRUE;
 // global var for printArticleInfo to indicate if article is elsevier
 bool pubsIsElsevier = FALSE; 
 // the article source is used to modify other parts of the page
-static char* articleSource;
+static char *articleSource;
 // we need the external article PMC Id for yif links
-static char* extId = NULL;
+static char *extId = NULL;
 
 // section types in mysql table, for all annotations tables
 // we note where the hit is located in the document
@@ -223,7 +223,7 @@ static void printFilterLink(char *pslTrack, char *articleId, char *articleTable)
     int end = cgiInt("t");
     char qBuf[1024];
     struct sqlConnection *conn = hAllocConn(database);
-    safef(qBuf, sizeof(qBuf), "SELECT CONCAT(firstAuthor, year) FROM %s WHERE articleId='%s';", articleTable, articleId);
+    sqlSafef(qBuf, sizeof(qBuf), "SELECT CONCAT(firstAuthor, year) FROM %s WHERE articleId='%s';", articleTable, articleId);
     char *dispId = sqlQuickString(conn, qBuf);
 
     printf(
@@ -275,9 +275,9 @@ static struct sqlResult *queryMarkerRows(struct sqlConnection *conn, char *marke
 {
 char query[4000];
 /* Mysql specific setting to make the group_concat function return longer strings */
-sqlUpdate(conn, "SET SESSION group_concat_max_len = 100000");
+sqlUpdate(conn, "NOSQLINJ SET SESSION group_concat_max_len = 100000");
 
-safef(query, sizeof(query), "SELECT distinct %s.articleId, url, title, authors, citation, "  
+sqlSafef(query, sizeof(query), "SELECT distinct %s.articleId, url, title, authors, citation, "  
     "pmid, extId, "
     "group_concat(snippet, concat(\" (section: \", section, \")\") SEPARATOR ' (...) ') FROM %s "
     "JOIN %s USING (articleId) "
@@ -344,7 +344,7 @@ static void printLimitWarning(struct sqlConnection *conn, char *markerTable,
     char *item, int itemLimit, char *sectionList)
 {
 char query[4000];
-safef(query, sizeof(query), "SELECT COUNT(*) from %s WHERE markerId='%s' AND section in (%s) ", markerTable, item, sectionList);
+sqlSafef(query, sizeof(query), "SELECT COUNT(*) from %s WHERE markerId='%s' AND section in (%s) ", markerTable, item, sectionList);
 if (sqlNeedQuickNum(conn, query) > itemLimit) 
 {
     printf("<b>This marker is mentioned more than %d times</b><BR>\n", itemLimit);
@@ -393,17 +393,17 @@ freeMem(sectionList);
 sqlFreeResult(&sr);
 }
 
-static char *urlToLogoUrl(char* pubsArticleTable, char* articleId, char *urlOrig)
+static char *urlToLogoUrl(char *pubsArticleTable, char *articleId, char *urlOrig)
 /* return a string with relative path of logo for publisher given the url of
  * fulltext or a table/articleId, has to be freed 
 */
 {
 struct sqlConnection *conn = hAllocConn(database);
-char* pubCode = NULL;
+char *pubCode = NULL;
 if (hHasField("hgFixed", pubsArticleTable, "publisher"))
     {
     char query[4000];
-    safef(query, sizeof(query), "SELECT publisher from %s where articleId=%s", 
+    sqlSafef(query, sizeof(query), "SELECT publisher from %s where articleId=%s", 
         pubsArticleTable, articleId);
     pubCode = sqlQuickString(conn, query);
     }
@@ -436,7 +436,7 @@ static char *printArticleInfo(struct sqlConnection *conn, char *item, char *pubs
 {
 char query[512];
 
-safef(query, sizeof(query), "SELECT articleId, url, title, authors, citation, abstract, pmid, "
+sqlSafef(query, sizeof(query), "SELECT articleId, url, title, authors, citation, abstract, pmid, "
     "source, extId FROM %s WHERE articleId='%s'", pubsArticleTable, item);
 
 struct sqlResult *sr = sqlGetResult(conn, query);
@@ -508,14 +508,14 @@ if (start==-1)
     return NULL;
 char query[512];
 /* check first if the column exists (some debugging tables on hgwdev don't have seqIds) */
-safef(query, sizeof(query), "SHOW COLUMNS FROM %s LIKE 'seqIds';", trackTable);
+sqlSafef(query, sizeof(query), "SHOW COLUMNS FROM %s LIKE 'seqIds';", trackTable);
 char *seqIdPresent = sqlQuickString(conn, query);
 if (!seqIdPresent) {
     return NULL;
 }
 
 /* get sequence-Ids for feature that was clicked (item&startPos are unique) and return as hash*/
-safef(query, sizeof(query), "SELECT seqIds,'' FROM %s WHERE name='%s' "
+sqlSafef(query, sizeof(query), "SELECT seqIds,'' FROM %s WHERE name='%s' "
     "and chrom='%s' and chromStart=%d;", trackTable, item, seqName, start);
 if (pubsDebug)
     printf("%s<br>", query);
@@ -634,10 +634,10 @@ for (el = locs; el != NULL; el = el->next)
 void removeFlank (char *snippet) 
 /* keep only the parts inside <b> to </b> of a string, modifies the string in place */
 {
-char* startPtr = stringIn("<B>", snippet);
-char* endPtr   = stringIn("</B>", snippet);
+char *startPtr = stringIn("<B>", snippet);
+char *endPtr   = stringIn("</B>", snippet);
 if (startPtr!=0 && endPtr!=0 && startPtr<endPtr) {
-    char* buf = stringBetween("<B>", "</B>", snippet);
+    char *buf = stringBetween("<B>", "</B>", snippet);
     memcpy(snippet, buf, strlen(buf)+1);
     freeMem(buf);
     }
@@ -665,8 +665,7 @@ if (figId)
     {
     safef(yifPageUrl, sizeof(yifPageUrl), "http://krauthammerlab.med.yale.edu/imagefinder/Figure.external?sp=S%s%%2F%s", extId, figId);
     }
-
-if (!yifPageUrl)
+else
     return;
 
 web2StartSection("section", 
@@ -687,10 +686,17 @@ static bool printSeqSection(char *articleId, char *title, bool showDesc, struct 
  * */
 {
 // get data from mysql
+// I support two different schemas: new and old. On old tables, there is no fileUrl yet on the annotations
+// that means that oldQuery just uses an empty string for the fileUrl field.
+char *oldQuery = "SELECT fileDesc, snippet, locations, annotId, sequence, \"\" FROM %s WHERE articleId='%s'";
+char *newQuery = "SELECT fileDesc, snippet, locations, annotId, sequence, fileUrl FROM %s WHERE articleId='%s'";
+
+char *queryTemplate = oldQuery;
+if (hHasField("hgFixed", pubsSequenceTable, "fileUrl"))
+    queryTemplate = newQuery;
+
 char query[4096];
-safef(query, sizeof(query), 
-"SELECT fileDesc, snippet, locations, annotId, sequence, fileUrl "
-"FROM %s WHERE articleId='%s';", pubsSequenceTable, articleId);
+sqlSafef(query, sizeof(query), queryTemplate, pubsSequenceTable, articleId);
 if (pubsDebug)
     puts(query);
 struct sqlResult *sr = sqlGetResult(conn, query);
@@ -852,7 +858,7 @@ else
 if (skippedRows) 
     {
     // the section title should change if the data comes from the yale image finder = a figure
-    char* docType = "article";
+    char *docType = "article";
     if (stringIn("yif", articleSource))
         docType = "figure";
     char title[1024];
@@ -880,7 +886,7 @@ boolean trackVersionExists = hTableExists("hgFixed", "trackVersion");
 if (trackVersionExists)
     {
     char query[256];
-    safef(query, sizeof(query), \
+    sqlSafef(query, sizeof(query), \
     "SELECT version,dateReference FROM hgFixed.trackVersion "
     "WHERE db = '%s' AND name = 'pubs' ORDER BY updateTime DESC limit 1", database);
     struct sqlResult *sr = sqlGetResult(conn, query);
@@ -918,7 +924,7 @@ char query[512];
 struct sqlResult *sr;
 char **row;
 bioSeq *seq = NULL;
-safef(query, sizeof(query), 
+sqlSafef(query, sizeof(query), 
     "select sequence from %s where annotId = '%s'", table, id);
 sr = sqlGetResult(conn, query);
 if ((row = sqlNextRow(sr)) != NULL)
