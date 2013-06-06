@@ -5,6 +5,9 @@ all: utils cgi blatSuite
 
 alpha: clean utils-alpha cgi-alpha blatSuite tags-all
 alphalustre: clean utils-alpha cgi-alpha blatSuite 
+alphanoclean: utils-alpha cgi-alpha blatSuite tags-all
+
+
 
 beta: check-beta clean cgi-beta
 
