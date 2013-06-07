@@ -1,6 +1,9 @@
 #!/bin/bash
 set -o errexit
 
+# update this working copy
+git pull
+
 path=/projects/hillerlab/genome/src/kent
 cd $path
 source ./ProjectSpaceEnvironment 
