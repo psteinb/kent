@@ -1381,6 +1381,12 @@ int tgCmpPriority(const void *va, const void *vb);
 void printMenuBar();
 /* Put up the menu bar. */
 
+void markUserRegion();
+/* Add new user marked custom  track */
+
+void clearRegion();
+/* Delete user Marked custom track */
+
 #define measureTime uglyTime
 
 #define SUPPORT_CONTENT_TYPE 1

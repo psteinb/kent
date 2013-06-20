@@ -16,7 +16,7 @@ COMMONO = pubsTracks.o altGraphXTrack.o bamTrack.o bedGraph.o bedTrack.o bigBedT
 	wabaTrack.o wigTrack.o cds.o \
 	wigMafTrack.o encode.o variation.o vcfTrack.o transcriptome.o\
 	rnaFoldTrack.o retroGene.o hapmapTrack.o rnaPLFoldTrack.o\
-	wiki.o wikiTrack.o imageV2.o
+	wiki.o wikiTrack.o imageV2.o hgMarkRegion.o
 
 O = mainMain.o ${COMMONO} 
 

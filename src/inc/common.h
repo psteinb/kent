@@ -175,6 +175,9 @@
 #define uglyAbort errAbort /* debugging error abort. */
 #define uglyOut stdout /* debugging fprintf target. */
 
+/* global flag for markRegion functionality */
+int markRegFlag;
+
 void *needMem(size_t size);
 /* Need mem calls abort if the memory allocation fails. The memory
  * is initialized to zero. */

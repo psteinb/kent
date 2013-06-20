@@ -45,8 +45,17 @@ struct trackDb *customTrackTdbDefault()
 struct trackDb *tdb;
 
 AllocVar(tdb);
-tdb->shortLabel = cloneString(CT_DEFAULT_TRACK_NAME);
-tdb->longLabel = cloneString(CT_DEFAULT_TRACK_DESCR);
+/* if called from markRegion, use the CT_DEFAULT_MARK_REGION defaults */
+if (markRegFlag)
+{	
+	tdb->shortLabel = cloneString(CT_DEFAULT_MARK_REGION_NAME);
+	tdb->longLabel = cloneString(CT_DEFAULT_MARK_REGION_DESCR);
+}
+else
+{
+	tdb->shortLabel = cloneString(CT_DEFAULT_TRACK_NAME);
+	tdb->longLabel = cloneString(CT_DEFAULT_TRACK_DESCR);
+}	
 
 tdb->table = customTrackTableFromLabel(tdb->shortLabel);
 tdb->track = cloneString(tdb->table);

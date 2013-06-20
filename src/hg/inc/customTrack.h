@@ -18,6 +18,10 @@
 #define CT_DEFAULT_TRACK_NAME    "User Track"
 #define CT_DEFAULT_TRACK_DESCR   "User Supplied Track"
 
+/* default names for markRegion */
+#define CT_DEFAULT_MARK_REGION_NAME 	"Marked Regions"
+#define CT_DEFAULT_MARK_REGION_DESCR 	"User Marked Regions"
+
 #define CT_MANAGE_BUTTON_LABEL   "manage custom tracks"
 #define CT_ADD_BUTTON_LABEL      "add custom tracks"
 

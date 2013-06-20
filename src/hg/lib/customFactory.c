@@ -2936,9 +2936,17 @@ while ((line = customPpNextReal(cpp)) != NULL)
      * and no track line. */
         {
         char defaultLine[256];
-        safef(defaultLine, sizeof defaultLine,
+
+        if (markRegFlag ) {	
+           safef(defaultLine, sizeof defaultLine,
+                        "track name='%s' description='%s'",
+                        CT_DEFAULT_MARK_REGION_NAME, CT_DEFAULT_MARK_REGION_DESCR);
+        }else{ 
+           safef(defaultLine, sizeof defaultLine,
                         "track name='%s' description='%s'",
                         CT_DEFAULT_TRACK_NAME, CT_DEFAULT_TRACK_DESCR);
+        }
+        markRegFlag = 0;
         track = trackLineToTrack(genomeDb, defaultLine, 1);
         customPpReuse(cpp, line);
 	}

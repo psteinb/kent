@@ -59,6 +59,7 @@
 #include "iupac.h"
 #include "botDelay.h"
 #include "chromInfo.h"
+#include "hgMarkRegion.h"
 
 /* Other than submit and Submit all these vars should start with hgt.
  * to avoid weeding things out of other program's namespaces.
@@ -80,6 +81,8 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
             "hgt.contentType", "hgt.positionInput", "hgt.internal",
             // stanford additions
             "hgt.out4",  "hgt.to1", "hgt.to2", "hgt.to3", "hgt.to4", "hgt.to5", "hgt.to6", "hgt.to7",
+				/* markRegion functionality */
+				"hgt.mrkReg","hgt.clrReg", 
             NULL };
 
 /* These variables persist from one incarnation of this program to the
@@ -4606,6 +4609,8 @@ if (!hideControls)
 	hPrintf("<input class='positionInput' type='text' name='hgt.positionInput' id='positionInput' size='60'>\n");
 	hWrites(" ");
 	hButton("hgt.jump", "go");
+	hButton("hgt.mrkReg", "mark region");
+	hButton("hgt.clrReg", "clear marked regions");
 	if (!trackHubDatabase(database))
 	    {
 	    jsonObjectAdd(jsonForClient, "assemblySupportsGeneSuggest", newJsonBoolean(assemblySupportsGeneSuggest(database)));
@@ -5311,6 +5316,10 @@ else if (cgiVarExists("hgt.to6"))
     zoomToSize(5000000);
 else if (cgiVarExists("hgt.to7"))
     zoomToSize(10000000);
+else if (cgiVarExists("hgt.clrReg"))
+    clearRegion();	
+else if (cgiVarExists("hgt.mrkReg"))
+    markUserRegion();	
 else if (cgiVarExists("hgt.dinkLL"))
     dinkWindow(TRUE, -dinkSize("dinkL"));
 else if (cgiVarExists("hgt.dinkLR"))
@@ -5402,7 +5411,6 @@ for (chromPtr = chromList;  chromPtr != NULL;  chromPtr = chromPtr->next)
 chromInfoTotalRow(slCount(chromList), total);
 slFreeList(&chromList);
 }
-
 static int  chromInfoCmpSize(const void *va, const void *vb)
 /* Compare to sort based on chrom size */
 {
@@ -5830,3 +5838,21 @@ hPrintf("</script>\n");
 if (measureTiming)
     measureTime("Time at end of doMiddle, next up cart write");
 }
+
+void markUserRegion(){
+
+	/*Create a custom track for the user marked region */
+	markRegion(cart);
+	ctList = customTracksParseCart(database, cart, &browserLines, &ctFileName);
+}	
+
+
+void clearRegion()
+{
+	/*Delete a custom track for the user marked region */
+
+	 getCtList();
+	 doDeleteMarkReg();
+	 updateCtList();
+	 ctList = customTracksParseCart(database, cart, &browserLines, &ctFileName);
+} 
