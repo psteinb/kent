@@ -214,7 +214,7 @@ maxHeightPixels *
 maxItems *
 maxLimit *
 maxScore broadPeak narrowPeak
-maxWindowToDraw bam rmsk bed narrowPeak broadPeak bigWig bedlogR genepred vcfTabix
+maxWindowToDraw bam rmsk bed narrowPeak broadPeak bigWig bedlogR genepred vcfTabix factorSource
 maxWindowToQuery bigWig bed bedlogR
 metadata *
 mouseOverField bigBed
@@ -319,7 +319,6 @@ snpTable bed
 snpVersion bed
 sortOrder *
 sourceTable factorSource
-sourceTablePack factorSource
 spanList *
 speciesCodonDefault wigMafProt wigMaf
 speciesDefaultOff wigMaf

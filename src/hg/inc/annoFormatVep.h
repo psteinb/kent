@@ -7,9 +7,13 @@
 
 #include "annoFormatter.h"
 
-struct annoFormatter *annoFormatVepNew(char *fileName, struct annoStreamer *variantSource,
+struct annoFormatter *annoFormatVepNew(char *fileName, boolean doHtml,
+				       struct annoStreamer *variantSource,
+				       char *variantDescription,
 				       struct annoStreamer *gpVarSource,
-				       struct annoStreamer *snpSource);
+				       char *gpVarDescription,
+				       struct annoStreamer *snpSource,
+				       char *snpDescription);
 /* Return a formatter that will write functional predictions in the same format as Ensembl's
  * Variant Effect Predictor to fileName (can be "stdout").
  * variantSource and gpVarSource must be provided; snpSource can be NULL. */
