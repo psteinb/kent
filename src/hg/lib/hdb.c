@@ -1829,7 +1829,7 @@ char **row;
 char parsedChrom[HDB_MAX_CHROM_STRING];
 char rootName[256];
 char fullTableName[256];
-char rangeStr[32];
+char rangeStr[1024];
 int count;
 boolean canDoUTR, canDoIntrons;
 boolean useSqlConstraints = sqlConstraints != NULL && sqlConstraints[0] != 0;
@@ -4684,8 +4684,7 @@ char *answer;
 
 answer = NULL;
 sqlSafef(query, sizeof(query), "select %s from %s.%-s  where %-s;",
-      fldName, db, tblName, condition);  // note some callers pass an entire tables list with aliases in tblName
-//printf("<br>%s\n", query); fflush(stdout);
+      fldName, db, sqlCheckIdentifiersList(tblName), condition);  // note some callers pass an entire tables list with aliases in tblName
 sr  = sqlGetResult(conn, query);
 row = sqlNextRow(sr);
 
