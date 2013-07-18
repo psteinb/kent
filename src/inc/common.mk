@@ -240,7 +240,7 @@ DESTBINDIR=${DESTDIR}/${BINDIR}
 # location of stringify program
 STRINGIFY = ${DESTBINDIR}/stringify
 
-MKDIR=mkdir -p
+MKDIR=mkdir -p -m 775
 ifeq (${STRIP},)
    STRIP=true
 endif

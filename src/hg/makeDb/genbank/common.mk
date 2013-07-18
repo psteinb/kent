@@ -53,7 +53,7 @@ LIBS = $(LIBGENBANK) ${JKLIBS}  ${MYSQLLIBS} -lm ${L}
 TESTBIN = ${GBROOT}/tests/bin
 TESTBINARCH = ${TESTBIN}/$(MACHTYPE)
 
-MKDIR = mkdir -p
+MKDIR = mkdir -p -m 775
 STRINGIFY = stringify
 
 %.o: %.c
