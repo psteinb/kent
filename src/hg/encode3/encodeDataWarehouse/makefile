@@ -8,9 +8,13 @@ USE_DIRS = $(UTIL_DIRS) $(CGI_DIRS)
 
 UTIL_DIRS = \
     edwAddAssembly \
+    edwAddQaContamTarget \
     edwAddQaEnrichTarget \
     edwAddSubscriber \
+    edwChangeFormat \
+    edwCorrectFileTags \
     edwCreateUser \
+    edwMakeContaminationQa \
     edwMakeEnrichments \
     edwMakeReplicateQa \
     edwMakeValidFile \
@@ -25,6 +29,7 @@ CGI_DIRS = \
     edwWebAuthLogout \
     edwWebBrowse \
     edwWebCreateUser \
+    edwWebDeprecate \
     edwWebRegisterScript \
     edwWebSubmit
 
