@@ -1385,6 +1385,9 @@ int tgCmpPriority(const void *va, const void *vb);
 void printMenuBar();
 /* Put up the menu bar. */
 
+boolean restrictionEnzymesOk();
+/* Check to see if it's OK to do restriction enzymes. */
+
 void markUserRegion();
 /* Add new user marked custom  track */
 
