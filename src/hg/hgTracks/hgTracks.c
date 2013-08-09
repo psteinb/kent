@@ -60,6 +60,7 @@
 #include "botDelay.h"
 #include "chromInfo.h"
 #include "hgMarkRegion.h"
+#include "hillerLabView.h"
 
 /* Other than submit and Submit all these vars should start with hgt.
  * to avoid weeding things out of other program's namespaces.
@@ -83,6 +84,8 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
             "hgt.out4",  "hgt.to1", "hgt.to2", "hgt.to3", "hgt.to4", "hgt.to5", "hgt.to6", "hgt.to7",
 				/* markRegion functionality */
 				"hgt.mrkReg","hgt.clrReg", 
+				/* Hillerlab View functionality*/
+	    		"hgt.loadView","hgt.deleteView","hgt.saveView",
             NULL };
 
 /* These variables persist from one incarnation of this program to the
@@ -119,6 +122,7 @@ char *rulerMenu[] =
     "dense",
     "full"
     };
+
 
 char *protDbName;               /* Name of proteome database for this genome. */
 #define MAX_CONTROL_COLUMNS 12
@@ -4765,6 +4769,22 @@ if (!hideControls)
 
     hButtonWithMsg("hgt.refresh", "refresh","Refresh image");
 
+	 /* Hillerlab views */
+	 hPrintf("&nbsp;");
+    hPrintf("&nbsp;");
+    hPrintf("&nbsp;");
+    hPrintf("&nbsp;");
+    hDropList("hillerLabView", HViewMenu, sizeofHviewMenu/sizeof(char *), HViewMenu[hViewMode]);
+    hPrintf(" ");
+    hButtonWithOnClick("hgt.loadView","load view","load views","loadHillerLabView()");
+    hPrintf(" ");
+    hButtonWithOnClick("hgt.deleteView","delete view","delete views","loadHillerLabView()");
+
+    hPrintf(" ");
+    hButtonWithOnClick("hgt.saveView","save view","save views","saveHillerLabView()");
+    hTextVar("viewName","",10);
+	 /* end of Hillerlab views */
+
     hPrintf("<BR>\n");
 
     if( chromosomeColorsMade )
@@ -5669,6 +5689,9 @@ char *debugTmp = NULL;
 /* struct dyString *state = NULL; */
 /* Initialize layout and database. */
 cart = theCart;
+
+/* perform view operations if any */
+doHillerLabViewOperations(oldDb,userSeqString);
 
 measureTiming = hPrintStatus() && isNotEmpty(cartOptionalString(cart, "measureTiming"));
 if (measureTiming)
