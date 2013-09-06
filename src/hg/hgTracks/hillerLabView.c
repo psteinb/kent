@@ -160,7 +160,6 @@ void loadView(char *viewName)
 		pch = strtok (NULL, "\n");
 	}				
 
-
 	/*load cart from tempcart */
 	 for(tr = slNameCloneList(hvName) ; tr != NULL; tr = tr->next)
 	 {
@@ -175,9 +174,10 @@ void loadView(char *viewName)
 
 	 tmpCart = NULL;
 	 freeDyString(&query);
-#if debugHillerLabView
-	 customCartDump1("loadView");
 	 hFreeConn(&conn);
+
+#if debugHillerLabView
+	 customCartDump1(NULL,"loadView");
 #endif
 }	
 
@@ -266,33 +266,45 @@ void deleteView(char *viewName)
 void  getTrackListFromDb(char *userSeqString)
 {
 	/* Get tracks list for the selected species */
-	struct trackDb *tr ,*tdbList = NULL;
+	struct trackDb *tr,*tdbList = NULL;
 	tdbList =  hTrackDb(cartString(cart,"db"));
 
 	for (tr = tdbList; tr != NULL; tr = tr->next)
 	{
-		slNameAddHead (&hvName,tr->table);
+		struct trackDb *subtrack;
+		if(tr->parent != NULL)
+		{	
+			slNameAddHead (&hvName,tr->parent->track);
+		}		
+
+		slNameAddHead (&hvName,tr->track);
+
+  		for (subtrack = tr->subtracks;  subtrack != NULL;  subtrack = subtrack->next)
+		{
+			if (subtrack->track != NULL)
+				slNameAddHead (&hvName,subtrack->track);
+		}	
 
 	}	
 
 	struct track *track = (struct track*)oligoMatchTg();
-	slNameAddHead(&hvName,track->tdb->table);
+	slNameAddHead(&hvName,track->tdb->track);
 
 	if (restrictionEnzymesOk())
 	{	
 		track = (struct track*) cuttersTg();
-		slNameAddHead(&hvName,track->tdb->table);
+		slNameAddHead(&hvName,track->tdb->track);
 	}	
 	if (userSeqString != NULL)
 	{	      
 		track = (struct track*) userPslTg();
-		slNameAddHead(&hvName,track->tdb->table);
+		slNameAddHead(&hvName,track->tdb->track);
 	}       
 
 	if (pcrResultParseCart(database, cart, NULL, NULL, NULL))
 	{	
 		track = (struct track*) pcrResultTg();
-		slNameAddHead(&hvName, track->tdb->table);
+		slNameAddHead(&hvName, track->tdb->track);
 	}	
 	if (wikiTrackEnabled(database, NULL))
 	{
@@ -301,13 +313,15 @@ void  getTrackListFromDb(char *userSeqString)
 		if (sqlTableExists(conn, "variome"))
 			addVariomeWikiTrack(&track);
 		wikiDisconnect(&conn);
-		slNameAddHead(&hvName, track->tdb->table);
+		slNameAddHead(&hvName, track->tdb->track);
 	}
-
 
 	slNameAddHead(&hvName, "ruler");
 
 #if debugHillerLabView 
+	/*If you want to store custom tracks just use below one it will work*/
+	slNameAddHead(&hvName, "ct");
+
 	struct slName *el;
 	for (el = slNameCloneList(hvName) ; el != NULL ; el = el->next)
 	{	
@@ -319,8 +333,10 @@ void  getTrackListFromDb(char *userSeqString)
 } 
 
 #if debugHillerLabView 
-void customCartDump1(char *place )
+void customCartDump1(struct cart *ct,char *place )
 {
+	if (ct != NULL)
+	cart = ct;
 /* Dump all the variables of the cart,can be used for debugHillerLabViewging  purpose */
 	struct hashEl *elList = hashElListHash(cart->hash);
 	struct hashEl *el;
