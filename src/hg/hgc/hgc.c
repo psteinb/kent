@@ -20699,7 +20699,7 @@ if (acc != NULL)
 	}
     printf("\" TARGET=_blank>%s</A><BR>\n", acc);
     }
-if (!isDm && (prot != NULL) && !sameString("(null)", prot))
+if (!isDm && (prot != NULL) && !sameString("(null)", prot) && sqlTableExists(conn,"proteome.uniProtAlias"))
     {
     printf("<B>UniProtKB:</B> ");
     printf("<A HREF=");
