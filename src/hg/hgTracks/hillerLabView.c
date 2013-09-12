@@ -204,6 +204,11 @@ void saveView()
 
 	viewName =skipLeadingSpaces(viewName);
 	sqlDyStringPrintf(createSql, tableFormat, tableName);
+	
+#if debugHillerLabView
+	customCartDump1(cart,"saveview");
+#endif
+
 	//chop if viewName is longer than HVIEWMAXVIEWLEN (60) chars
 	if(strlen(viewName) > HVIEWMAXVIEWLEN)
 	{
@@ -215,6 +220,7 @@ void saveView()
 	       dyStringFree(&createSql);
 	}	 
 	
+		cartRemove(cart,"hgt.saveView");
 #if debugHillerLabView 
 	struct slName *el;
 	for (el = slNameCloneList(hvName) ; el != NULL ; el = el->next)
@@ -266,45 +272,44 @@ void deleteView(char *viewName)
 void  getTrackListFromDb(char *userSeqString)
 {
 	/* Get tracks list for the selected species */
-	struct trackDb *tr,*tdbList = NULL;
+	struct trackDb *tdb,*tdbList = NULL;
 	tdbList =  hTrackDb(cartString(cart,"db"));
+	//struct track *trackList = hillerViewTrackList;//getTrackList(&groupList,-3);
 
-	for (tr = tdbList; tr != NULL; tr = tr->next)
+	for (tdb = tdbList; tdb != NULL; tdb = tdb->next)
 	{
-		struct trackDb *subtrack;
-		if(tr->parent != NULL)
+		if(tdb->parent != NULL)
 		{	
-			slNameAddHead (&hvName,tr->parent->track);
+			slNameAddHead (&hvName,tdb->parent->track);
 		}		
+		slNameAddHead (&hvName,tdb->track);
 
-		slNameAddHead (&hvName,tr->track);
-
-  		for (subtrack = tr->subtracks;  subtrack != NULL;  subtrack = subtrack->next)
-		{
-			if (subtrack->track != NULL)
-				slNameAddHead (&hvName,subtrack->track);
-		}	
-
+		getSubTracks(tdb);
 	}	
 
 	struct track *track = (struct track*)oligoMatchTg();
+	
 	slNameAddHead(&hvName,track->tdb->track);
+	getSubTracks(track->tdb);   //Add subtracks to list
 
 	if (restrictionEnzymesOk())
 	{	
 		track = (struct track*) cuttersTg();
 		slNameAddHead(&hvName,track->tdb->track);
+		getSubTracks(track->tdb);//Add subtracks to list
 	}	
 	if (userSeqString != NULL)
 	{	      
 		track = (struct track*) userPslTg();
 		slNameAddHead(&hvName,track->tdb->track);
+		getSubTracks(track->tdb);//Add subtracks to list
 	}       
 
 	if (pcrResultParseCart(database, cart, NULL, NULL, NULL))
 	{	
 		track = (struct track*) pcrResultTg();
 		slNameAddHead(&hvName, track->tdb->track);
+		getSubTracks(track->tdb);//Add subtracks to list
 	}	
 	if (wikiTrackEnabled(database, NULL))
 	{
@@ -314,9 +319,13 @@ void  getTrackListFromDb(char *userSeqString)
 			addVariomeWikiTrack(&track);
 		wikiDisconnect(&conn);
 		slNameAddHead(&hvName, track->tdb->track);
+		getSubTracks(track->tdb);//Add subtracks to list
 	}
 
+	/*These are not grouped under standard TDB tracks */
+
 	slNameAddHead(&hvName, "ruler");
+	slNameAddHead(&hvName, "hgt.");
 
 #if debugHillerLabView 
 	/*If you want to store custom tracks just use below one it will work*/
@@ -330,6 +339,19 @@ void  getTrackListFromDb(char *userSeqString)
 	}
 #endif
 
+} 
+
+/* Get sub tracks */
+void getSubTracks (struct trackDb *tdb)
+{
+
+	struct slRef *tdbRef, *tdbRefList = trackDbListGetRefsToDescendantLeaves(tdb->subtracks);
+	struct trackDb *subtdb;
+	for (tdbRef = tdbRefList; tdbRef != NULL; tdbRef = tdbRef->next)
+	{
+	       subtdb = tdbRef->val;
+	       slNameAddHead (&hvName,subtdb->track);
+	}	
 } 
 
 #if debugHillerLabView 

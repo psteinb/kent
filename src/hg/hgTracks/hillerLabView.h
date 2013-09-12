@@ -50,5 +50,7 @@ void makeViewDropDown();
 void initializeHviewMenu();
 /*set all the views NULL*/
 
+void getSubTracks(struct trackDb *tdb);
+/*get subtracks of a track */
 
 #endif /*HILLERLABVIEW_H*/
