@@ -240,14 +240,13 @@ int makeHtml(char *diffPath, char *htmlPath, char *path, char *commitId)
 int linesChanged = 0;
 
 FILE *h = mustOpen(htmlPath, "w");
-verbose(2, "makeHtml: diffPath: '%s'\n", diffPath);
-struct lineFile *lf = lineFileMayOpen(diffPath, TRUE);
-// creating empty file since 'git diff' produced nothing for white spaced only delta
-if (NULL == lf)
+if (!fileExists(diffPath))  // this may happen with white-space only diffs 
     {
-    FILE *dp = mustOpen(diffPath, "w");
-    fclose(dp);
+    FILE *f = mustOpen(diffPath, "w"); // create an empty diff file
+    fprintf(f, "white space only change\n");
+    carefulClose(&f);
     }
+struct lineFile *lf = lineFileOpen(diffPath, TRUE);
 int lineSize;
 char *line;
 char *xline = NULL;
@@ -258,7 +257,7 @@ int blockP = 0, blockN = 0;
 fprintf(h, "<html>\n<head>\n<title>%s %s</title>\n</head>\n</body>\n<pre>\n", path, commitId);
 boolean hasMore = TRUE;
 boolean combinedDiff = FALSE;
-while (lf && hasMore)
+while (hasMore)
     {
     boolean checkEob = FALSE;
     hasMore = lineFileNext(lf, &line, &lineSize);
@@ -323,8 +322,7 @@ while (lf && hasMore)
 
     }
 
-if (lf)
-    lineFileClose(&lf);
+lineFileClose(&lf);
 fprintf(h, "</pre>\n</body>\n</html>\n");
 fclose(h);
 return linesChanged;
@@ -365,7 +363,6 @@ else
 	, c->commitId, tempMakeDiffName);
 	}
     }
-verbose(2, "makeDiffAndSplit: gitCmd: '%s'\n", gitCmd);
 runShell(gitCmd);
 
 
@@ -417,7 +414,7 @@ while (lineFileNext(lf, &line, &lineSize))
 		runShell(path);
 		*r = '/';
 		}
-	    safef(path, sizeof(path), "%s/%s/%s/%s/%s/%s.%s.diff"
+	    safef(path, sizeof(path), "%s/%s/%s/%s/%s/%s.%s.diff.txt"
 		, outDir, outPrefix, "user", u, full ? "full" : "context", fpath, c->commitId);
 
 	    h = mustOpen(path, "w");
@@ -508,7 +505,7 @@ for(c = commits; c; c = c->next)
 	    safef(path, sizeof(path), "%s.html", commonPath);
 	    cHtml = cloneString(path);
 
-	    safef(path, sizeof(path), "%s.diff", commonPath);
+	    safef(path, sizeof(path), "%s.diff.txt", commonPath);
 	    cDiff = cloneString(path);
 
 	    // make context html page
@@ -521,7 +518,7 @@ for(c = commits; c; c = c->next)
 	    freeMem(cHtml);
 	    safef(path, sizeof(path), "%s.html", relativePath);
 	    cHtml = cloneString(path);
-	    safef(path, sizeof(path), "%s.diff", relativePath);
+	    safef(path, sizeof(path), "%s.diff.txt", relativePath);
 	    cDiff = cloneString(path);
 
 
@@ -538,7 +535,7 @@ for(c = commits; c; c = c->next)
 	    safef(path, sizeof(path), "%s.html", commonPath);
 	    fHtml = cloneString(path);
 
-	    safef(path, sizeof(path), "%s.diff", commonPath);
+	    safef(path, sizeof(path), "%s.diff.txt", commonPath);
 	    fDiff = cloneString(path);
 
 
@@ -551,7 +548,7 @@ for(c = commits; c; c = c->next)
 	    freeMem(fHtml);
 	    safef(path, sizeof(path), "%s.html", relativePath);
 	    fHtml = cloneString(path);
-	    safef(path, sizeof(path), "%s.diff", relativePath);
+	    safef(path, sizeof(path), "%s.diff.txt", relativePath);
 	    fDiff = cloneString(path);
 
 	    // make file diff links
@@ -682,7 +679,7 @@ for(cf = comFiles; cf; cf = cf->next)
     relativePath = cloneString(path);
     safef(path, sizeof(path), "%s.html", relativePath);
     cHtml = cloneString(path);
-    safef(path, sizeof(path), "%s.diff", relativePath);
+    safef(path, sizeof(path), "%s.diff.txt", relativePath);
     cDiff = cloneString(path);
 
 
@@ -696,7 +693,7 @@ for(cf = comFiles; cf; cf = cf->next)
     relativePath = cloneString(path);
     safef(path, sizeof(path), "%s.html", relativePath);
     fHtml = cloneString(path);
-    safef(path, sizeof(path), "%s.diff", relativePath);
+    safef(path, sizeof(path), "%s.diff.txt", relativePath);
     fDiff = cloneString(path);
 
     // make file view links
