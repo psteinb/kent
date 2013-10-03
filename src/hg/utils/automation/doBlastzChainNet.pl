@@ -116,6 +116,7 @@ options:
   print STDERR $stepper->getOptionHelp();
 print STDERR <<_EOF_
     -clusterType	  MANDATORY: Specify the clusterType as either genome or madmax
+                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on madmax or ask Michael first. 
     -blastzOutRoot dir    Directory path where outputs of the blastz cluster
                           run will be stored.  By default, they will be
                           stored in the $HgAutomate::clusterData build directory , but
