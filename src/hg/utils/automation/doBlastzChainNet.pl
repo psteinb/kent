@@ -116,6 +116,7 @@ options:
   print STDERR $stepper->getOptionHelp();
 print STDERR <<_EOF_
     -clusterType	  MANDATORY: Specify the clusterType as either genome or madmax
+                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on madmax or ask Michael first. 
     -blastzOutRoot dir    Directory path where outputs of the blastz cluster
                           run will be stored.  By default, they will be
                           stored in the $HgAutomate::clusterData build directory , but
@@ -554,6 +555,18 @@ echo "cluster batch jobList size: \$L = \$L1 * \$L2"
 _EOF_
     );
   $bossScript->execute();
+
+  my $noJobsT = `wc -l < $runDir/$targetList`;
+  my $noJobsQ = `wc -l < $runDir/$queryList`;
+  my $noJobs = $noJobsT * $noJobsQ;
+  print "*** The number of jobs should be in the range of 5,000 to 30,000. ***\n";
+  if( ( $noJobs < 5000 ) || ( $noJobs > 30000 ) ) {
+      print( "Stopped $0. To achieve a good number of jobs, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
+      exit( 0 ); 
+  } else {
+      print( "Ok, continue with jobs.\n" ); 
+  }
+
   my $mkOutRootHost = $opt_blastzOutRoot ? $hub : $fileServer;
   my $mkOutRoot =     $opt_blastzOutRoot ? "mkdir -p $opt_blastzOutRoot;" : "";
   &HgAutomate::run("$HgAutomate::runSSH $mkOutRootHost " .
