@@ -539,6 +539,8 @@ my $seq2Len = $defVars{'SEQ2_CTGLEN'} || $defVars{'SEQ2_LEN'};
 # Make a temporary directory for intermediate files:
 if (exists($defVars{'TMPDIR'})) {
   $TMP = `mktemp -d $defVars{'TMPDIR'}/blastz.XXXXXX` || &cleanDie("Can't mktemp");
+} elsif (exists($ENV{'TMPDIR'} )) {
+  $TMP = `mktemp -d $ENV{'TMPDIR'}/blastz.XXXXXX` || &cleanDie("Can't mktemp");
 } else {
   $TMP = `mktemp -d /scratch/tmp/blastz.XXXXXX` || &cleanDie("Can't mktemp");
 }

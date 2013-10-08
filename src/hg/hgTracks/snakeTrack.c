@@ -455,6 +455,14 @@ return 0;
 static int snakeHeight(struct track *tg, enum trackVisibility vis)
 /* calculate height of all the snakes being displayed */
 {
+if (tg->networkErrMsg != NULL)
+    {
+    // we had a parallel load failure
+    tg->drawItems = bigDrawWarning;
+    tg->totalHeight = bigWarnTotalHeight;
+    return bigWarnTotalHeight(tg, vis);
+    }
+
 if (vis == tvDense)
     return tg->lineHeight;
 
@@ -514,6 +522,18 @@ for (item = tg->items; item != NULL; item = item->next)
 	y += tg->itemHeight(tg, item);
     } 
 }
+
+//  this is a 16 color palette with every other color being a lighter version of
+//  the color before it
+//static int snakePalette[] =
+//{
+//0x1f77b4, 0xaec7e8, 0xff7f0e, 0xffbb78, 0x2ca02c, 0x98df8a, 0xd62728, 0xff9896, 0x9467bd, 0xc5b0d5, 0x8c564b, 0xc49c94, 0xe377c2, 0xf7b6d2, 0x7f7f7f, 0xc7c7c7, 0xbcbd22, 0xdbdb8d, 0x17becf, 0x9edae5
+//};
+
+static int snakePalette[] =
+{
+0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, 0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf
+};
 
 static void snakeDrawAt(struct track *tg, void *item,
 	struct hvGfx *hvg, int xOff, int y, double scale, 
@@ -595,9 +615,18 @@ if (withLabels)
 // let's draw some blue bars for the duplications
 struct hal_target_dupe_list_t* dupeList = lf->dupeList;
 
-for(; dupeList ; dupeList = dupeList->next)
+//extern void makeChromosomeShades(struct hvGfx *hvg);
+//if (!chromosomeColorsMade)
+    //makeChromosomeShades(hvg);
+
+int count = 0;
+for(; dupeList ; dupeList = dupeList->next, count++)
     {
     struct hal_target_range_t *range = dupeList->tRange;
+
+    unsigned int colorInt = snakePalette[count % (sizeof(snakePalette)/sizeof(Color))];
+    Color color = MAKECOLOR_32(((colorInt >> 16) & 0xff),((colorInt >> 8) & 0xff),((colorInt >> 0) & 0xff));
+
     for(; range; range = range->next)
 	{
 	int s = range->tStart;
@@ -606,10 +635,10 @@ for(; dupeList ; dupeList = dupeList->next)
 	int eClp = (e > winEnd) ? winEnd : e;
 	int x1 = round((sClp - winStart)*scale) + xOff;
 	int x2 = round((eClp - winStart)*scale) + xOff;
-	hvGfxLine(hvg, x1, y , x2, y , MG_BLUE);
+	hvGfxBox(hvg, x1, y , x2-x1, 3 , color);
 	}
     }
-y+=2;
+y+=4;
 
 // now we're going to draw the boxes
 
