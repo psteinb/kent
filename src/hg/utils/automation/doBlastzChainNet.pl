@@ -559,8 +559,13 @@ _EOF_
   my $noJobsT = `wc -l < $runDir/$targetList`;
   my $noJobsQ = `wc -l < $runDir/$queryList`;
   my $noJobs = $noJobsT * $noJobsQ;
-  print "*** The number of jobs should be in the range of 5,000 to 30,000. ***\n";
-  if( ( $noJobs < 5000 ) || ( $noJobs > 30000 ) ) {
+
+  print ( "*** The number of jobs should be in the range of 5,000 to 10,000" ); 
+  if( $clusterType eq "madmax" ) { 
+      print( ", and a runtime over 10 minutes" );
+  }
+  print( " ***\n" ); 
+  if( ( $noJobs < 5000 ) || ( $noJobs > 10000 ) ) {
       print( "Stopped $0. To achieve a good number of jobs, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
       exit( 0 ); 
   } else {
