@@ -542,7 +542,10 @@ else
         while (line != NULL && line[0] == '#')
             {
             freeMem(s);
-            lineFileNext(lf, &line, &lineSize);
+            if (! lineFileNext(lf, &line, &lineSize)) {		/* break at file end */
+               *retLf = lf;
+               return;
+            }
             s = cloneString(line);
             }
 	wordCount = chopLine(s, words);
