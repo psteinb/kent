@@ -537,24 +537,7 @@ else
 	    }
 	}
     else
-        {
-	char *s = cloneString(line);
-        while (line != NULL && line[0] == '#')
-            {
-            freeMem(s);
-            if (! lineFileNext(lf, &line, &lineSize)) {		/* break at file end */
-               *retLf = lf;
-               return;
-            }
-            s = cloneString(line);
-            }
-	wordCount = chopLine(s, words);
-	if (wordCount < 21 || wordCount > 23 || (words[8][0] != '+' && words[8][0] != '-'))
-	    errAbort("%s is not a psLayout file", fileName);
-	else
-	    lineFileReuse(lf); 
-	freeMem(s);
-	}
+	lineFileReuse(lf); 
     }
 *retQueryType = qt;
 *retTargetType = tt;
