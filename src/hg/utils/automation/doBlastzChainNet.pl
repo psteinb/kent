@@ -565,7 +565,7 @@ _EOF_
       print( ", and a runtime over 10 minutes" );
   }
   print( " ***\n" ); 
-  if ( $noJobs > 10000 ) {
+  if( $noJobs > 10000 ) {
       print( "Stopped $0. To achieve a good number of jobs, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
       exit( 0 ); 
   } else {
@@ -1168,7 +1168,7 @@ _EOF_
     );
 
 ###########
-# run per-chrom chaining jobs
+# see if we can afford to run per-chrom chaining jobs (depends on number of reference chroms)
 my $numRefChroms = `wc -l < $defVars{SEQ1_LEN}`; chomp($numRefChroms);
 
 my $paraReChain = "
@@ -1176,37 +1176,61 @@ para make jobListReChain\n
 para check\n
 para time > run.timeReChain\n
 cat run.timeReChain\n";
-  if ($clusterType eq "madmax") {
-      $paraReChain = "
+   if ($clusterType eq "madmax") {
+	$paraReChain = "
 para.pl make ReChain_$tDb$qDb jobListReChain -allowSpecialCharJobs -q long\n
 para.pl check ReChain_$tDb$qDb\n
 para.pl time ReChain_$tDb$qDb > run.timeReChain\n
 cat run.time\n";
-  }
-  
-  print "--> run chaining on ref-chrom-split psl files (reference has $numRefChroms chromsomes)\n"; 
+}
+
+#if ($numRefChroms < 4096) {
+#  print "--> run chaining on ref-chrom-split psl files (reference has $numRefChroms chromsomes)\n"; 
   $bossScript->add(<<_EOF_
-		   
-		   # split by target chrom
-		   pslSortAcc nohead pslOnTarget tempDir ../pslPartsPatchedFiltered/oldAndPatched.psl.gz
 
-		   # create a new chain
-		   # cluster job: run for every target chrom
-		   mkdir chain
-		   chmod +x rechain.csh
-		   find pslOnTarget -name \"*.psl\" | sed 's/.psl\$//g' | sed 's/pslOnTarget\\///g' | awk '{print "./rechain.csh pslOnTarget/"\$1".psl chain/"\$1".chain"}' > jobListReChain
-		   $paraReChain
+# split by target chrom
+# pslSplitOnTarget has problems if the psl file contains ##aligner=lastz lines
+# pslSplitOnTarget also opens a file for every reference chrom/scaffold --> for zfish we exceed the max 1024 of file handles
+# as a temp fix, set the limit to 4096. If that fails for a references species, we run chaining on all non-split psl files. 
+#limit descriptors 4096
+#zcat $outputDir/oldAndPatched.psl.gz | egrep "^##" -v | pslSplitOnTarget stdin pslOnTarget -maxTargetCount=4096
 
-		   # merge
-		   find chain -name \"*.chain\" | chainMergeSort -inputList=stdin | gzip -c > $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz
+pslSortAcc nohead pslOnTarget tempDir ../pslPartsPatchedFiltered/oldAndPatched.psl.gz
 
-		   # cleanup a bit and gzip
-		   rm -rf chain pslOnTarget
-		   _EOF_
-      );
+# create a new chain
+# cluster job: run for every target chrom
+mkdir chain
+chmod +x rechain.csh
+find pslOnTarget -name \"*.psl\" | sed 's/.psl\$//g' | sed 's/pslOnTarget\\///g' | awk '{print "./rechain.csh pslOnTarget/"\$1".psl chain/"\$1".chain"}' > jobListReChain
+$paraReChain
+
+# merge
+find chain -name \"*.chain\" | chainMergeSort -inputList=stdin | gzip -c > $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz
+
+# cleanup a bit and gzip
+rm -rf chain pslOnTarget
+_EOF_
+    );
+######### 
+# # run just a single chaining job
+# }else{
+#   print "--> run chaining on unsplit psl input (single job) because reference has $numRefChroms chromsomes\n"; 
+#   $bossScript->add(<<_EOF_
+
+# chmod +x rechain.csh
+
+# echo "./rechain.csh $outputDir/oldAndPatched.psl.gz $buildDir/axtChain/$tDb.$qDb.allpatched.chain" > jobListReChain
+# $paraReChain
+
+# # gzip
+# gzip $buildDir/axtChain/$tDb.$qDb.allpatched.chain
+
+# _EOF_
+#     );
+# }
 
   $bossScript->execute();
-}#	sub doPatchChains {}
+}	#	sub doPatchChains {}
 ######################################################################
 ######################################################################
 
