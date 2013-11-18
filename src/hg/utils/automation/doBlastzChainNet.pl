@@ -1168,7 +1168,7 @@ _EOF_
     );
 
 ###########
-# see if we can afford to run per-chrom chaining jobs (depends on number of reference chroms)
+# run per-chrom chaining jobs
 my $numRefChroms = `wc -l < $defVars{SEQ1_LEN}`; chomp($numRefChroms);
 
 my $paraReChain = "
@@ -1184,17 +1184,14 @@ para.pl time ReChain_$tDb$qDb > run.timeReChain\n
 cat run.time\n";
 }
 
-#if ($numRefChroms < 4096) {
-#  print "--> run chaining on ref-chrom-split psl files (reference has $numRefChroms chromsomes)\n"; 
+
+  print "--> run chaining on ref-chrom-split psl files (reference has $numRefChroms chromsomes)\n"; 
   $bossScript->add(<<_EOF_
 
 # split by target chrom
-# pslSplitOnTarget has problems if the psl file contains ##aligner=lastz lines
-# pslSplitOnTarget also opens a file for every reference chrom/scaffold --> for zfish we exceed the max 1024 of file handles
-# as a temp fix, set the limit to 4096. If that fails for a references species, we run chaining on all non-split psl files. 
-#limit descriptors 4096
-#zcat $outputDir/oldAndPatched.psl.gz | egrep "^##" -v | pslSplitOnTarget stdin pslOnTarget -maxTargetCount=4096
-
+# KS: updated original script: pslSplitOnTarget would create one big job, if 
+# there were 4096 target chromosomes or more. Replaced by pslSortAcc, which 
+# always splits jobs per target chromosomes, no matter how many there are
 pslSortAcc nohead pslOnTarget tempDir ../pslPartsPatchedFiltered/oldAndPatched.psl.gz
 
 # create a new chain
@@ -1211,23 +1208,6 @@ find chain -name \"*.chain\" | chainMergeSort -inputList=stdin | gzip -c > $buil
 rm -rf chain pslOnTarget
 _EOF_
     );
-######### 
-# # run just a single chaining job
-# }else{
-#   print "--> run chaining on unsplit psl input (single job) because reference has $numRefChroms chromsomes\n"; 
-#   $bossScript->add(<<_EOF_
-
-# chmod +x rechain.csh
-
-# echo "./rechain.csh $outputDir/oldAndPatched.psl.gz $buildDir/axtChain/$tDb.$qDb.allpatched.chain" > jobListReChain
-# $paraReChain
-
-# # gzip
-# gzip $buildDir/axtChain/$tDb.$qDb.allpatched.chain
-
-# _EOF_
-#     );
-# }
 
   $bossScript->execute();
 }	#	sub doPatchChains {}
