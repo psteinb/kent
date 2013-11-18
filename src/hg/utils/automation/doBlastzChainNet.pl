@@ -1142,7 +1142,8 @@ cat run.time\n";
 # first run patchChain to create the cluster run joblist
 $cat $buildDir/axtChain/$chain | \\
     patchChain.perl /dev/stdin $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} $defVars{'SEQ1_LEN'} $defVars{'SEQ2_LEN'} \\
-        $defVars{'CHAIN_MINSCORE'} $defVars{'GAPMAXSIZE_T'} $defVars{'GAPMAXSIZE_Q'} $defVars{'GAPMINSIZE_T'} $defVars{'GAPMINSIZE_Q'} $defVars{'NUM_JOBS'} \\
+	-chainMinScore $defVars{'CHAIN_MINSCORE'} -gapMaxSizeT $defVars{'GAPMAXSIZE_T'} -gapMaxSizeQ $defVars{'GAPMAXSIZE_Q'} \\
+        -gapMinSizeT $defVars{'GAPMINSIZE_T'} -gapMinSizeQ $defVars{'GAPMINSIZE_Q'} -numJobs $defVars{'NUM_JOBS'} \\
         -jobDir jobs -outputDir $outputDir $filterParameters \\
         -lastzParameters "--format=axt Q=$defVars{'BLASTZ_Q'} K=$defVars{'PATCHBLASTZ_K'} L=$defVars{'PATCHBLASTZ_L'} M=0 T=0 W=$defVars{'PATCHBLASTZ_W'}" 
 
