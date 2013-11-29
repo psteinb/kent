@@ -3,10 +3,12 @@ include inc/common.mk
 
 all: utils cgi blatSuite
 
-alpha: clean utils-alpha cgi-alpha blatSuite tags-all
-alphalustre: clean utils-alpha cgi-alpha blatSuite 
-alphanoclean: utils-alpha cgi-alpha blatSuite tags-all
-
+alpha: clean
+	${MAKE} utils-alpha cgi-alpha blatSuite tags-all
+alphalustre: clean 
+	${MAKE} utils-alpha cgi-alpha blatSuite 
+alphanoclean: 
+	${MAKE} utils-alpha cgi-alpha blatSuite tags-all
 
 
 beta: check-beta clean cgi-beta
@@ -95,7 +97,7 @@ clean:
 	- find . -name \*.o -print | xargs rm
 	rm -f tags TAGS
 
-testDirs = lib blat gfServer hg
+testDirs = lib utils blat gfServer hg
 test:: $(testDirs:%=%.test)
 %.test:
 	cd $* && ${MAKE} test
@@ -135,6 +137,8 @@ utils: libs destBin
 	cd hg && ${MAKE} utils
 
 utils-alpha: libs
+	${MKDIR} ${SCRIPTS}
+	cd parasol && ${MAKE}
 	@for D in ${DIRS} x; do \
             if test "$$D" != "x" ; then \
                 ( cd $$D && echo $$D && ${MAKE} ) ;\

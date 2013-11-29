@@ -1012,7 +1012,12 @@ return stringIn(needle, haystack);
 }
 
 void oligoMatchLoad(struct track *tg)
-/* Create track of perfect matches to oligo on either strand. */
+/* Create track of perfect matches to oligo on either strand. 
+ *
+ * Note that if you are extending this code, there is also a parallel copy 
+ * in src/hg/utils/oligoMatch/ that should be kept up to date! 
+ *
+ */
 {
 char *dna = dnaInWindow();
 char *fOligo = oligoMatchSeq();
@@ -4564,12 +4569,16 @@ if (!hideControls)
         // This 'dirty' field is used to check if js/ajax changes to the page have occurred.
         // If so and it is reached by the back button, a page reload will occur instead.
         hPrintf("<INPUT TYPE='text' style='display:none;' name='dirty' id='dirty' VALUE='false'>\n");
+        // Define BACK_SUPPORT to support the back-button via jquery.histoty.js
+#define BACK_SUPPORT
+#ifndef BACK_SUPPORT
         // Unfortunately this does not work in IE, so IE will get reloaded only after this full load
         // NOTE: Larry and I have seen that the new URL is not even used, but this will abort
         //       the page load and hasten the isDirty() check in hgTracks.js
         hPrintf("<script type='text/javascript'>if (document.getElementById('dirty').value == "
                 "'true') {document.getElementById('dirty').value = 'false'; "
                 "window.location = '%s?hgsid=%d';}</script>\n",hgTracksName(),cart->sessionId);
+#endif//ndef BACK_SUPPORT
         hPrintf("<INPUT TYPE=HIDDEN id='positionHidden' NAME=\"position\" "
                 "VALUE=\"%s:%d-%d\">", chromName, winStart+1, winEnd);
         hPrintf("\n%s", trackGroupsHidden1->string);
@@ -5751,6 +5760,9 @@ if(!trackImgOnly)
     jsIncludeFile("utils.js", NULL);
     jsIncludeFile("ajax.js", NULL);
     jsIncludeFile("jquery.watermarkinput.js", NULL);
+#ifdef BACK_SUPPORT
+    jsIncludeFile("jquery.history.js", NULL);  // Experimental
+#endif//def BACK_SUPPORT
     if(!searching)
         {
         jsIncludeFile("jquery.imgareaselect.js", NULL);

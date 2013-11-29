@@ -679,11 +679,18 @@ for(rec = manifestRecs; rec; rec = rec->next)
 
     char *mFormat = rec->words[mFormatIdx];
 
+    // check that the format is not blank
+    if (fileIsValid && sameString(mFormat,""))
+	{
+	fileIsValid = FALSE;
+	printf("ERROR: format must not be blank.\n");
+	}
+
     // check that the file extension is not disallowed
     if (fileIsValid && disallowedCompressionExtension(mFileName, mFormat))
 	{
 	fileIsValid = FALSE;
-	printf("ERROR: %s FILE COMPRESSION TYPE NOT ALLOWED !!!\n", mFileName);
+	printf("ERROR: %s FILE COMPRESSION TYPE NOT ALLOWED with format %s !!!\n", mFileName, mFormat);
 	}
 
 
@@ -741,7 +748,7 @@ for(rec = manifestRecs; rec; rec = rec->next)
 	boolean smallNumber = FALSE;
 	int sl = strlen(mReplicate);
 	int sn = 0;
-	if (countLeadingDigits(mReplicate) == sl && sl < 2 && sl > 0)
+	if (countLeadingDigits(mReplicate) == sl && sl <= 2 && sl > 0)
 	    {
 	    smallNumber = TRUE;
 	    sn = atoi(mReplicate);
@@ -749,20 +756,21 @@ for(rec = manifestRecs; rec; rec = rec->next)
        	if (!(startsWith("pooled", mReplicate) || startsWith("n/a", mReplicate) || (smallNumber && sn >=1 && sn <=10)))
 	    {
 	    fileIsValid = FALSE;
-    	    printf("ERROR: %s is not a valid value for the replicate field.  Must be pooled or n/a or a small unsigned number 1 <= N <=10.\n", mReplicate);
+    	    printf("ERROR: %s is not a valid value for the replicate field.  "
+		"Must be pooled or n/a or a small unsigned number 1 <= N <=10.\n", mReplicate);
 	    }
 	}
     
     // check technical_replicate field
-    if (mTechnicalReplicateIdx != -1)  // The technical_replicate field is optional
+    if (fileIsValid)
 	{
-	char *mTechnicalReplicate = rec->words[mTechnicalReplicateIdx];
-	if (fileIsValid)
+	if (mTechnicalReplicateIdx != -1)  // The technical_replicate field is optional
 	    {
+	    char *mTechnicalReplicate = rec->words[mTechnicalReplicateIdx];
 	    boolean smallNumber = FALSE;
 	    int sl = strlen(mTechnicalReplicate);
 	    int sn = 0;
-	    if (countLeadingDigits(mTechnicalReplicate) == sl && sl < 2 && sl > 0)
+	    if (countLeadingDigits(mTechnicalReplicate) == sl && sl <= 2 && sl > 0)
 		{
 		smallNumber = TRUE;
 		sn = atoi(mTechnicalReplicate);
@@ -770,17 +778,18 @@ for(rec = manifestRecs; rec; rec = rec->next)
 	    if (!(startsWith("pooled", mTechnicalReplicate) || startsWith("n/a", mTechnicalReplicate) || (smallNumber && sn >=1 && sn <=10)))
 		{
 		fileIsValid = FALSE;
-		printf("ERROR: %s is not a valid value for the technical_replicate field.  Must be pooled or n/a or a small unsigned number 1 <= N <=10.\n", mTechnicalReplicate);
+		printf("ERROR: %s is not a valid value for the technical_replicate field.  "
+		    "Must be pooled or n/a or a small unsigned number 1 <= N <=10.\n", mTechnicalReplicate);
 		}
 	    }
 	}
     
     // check paired_end field
-    if (mPairedEndIdx != -1)  // The check paired_end field is optional
+    if (fileIsValid)
 	{
-	char *mPairedEnd = rec->words[mPairedEndIdx];
-	if (fileIsValid)
+	if (mPairedEndIdx != -1)  // The check paired_end field is optional
 	    {
+	    char *mPairedEnd = rec->words[mPairedEndIdx];
 	    boolean smallNumber = FALSE;
 	    int sl = strlen(mPairedEnd);
 	    int sn = 0;
@@ -793,6 +802,14 @@ for(rec = manifestRecs; rec; rec = rec->next)
 		{
 		fileIsValid = FALSE;
 		printf("ERROR: %s is not a valid value for the paired_end field.  Must be 1 (forward), 2 (reverse) or \"n/a\".\n", mPairedEnd);
+		}
+	    }
+	else
+	    {
+	    if (sameString(mFormat, "fastq"))  // The check paired_end field is required for fastq
+		{
+		fileIsValid = FALSE;
+		printf("ERROR: For format fastq the paired_end field is required.  Must be 1 (forward), 2 (reverse) or \"n/a\".\n");
 		}
 	    }
 	}
