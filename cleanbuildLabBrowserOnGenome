@@ -13,6 +13,6 @@ make alpha
 
 if [ $? != 0 ]; then
  echo "building kent source on lustre failed" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
-else
+#else
 # echo "building kent source on lustre succeeded" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
 fi
