@@ -21,14 +21,14 @@ endif
 BROWSER_LOADERS = makeDb/hgLoadBed makeDb/hgLoadWiggle makeDb/hgLoadMaf
 
 ifneq ($(findstring $(shell hostname),hgwdev hgwbeta),)
-    ENCODE_FILES =
+    ENCODE_FILES = encode3/encodeDataWarehouse
 endif
 
 
 TEST_DIRS = lib autoDtd autoSql blastToPsl checkTableCoords embossToPsl \
             genePredSingleCover genePredHisto genePredToBed genePredToGtf \
 	    genePredToMafFrames gbGetEntries hgGetAnn liftAcross \
-            mrnaToGene pslCDnaFilter pslDiff pslHisto \
+            mouseStuff mrnaToGene pslCDnaFilter pslDiff pslHisto \
             pslPartition pslSelect pslStats pslSwap pslToBed spideyToPsl \
 	    sqlToXml xmlToSql utils
 

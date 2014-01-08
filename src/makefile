@@ -86,6 +86,7 @@ clean:
                 x=$$? ; if [ $$x -ne 0 ]; then exit $$x ; fi \
             fi ;\
 	done
+	cd parasol && ${MAKE} clean
 	cd lib && ${MAKE} clean 
 	cd hg && ${MAKE} clean
 	cd hg && ${MAKE} clean_utils

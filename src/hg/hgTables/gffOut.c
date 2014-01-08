@@ -330,27 +330,64 @@ struct slName* list = NULL;
 struct bed *bed;
 for (bed = bedList;  bed != NULL;  bed = bed->next)
     {
-    char sql[1024];
+    // be super specific, the same name may align to multiple locations
+    //  or even the same location with alternate splicing or exon structure.
+    
+    // convert bed block coordinates to exonStarts, exonEnds
+    int i;
+    struct dyString *exonStarts = newDyString(256);
+    struct dyString *exonEnds = newDyString(256);
+    for( i = 0 ; i < bed->blockCount; i++ )
+	{
+	int exonStart = bed->chromStart + bed->chromStarts[i];
+	int exonEnd = exonStart + bed->blockSizes[i];
+	dyStringPrintf(exonStarts, "%d,", exonStart);
+	dyStringPrintf(exonEnds,   "%d,", exonEnd);
+	}
+    char sql[4096+strlen(exonStarts->string)+strlen(exonEnds->string)];
+
     sqlSafef(sql, sizeof sql, "select exonFrames "
 	"from %s where " 
-	"name = '%s' and "  // be specific, the same name may align to multiple locations
+	"name = '%s' and "  
 	"chrom = '%s' and "
 	"strand = '%c' and "
 	"txStart = %d and "
-	"txEnd = %d"
+	"txEnd = %d and "
+	"cdsStart = %d and "
+	"cdsEnd = %d and "
+        "exonCount = %d and "
+        "exonStarts = '%s' and "
+        "exonEnds = '%s'"
 	, 
 	table, 
 	bed->name,
 	bed->chrom,
 	bed->strand[0],
 	bed->chromStart,
-	bed->chromEnd
+	bed->chromEnd,
+	bed->thickStart,
+	bed->thickEnd,
+	bed->blockCount,
+	exonStarts->string,
+	exonEnds->string
 	);
     char *exonFrames = sqlQuickString(conn, sql);
     slNameAddHead(&list, exonFrames);
+    dyStringFree(&exonStarts);
+    dyStringFree(&exonEnds);
     }
 slReverse(&list);
 return list;
+}
+
+static struct hash *makeChromHashForTable(struct sqlConnection *conn, char *table)
+/* Get a hash of all the chroms that are actually being used for the table.
+ * This is helpful for assemblies with huge numbers of chroms. */
+{
+char query[1024];
+sqlSafef(query, sizeof query, "select distinct chrom, 'dummyvalue' from %s", table);
+struct hash *hash = sqlQuickHash(conn, query);
+return hash;
 }
 
 void doOutGff(char *table, struct sqlConnection *conn, boolean outputGtf)
@@ -369,8 +406,17 @@ int efIdx = sqlFieldIndex(conn, table, "exonFrames");
 
 safef(source, sizeof(source), "%s_%s", database, table);
 itemCount = 0;
+// regionList can have many thousands of items e.g. rheMac3 has 34000 chroms!
+struct hash *chromHash = NULL;
+int regionCount = slCount(regionList);
+if (regionCount > 400)
+    {
+    chromHash = makeChromHashForTable(conn, table);
+    };
 for (region = regionList; region != NULL; region = region->next)
     {
+    if (chromHash && (!hashFindVal(chromHash, region->chrom)))
+	    continue;
     struct lm *lm = lmInit(64*1024);
     int fieldCount;
     bedList = cookedBedList(conn, table, region, lm, &fieldCount);

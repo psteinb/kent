@@ -5,6 +5,7 @@
 #include "hash.h"
 #include "options.h"
 #include "errCatch.h"
+#include "localmem.h"
 #include "errabort.h"
 #include "sqlNum.h"
 #include "cheapcgi.h"
@@ -49,9 +50,17 @@ void alignFastqMakeBed(struct edwFile *ef, struct edwAssembly *assembly,
  * Update vf->mapRatio and related fields. */
 {
 edwAlignFastqMakeBed(ef, assembly, fastqPath, vf, bedF, 
-    &vf->mapRatio, &vf->depth, &vf->sampleCoverage);
+    &vf->mapRatio, &vf->depth, &vf->sampleCoverage, &vf->uniqueMapRatio);
 }
 
+int makeReadableTemp(char *fileName)
+/* Make temp file that other people can read. */
+{
+int fd = mkstemp(fileName);
+if (fchmod(fd, 0664) == -1)
+    errnoAbort("Couldn't change permissions on temp file %s", fileName);
+return fd;
+}
 
 void makeValidFastq( struct sqlConnection *conn, char *path, struct edwFile *ef, 
 	struct edwAssembly *assembly, struct edwValidFile *vf)
@@ -72,7 +81,7 @@ vf->basesInSample = fqf->basesInSample;
 /* Align fastq and turn results into bed. */
 char sampleBedName[PATH_LEN], temp[PATH_LEN];
 safef(sampleBedName, PATH_LEN, "%sedwSampleBedXXXXXX", edwTempDirForToday(temp));
-int bedFd = mkstemp(sampleBedName);
+int bedFd = makeReadableTemp(sampleBedName);
 FILE *bedF = fdopen(bedFd, "w");
 alignFastqMakeBed(ef, assembly, fqf->sampleFileName, vf, bedF);
 carefulClose(&bedF);
@@ -84,65 +93,97 @@ edwFastqFileFree(&fqf);
 #define TYPE_BAM  1
 #define TYPE_READ 2
 
-void edwMakeSampleOfBam(char *inBamName, FILE *outBed, int downStep, 
+#ifdef OLD
+struct miniBed
+/* Almost a bed record. */
+    {
+    struct miniBed *next;
+    uint32_t tid;   // Target ID in a bam file 
+    uint32_t start; // Start position
+    uint32_t size;  // Size of read
+    char strand;    //  '+' or '-'
+    };
+
+int miniBedCmp(const void *va, const void *vb)
+/* Compare to sort based on query start. */
+{
+const struct targetPos *a = *((struct targetPos **)va);
+const struct targetPos *b = *((struct targetPos **)vb);
+int dif;
+dif = a->tid - b->tid;
+if (dif == 0)
+    dif = a->start - b->start;
+return dif;
+}
+
+void edwMakeSampleOfBam(char *inBamName, FILE *outBed, int maxSampleSize, 
     struct edwAssembly *assembly, struct genomeRangeTree *grt, struct edwValidFile *vf)
 /* Sample every downStep items in inBam and write in simplified bed 5 fashion to outBed. */
 {
 samfile_t *sf = samopen(inBamName, "rb", NULL);
 bam_header_t *bamHeader = sf->header;
+struct lm *lm = lmInit(0);
+struct miniBed *mbList = NULL, *mb;
 
 bam1_t one;
 ZeroVar(&one);	// This seems to be necessary!
 
-long long mappedCount = 0;
-boolean done = FALSE;
-while (!done)
+/* Pass through collecting counts and making up miniBeds for items. */
+long long mappedCount = 0, uniqueMappedCount = 0;
+for (;;)
     {
-    int hotPosInCycle = rand()%downStep;
-    int cycle;
-    for (cycle=0; cycle<downStep; ++cycle)
-        {
-	boolean hotPos = (cycle == hotPosInCycle);
-	int err = bam_read1(sf->x.bam, &one);
-	if (err < 0)
+    if (bam_read1(sf->x.bam, &one) < 0)
+	break;
+    int32_t tid = one.core.tid;
+    int l_qseq = one.core.l_qseq;
+    if (tid > 0)
+	{
+	++mappedCount;
+	if (one.core.qual > edwMinMapQual)
 	    {
-	    done = TRUE;
-	    break;
+	    ++uniqueMappedCount;
+	    lmAllocVar(lm, mb);
+	    mb->tid = tid;
+	    mb->start = one.core.pos;
+	    mb->size = l_qseq;
+	    mb-strand = ((one.core.flat & BAM_FREVERSE) ? '-' : '+');
+	    slAddHead(&mbList, mb);
 	    }
-	int32_t tid = one.core.tid;
-	int l_qseq = one.core.l_qseq;
-	if (tid > 0)
-	    ++mappedCount;
-	vf->itemCount += 1;
-	vf->basesInItems += l_qseq;
-	if (hotPos)
-	   {
-	   vf->sampleCount += 1;
-	   vf->basesInSample += l_qseq;
-	   if (tid > 0)
-	       {
-	       char *chrom = bamHeader->target_name[tid];
-	       int start = one.core.pos;
-	       // Approximate here... can do better if parse cigar.
-	       int end = start + l_qseq;	
-	       boolean isRc = (one.core.flag & BAM_FREVERSE);
-	       char strand = '+';
-	       if (isRc)
-	           {
-		   strand = '-';
-		   reverseIntRange(&start, &end, bamHeader->target_len[tid]);
-		   }
-	       if (start < 0) start=0;
-	       fprintf(outBed, "%s\t%d\t%d\t.\t0\t%c\n", chrom, start, end, strand);
-	       genomeRangeTreeAdd(grt, chrom, start, end);
-	       }
-	   }
 	}
     }
+
+/* Whittle down mini bed list to sample, and crawl through it making bed etc. */
+mbList = slListRandomSample(mbList, maxSampleSize);
+for (mb = mbList; mb != NULL; mb = mb->next)
+    {
+    vf->sampleCount += 1;
+    vf->basesInSample += mb->size;
+    char *chrom = bamHeader->target_name[tid];
+       {
+       if (tid > 0)
+	   {
+	   int start = one.core.pos;
+	   // Approximate here... can do better if parse cigar.
+	   int end = start + l_qseq;	
+	   boolean isRc = (one.core.flag & BAM_FREVERSE);
+	   char strand = '+';
+	   if (isRc)
+	       {
+	       strand = '-';
+	       }
+	   if (start < 0) start=0;
+	   fprintf(outBed, "%s\t%d\t%d\t.\t0\t%c\n", chrom, start, end, strand);
+	   genomeRangeTreeAdd(grt, chrom, start, end);
+	   }
+       }
+    }
 vf->mapRatio = (double)mappedCount/vf->itemCount;
+vf->uniqueMapRatio = (double)uniqueMappedCount/vf->itemCount;
 vf->depth = vf->basesInItems*vf->mapRatio/assembly->baseCount;
 samclose(sf);
+lmCleanup(&lm);
 }
+#endif /* OLD */
 
 void makeValidBigBed( struct sqlConnection *conn, char *path, struct edwFile *ef, 
 	struct edwAssembly *assembly, char *format, struct edwValidFile *vf)
@@ -193,23 +234,42 @@ fprintf(f, "vf->sampleCoverage = %g\n", vf->sampleCoverage);
 fprintf(f, "vf->sampleCount = %g\n", vf->depth);
 }
 
-#define edwSampleReduction 40	    /* Initially sample ever Nth read where this defines N */
-
 void makeValidBam( struct sqlConnection *conn, char *path, struct edwFile *ef, 
 	struct edwAssembly *assembly, struct edwValidFile *vf)
 /* Fill out fields of vf based on bam.  Create sample subset as a little bed file. */
 {
-char sampleFileName[PATH_LEN], temp[PATH_LEN];
-safef(sampleFileName, PATH_LEN, "%sedwBamSampleToBedXXXXXX", edwTempDirForToday(temp));
-int sampleFd = mkstemp(sampleFileName);
-FILE *f = fdopen(sampleFd, "w");
-struct genomeRangeTree *grt = genomeRangeTreeNew();
-edwMakeSampleOfBam(path, f, edwSampleReduction, assembly, grt, vf);
-carefulClose(&f);
+/* Have edwBamStats do most of the work. */
+char sampleFileName[PATH_LEN];
+struct edwBamFile *ebf = edwMakeBamStatsAndSample(conn, ef->id, sampleFileName);
+
+/* Fill in some of validFile record from bamFile record */
 vf->sampleBed = cloneString(sampleFileName);
+vf->itemCount = ebf->readCount;
+vf->basesInItems = ebf->readBaseCount;
+vf->mapRatio = (double)ebf->mappedCount/ebf->readCount;
+vf->uniqueMapRatio = (double)ebf->uniqueMappedCount/ebf->readCount;
+vf->depth = vf->basesInItems*vf->mapRatio/assembly->baseCount;
+
+/* Scan through the bed file to make up information about the sample bits */
+struct genomeRangeTree *grt = genomeRangeTreeNew();
+struct lineFile *lf = lineFileOpen(sampleFileName, TRUE);
+char *row[3];
+while (lineFileRow(lf, row))
+    {
+    char *chrom = row[0];
+    unsigned start = sqlUnsigned(row[1]);
+    unsigned end = sqlUnsigned(row[2]);
+    vf->sampleCount += 1;
+    vf->basesInSample += end - start;
+    genomeRangeTreeAdd(grt, chrom, start, end);
+    }
+lineFileClose(&lf);
+
+/* Fill in last bits that need summing from the genome range tree. */
 long long basesHitBySample = genomeRangeTreeSumRanges(grt);
-genomeRangeTreeFree(&grt);
 vf->sampleCoverage = (double)basesHitBySample/assembly->baseCount;
+genomeRangeTreeFree(&grt);
+edwBamFileFree(&ebf);
 }
 
 void makeValid2Bit(struct sqlConnection *conn, char *path, struct edwFile *ef, 
@@ -254,7 +314,7 @@ if (!gff->isGtf)
 /* Convert it to a somewhat smaller less informative bed file for sampling purposes. */
 char sampleFileName[PATH_LEN], temp[PATH_LEN];
 safef(sampleFileName, PATH_LEN, "%sedwGffBedXXXXXX", edwTempDirForToday(temp));
-int sampleFd = mkstemp(sampleFileName);
+int sampleFd = makeReadableTemp(sampleFileName);
 FILE *f = fdopen(sampleFd, "w");
 struct genomeRangeTree *grt = genomeRangeTreeNew();
 
@@ -337,7 +397,13 @@ dyStringPrintf(dy, " basesInSample=%lld,", (long long)el->basesInSample);
 dyStringPrintf(dy, " sampleBed='%s',", el->sampleBed);
 dyStringPrintf(dy, " mapRatio=%g,", el->mapRatio);
 dyStringPrintf(dy, " sampleCoverage=%g,", el->sampleCoverage);
-dyStringPrintf(dy, " depth=%g", el->depth);
+dyStringPrintf(dy, " depth=%g,", el->depth);
+dyStringPrintf(dy, " singleQaStatus=0,");
+dyStringPrintf(dy, " replicateQaStatus=0,");
+dyStringPrintf(dy, " technicalReplicate='%s',", el->technicalReplicate);
+dyStringPrintf(dy, " pairedEnd='%s',", el->pairedEnd);
+dyStringPrintf(dy, " qaVersion='%d',", el->qaVersion);
+dyStringPrintf(dy, " uniqueMapRatio=%g", el->uniqueMapRatio);
 dyStringPrintf(dy, " where id=%lld\n", (long long)id);
 sqlUpdate(conn, dy->string);
 freeDyString(&dy);
@@ -360,6 +426,8 @@ vf->replicate = findTagOrEmpty(tags, "replicate");
 vf->validKey = hashFindVal(tags->hash, "valid_key");
 vf->enrichedIn = findTagOrEmpty(tags, "enriched_in");
 vf->ucscDb = findTagOrEmpty(tags, "ucsc_db");
+vf->technicalReplicate = findTagOrEmpty(tags, "technical_replicate");
+vf->pairedEnd = findTagOrEmpty(tags, "paired_end");
 vf->sampleBed = "";
 
 if (vf->format && vf->validKey)	// We only can validate if we have something for format 
@@ -473,9 +541,6 @@ if (vf->format && vf->validKey)	// We only can validate if we have something for
 		dirEnd = fileName;
 	    else
 		dirEnd += 1;
-#ifdef OLD
-	    char *suffix = edwFindDoubleFileSuffix(fileName);
-#endif /* OLD */
 	    dyStringAppendN(newName, fileName, dirEnd - fileName);
 	    dyStringAppend(newName, vf->licensePlate);
 	    dyStringAppend(newName, suffix);
@@ -552,9 +617,15 @@ sqlUpdate(conn, query);
 void edwMakeValidFile(int startId, int endId)
 /* edwMakeValidFile - Add range of ids to valid file table.. */
 {
-/* Make list with all files in ID range */
+/* Make list with all files in ID range  - don't want to use edwFileAllIntactInRange because
+ * we may be revalidating files that do have errors. */
 struct sqlConnection *conn = sqlConnect(edwDatabase);
-struct edwFile *ef, *efList = edwFileAllIntactBetween(conn, startId, endId);
+char query[512];
+sqlSafef(query, sizeof(query),
+    "select * from edwFile where id>=%d and id<=%d and endUploadTime != 0 "
+    "and updateTime != 0", 
+    startId, endId);
+struct edwFile *ef, *efList = edwFileLoadByQuery(conn, query);
 
 for (ef = efList; ef != NULL; ef = ef->next)
     {

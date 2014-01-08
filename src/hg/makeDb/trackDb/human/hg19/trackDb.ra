@@ -44,14 +44,17 @@ pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
 
 track rgdQtl override
 shortLabel RGD Human QTL
+priority 1
 origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
 
 track rgdRatQtl override
+priority 1
 origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
 
 track jaxQtlMapped override
+priority 1
 origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
 
@@ -559,6 +562,84 @@ priority 1
 visibility hide
 type bed 4 +
 
+track msr1
+shortLabel Gene Interactions
+longLabel Microsoft Research Gene Interactions
+group pub
+priority 30
+visibility hide
+type bigBed 4 .
+noScoreFilter on
+release alpha
+
+track pubsDev
+shortLabel Publications Beta
+longLabel Publications: Textmining of Publications, Beta version
+group pub
+priority 12
+visibility hide
+color 0,0,0
+type bed 4
+compositeTrack on
+release alpha
+nextExonText Next Match
+prevExonText Prev Match
+pubsPslTrack pubsDevBlatPsl
+pubsArticleTable hgFixed.pubsDevArticle
+pubsSequenceTable hgFixed.pubsDevSequenceAnnot
+pubsMarkerTable hgFixed.pubsDevMarkerAnnot
+noInherit on
+
+    track pubsDevBlat
+    shortLabel Sequences
+    longLabel DNA/Prot Sequences in Publications Beta
+    parent pubsDev on
+    type bed 12 .
+    visibility pack
+    priority 2
+    release alpha
+    configurable off
+    configureByPopup off
+
+    track pubsDevBlatPsl
+    shortLabel Individual Seq. Matches
+    longLabel Individual sequence matches of one selected article from sequences track
+    parent pubsDev off
+    type psl
+    visibility hide
+    priority 1
+    release alpha
+    configurable off
+    configureByPopup off
+    color 0,115,70
+
+    #track pubsDevMarkerBand
+    #shortLabel (Dev) Bands
+    #longLabel (Dev) Cytogenetic bands in Publications
+    #parent pubsDev on
+    #visibility hide
+    #priority 3
+    #type bed 5
+    #release alpha
+
+    #track pubsDevMarkerSnp
+    #shortLabel (Dev) SNPs
+    #longLabel (Dev) SNPs in Publications
+    #parent pubsDev on
+    #visibility hide
+    #priority 3
+    #type bed 5
+    #release alpha
+
+    #track pubsDevMarkerGene
+    #shortLabel (Dev) Genes
+    #longLabel (Dev) Gene symbols in Publications
+    #parent pubsDev on
+    #priority 3
+    #visibility hide
+    #type bed 5
+    #release alpha
+
 track cons46way
 compositeTrack on
 shortLabel 46-Way Cons
@@ -889,45 +970,6 @@ codingAnnotations snp135CodingDbSnp,
 # Need to request new tag
 #codingAnnoLabel_snp135CodingDbSnp dbSNP
 
-track snp134Common override
-snpSeqFile /gbdb/hg19/snp/snp134.fa
-chimpOrangMacOrthoTable snp134OrthoPt3Pa2Rm2
-chimpDb panTro2
-orangDb ponAbe2
-macaqueDb rheMac2
-hapmapPhase III
-codingAnnotations snp134CodingDbSnp,
-codingAnnoLabel_snp134CodingDbSnp dbSNP
-
-track snp134Flagged override
-snpSeqFile /gbdb/hg19/snp/snp134.fa
-chimpOrangMacOrthoTable snp134OrthoPt3Pa2Rm2
-chimpDb panTro2
-orangDb ponAbe2
-macaqueDb rheMac2
-hapmapPhase III
-codingAnnotations snp134CodingDbSnp,
-codingAnnoLabel_snp134CodingDbSnp dbSNP
-
-track snp134Mult override
-snpSeqFile /gbdb/hg19/snp/snp134.fa
-chimpOrangMacOrthoTable snp134OrthoPt3Pa2Rm2
-chimpDb panTro2
-orangDb ponAbe2
-macaqueDb rheMac2
-hapmapPhase III
-codingAnnotations snp134CodingDbSnp,
-codingAnnoLabel_snp134CodingDbSnp dbSNP
-
-track snp134 override
-chimpOrangMacOrthoTable snp134OrthoPt3Pa2Rm2
-chimpDb panTro2
-orangDb ponAbe2
-macaqueDb rheMac2
-hapmapPhase III
-codingAnnotations snp134CodingDbSnp,
-codingAnnoLabel_snp134CodingDbSnp dbSNP
-
 track snp132Common override
 snpSeqFile /gbdb/hg19/snp/snp132.fa
 chimpOrangMacOrthoTable snp132OrthoPt2Pa2Rm2
@@ -1203,6 +1245,17 @@ chromosomes chr1,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr
 track tgpRecombRate override
 origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
+
+track evsEsp6500
+release alpha
+shortLabel EVS Variants
+longLabel NHLBI GO Exome Sequencing Project (ESP) - Variants from 6,503 Exomes
+type vcfTabix
+group varRep
+priority 100
+visibility hide
+maxWindowToDraw 5000000
+chromosomes chr1,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr2,chr20,chr21,chr22,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chrX,chrY
 
 
 searchTable nscanGene
@@ -1501,10 +1554,6 @@ origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
 
 track cgapSage override
-origAssembly hg18
-pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
-
-track snpArray override
 origAssembly hg18
 pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
 
@@ -2185,25 +2234,58 @@ pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
 
 #these 6 overrides go with ucsfBrainMethyl parent track
 track ucsfChipSeqH3K4me3BrainCoverage override
-release alpha
+release alpha,beta,public
 type bigWig 1 180
 
 track ucsfMedipSeqBrainCoverage override
-release alpha
+release alpha,beta,public
 type bigWig  1 300
 
 track ucsfMedipSeqBrainCpG override
-release alpha
+release alpha,beta,public
 type bigWig  1 298
 
 track ucsfMreSeqBrainCpG override
-release alpha
+release alpha,beta,public
 type bigWig 0.09 878.8
 
 track ucsfRnaSeqBrainAllCoverage override
-release alpha
+release alpha,beta,public
 type bigWig 1 24184
 
 track ucsfRnaSeqBrainSmartCoverage override
-release alpha
+release alpha,beta,public
 type bigWig 1 141
+
+track cooperDevDelay
+shortLabel Cooper Dev. Delay
+longLabel Copy Number Variation morbidity map of developmental delay, Cooper et al. 2011
+group phenDis
+priority 1
+visibility hide
+#color 0,0,200
+type gvf 
+noScoreFilter .
+#maxHeightPixels 128:57:16
+#viewLimits 0:100
+#alwaysZero on
+
+track rmsk override
+group rep
+
+track nestedRepeats override
+group rep
+
+track windowmaskerSdust override
+group rep 
+
+track simpleRepeat override
+group rep 
+
+track microsat override
+group rep 
+
+track pubs override
+group phenDis
+priority 0.9
+release alpha 

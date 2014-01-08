@@ -335,6 +335,7 @@ printf("</SELECT><BR>\n");
 
 printf("<div id='"hgvaVariantPasteContainer"'%s>\n",
        differentString(selected, hgvaUseVariantIds) ? " style='display: none;'" : "");
+printf("Enter dbSNP rs# identifiers separated by whitespace or commas:<BR>\n");
 char *oldPasted = cartUsualString(cart, hgvaVariantIds, "");
 cgiMakeTextArea(hgvaVariantIds, oldPasted, 10, 70);
 puts("</div>");
@@ -630,7 +631,9 @@ for (ref = trackRefList;  ref != NULL;  ref = ref->next)
     char cartVar[512];
     safef(cartVar, sizeof(cartVar), "hgva_track_%s_%s", database, tdb->track);
     cartMakeCheckBox(cart, cartVar, FALSE);
-    printf("%s<BR>\n", tdb->longLabel);
+    struct trackDb *topTdb = trackDbTopLevelSelfOrParent(tdb);
+    printf("<A HREF=\"%s?%s&g=%s\">%s</A><BR>\n", hgTrackUiName(), cartSidUrlString(cart),
+	   topTdb->track, tdb->longLabel);
     }
 }
 

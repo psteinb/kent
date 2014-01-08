@@ -20,9 +20,13 @@
 
 extern char *edwDatabase;   /* Name of database we connect to. */
 extern char *edwRootDir;    /* Name of root directory for our files, including trailing '/' */
+extern char *eapRootDir;    /* Name of root directory for analysis pipeline */
+extern char *eapTempDir;    /* Name of temp dir for analysis pipeline */
 extern char *edwLicensePlatePrefix; /* License plates start with this - thanks Mike Cherry. */
 extern char *edwValDataDir; /* Data files we need for validation go here. */
 extern int edwSingleFileTimeout;   // How many seconds we give ourselves to fetch a single file
+
+#define edwMinMapQual 3	//Above this -10log10 theshold we have >50% chance of being right
 
 struct sqlConnection *edwConnect();
 /* Returns a read only connection to database. */
@@ -125,6 +129,9 @@ struct edwFile *edwFileAllIntactBetween(struct sqlConnection *conn, int startId,
 struct edwValidFile *edwValidFileFromFileId(struct sqlConnection *conn, long long fileId);
 /* Return edwValidFile give fileId - returns NULL if not validated. */
 
+struct edwExperiment *edwExperimentFromAccession(struct sqlConnection *conn, char *acc); 
+/* Given something like 'ENCSR123ABC' return associated experiment. */
+
 struct edwFile *edwFileFromId(struct sqlConnection *conn, long long fileId);
 /* Return edwFile given fileId - return NULL if not found. */
 
@@ -220,15 +227,69 @@ void edwReserveTempFile(char *path);
 /* Call mkstemp on path.  This will fill in terminal XXXXXX in path with file name
  * and create an empty file of that name.  Generally that empty file doesn't stay empty for long. */
 
+void edwBwaIndexPath(struct edwAssembly *assembly, char indexPath[PATH_LEN]);
+/* Fill in path to BWA index. */
+
 void edwAlignFastqMakeBed(struct edwFile *ef, struct edwAssembly *assembly,
     char *fastqPath, struct edwValidFile *vf, FILE *bedF,
-    double *retMapRatio,  double *retDepth,  double *retSampleCoverage);
+    double *retMapRatio,  double *retDepth,  double *retSampleCoverage,
+    double *retUniqueMapRatio);
 /* Take a sample fastq and run bwa on it, and then convert that file to a bed. */
+
+void edwMakeTempFastqSample(char *source, int size, char dest[PATH_LEN]);
+/* Copy size records from source into a new temporary dest.  Fills in dest */
 
 void edwMakeFastqStatsAndSample(struct sqlConnection *conn, long long fileId);
 /* Run fastqStatsAndSubsample, and put results into edwFastqFile table. */
 
 struct edwFastqFile *edwFastqFileFromFileId(struct sqlConnection *conn, long long fileId);
 /* Get edwFastqFile with given fileId or NULL if none such */
+
+struct edwBamFile * edwMakeBamStatsAndSample(struct sqlConnection *conn, long long fileId, 
+    char sampleBed[PATH_LEN]);
+/* Run edwBamStats and put results into edwBamFile table, and also a sample bed.
+ * The sampleBed will be filled in by this routine. */
+
+struct edwBamFile *edwBamFileFromFileId(struct sqlConnection *conn, long long fileId);
+/* Get edwBamFile with given fileId or NULL if none such */
+
+char *edwOppositePairedEndString(char *end);
+/* Return "1" for "2" and vice versa */
+
+struct edwValidFile *edwOppositePairedEnd(struct sqlConnection *conn, struct edwValidFile *vf);
+/* Given one file of a paired end set of fastqs, find the file with opposite ends. */
+
+struct edwQaPairedEndFastq *edwQaPairedEndFastqFromVfs(struct sqlConnection *conn,
+    struct edwValidFile *vfA, struct edwValidFile *vfB,
+    struct edwValidFile **retVf1,  struct edwValidFile **retVf2);
+/* Return pair record if any for the two fastq files. */
+
+int edwAnalysisJobAdd(struct sqlConnection *conn, char *commandLine);
+/* Add job to edwAnalyisJob table and return job ID. */
+
+void edwMd5File(char *fileName, char md5Hex[33]);
+/* call md5sum utility to calculate md5 for file and put result in hex format md5Hex 
+ * This ends up being about 30% faster than library routine md5HexForFile,
+ * however since there's popen() weird interactions with  stdin involved
+ * it's not suitable for a general purpose library.  Environment inside edw
+ * is controlled enough it should be ok. */
+
+void edwPathForCommand(char *command, char path[PATH_LEN]);
+/* Figure out path associated with command */
+
+struct edwAnalysisStep *edwAnalysisStepFromName(struct sqlConnection *conn, char *name);
+/* Get edwAnalysisStep record from database based on name. */
+
+struct edwAnalysisSoftware *edwAnalysisSoftwareFromName(struct sqlConnection *conn, char *name);
+/* Get edwAnalysisSoftware record by name */
+
+void edwAnalysisCheckVersions(struct sqlConnection *conn, char *analysisStep);
+/* Check that we are running tracked versions of everything. */
+
+void edwAnalysisSoftwareUpdateMd5ForStep(struct sqlConnection *conn, char *analysisStep);
+/* Update MD5s on all software used by step. */
+
+void edwPokeFifo(char *fifoName);
+/* Send '\n' to fifo to wake up associated daemon */
 
 #endif /* EDWLIB_H */

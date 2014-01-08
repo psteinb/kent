@@ -106,7 +106,7 @@ set wgs $ailMel,$allMis,$aplCal,$bosTau,$bruMal,$calJac,$canFam,$cavPor,$choHof,
 set xrg $ailMel,$allMis,$anoCar,$aplCal,$bosTau,$braFlo,$bruMal,$caeAng,$caeJap,$caePb,$caeRem,$caeSp11,$calJac,$canFam,$cb,$ce,$cerSim,$choHof,$chrPic,$ci,danRer6,danRer7,$dasNov,$dipOrd,$dp,$droMult,$droYak,$echTel,$eriEur,$felCat,$gadMor,$galGal,$geoFor,$gorGor,$haeCon,$hetGla,$hg,$latCha,$loxAfr,$macEug,$melGal,$melHap,$melInc,$melUnd,$micMur,$mm,$monDom,$musFur,$myoLuc,$nomLeu,$ochPri,$oreNil,$oryCun,$oryLat,$otoGar,$oviAri,$panTro,$papAnu,$papHam,$petMar,$ponAbe,$priPac,$proCap,$pteVam,$rheMac,$rn,$saiBol,$sarHar,$sorAra,$speTri,$strPur,$susScr,$taeGut,$tarSyr,$triMan,$tupBel,$turTru,$vicPac
 
 # Ensembl gene track lists constructed from update procedure
-set ensGeneDb ailMel1,anoCar2,bosTau6,calJac3,canFam2,canFam3,cavPor3,ce10,choHof1,ci2,cioSav2,danRer7,dasNov2,dipOrd1,dm3,echTel1,echTel2,eriEur1,eriEur2,equCab2,felCat3,felCat5,fr2,fr3,gadMor1,galGal3,galGal4,gasAcu1,gorGor3,hg16,hg17,hg18,hg19,latCha1,loxAfr3,melGal1,micMur1,mm7,mm8,mm9,mm10,monDom5,musFur1,myoLuc2,nomLeu1,ochPri2,oreNil1,ornAna1,oryCun2,oryLat2,otoGar3,panTro2,panTro4,petMar2,ponAbe2,proCap1,pteVam1,rheMac2,rn3,rn4,rn5,sacCer3,sarHar1,sorAra1,sorAra2,speTri2,susScr1,susScr3,taeGut1,tarSyr1,tetNig2,tupBel1,turTru1,vicPac1,vicPac2,xenTro3
+set ensGeneDb ailMel1,anoCar2,bosTau6,calJac3,canFam2,canFam3,cavPor3,ce10,choHof1,ci2,cioSav2,danRer7,dasNov2,dasNov3,dipOrd1,dm3,echTel1,echTel2,eriEur1,eriEur2,equCab2,felCat3,felCat5,fr2,fr3,gadMor1,galGal3,galGal4,gasAcu1,gorGor3,hg16,hg17,hg18,hg19,latCha1,loxAfr3,melGal1,micMur1,mm7,mm8,mm9,mm10,monDom5,musFur1,myoLuc2,nomLeu1,ochPri2,oreNil1,ornAna1,oryCun2,oryLat2,otoGar3,oviAri3,panTro2,panTro4,petMar2,ponAbe2,proCap1,pteVam1,rheMac2,rn3,rn4,rn5,sacCer3,sarHar1,sorAra1,sorAra2,speTri2,susScr1,susScr3,taeGut1,tarSyr1,tetNig2,tupBel1,turTru1,vicPac1,vicPac2,xenTro3
 
 set ensGeneWgs choHof1,dasNov2,dipOrd1,echTel1,echTel2,eriEur1,eriEur2,felCat3,gadMor1,micMur1,myoLuc2,ochPri2,otoGar1,proCap1,pteVam1,sorAra1,sorAra2,speTri1,tarSyr1,tupBel1,turTru1,vicPac1,vicPac2
 
@@ -1880,7 +1880,7 @@ identifier wgsContigName
     $wgs.contigAcc.contig
     $wgs,!panTro1.gold.frag $split full
 
-set notProteinAccession !allMis1,!braFlo2,!cerSim1,!dm3,!echTel2,!eriEur2,!oviAri3,!petMar2,!sorAra2,!vicPac2
+set notProteinAccession !ailMel1,!allMis1,!braFlo2,!calJac3,!cerSim1,!danRer7,!dasNov3,!dm3,!echTel2,!eriEur2,!fr2,!galGal4,!gasAcu1,!loxAfr3,!myoLuc2,!nomLeu1,!otoGar3,!oviAri3,!petMar2,!rn5,!sorAra2,!speTri2,!susScr3,!vicPac2
 
 identifier proteinAccession typeOf=genbankAccession fuzzy
 "Genbank protein accession."
@@ -2141,7 +2141,7 @@ identifier knownGeneOld5Id dependency
 identifier knownGeneOldId dependency
 "Still-previous UCSC Genes build"
     $kgDb,!hg19.knownGeneOld4.name
-    $kgDb.kg4ToKg5.oldId full
+    $kgDb,!hg19.kg4ToKg5.oldId full
 
 identifier knownGeneOld3Id dependency
 "Still-still previous UCSC Genes build"
@@ -2344,7 +2344,7 @@ identifier humanFosmidEndId
 ## TYPED TO HERE %%%
 # Mapping Stuff, STS, etc.
 
-set notDbStsId !allMis1,!braFlo2,!cerSim1,!echTel2,!eriEur2,!oviAri3,!petMar2,!sacCer3,!sorAra2,!vicPac2
+set notDbStsId !ailMel1,!allMis1,!braFlo2,!calJac3,!cerSim1,!danRer7,!dasNov3,!echTel2,!eriEur2,!fr2,!galGal4,!gasAcu1,!loxAfr3,!mm10,!myoLuc2,!nomLeu1,!otoGar3,!oviAri3,!petMar2,!rn5,!sacCer3,!sorAra2,!speTri2,!susScr3,!vicPac2
 
 identifier dbStsId external=dbSts fuzzy
 "NCBI dbSTS (Sequenced Tagged Site, aka mapping sequence) ID"
@@ -2365,7 +2365,7 @@ identifier ucscMouseStsId
     $mm.all_sts_primer.qName chopAfter=_ minCheck=0.99
     $mm.stsMapMouseNew.identNo
 
-set notStsName !allMis1,!braFlo2,!cerSim1,!echTel2,!eriEur2,!oviAri3,!petMar2,!sacCer3,!sorAra2,!vicPac2
+set notStsName !ailMel1,!allMis1,!braFlo2,!calJac3,!cerSim1,!danRer7,!dasNov3,!echTel2,!eriEur2,!fr2,!galGal4,!gasAcu1,!loxAfr3,!mm10,!myoLuc2,!nomLeu1,!otoGar3,!oviAri3,!petMar2,!rn5,!sacCer3,!sorAra2,!speTri2,!susScr3,!vicPac2
 
 identifier stsName fuzzy
 "STS (Sequenced Tagged Site, aka mapping sequence) Name"
@@ -2440,7 +2440,7 @@ identifier hugoName external=HUGO fuzzy
     $hg.jaxOrtholog.humanSymbol
     $hg.omimMorbidMap.geneSymbols
     visiGene.gene.name
-    $rn.rgdGeneXref3.geneSymbol
+    $rn,!rn5.rgdGeneXref3.geneSymbol
 
 identifier kgGeneSymbol
 "UCSC Genes Gene Symbol"
@@ -2465,7 +2465,7 @@ identifier wormBaseIsoformCluster
     $ce.sangerCanonical.clusterId
     $ce.sangerIsoforms.clusterId full
 
-set notWormBaseId !allMis1,!braFlo2,!cerSim1,!echTel2,!eriEur2,!oviAri3,!petMar2,!rn3,!sorAra2,!vicPac2
+set notWormBaseId !ailMel1,!allMis1,!braFlo2,!calJac3,!cerSim1,!danRer7,!dasNov3,!echTel2,!eriEur2,!fr2,!galGal4,!gasAcu1,!hg19,!loxAfr3,!mm10,!myoLuc2,!nomLeu1,!otoGar3,!oviAri3,!petMar2,!rn3,!rn5,!sorAra2,!speTri2,!susScr3,!vicPac2
 
 identifier wormBaseId external=WormBase dependency
 "WormBase (C. elegans) ORF ID"
@@ -2509,7 +2509,7 @@ identifier flyBaseAlleleId
     $dm.fbAllele.id
     $dm.fbPhenotype.fbAllele exclude=0
 
-set notFlyBaseGeneId !allMis1,!braFlo2,!ce2,!ce4,!ce6,!ce9,!ce10,!cerSim1,!danRer3,!echTel2,!eriEur2,!hg17,!hg18,!hg19,!mm7,!mm8,!mm9,!mm10,!oviAri3,!petMar2,!rn3,!rn4,!sacCer1,!sacCer2,!sacCer3,!sorAra2,!vicPac2
+set notFlyBaseGeneId !ailMel1,!allMis1,!braFlo2,!calJac3,!ce2,!ce4,!ce6,!ce9,!ce10,!cerSim1,!danRer3,!danRer7,!dasNov3,!echTel2,!eriEur2,!fr2,!galGal4,!gasAcu1,!hg17,!hg18,!hg19,!loxAfr3,!mm7,!mm8,!mm9,!mm10,!myoLuc2,!nomLeu1,!otoGar3,!oviAri3,!petMar2,!rn3,!rn4,!rn5,!sacCer1,!sacCer2,!sacCer3,!sorAra2,!speTri2,!susScr3,!vicPac2
 
 identifier flyBaseGeneId external=FlyBase
 "FlyBase (Drosophila) Gene ID"
@@ -2622,7 +2622,7 @@ identifier sgdProtHomologId
 identifier sgdId external=SGD
 "Sacchromyces Genome Database ID - Coding or other"
 
-set notSgdCodingId !allMis1,!braFlo2,!cerSim1,!echTel2,!eriEur2,!oviAri3,!petMar2,!sorAra2,!vicPac2
+set notSgdCodingId !ailMel1,!allMis1,!braFlo2,!calJac3,!cerSim1,!danRer7,!dasNov3,!echTel2,!eriEur2,!fr2,!galGal4,!gasAcu1,!hg19,!loxAfr3,!mm10,!myoLuc2,!nomLeu1,!otoGar3,!oviAri3,!petMar2,!rn5,!sorAra2,!speTri2,!susScr3,!vicPac2
 
 identifier sgdCodingId typeOf=sgdId dependency
 "Sacchromyces Genome Database ID"
@@ -2763,7 +2763,7 @@ identifier ensemblProteinId3 external=Ensembl
     $gbd.ensemblXref3.protein dupeOk
     $gbd.sfAssign.seqID minCheck=0.01
 
-set notEnsemblTranscriptId !allMis1,!braFlo2,!ce10,!cerSim1,!felCat3,!oviAri3,!vicPac2
+set notEnsemblTranscriptId !allMis1,!braFlo2,!ce10,!cerSim1,!felCat3,!vicPac2
 
 identifier ensemblTranscriptId external=Ensembl dependency
 "Ensembl Transcript ID"
@@ -3750,7 +3750,6 @@ identifier pubsArticleId external=pubTools
 "internal ID of article, this is different from pubmed, doi or piis, generated during download "
     $gbd.pubsBlat.name dupeOk
     $gbd.pubsBlatPsl.articleId
-    hgFixed.pubsArticle.articleId
     hgFixed.pubsSequenceAnnot.articleId
     hgFixed.pubsArticle.articleId
 
@@ -3766,6 +3765,20 @@ identifier pubsMarkerId
     $gbd.pubsMarkerBand.name 
     $gbd.pubsMarkerSnp.name 
     $gbd.pubsMarkerGene.name 
+
+# web sequences track
+identifier pubsBingArticleId external=pubTools
+" internal ID of webpage, identifies a URL "
+    $gbd.pubsBingBlat.name dupeOk
+    $gbd.pubsBingBlatPsl.articleId
+    hgFixed.pubsBingArticle.articleId
+    hgFixed.pubsBingSequenceAnnot.articleId
+
+identifier pubsBingSequenceId external=pubTools
+"ID of sequence found in webpage "
+    hgFixed.pubsBingSequence.annotId dupeOk
+    $gbd.pubsBingBlat.seqIds comma
+    $gbd.pubsBingBlatPsl.qName
 
 identifier ceuBcellRNASeqId
 "ID of ceuBcellRNASeq"
@@ -4595,6 +4608,12 @@ tablesIgnored $hg
     tgpPhase1
     tgpPhase1AccessibilityPilotCriteria
     tgpPhase1AccessibilityStrictCriteria
+    ucsfChipSeqH3K4me3BrainCoverage
+    ucsfMedipSeqBrainCoverage
+    ucsfMedipSeqBrainCpG
+    ucsfMreSeqBrainCpG
+    ucsfRnaSeqBrainAllCoverage
+    ucsfRnaSeqBrainSmartCoverage
     vistaEnhancers
     wgRna
     zoom1_affyTranscriptome
