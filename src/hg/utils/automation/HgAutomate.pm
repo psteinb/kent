@@ -64,7 +64,7 @@ use vars qw( %cluster %clusterFilesystem $defaultDbHost );
 #      'kk9' => # Guessing here since the machines are down:
 #        { 'enabled' => 0, 'gigaHz' => 1.5, 'ram' => 2,
 #	  'hostCount' => 100, },
-
+    );
 my %obsoleteCluster =
     ( 'swarm' => ,
         { 'enabled' => 1, 'gigaHz' => 2.33, 'ram' => 8,
@@ -97,6 +97,7 @@ my @allClusters = (keys %cluster);
 #        { root => '/san/sanvol1/scratch', clusterLocality => 0.5,
 #	  distrHost => ['pk'], distrCommand => '',
 #	  inputFor => ['pk', 'memk'], outputFor => ['pk', 'memk'], },
+    );
 
 my %obsoleteClusterFilesystem =
     ( 'scratch' =>
