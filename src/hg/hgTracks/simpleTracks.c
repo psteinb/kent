@@ -12875,6 +12875,7 @@ registerTrackHandler("tightMrna", mrnaMethods);
 registerTrackHandler("tightEst", mrnaMethods);
 registerTrackHandler("cpgIsland", cpgIslandMethods);
 registerTrackHandler("cpgIslandExt", cpgIslandMethods);
+registerTrackHandler("cpgIslandExtUnmasked", cpgIslandMethods);
 registerTrackHandler("cpgIslandGgfAndy", cpgIslandMethods);
 registerTrackHandler("cpgIslandGgfAndyMasked", cpgIslandMethods);
 registerTrackHandler("exoMouse", exoMouseMethods);
