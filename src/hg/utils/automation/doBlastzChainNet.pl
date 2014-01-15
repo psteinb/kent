@@ -549,7 +549,7 @@ sub doPartition {
 "It computes partitions of target and query sequences into chunks of the
 specified size for the blastz cluster run.  The actual splitting of
 sequence is not performed here, but later on by blastz cluster jobs.";
-  my $bossScript = newBash HgRemoteScript("$runDir/doPartition.bash", $paraHub,
+  my $bossScript = newBash HgRemoteScript("$runDir/doPartition.bash", $hub,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 $partitionTargetCmd
