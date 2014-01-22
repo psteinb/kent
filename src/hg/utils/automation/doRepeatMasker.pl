@@ -283,7 +283,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make rmsk_$db jobList -allowSpecialCharJobs\n
+para.pl make rmsk_$db jobList -allowSpecialCharJobs -q medium\n
 para.pl check rmsk_$db\n
 para.pl time rmsk_$db > run.time\n
 cat run.time\n";
@@ -340,7 +340,7 @@ _EOF_
   }
   $bossScript->add(<<_EOF_
 rm -rf $partDir
-$Bin/simplePartition.pl $clusterSeq 500000 $partDir
+$Bin/simplePartition.pl $clusterSeq 1000000 $partDir
 rm -f $buildDir/RMPart
 ln -s $partDir $buildDir/RMPart
 
