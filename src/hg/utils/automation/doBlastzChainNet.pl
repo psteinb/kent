@@ -595,7 +595,7 @@ _EOF_
   }
   print( " ***\n" ); 
   if( $noJobs > 10000 ) {
-      print( "Stopped $0. To achieve a good number of jobs, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
+      print( "Stopped $0. You have $noJobs right now. To achieve a good number of jobs in the range of 10000, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
       exit( 0 ); 
   } else {
       print( "Ok, continue with jobs.\n" ); 
