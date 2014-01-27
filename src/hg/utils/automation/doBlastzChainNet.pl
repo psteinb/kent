@@ -652,7 +652,7 @@ if($clusterType eq "genome"){
   my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make blastz_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl make blastz_$tDb$qDb jobList -allowSpecialCharJobs -q medium\n
 para.pl check blastz_$tDb$qDb\n
 para.pl time blastz_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -789,7 +789,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make filterPsl_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl make filterPsl_$tDb$qDb jobList -allowSpecialCharJobs -q medium\n
 para.pl check filterPsl_$tDb$qDb\n
 para.pl time filterPsl_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -1157,7 +1157,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make patchChain_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl make patchChain_$tDb$qDb jobList -allowSpecialCharJobs -q medium\n
 para.pl check patchChain_$tDb$qDb\n
 para.pl time patchChain_$tDb$qDb > run.time\n
 cat run.time\n";
