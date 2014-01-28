@@ -594,8 +594,8 @@ _EOF_
       print( ", and a runtime over 10 minutes" );
   }
   print( " ***\n" ); 
-  if( $noJobs > 10000 ) {
-      print( "Stopped $0. You have $noJobs right now. To achieve a good number of jobs in the range of 10000, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
+  if( $noJobs > 15000 ) {
+      print( "Stopped $0. You have $noJobs right now. To achieve a good number of jobs in the range of 15000, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
       exit( 0 ); 
   } else {
       print( "Ok, continue with jobs.\n" ); 
@@ -1441,7 +1441,7 @@ scp noClass.net $dbHost:\$remoteTempDir
 ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' $dbHost nice netClass -verbose=0 -noAr \$remoteTempDir/noClass.net $tDb $qDb \$remoteTempDir/$tDb.$qDb.net
 scp $dbHost:\$remoteTempDir/$tDb.$qDb.net .
 ssh -x -o 'StrictHostKeyChecking = no' -o 'BatchMode = yes' $dbHost nice rm -rf \$remoteTempDir
-
+gzip $tDb.$qDb.net
 # Add gap/repeat stats to the net file using database tables:
 #cd $runDir
 #netClass -verbose=0 $tRepeats $qRepeats -noAr noClass.net $tDb $qDb $tDb.$qDb.net
@@ -1461,6 +1461,7 @@ _EOF_
 # Add gap/repeat stats to the net file using database tables:
 cd $runDir
 netClass -verbose=0 $tRepeats $qRepeats -noAr noClass.net $tDb $qDb $tDb.$qDb.net
+gzip $tDb.$qDb.net
 _EOF_
 ); 
   	}
@@ -1914,23 +1915,34 @@ _EOF_
 }
 
 sub doSyntenicNet {
+  # MH: changes are (i) we always call doSyntenicNet unless you -stop before, (ii) we test for $tDb.$qDb.syntenic.net.gz (not mafSynNet dir)
+  # and (iii) we don't run netToAxt anymore
+
   # Create syntenic net mafs for multiz
   my $whatItDoes =
 "It filters the net for synteny and creates syntenic net MAF files for
 multiz. Use this option when the query genome is high-coverage and not
 too distant from the reference.  Suppressed unless -syntenicNet is included.";
-  if (not $opt_syntenicNet) {
-    return;
-  }
+#  if (not $opt_syntenicNet) {
+#    return;
+#  }
   my $runDir = "$buildDir/axtChain";
+  my $successNetFile = "$buildDir/axtChain/$tDb.$qDb.syntenic.net.gz";
+  if (-e $successNetFile) {
+      die "doSyntenicNet: looks like this was run successfully already " .
+          "($successNetFile exists).  To re-run, " .
+          "move aside/remove $successNetFile and run again.\n";
+  }
+  # remove a potential unzipped syntenic net file in case it exists
+  `rm -f $buildDir/axtChain/$tDb.$qDb.syntenic.net`;
 
   # First, make sure we're starting clean.
-  my $successDir = "$buildDir/mafSynNet";
-  if (-e $successDir) {
-      die "doSyntenicNet: looks like this was run successfully already " .
-          "($successDir).  To re-run, " .
-          "move aside/remove $successDir and run again.\n";
-  }
+#  my $successDir = "$buildDir/mafSynNet";
+#  if (-e $successDir) {
+#      die "doSyntenicNet: looks like this was run successfully already " .
+#          "($successDir).  To re-run, " .
+#          "move aside/remove $successDir and run again.\n";
+#  }
   # Make sure previous stage was successful.
   my $successFile = "$runDir/$tDb.$qDb.net";
   my $successFileWithoutPath = "$tDb.$qDb.net";
@@ -1946,6 +1958,7 @@ too distant from the reference.  Suppressed unless -syntenicNet is included.";
   
   my $bossScript = new HgRemoteScript("$runDir/netSynteny.csh", $workhorse,
                                     $runDir, $whatItDoes, $DEF);
+=pod
   if ($splitRef) {
     $bossScript->add(<<_EOF_
 # filter net for synteny and create syntenic net mafs
@@ -1968,20 +1981,21 @@ rm -fr $runDir/chain
 _EOF_
       );
   } else {
+=cut
 # scaffold-based assembly
 # filter net for synteny and create syntenic net mafs
     $bossScript->add(<<_EOF_
-netFilter -syn $successFileWithoutPath | gzip -c > $tDb.$qDb.syn.net.gz
-netToAxt $tDb.$qDb.syn.net.gz $tDb.$qDb.all.chain.gz \\
-    $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} stdout \\
-  | axtSort stdin stdout \\
-  | axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. stdin \\
-    $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
-    stdout \\
-| gzip -c > $tDb.$qDb.synNet.maf.gz
+netFilter -syn $successFileWithoutPath | gzip -c > $tDb.$qDb.syntenic.net.gz
+#netToAxt $tDb.$qDb.syn.net.gz $tDb.$qDb.all.chain.gz \\
+#    $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} stdout \\
+#  | axtSort stdin stdout \\
+#  | axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. stdin \\
+#    $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
+#    stdout \\
+#| gzip -c > $tDb.$qDb.synNet.maf.gz
 _EOF_
       );
-  }
+#  }
   $bossScript->execute();
 }
 
