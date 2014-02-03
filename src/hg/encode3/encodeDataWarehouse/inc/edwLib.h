@@ -21,7 +21,6 @@
 extern char *edwDatabase;   /* Name of database we connect to. */
 extern char *edwRootDir;    /* Name of root directory for our files, including trailing '/' */
 extern char *eapRootDir;    /* Name of root directory for analysis pipeline */
-extern char *eapTempDir;    /* Name of temp dir for analysis pipeline */
 extern char *edwLicensePlatePrefix; /* License plates start with this - thanks Mike Cherry. */
 extern char *edwValDataDir; /* Data files we need for validation go here. */
 extern int edwSingleFileTimeout;   // How many seconds we give ourselves to fetch a single file
@@ -129,6 +128,14 @@ struct edwFile *edwFileAllIntactBetween(struct sqlConnection *conn, int startId,
 struct edwValidFile *edwValidFileFromFileId(struct sqlConnection *conn, long long fileId);
 /* Return edwValidFile give fileId - returns NULL if not validated. */
 
+void edwValidFileUpdateDb(struct sqlConnection *conn, struct edwValidFile *el, long long id);
+/* Save edwValidFile as a row to the table specified by tableName, replacing existing record at 
+ * id. */
+
+struct cgiParsedVars;   // Forward declare this so don't have to include cheapcgi
+void edwValidFileFieldsFromTags(struct edwValidFile *vf, struct cgiParsedVars *tags);
+/* Fill in many of vf's fields from tags. */
+
 struct edwExperiment *edwExperimentFromAccession(struct sqlConnection *conn, char *acc); 
 /* Given something like 'ENCSR123ABC' return associated experiment. */
 
@@ -143,6 +150,9 @@ struct genomeRangeTree *edwMakeGrtFromBed3List(struct bed3 *bedList);
 
 struct edwAssembly *edwAssemblyForUcscDb(struct sqlConnection *conn, char *ucscDb);
 /* Get assembly for given UCSC ID or die trying */
+
+char *edwSimpleAssemblyName(char *assembly);
+/* Given compound name like male.hg19 return just hg19 */
 
 struct genomeRangeTree *edwGrtFromBigBed(char *fileName);
 /* Return genome range tree for simple (unblocked) bed */
@@ -218,8 +228,10 @@ struct edwFile *edwFileInProgress(struct sqlConnection *conn, int submitId);
 struct edwScriptRegistry *edwScriptRegistryFromCgi();
 /* Get script registery from cgi variables.  Does authentication too. */
 
-void edwFileResetTags(struct sqlConnection *conn, struct edwFile *ef, char *newTags);
-/* Reset tags on file, strip out old validation and QA,  schedule new validation and QA. */
+void edwFileResetTags(struct sqlConnection *conn, struct edwFile *ef, char *newTags,
+    boolean revalidate);
+/* Reset tags on file, strip out old validation and QA,  optionally schedule new validation 
+ * and QA. */
 
 #define edwSampleTargetSize 250000  /* We target this many samples */
 
@@ -264,9 +276,6 @@ struct edwQaPairedEndFastq *edwQaPairedEndFastqFromVfs(struct sqlConnection *con
     struct edwValidFile **retVf1,  struct edwValidFile **retVf2);
 /* Return pair record if any for the two fastq files. */
 
-int edwAnalysisJobAdd(struct sqlConnection *conn, char *commandLine);
-/* Add job to edwAnalyisJob table and return job ID. */
-
 void edwMd5File(char *fileName, char md5Hex[33]);
 /* call md5sum utility to calculate md5 for file and put result in hex format md5Hex 
  * This ends up being about 30% faster than library routine md5HexForFile,
@@ -277,19 +286,16 @@ void edwMd5File(char *fileName, char md5Hex[33]);
 void edwPathForCommand(char *command, char path[PATH_LEN]);
 /* Figure out path associated with command */
 
-struct edwAnalysisStep *edwAnalysisStepFromName(struct sqlConnection *conn, char *name);
-/* Get edwAnalysisStep record from database based on name. */
-
-struct edwAnalysisSoftware *edwAnalysisSoftwareFromName(struct sqlConnection *conn, char *name);
-/* Get edwAnalysisSoftware record by name */
-
-void edwAnalysisCheckVersions(struct sqlConnection *conn, char *analysisStep);
-/* Check that we are running tracked versions of everything. */
-
-void edwAnalysisSoftwareUpdateMd5ForStep(struct sqlConnection *conn, char *analysisStep);
-/* Update MD5s on all software used by step. */
-
 void edwPokeFifo(char *fifoName);
 /* Send '\n' to fifo to wake up associated daemon */
+
+FILE *edwPopen(char *command, char *mode);
+/* do popen or die trying */
+
+void edwOneLineSystemResult(char *command, char *line, int maxLineSize);
+/* Execute system command and return one line result from it in line */
+
+boolean edwOneLineSystemAttempt(char *command, char *line, int maxLineSize);
+/* Execute system command and return one line result from it in line */
 
 #endif /* EDWLIB_H */

@@ -104,6 +104,9 @@ struct slName *sqlListTables(struct sqlConnection *conn);
 struct slName *sqlListFields(struct sqlConnection *conn, char *table);
 /* Return list of fields in table. */
 
+struct sqlResult *sqlDescribe(struct sqlConnection *conn, char *table);
+/* Run the sql DESCRIBE command or get a cached table description and return the sql result */
+
 void sqlAddDatabaseFields(char *database, struct hash *hash);
 /* Add fields from the one database to hash. */
 
@@ -220,6 +223,10 @@ void sqlDyAppendEscaped(struct dyString *dy, char *s);
 char *sqlEscapeTabFileString2(char *to, const char *from);
 /* Escape a string for including in a tab seperated file. Output string
  * must be 2*strlen(from)+1 */
+
+char *sqlEscapeTabFileString(const char *from);
+/* Escape a string for including in a tab seperated file. Freez or freeMem
+ * result when done. */
 
 struct sqlResult *sqlMustGetResult(struct sqlConnection *sc, char *query);
 /* Query database.

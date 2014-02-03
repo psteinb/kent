@@ -38,6 +38,7 @@
 #endif /* GBROWSE */
 #include "hui.h"
 #include "trackHub.h"
+#include "udc.h"
 
 
 #ifdef LOWELAB
@@ -783,7 +784,7 @@ static void tableListHashAdd(struct hash *dbTblHash, char *profile, char *db)
 struct sqlConnection *conn = hAllocConnProfile(profile, db);
 struct slName *allTables =  sqlListTables(conn);
 
-if (!sameString(CUSTOM_TRASH,db) && hCanHaveSplitTables(db))
+if (!sameString(CUSTOM_TRASH,db) && !sameString("hgFixed",db) && hCanHaveSplitTables(db))
     {
     /* Consolidate split tables into one list per track: */
     struct slName *tbl = NULL, *nextTbl = NULL;
@@ -1021,23 +1022,32 @@ return seq;
 struct dnaSeq *hFetchSeqMixed(char *fileName, char *seqName, int start, int end)
 /* Fetch mixed case sequence. */
 {
-if (twoBitIsFile(fileName))
-    return fetchTwoBitSeq(fileName, seqName, start, end);
+struct dnaSeq *seq = NULL;
+char *newFileName = NULL;
+newFileName = hReplaceGbdb(fileName);
+if (twoBitIsFile(newFileName))
+    seq = fetchTwoBitSeq(newFileName, seqName, start, end);
 else
-    return nibLoadPartMasked(NIB_MASK_MIXED, fileName, start, end-start);
+    seq = nibLoadPartMasked(NIB_MASK_MIXED, newFileName, start, end-start);
+freez(&newFileName);
+return seq;
 }
 
 struct dnaSeq *hFetchSeq(char *fileName, char *seqName, int start, int end)
 /* Fetch sequence from file.  If it is a .2bit file then fetch the named sequence.
    If it is .nib then just ignore seqName. */
 {
+fileName = hReplaceGbdb(fileName);
+struct dnaSeq *seq  = NULL;
 if (twoBitIsFile(fileName))
     {
-    struct dnaSeq *seq = fetchTwoBitSeq(fileName, seqName, start, end);
+    seq = fetchTwoBitSeq(fileName, seqName, start, end);
     tolowers(seq->dna);
-    return seq;
     }
-return nibLoadPart(fileName, start, end-start);
+else
+    seq = nibLoadPart(fileName, start, end-start);
+freez(&fileName);
+return seq;
 }
 
 struct dnaSeq *hChromSeqMixed(char *db, char *chrom, int start, int end)
@@ -1255,6 +1265,42 @@ hFreeConn(&conn);
 return list;
 }
 
+char *hReplaceGbdb(char* fileName)
+ /* Returns a gbdb filename, potentially rewriting it according to hg.conf
+  * If the settings gbdbLoc1 and gbdbLoc2 are found, try them in order, by 
+  * replacing /gbdb/ with the new locations.
+  * If after the replacement of gbdbLoc1 the resulting fileName does not exist,
+  * gbdbLoc2 is used.
+  * This function does not guarantee that the filename exists.
+  * We assume /gbdb/ does not appear somewhere inside a fileName.
+  * Result has to be free'd.
+ * */
+{
+if (fileName==NULL)
+    return fileName;
+
+char* newGbdbLoc = cfgOption("gbdbLoc1");
+char* path;
+
+// if no config option set or not a /gbdb filename, then just return
+// otherwise replace /gbdb/ with the new prefix and return if exists.
+if (newGbdbLoc==NULL || !startsWith("/gbdb/", fileName))
+   return cloneString(fileName);
+
+path = replaceChars(fileName, "/gbdb/", newGbdbLoc);
+if (fileExists(path))
+    return path;
+
+// if the file did not exist, replace with gbdbLoc2
+newGbdbLoc = cfgOption("gbdbLoc2");
+if (newGbdbLoc==NULL)
+    return path;
+
+freeMem(path);
+path = replaceChars(fileName, "/gbdb/", newGbdbLoc);
+return path;
+}
+
 char *hTryExtFileNameC(struct sqlConnection *conn, char *extFileTable, unsigned extFileId, boolean abortOnError)
 /* Get external file name from table and ID.  Typically
  * extFile table will be 'extFile' or 'gbExtFile'
@@ -1285,20 +1331,26 @@ if ((row = sqlNextRow(sr)) == NULL)
 	}
     }
 
-path = cloneString(row[0]);
+path = hReplaceGbdb(row[0]);
+
 dbSize = sqlLongLong(row[1]);
-diskSize = fileSize(path);
 sqlFreeResult(&sr);
 
-if (dbSize != diskSize)
+// for speed, only do dbSize check if file is local
+if (udcIsLocal(path))
     {
-    if (abortOnError)
-	errAbort("External file %s cannot be opened or has wrong size.  "
-		 "Old size %lld, new size %lld, error %s",
-		 path, dbSize, diskSize, strerror(errno));
-    else 
-	freez(&path);
+    diskSize = fileSize(path);
+    if (dbSize != diskSize)
+        {
+        if (abortOnError)
+            errAbort("External file %s cannot be opened or has wrong size.  "
+                     "Old size %lld, new size %lld, error %s",
+                     path, dbSize, diskSize, strerror(errno));
+        else 
+            freez(&path);
+        }
     }
+
 return path;
 }
 
@@ -1343,7 +1395,7 @@ struct largeSeqFile
     char *extTable;             /* external file table */
     char *db;                   /* database this is associated with */
     HGID id;                    /* Id in extFile table. */
-    int fd;                     /* File handle. */
+    struct udcFile *fd;         /* File handle. */
     };
 
 static struct largeSeqFile *largeFileList;  /* List of open large files. */
@@ -1375,23 +1427,23 @@ for (lsf = largeFileList; lsf != NULL; lsf = lsf->next)
     lsf->extTable = cloneString(extTable);
     lsf->db = cloneString(db);
     lsf->id = extId;
-    if ((lsf->fd = open(lsf->path, O_RDONLY)) < 0)
-        errAbort("Couldn't open external file %s", lsf->path);
+    lsf->fd = udcFileMayOpen(lsf->path, NULL);
+    if (lsf->fd == NULL)
+        errAbort("hdb/largeFileHandle: Couldn't open external file %s", lsf->path);
     slAddHead(&largeFileList, lsf);
     return lsf;
     }
 }
 
-static void *readOpenFileSection(int fd, off_t offset, size_t size, char *fileName, char *acc)
+static void *readOpenFileSection(struct udcFile* fd, off_t offset, size_t size, char *fileName, char *acc)
 /* Allocate a buffer big enough to hold a section of a file,
  * and read that section into it. */
 {
 void *buf;
 buf = needMem(size+1);
-if (lseek(fd, offset, SEEK_SET) < 0)
-    errnoAbort("Couldn't read %s: error seeking to %lld in %s", acc, (long long)offset, fileName);
-if (read(fd, buf, size) < size)
-    errnoAbort("Couldn't read %s: error reading %lld bytes at %lld in %s", acc, (long long)size, (long long)offset, fileName);
+// no need to check success, udc will errAbort if offset is invalid
+udcSeek(fd, offset);
+udcRead(fd, buf, size);
 return buf;
 }
 
@@ -2318,9 +2370,12 @@ return genome;
 }
 
 char *hDbDbNibPath(char *database)
-/* return nibPath from dbDb for database */
+/* return nibPath from dbDb for database, has to be freed */
 {
-return hDbDbOptionalField(database, "nibPath");
+char *rawNibPath = hDbDbOptionalField(database, "nibPath");
+char *nibPath = hReplaceGbdb(rawNibPath);
+freez(&rawNibPath);
+return nibPath;
 }
 
 char *hGenome(char *database)
@@ -2343,7 +2398,10 @@ char *hHtmlPath(char *database)
 /* Return NULL if unknown database */
 /* NOTE: must free returned string after use */
 {
-return hDbDbOptionalField(database, "htmlPath");
+char *htmlPath = hDbDbOptionalField(database, "htmlPath");
+char *newPath = hReplaceGbdb(htmlPath);
+freez(&htmlPath);
+return newPath;
 }
 
 char *hFreezeDate(char *database)
@@ -2663,28 +2721,6 @@ if (!fitField(hash, end, retEnd))
 return TRUE;
 }
 
-boolean hIsBinned(char *db, char *table)
-/* Return TRUE if a table is binned. */
-{
-char query[256];
-struct sqlConnection *conn = hAllocConn(db);
-struct sqlResult *sr;
-char **row;
-boolean binned = FALSE;
-
-/* Read table description into hash. */
-sqlSafef(query, sizeof(query), "describe %s", table);
-sr = sqlGetResult(conn, query);
-if ((row = sqlNextRow(sr)) != NULL)
-    {
-    if (sameString(row[0], "bin"))
-        binned = TRUE;
-    }
-sqlFreeResult(&sr);
-hFreeConn(&conn);
-return binned;
-}
-
 int hFieldIndex(char *db, char *table, char *field)
 /* Return index of field in table or -1 if it doesn't exist. */
 {
@@ -2698,6 +2734,12 @@ boolean hHasField(char *db, char *table, char *field)
 /* Return TRUE if table has field */
 {
 return hFieldIndex(db, table, field) >= 0;
+}
+
+boolean hIsBinned(char *db, char *table)
+/* Return TRUE if a table is binned. */
+{
+return hHasField(db, table, "bin");
 }
 
 boolean hFieldHasIndex(char *db, char *table, char *field)
@@ -2741,15 +2783,6 @@ static boolean hFindBed12FieldsAndBinWithConn(struct sqlConnection *conn, char *
  * fields, if they exist.  Fields that don't exist in the given table
  * will be set to "". */
 {
-char query[256];
-struct sqlResult *sr;
-char **row;
-struct hash *hash = newHash(5);
-boolean gotIt = TRUE, binned = FALSE;
-char *db;
-
-db = sqlGetDatabase(conn);
-
 /* Set field names to empty strings */
 retChrom[0] = 0;
 retStart[0] = 0;
@@ -2764,16 +2797,14 @@ retStarts[0] = 0;
 retEndsSizes[0] = 0;
 retSpan[0] = 0;
 
+char *db;
+db = sqlGetDatabase(conn);
+
 /* Read table description into hash. */
-sqlSafef(query, sizeof(query), "describe %s", table);
-sr = sqlGetResult(conn, query);
-while ((row = sqlNextRow(sr)) != NULL)
-    {
-    if (sameString(row[0], "bin"))
-        binned = TRUE;
-    hashAdd(hash, row[0], NULL);
-    }
-sqlFreeResult(&sr);
+boolean gotIt = TRUE, binned = FALSE;
+binned = hIsBinned(db, table);
+struct slName *tableList = sqlListFields(conn, table);
+struct hash *hash = hashSetFromSlNameList(tableList);
 
 /* Look for bed-style or linkedFeatures names. */
 if (fitFields(hash, "chrom", "chromStart", "chromEnd", retChrom, retStart, retEnd))
@@ -2854,7 +2885,10 @@ else
          strcpy(retName, "name");
     gotIt = FALSE;
     }
+
+slFreeList(&tableList);
 freeHash(&hash);
+
 *retBinned = binned;
 return gotIt;
 }
@@ -3039,6 +3073,7 @@ if (hash == NULL)
     }
 if ((hti = hashFindVal(hash, rootName)) == NULL)
     {
+    safecpy(fullName, sizeof(fullName), rootName);
     if ((sameString(rootName, "mrna") && sqlTableExists(conn, "all_mrna")) ||
 	(sameString(rootName, "est") && sqlTableExists(conn, "all_est")))
 	{
@@ -3048,23 +3083,22 @@ if ((hti = hashFindVal(hash, rootName)) == NULL)
     else
 	{
 	if (chrom != NULL)
-            {
+	    {
             // first try the non-split table name then the split table name. 
-            // This avoids many useless chrX_table lookups
-            // (today, very few assemblies have split tables)
+            // In 2013, very few assemblies have split tables
+            // This avoids dozens of mostly useless chrX_table lookups
             isSplit = TRUE;
-            safef(fullName, sizeof(fullName), "%s", rootName);
-            if (sqlTableExists(conn, fullName))
-                isSplit = FALSE;
-            else
+	    if (sqlTableExists(conn, fullName))
+		isSplit = FALSE;
+            else 
                 {
                 safef(fullName, sizeof(fullName), "%s_%s", chrom, rootName);
                 if (sqlTableExists(conn, fullName))
-                    isSplit = TRUE;
+                    isSplit = TRUE; 
                 else
                     return NULL;
                 }
-            }
+	    }
 	}
     AllocVar(hti);
     hashAddSaveName(hash, rootName, hti, &hti->rootName);
@@ -3808,6 +3842,7 @@ struct trackDb *hTrackDb(char *db)
 struct trackDb *tdbList = NULL;
 //if (differentStringNullOk(existingDb, db))
 //    {
+
     tdbList = loadTrackDb(db, NULL);
     tdbList = trackDbLinkUpGenerations(tdbList);
     tdbList = trackDbPolishAfterLinkup(tdbList, db);
@@ -5001,13 +5036,114 @@ else
 }
 
 int chrSlNameCmp(const void *el1, const void *el2)
+/* Compare chromosome or linkage group names str1 and str2 
+ * to achieve this order:
+ * chr1 .. chr22
+ * chrX
+ * chrY
+ * chrM
+ * chr1_{alt, random} .. chr22_{alt, random}
+ * chrUns
+ */
+{
+struct slName *sln1 = *(struct slName **)el1;
+struct slName *sln2 = *(struct slName **)el2;
+return chrNameCmp(sln1->name, sln2->name);
+}
+
+int chrNameCmpWithAltRandom(char *str1, char *str2)
+/* Compare chromosome or linkage group names str1 and str2 
+ * to achieve this order:
+ * chr1 .. chr22
+ * chrX
+ * chrY
+ * chrM
+ * chr1_{alt, random} .. chr22_{alt, random}
+ * chrUns
+ */
+{
+int num1 = 0, num2 = 0;
+int match1 = 0, match2 = 0;
+char suffix1[512], suffix2[512];
+
+/* put chrUn at the bottom */
+if (startsWith("chrUn", str1) && !startsWith("chrUn", str2))
+    return 1;
+if (!startsWith("chrUn", str1) && startsWith("chrUn", str2))
+    return  -1;
+
+/* if it is _alt or _random then it goes at the end */
+if ( (endsWith(str1, "_alt")||endsWith(str1, "_random")) && !(endsWith(str2, "_alt") || endsWith(str2, "_random")))
+    return 1;
+if (!(endsWith(str1, "_alt")||endsWith(str1, "_random")) &&  (endsWith(str2, "_alt") || endsWith(str2, "_random")))
+    return -1;
+
+/* get past "chr" or "Group" prefix: */
+if (startsWith("chr", str1))
+    str1 += 3;
+else if (startsWith("Group", str1))
+    str1 += 5;
+else
+    return -1;
+if (startsWith("chr", str2))
+    str2 += 3;
+else if (startsWith("Group", str2))
+    str2 += 5;
+else
+    return 1;
+/* If only one is numeric, that one goes first. 
+ * If both are numeric, compare by number; 
+ * If same number, put _randoms at end, then look at suffix. 
+ * Otherwise go alph. but put M and U/Un/Un_random at end. */
+match1 = sscanf(str1, "%d%s", &num1, suffix1);
+match2 = sscanf(str2, "%d%s", &num2, suffix2);
+if (match1 && !match2)
+    return -1;
+else if (!match1 && match2)
+    return 1;
+else if (match1 && match2)
+    {
+    int diff = num1 - num2;
+    if (diff != 0)
+	return diff;
+
+    /* within groups with the same number, organize with random last */
+    if (endsWith(str1, "_random") && !endsWith(str2, "_random"))
+	return 1;
+    if (!endsWith(str1, "_random") && endsWith(str2, "_random"))
+	return -1;
+
+    /* same chrom number... got suffix? */
+    if (match1 > 1 && match2 <= 1)
+	return 1;
+    else if (match1 <= 1 && match2 > 1)
+	return -1;
+    else if (match1 > 1 && match2 > 1)
+	return strcmp(suffix1, suffix2);
+    else
+	/* This shouldn't happen (duplicate chrom name passed in) */
+	return 0;
+    }
+else if (str1[0] == 'U' && str2[0] != 'U')
+    return 1;
+else if (str1[0] != 'U' && str2[0] == 'U')
+    return -1;
+else if (sameString(str1, "M") && !sameString(str2, "M"))
+    return 1;
+else if (!sameString(str1, "M") && sameString(str2, "M"))
+    return -1;
+else
+    return strcmp(str1, str2);
+}
+
+int chrSlNameCmpWithAltRandom(const void *el1, const void *el2)
 /* Compare chromosome names by number, then suffix.  el1 and el2 must be
  * slName **s (as passed in by slSort) whose names match the regex
  * "chr([0-9]+|[A-Za-z0-9]+)(_[A-Za-z0-9_]+)?". */
 {
 struct slName *sln1 = *(struct slName **)el1;
 struct slName *sln2 = *(struct slName **)el2;
-return chrNameCmp(sln1->name, sln2->name);
+return chrNameCmpWithAltRandom(sln1->name, sln2->name);
 }
 
 int bedCmpExtendedChr(const void *va, const void *vb)
@@ -5207,7 +5343,10 @@ if (fileName == NULL)
     else
 	errAbort("Missing fileName in %s table", table);
     }
-return fileName;
+
+char *rewrittenFname = hReplaceGbdb(fileName);
+freez(&fileName);
+return rewrittenFname;
 }
 
 char *bbiNameFromSettingOrTableChrom(struct trackDb *tdb, struct sqlConnection *conn, char *table,
@@ -5215,7 +5354,7 @@ char *bbiNameFromSettingOrTableChrom(struct trackDb *tdb, struct sqlConnection *
 /* Return file name from bigDataUrl or little table that might have a seqName column.
  * If table does have a seqName column, return NULL if there is no file for seqName. */
 {
-char *fileName = cloneString(trackDbSetting(tdb, "bigDataUrl"));
+char *fileName = hReplaceGbdb(trackDbSetting(tdb, "bigDataUrl"));
 if (fileName == NULL)
     fileName = bbiNameFromTableChrom(conn, table, seqName);
 return fileName;

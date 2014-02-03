@@ -738,8 +738,8 @@ for (sf =  (struct snakeFeature *)lf->components; sf != NULL; lastQEnd = qe, pre
     hvGfxBox(hvg, sx, y, w, heightPer, color);
 
     // now draw the mismatches if we're at high enough resolution 
-    if ((winBaseCount < showSnpWidth) && ((vis == tvFull) || (vis == tvPack)))
-    {
+    if ((isHalSnake && sf->qSequence != NULL) && (winBaseCount < showSnpWidth) && ((vis == tvFull) || (vis == tvPack)))
+	{
 	char *twoBitString = trackDbSetting(tg->tdb, "twoBit");
 	static struct twoBitFile *tbf = NULL;
 	static char *lastTwoBitString = NULL;
@@ -797,7 +797,8 @@ for (sf =  (struct snakeFeature *)lf->components; sf != NULL; lastQEnd = qe, pre
 	char *ptr2 = ourDna;
 	for(; si < e; si++,ptr1++,ptr2++)
 	    {
-	    if (*ptr1 != *ptr2)
+	    // if mismatch!  If reference is N ignore, if query is N, paint yellow
+	    if ( (*ptr1 != *ptr2) && !((*ptr1 == 'N') || (*ptr1 == 'n')))
 		{
 		int misX1 = round((double)((int)si-winStart)*scale) + xOff;
 		int misX2 = round((double)((int)(si+1)-winStart)*scale) + xOff;
@@ -805,8 +806,10 @@ for (sf =  (struct snakeFeature *)lf->components; sf != NULL; lastQEnd = qe, pre
 		if (w1 < 1)
 		    w1 = 1;
 
-		// mismatch!
-		hvGfxBox(hvg, misX1, y, w1, heightPer, MG_RED);
+		Color boxColor = MG_RED;
+		if ((*ptr2 == 'N') || (*ptr2 == 'n'))
+		    boxColor = hvGfxFindRgb(hvg, &undefinedYellowColor);
+		hvGfxBox(hvg, misX1, y, w1, heightPer, boxColor);
 		}
 	    }
 
@@ -820,7 +823,7 @@ for (sf =  (struct snakeFeature *)lf->components; sf != NULL; lastQEnd = qe, pre
 		refDna, seqLen, TRUE, FALSE);
 	    }
 
-    }
+	}
     sf->drawn = TRUE;
     tEnd = e;
     tStart = s;
@@ -988,7 +991,7 @@ if (errCatchStart(errCatch))
 	(tg->visibility == tvPack);
     hal_dup_type_t dupMode =  (isPackOrFull) ? HAL_QUERY_AND_TARGET_DUPS :
 	HAL_QUERY_DUPS;
-    int needSeq = isPackOrFull && (winBaseCount < showSnpWidth) ? 1 : 0;
+    hal_seqmode_type_t needSeq = isPackOrFull && (winBaseCount < showSnpWidth) ? HAL_LOD0_SEQUENCE : HAL_NO_SEQUENCE;
     int mapBackAdjacencies = (tg->visibility == tvFull);
     struct hal_block_results_t *head = halGetBlocksInTargetRange(handle, otherSpecies, trackHubSkipHubName(database), chromName, winStart, winEnd, 0, needSeq, dupMode,mapBackAdjacencies);
 
