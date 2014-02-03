@@ -790,7 +790,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make filterPsl_$tDb$qDb jobList -allowSpecialCharJobs -q medium\n
+para.pl make filterPsl_$tDb$qDb jobList -allowSpecialCharJobs -q long\n
 para.pl check filterPsl_$tDb$qDb\n
 para.pl time filterPsl_$tDb$qDb > run.time\n
 cat run.time\n";
