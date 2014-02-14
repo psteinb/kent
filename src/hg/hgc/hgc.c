@@ -15529,7 +15529,7 @@ return offset;
 }
 
 
-char *getSnpSeqFile(struct trackDb *tdb)
+char *getSnpSeqFile(struct trackDb *tdb, int version)
 /* find location of snp.fa and test existence. */
 {
 char *seqFile = trackDbSetting(tdb, "snpSeqFile");
@@ -15543,6 +15543,9 @@ if (isNotEmpty(seqFile))
 char seqFileBuf[512];
 safef(seqFileBuf, sizeof(seqFileBuf), "/gbdb/%s/snp/%s.fa",
       database, tdb->table);
+if (fileExists(seqFileBuf))
+    return cloneString(seqFileBuf);
+safef(seqFileBuf, sizeof(seqFileBuf), "/gbdb/%s/snp/snp%d.fa", database, version);
 if (fileExists(seqFileBuf))
     return cloneString(seqFileBuf);
 safef(seqFileBuf, sizeof(seqFileBuf), "/gbdb/%s/snp/snp.fa", database);
@@ -15660,7 +15663,7 @@ axtFree(&axt);
 hPrintf("</PRE>");
 }
 
-void printSnpAlignment(struct trackDb *tdb, struct snp *snp)
+void printSnpAlignment(struct trackDb *tdb, struct snp *snp, int version)
 /* Get flanking sequences from table; align and print */
 {
 char *fileName = NULL;
@@ -15699,7 +15702,7 @@ int skipCount = 0;
 
 off_t offset = 0;
 
-fileName = getSnpSeqFile(tdb);
+fileName = getSnpSeqFile(tdb, version);
 if (!fileName)
     return;
 
@@ -17859,7 +17862,7 @@ checkForGwasCatalog(conn, tdb, itemName);
 checkForHgdpGeo(conn, tdb, itemName, start);
 checkForHapmap(conn, tdb, itemName);
 checkForLsSnpMappings(conn, tdb->track, itemName);
-printSnpAlignment(tdb, snpAlign);
+printSnpAlignment(tdb, snpAlign, version);
 puts("</TABLE>");
 printTrackHtml(tdb);
 hFreeConn(&conn);
