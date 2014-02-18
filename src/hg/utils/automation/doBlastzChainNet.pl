@@ -440,6 +440,7 @@ sub requireNum {
 my $oldDbFormat = '[a-z][a-z](\d+)?';
 my $newDbFormat = '[a-z][a-z][a-z][A-Z][a-z][a-z0-9](\d+)?';
 my $newnewDbFormat = '[a-z][a-z][a-z][A-Z][a-z][a-z][A-Z][a-z][a-z0-9](\d+)?';
+my $HLDbFormat = 'HL[a-z][a-z][a-z][A-Z][a-z][a-z0-9](\d+)?';
 sub getDbFromPath {
   # Require that $val is a full path that contains a recognizable db as
   # one of its elements (possibly the last one).
@@ -447,7 +448,7 @@ sub getDbFromPath {
   my $val = $defVars{$var};
   my $db;
   if ($opt_noDbNameCheck ||
-	$val =~ m@^/\S+/($oldDbFormat|$newDbFormat|$newnewDbFormat)((\.2bit)|(/(\S+)?))?$@) {
+	$val =~ m@^/\S+/($oldDbFormat|$newDbFormat|$newnewDbFormat|$HLDbFormat)((\.2bit)|(/(\S+)?))?$@) {
     $db = $1;
   } else {
     die "Error: $DEF variable $var=$val must be a full path with " .
