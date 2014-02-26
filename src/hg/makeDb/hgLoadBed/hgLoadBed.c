@@ -345,6 +345,10 @@ while (lineFileNextReal(lf, &line))
     bed->chrom = cloneString(words[0]);
     bed->chromStart = lineFileNeedNum(lf, words, 1);
     bed->chromEnd = lineFileNeedNum(lf, words, 2);
+
+    /* MH: always check if chrom and chromEnd are correct. Do that also when -type is not specified */
+    checkChromNameAndSize(lf, bed->chrom, bed->chromEnd);
+
     if (! noStrict)
 	{
 	if (bed->chromEnd < 1)
@@ -823,17 +827,21 @@ if (customTrackLoader)
 fillInScoreColumn = optionVal("fillInScore", NULL);
 
 chromInfo=optionVal("chromInfo", NULL);
+/* MH: always load chrHash from file or DB. Do that also when -type is not specified */
 if (chromInfo)
     {
-    if (!type)
+/*    if (!type)
 	errAbort("Only use chromInfo with type for validate");
+*/
     // Get chromInfo from file
     chrHash = chromHashFromFile(chromInfo); 
+    verbose(1, "read chrHash from %s\n",chromInfo);
     }
-else if (type)
+else /*if (type)*/
     {
     // Get chromInfo from DB
     chrHash = chromHashFromDatabase(argv[1]); 
+    verbose(1, "read chrHash from database\n");
     }
 
 hgLoadBed(argv[1], argv[2], argc-3, argv+3);
