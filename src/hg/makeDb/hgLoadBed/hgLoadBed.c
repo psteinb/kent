@@ -346,7 +346,8 @@ while (lineFileNextReal(lf, &line))
     bed->chromStart = lineFileNeedNum(lf, words, 1);
     bed->chromEnd = lineFileNeedNum(lf, words, 2);
 
-    /* MH: always check if chrom and chromEnd are correct. Do that also when -type is not specified */
+    /* MH: always check if chrom and chromEnd are correct. Do that also when -type is not specified 
+	 Note that checkChromNameAndSize() is robust to not having loaded chrHash if we are loading a customTrack */
     checkChromNameAndSize(lf, bed->chrom, bed->chromEnd);
 
     if (! noStrict)
@@ -827,20 +828,22 @@ if (customTrackLoader)
 fillInScoreColumn = optionVal("fillInScore", NULL);
 
 chromInfo=optionVal("chromInfo", NULL);
-/* MH: always load chrHash from file or DB. Do that also when -type is not specified */
+/* MH: always load chrHash from file or DB. Do that also when -type is not specified, but do not do it if we are loading a customTrack */
 if (chromInfo)
     {
 /*    if (!type)
 	errAbort("Only use chromInfo with type for validate");
 */
     // Get chromInfo from file
-    chrHash = chromHashFromFile(chromInfo); 
+    if (!customTrackLoader)
+        chrHash = chromHashFromFile(chromInfo); 
     verbose(1, "read chrHash from %s\n",chromInfo);
     }
 else /*if (type)*/
     {
     // Get chromInfo from DB
-    chrHash = chromHashFromDatabase(argv[1]); 
+    if (!customTrackLoader)
+        chrHash = chromHashFromDatabase(argv[1]); 
     verbose(1, "read chrHash from database\n");
     }
 
