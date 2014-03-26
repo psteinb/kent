@@ -5,9 +5,6 @@
  * hgRenderTracks web service.  See mainMain.c for the main used by the hgTracks CGI. */
 
 #include <pthread.h>
-#ifndef __APPLE__
-#include <malloc.h>
-#endif
 #include "common.h"
 #include "hCommon.h"
 #include "linefile.h"
@@ -72,7 +69,7 @@
  * program's unique variables be qualified with a prefix though. */
 char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
             "hgt.in1", "hgt.in2", "hgt.in3", "hgt.inBase",
-            "hgt.out1", "hgt.out2", "hgt.out3",
+            "hgt.out1", "hgt.out2", "hgt.out3", "hgt.out4",
             "hgt.left1", "hgt.left2", "hgt.left3",
             "hgt.right1", "hgt.right2", "hgt.right3",
             "hgt.dinkLL", "hgt.dinkLR", "hgt.dinkRL", "hgt.dinkRR",
@@ -1716,6 +1713,8 @@ else if (sameString(zoomType, ZOOM_3X))
     newWinWidth = winWidth/3;
 else if (sameString(zoomType, ZOOM_10X))
     newWinWidth = winWidth/10;
+else if (sameString(zoomType, ZOOM_100X))
+    newWinWidth = winWidth/100;
 else if (sameString(zoomType, ZOOM_BASE))
     newWinWidth = insideWidth/tl.mWidth;
 else
@@ -4436,8 +4435,6 @@ for (track = trackList; track != NULL; track = track->next)
 int ptMax = atoi(cfgOptionDefault("parallelFetch.threads", "20"));  // default number of threads for parallel fetch.
 int pfdListCount = 0;
 pthread_t *threads = NULL;
-pthread_attr_t attr;
-int stackSize = 2*1024*1024;  // 2 MB per thread? 10MB is default on 64-bit
 if (ptMax > 0)     // parallelFetch.threads=0 to disable parallel fetch
     {
     findLeavesForParallelLoad(trackList, &pfdList);
@@ -4447,31 +4444,16 @@ if (ptMax > 0)     // parallelFetch.threads=0 to disable parallel fetch
     if (ptMax > 0)
 	{
 	AllocArray(threads, ptMax);
-
-	#if defined(M_ARENA_MAX) 
-	    mallopt(M_ARENA_MAX, 8);   // Otherwise new glibc allocates 64MB arena per thread
-	#endif /* glibc malloc tuning */ 
-
-	/* Initialize thread creation attributes */
-	int rc = pthread_attr_init(&attr);
-	if (rc) errAbort("Unexpected error %d from pthread_attr_init(): %s",rc,strerror(rc));
-	/* Set thread stack size */
-	rc = pthread_attr_setstacksize(&attr, stackSize);
-	if (rc) errAbort("Unexpected error %d from pthread_attr_setstacksize(): %s",rc,strerror(rc));
 	/* Create threads */
 	int pt;
 	for (pt = 0; pt < ptMax; ++pt)
 	    {
-	    rc = pthread_create(&threads[pt], &attr, remoteParallelLoad, &threads[pt]);
+	    int rc = pthread_create(&threads[pt], NULL, remoteParallelLoad, &threads[pt]);
 	    if (rc)
 		{
 		errAbort("Unexpected error %d from pthread_create(): %s",rc,strerror(rc));
 		}
 	    }
-	/* Thread attr no longer needed */
-	rc = pthread_attr_destroy(&attr);
-	if (rc) errAbort("Unexpected error %d from pthread_attr_destroy(): %s",rc,strerror(rc));
-
 	}
     }
 
@@ -4731,7 +4713,9 @@ hPrintf("<td width='60' align='right'><a href='?hgt.out2=1' "
         "title='zoom out 3x'>&lt;&lt;&nbsp;&gt;&gt;</a>\n");
 hPrintf("<td width='80' align='right'><a href='?hgt.out3=1' "
         "title='zoom out 10x'>&lt;&lt;&lt;&nbsp;&gt;&gt;&gt;</a>\n");
-hPrintf("<td>&nbsp;</td>\n"); // Without width cell expands table with, forcing others to sides
+hPrintf("<td width='80' align='right'><a href='?hgt.out4=1' "
+        "title='zoom out 100x'>&lt;&lt;&lt;&nbsp;&gt;&gt;&gt;</a>\n");
+hPrintf("<td>&nbsp;</td>\n"); // Without width cell expands table width, forcing others to sides
 hPrintf("<td width='20' align='right'><a href='?hgt.right1=1' "
         "title='move 10&#37; to the right'>&gt;</a>\n");
 
