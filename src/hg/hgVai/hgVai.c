@@ -157,7 +157,7 @@ char *makePositionInput()
 /* Return HTML for the position input. */
 {
 struct dyString *dy = dyStringCreate("<INPUT TYPE=TEXT NAME=\"%s\" SIZE=%d VALUE=\"%s\">",
-				     hgvaRange, 26,
+				     hgvaRange, 45,
 				     addCommasToPos(NULL, cartString(cart, hgvaRange)));
 return dyStringCannibalize(&dy);
 }
@@ -311,6 +311,10 @@ return ((sameString(tdb->grp, "user") || isHubTrack(tdb->track)) &&
 	(sameString(tdb->type, "pgSnp") || startsWith("vcf", tdb->type)));
 }
 
+// Function prototype to avoid shuffling code around:
+char *findLatestSnpTable(char *suffix);
+/* Return the name of the 'snp1__<suffix>' table with the highest build number, if any. */
+
 void selectVariants(struct slRef *varGroupList, struct slRef *varTrackList)
 /* Offer selection of user's variant custom tracks, example variants, pasted input etc. */
 {
@@ -330,15 +334,20 @@ for (ref = varTrackList;  ref != NULL;  ref = ref->next)
     printOption(tdb->track, selected, tdb->longLabel);
     }
 printOption(hgvaSampleVariants, selected, hgvaSampleVariantsLabel);
-printOption(hgvaUseVariantIds, selected, hgvaVariantIdsLabel);
+boolean hasSnps = (findLatestSnpTable(NULL) != NULL);
+if (hasSnps)
+    printOption(hgvaUseVariantIds, selected, hgvaVariantIdsLabel);
 printf("</SELECT><BR>\n");
 
-printf("<div id='"hgvaVariantPasteContainer"'%s>\n",
-       differentString(selected, hgvaUseVariantIds) ? " style='display: none;'" : "");
-printf("Enter dbSNP rs# identifiers separated by whitespace or commas:<BR>\n");
-char *oldPasted = cartUsualString(cart, hgvaVariantIds, "");
-cgiMakeTextArea(hgvaVariantIds, oldPasted, 10, 70);
-puts("</div>");
+if (hasSnps)
+    {
+    printf("<div id='"hgvaVariantPasteContainer"'%s>\n",
+	   differentString(selected, hgvaUseVariantIds) ? " style='display: none;'" : "");
+    printf("Enter dbSNP rs# identifiers separated by whitespace or commas:<BR>\n");
+    char *oldPasted = cartUsualString(cart, hgvaVariantIds, "");
+    cgiMakeTextArea(hgvaVariantIds, oldPasted, 10, 70);
+    puts("</div>");
+    }
 
 printf("<B>maximum number of variants to be processed:</B>\n");
 char *curLimit = cartUsualString(cart, "hgva_variantLimit", "10000");
@@ -460,7 +469,7 @@ struct slName *findDbNsfpTables()
 if (startsWith(hubTrackPrefix, database))
     return NULL;
 struct sqlConnection *conn = hAllocConn(database);
-struct slName *dbNsfpTables = sqlQuickList(conn, "NOSQLINJ show tables like 'dbNsfp%'");
+struct slName *dbNsfpTables = sqlListTablesLike(conn, "LIKE 'dbNsfp%'");
 hFreeConn(&conn);
 return dbNsfpTables;
 }
@@ -528,12 +537,13 @@ if (startsWith(hubTrackPrefix, database))
     return NULL;
 if (suffix == NULL)
     suffix = "";
-char query[64];
-sqlSafef(query, sizeof(query), "show tables like 'snp1__%s'", suffix);
+char likeExpr[64];
+safef(likeExpr, sizeof(likeExpr), "LIKE 'snp1__%s'", suffix);
 struct sqlConnection *conn = hAllocConn(database);
-struct slName *snpNNNTables = sqlQuickList(conn, query);
+struct slName *snpNNNTables = sqlListTablesLike(conn, likeExpr);
+
 hFreeConn(&conn);
-if (snpNNNTables == NULL)
+if ((snpNNNTables == NULL) || (slCount(snpNNNTables)==0))
     return NULL;
 // Skip to last in list -- highest number (show tables can't use rlike or 'order by'):
 struct slName *table = snpNNNTables;
@@ -1596,6 +1606,8 @@ static void rsIdsToVcfRecords(struct annoAssembly *assembly, struct slName *rsId
 if (rsIds == NULL)
     return;
 char *table = findLatestSnpTable(NULL);
+if (table == NULL)
+    return;
 struct sqlConnection *conn = hAllocConn(assembly->name);
 // Build a 'name in (...)' query, and build a hash of IDs so we can test whether all were found
 struct dyString *dq = sqlDyStringCreate("select chrom, chromStart, chromEnd, name, strand, "
@@ -1967,16 +1979,21 @@ if (lookupPosition(cart, hgvaRange))
     else
 	doUi();
     }
-else if (webGotWarnings())
+else
     {
-    // We land here when lookupPosition pops up a warning box.
-    // Reset the problematic position and show the main page.
+    // Revert to lastPosition if we have multiple matches or warnings,
+    // especially in case user manually edits browser location as in #13009:
     char *position = cartUsualString(cart, "lastPosition", hDefaultPos(database));
     cartSetString(cart, hgvaRange, position);
-    doMainPage();
+    if (webGotWarnings())
+	{
+	// We land here when lookupPosition pops up a warning box.
+	// Reset the problematic position and show the main page.
+	doMainPage();
+	}
+    // If lookupPosition returned FALSE and didn't report warnings,
+    // then it wrote HTML showing multiple position matches & links.
     }
-// If lookupPosition returned FALSE and didn't report warnings,
-// then it wrote HTML showing multiple position matches & links.
 
 cartCheckout(&cart);
 cgiExitTime("hgVai", enteredMainTime);

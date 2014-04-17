@@ -92,7 +92,7 @@ static struct dlList *sqlOpenConnections = NULL;
 static unsigned sqlNumOpenConnections = 0;
 
 char *defaultProfileName = "db";                  // name of default profile for main connection
-char *failoverProfPrefix = "slow-";                   // prefix for failover profile of main profile (="slow-db")
+char *failoverProfPrefix = "slow-";               // prefix for failover profile of main profile (="slow-db")
 static struct hash *profiles = NULL;              // profiles parsed from hg.conf, by name
 static struct sqlProfile *defaultProfile = NULL;  // default profile, also in profiles list
 static struct hash* dbToProfile = NULL;           // db to sqlProfile
@@ -714,13 +714,21 @@ sqlSafef(query, sizeof(query), "SELECT count(*) FROM %s WHERE tableName='%s'", t
 return (sqlQuickNum(conn, query)!=0);
 }
 
-static struct slName *sqlTableCacheQuery(struct sqlConnection *conn)
-/* return all table names from the table name cache as a list. */
+static struct slName *sqlTableCacheQuery(struct sqlConnection *conn, char *likeExpr)
+/* This function queries the tableCache table. It is used by the sqlTableList 
+ * function, so it doe not have to connect to the main sql server just to get a list of table names.
+ * Returns all table names from the table name cache as a list. 
+ * Can optionally filter with a likeExpr e.g. "LIKE snp%". */
 {
 char *tableList = cfgVal("showTableCache");
 struct slName *list = NULL, *el;
 char query[1024];
-sqlSafef(query, sizeof(query), "SELECT DISTINCT tableName FROM %s", tableList);
+// mysql SHOW TABLES is sorted alphabetically by default
+if (likeExpr==NULL)
+    sqlSafef(query, sizeof(query), "SELECT DISTINCT tableName FROM %s ORDER BY tableName", tableList);
+else
+    sqlSafef(query, sizeof(query), 
+        "SELECT DISTINCT tableName FROM %s WHERE tableName %s ORDER BY tableName", tableList, likeExpr);
 
 struct sqlResult *sr = sqlGetResult(conn, query);
 char **row;
@@ -729,36 +737,61 @@ while ((row = sqlNextRow(sr)) != NULL)
     el = slNameNew(row[0]);
     slAddHead(&list, el);
     }
+slReverse(&list);
 sqlFreeResult(&sr);
 return list;
 }
 
-struct slName *sqlListTables(struct sqlConnection *conn)
-/* Return list of tables in database associated with conn. */
+static struct slName *sqlListTablesForConn(struct sqlConnection *conn, char *likeExpr)
+/* run SHOW TABLES on connection and return a slName list */
 {
+char query[256];
+if (likeExpr == NULL)
+    safef(query, sizeof(query), "NOSQLINJ SHOW TABLES");
+else
+    safef(query, sizeof(query), "NOSQLINJ SHOW TABLES %s", likeExpr);
+
 struct slName *list = NULL, *el;
+
 struct sqlResult *sr;
 char **row;
+sr = sqlGetResult(conn, query);
+while ((row = sqlNextRow(sr)) != NULL)
+    {
+    el = slNameNew(row[0]);
+    slAddHead(&list, el);
+    }
+slReverse(&list);
+sqlFreeResult(&sr);
+return list;
+}
+
+struct slName *sqlListTablesLike(struct sqlConnection *conn, char *likeExpr)
+/* Return list of tables in database associated with conn. Optionally filter list with
+ * given LIKE expression that can be NULL or string e.g. "LIKE 'snp%'". */
+{
+struct slName *list = NULL;
 
 struct sqlConnection *cacheConn = sqlTableCacheFindConn(conn);
 
 if (cacheConn)
-    list = sqlTableCacheQuery(cacheConn);
+    list = sqlTableCacheQuery(cacheConn, likeExpr);
 else
+    list = sqlListTablesForConn(conn, likeExpr);
+
+if (conn->failoverConn != NULL)
     {
-    char query[256];
-    sqlSafef(query, sizeof(query), "SHOW TABLES");
-    sr = sqlGetResult(conn, query);
-    while ((row = sqlNextRow(sr)) != NULL)
-        {
-        el = slNameNew(row[0]);
-        slAddHead(&list, el);
-        }
-    slReverse(&list);
-    sqlFreeResult(&sr);
+    struct slName *failoverList = sqlListTablesForConn(conn->failoverConn, likeExpr);
+    slSortMergeUniq(list, failoverList, slNameCmp, slNameFree);
     }
 
 return list;
+}
+
+struct slName *sqlListTables(struct sqlConnection *sc)
+/* Return list of tables in database associated with conn. */
+{
+return sqlListTablesLike(sc, NULL);
 }
 
 struct sqlResult *sqlDescribe(struct sqlConnection *conn, char *table)
@@ -1105,6 +1138,13 @@ va_end(args);
 noWarnAbort();
 }
 
+struct sqlConnection *sqlFailoverConn(struct sqlConnection *sc)
+/* returns the failover connection of a connection or NULL.
+ * (Needed because the sqlConnection is not in the .h file) */
+{
+return sc->failoverConn;
+}
+
 bool sqlConnMustUseFailover(struct sqlConnection *sc)
 /* Returns true if a connection has a failover connection and 
  * the current db does not exist on the main connection.
@@ -1172,7 +1212,8 @@ int mysqlError = mysql_real_query(sc->conn, query, strlen(query));
 if (mysqlError != 0 && sc->failoverConn && sameWord(sqlGetDatabase(sc), sqlGetDatabase(sc->failoverConn)))
     {
     if (monitorFlags & JKSQL_TRACE)
-        monitorPrint(sc, "SQL_FAILOVER", "%s -> %s", scConnProfile(sc), scConnProfile(sc->failoverConn));
+        monitorPrint(sc, "SQL_FAILOVER", "%s -> %s | %s", scConnProfile(sc),
+            scConnProfile(sc->failoverConn), query);
 
     sc = sc->failoverConn;
     sqlConnectIfUnconnected(sc, TRUE);

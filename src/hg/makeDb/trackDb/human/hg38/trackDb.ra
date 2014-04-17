@@ -88,6 +88,8 @@ type bed 9 .
 scoreFilterByRange on
 itemRgb on
 color 0,0,0
+urlLabel Genbank accession:
+url http://www.ncbi.nlm.nih.gov/nuccore/$$
 
 track centromeres
 shortLabel Centromeres
@@ -101,6 +103,7 @@ url http://www.ncbi.nlm.nih.gov/nuccore/$$
 urlLabel NCBI accession record:
 
 track cpgIslandSuper
+release beta,public
 superTrack on
 shortLabel CpG Islands
 longLabel CpG Islands (Islands < 300 Bases are Light Green)

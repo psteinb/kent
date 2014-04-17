@@ -3148,10 +3148,9 @@ searchPriority 50
 
 searchName lrgTranscriptAliNoTNum
 searchTable lrgTranscriptAli
-searchMethod exact
-searchType psl
 query select tName, tStart, tEnd, qName from %s where qName like '%st%%'
 termRegex LRG_[0-9]+
+dontCheck LRG_[0-9]+t[0-9+]
 semiShortCircuit 1
 searchPriority 50
 
@@ -3332,7 +3331,7 @@ searchMethod exact
 searchType bed
 shortCircuit 1
 semiShortCircuit 1
-termRegex ([0-9]{6})+\.+([0-9]{4})
+termRegex ([0-9]{6})\.([0-9]{4})
 searchPriority 10
 
 searchName omimGene2Acc
@@ -4083,8 +4082,8 @@ searchName geneReviews
 searchTable geneReviews
 searchType bed
 searchPriority 50
-xrefTable geneReviewsRefGene
-xrefQuery select geneSymbol,diseaseName from %s where diseaseName like '%%%s%%'
+xrefTable geneReviewsGeneGRshortNBKidGRtitle
+xrefQuery select geneSymbol,grTitle from %s where grTitle like '%%%s%%'
 searchBoth on
 
 searchTable dgv
