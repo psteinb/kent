@@ -27,7 +27,6 @@
 #include "pcrResult.h"
 #include "jsHelper.h"
 #include "hgConfig.h"
-#include "cart.h"
 #include "chromInfo.h"
 #include "hillerLabView.h"
 
@@ -39,6 +38,15 @@ int hViewMode = 0;
 struct slName *name;
 struct cart *tmpCart = NULL;	/*tmp hash to load view*/
 
+
+/* Hide All */
+void hideAllTracks(struct cart *ct){
+
+	struct slName *tr;
+   for(tr = slNameCloneList(hvName) ; tr != NULL; tr = tr->next){
+		cartSetString(ct,tr->name,"hide");
+	}
+}
 
 void initializeHviewMenu(){
 /* Initialize  the HViewMenu */	
@@ -160,6 +168,9 @@ void loadView(char *viewName)
 		pch = strtok (NULL, "\n");
 	}				
 
+	/*hide all the tracks before loading a view*/
+	hideAllTracks(cart);
+
 	/*load cart from tempcart */
 	 for(tr = slNameCloneList(hvName) ; tr != NULL; tr = tr->next)
 	 {
@@ -180,8 +191,6 @@ void loadView(char *viewName)
 	 customCartDump1(NULL,"loadView");
 #endif
 }	
-
-
 
 
 void saveView()
