@@ -611,7 +611,7 @@ $unmaskedSeq = $opt_unmaskedSeq ? $opt_unmaskedSeq :
   "$HgAutomate::clusterData/$db/$db.unmasked.2bit";
 my $seqCount = `twoBitInfo $unmaskedSeq stdout | wc -l`;
 chomp($seqCount);
-$chromBased = ($seqCount <= $HgAutomate::splitThreshold);
+$chromBased = ($seqCount <= $HgAutomate::splitThreshold) && $opt_splitTables;
 print STDERR "unmaskedSeq: $unmaskedSeq with $seqCount sequences\n";
 
 
