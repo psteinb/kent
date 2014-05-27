@@ -1,4 +1,7 @@
 /* edwSubmit - Submit URL with validated.txt to warehouse.. */
+
+/* Copyright (C) 2014 The Regents of the University of California 
+ * See README in this or parent directory for licensing information. */
 #include "common.h"
 #include "linefile.h"
 #include "hash.h"
@@ -921,6 +924,7 @@ for (seconds = 0; seconds < maxSeconds; seconds += secondsPer)
 	 doValidatedEmail(submit, TRUE);
 	 return;
 	 }
+    verbose(2, "waiting for validation\n");
     sqlDisconnect(&conn);
     sleep(secondsPer);	// Sleep for 5 more minutes
     }
