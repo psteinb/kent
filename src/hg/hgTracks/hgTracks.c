@@ -1784,7 +1784,7 @@ if (baseShowPos||baseShowAsm)
     freezeName = hFreezeFromDb(database);
     sprintLongWithCommas(numBuf, winEnd-winStart);
     if (freezeName == NULL)
-	freezeName = "Unknown";
+	freezeName = cloneString("Unknown");
     if (baseShowPos&&baseShowAsm)
 	safef(txt,sizeof(txt),"%s %s   %s (%s bp)",trackHubSkipHubName(organism),
 		freezeName, addCommasToPos(database, position), numBuf);
@@ -5049,7 +5049,6 @@ hPrintf("</FORM>\n");
 
 /* hidden form for track hub CGI */
 hPrintf("<FORM ACTION='%s' NAME='trackHubForm'>", hgHubConnectName());
-cgiMakeHiddenVar(hgHubConnectCgiDestUrl, "../cgi-bin/hgTracks");
 cartSaveSession(cart);
 hPrintf("</FORM>\n");
 

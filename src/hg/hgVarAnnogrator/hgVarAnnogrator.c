@@ -1045,6 +1045,12 @@ for (af = filterList;  af != NULL;  af = af->next)
 return NULL;
 }
 
+static struct annoFilter *getFilters(struct asObject *asObj)
+{
+//#*** todo: make filters from asObj->columnList
+return NULL;
+}
+
 struct annoStreamer *streamerFromSource(char *db, char *table, struct trackDb *tdb, char *chrom);
 //#*** Move it up here?  Or move out to a lib!!
 
@@ -1061,7 +1067,7 @@ dyStringPrintf(dy, "<script>activeFilterList['%s'] = [ ", src->name);
 struct dyString *availDy = dyStringCreate("availableFilterList['%s'] = [ ", src->name);
 boolean gotActive = FALSE, gotAvail = FALSE;
 struct annoStreamer *streamer = streamerFromSource(database, src->selTable, tdb, NULL);
-struct annoFilter *af, *afList = streamer->getFilters(streamer);
+struct annoFilter *af, *afList = getFilters(streamer->asObj);
 for (af = afList;  af != NULL;  af = af->next)
     {
     struct annoFilter *cf = findFilterByLabel(src->filterList, af->label);
@@ -1531,7 +1537,6 @@ hPrintf("</FORM>\n");
 /* Hidden form for jumping to track hub manager CGI. */
 hPrintf("<FORM ACTION='%s' NAME='trackHubForm'>", hgHubConnectName());
 //#*** well, almost verbatim... we should have an hgThisCgiName().
-cgiMakeHiddenVar(hgHubConnectCgiDestUrl, hgVarAnnogratorName());
 cartSaveSession(cart);
 hPrintf("</FORM>\n");
 //#*** ------------------ end verbatim ---------------

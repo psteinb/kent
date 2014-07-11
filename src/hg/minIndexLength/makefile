@@ -1,3 +1,3 @@
 kentSrc = ../..
-A = analyzeCpG
+A = minIndexLength
 include $(kentSrc)/inc/userApp.mk

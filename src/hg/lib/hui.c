@@ -4640,6 +4640,7 @@ wigFetchWindowingFunctionWithCart(cart,tdb,name, &windowingFunction);
 wigFetchSmoothingWindowWithCart(cart,tdb,name, &smoothingWindow);
 wigFetchYLineMarkWithCart(cart,tdb,name, &yLineMarkOnOff);
 wigFetchYLineMarkValueWithCart(cart,tdb,name, &yLineMark);
+boolean doNegative = wigFetchDoNegativeWithCart(cart,tdb,tdb->track, (char **) NULL);
 
 printf("<TABLE BORDER=0>");
 
@@ -4714,6 +4715,10 @@ safef(option, sizeof(option), "%s.%s", name, SMOOTHINGWINDOW );
 wiggleSmoothingDropDown(option, smoothingWindow);
 puts("&nbsp;pixels</TD></TR>");
 
+printf("<th align=right>Negate values:</th><td align=left>");
+safef(option, sizeof(option), "%s.%s", name, DONEGATIVEMODE );
+cgiMakeCheckBox(option, doNegative);
+
 printf("<TR valign=center><td align=right><b>Draw y indicator lines:</b>"
        "<td align=left colspan=2>");
 printf("at y = 0.0:");
@@ -4721,7 +4726,7 @@ safef(option, sizeof(option), "%s.%s", name, HORIZGRID );
 wiggleGridDropDown(option, horizontalGrid);
 printf("&nbsp;&nbsp;&nbsp;at y =");
 safef(option, sizeof(option), "%s.%s", name, YLINEMARK );
-cgiMakeDoubleVarWithLimits(option, yLineMark, "Indicator at Y", 0, tDbMinY, tDbMaxY);
+cgiMakeDoubleVarInRange(option, yLineMark, "Indicator at Y", 0, NULL, NULL);
 safef(option, sizeof(option), "%s.%s", name, YLINEONOFF );
 wiggleYLineMarkDropDown(option, yLineMarkOnOff);
 printf("</td>");
@@ -5207,8 +5212,14 @@ if (filterSettings)
                     }
                 }
         #endif///ndef EXTRA_FIELDS_SUPPORT
+            // FIXME: Label munging should be localized to showScoreFilter()
+            //  when that function is simplified
+            char varName[256];
             char label[128];
-            safef(label,sizeof(label),"Minimum %s",field);
+            safef(varName, sizeof(varName), "%s%s", scoreName, _BY_RANGE);
+            boolean filterByRange = trackDbSettingClosestToHomeOn(tdb, varName);
+            safef(label, sizeof(label),"%s%s", filterByRange ? "": "Minimum ", field);
+
             showScoreFilter(cart,tdb,opened,boxed,parentLevel,name,title,label,scoreName,isFloat);
             freeMem(scoreName);
             count++;

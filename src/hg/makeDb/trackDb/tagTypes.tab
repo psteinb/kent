@@ -18,6 +18,7 @@ aliQualRange bam
 allButtonPair *
 altColor *
 alwaysZero wig bedGraph
+applyMinQual vcf
 autoScale *
 autoTranslate genePred
 bamColorMode bam
@@ -164,6 +165,10 @@ graphTypeDefault wig bigWig
 gridDefault bed bedGraph wig bigWig
 group *
 groupings expRatio
+hapClusterEnabled vcf
+hapClusterColorBy vcf
+hapClusterTreeAngle vcf
+hapClusterHeight vcf
 hapmapPhase bed
 hgGene genePred
 hgsid bed genePred
@@ -172,7 +177,7 @@ highlightColor genePred
 html *
 htmlFile customTracks
 htmlUrl customTracks
-idInUrlSql altGraphX genePred chain factorSource
+idInUrlSql altGraphX genePred chain factorSource bed
 idXref genePred
 iframeUrl *
 iframeOptions *
@@ -226,9 +231,11 @@ metadata *
 mouseOverField bigBed
 mgiUrl bed
 mgiUrlLabel bed
+minFreq vcf
 minGrayLevel bed broadPeak narrowPeak bedLogR
 minLimit *
 minMax chromGraph
+minQual vcf
 minScore bed broadPeak narrowPeak
 motifTable factorSource
 motifPwmTable factorSource bed6FloatScore
@@ -237,6 +244,7 @@ motifMaxWindow factorSource
 motifDrawDefault factorSource
 msaTable wig wigMafProt wigMaf
 ncbiAccXref bed
+negateValues wigMaf bigWig bedGraph wig
 nextExonText *
 nextItemButton *
 noColorTag bam
@@ -313,8 +321,8 @@ scoreFilterLimits broadPeak narrowPeak bed interaction bedlogR peptideMapping bi
 scoreFilterMax bed bedlogR peptideMapping bigBed
 scoreMax bed bedlogR interaction peptideMapping bigBed narrowPeak
 scoreMin broadPeak narrowPeak bed bedlogR interaction peptideMapping
-searchMethod bed
-searchType bed
+searchIndex bigBed
+searchTrix bigBed
 selectSubject psl
 seqTable bed
 settingsByView *
@@ -336,7 +344,7 @@ snpSeqFile bed
 snpTable bed
 snpVersion bed
 sortOrder *
-sourceTable factorSource
+sourceTable factorSource bed
 spanList *
 speciesCodonDefault wigMafProt wigMaf
 speciesDefaultOff wigMaf
@@ -385,7 +393,7 @@ url2 bed genePred
 url2Label bed genePred
 urlLabel *
 urlName genePred psl
-urls bigBed
+urls bigBed bed
 useScore *
 view *
 viewLimits *

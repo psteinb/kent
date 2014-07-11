@@ -1909,6 +1909,7 @@ _EOF_
   if ($doSymLink) {
     $bossScript->add(<<_EOF_
 cd $dirName
+rm -f lastz.$qDb
 ln -s $baseName lastz.$qDb
 _EOF_
       );
@@ -1980,6 +1981,8 @@ netToAxt \$f axtChain/chain/\$f:t:r.chain \\
 end
 rm -fr $runDir/synNet
 rm -fr $runDir/chain
+cd mafSynNet
+md5sum *.maf.gz > md5sum.txt
 _EOF_
       );
   } else {

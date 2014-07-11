@@ -10,7 +10,7 @@
 #include "dystring.h"
 #include "obscure.h"
 #include "portable.h"
-#include "errabort.h"
+#include "errAbort.h"
 #include "trackDb.h"
 #include "tdbRecord.h"
 #include "ra.h"
@@ -1007,7 +1007,7 @@ for (childFp = child->posList; childFp != NULL; childFp = childFp->next)
 static void doRecordChecks(struct tdbRecord *recordList, struct lm *lm)
 /* Do additional checks on records. */
 {
-/* Check fields against tagType.tag. */
+/* Check fields against tagTypes.tab. */
 struct tdbRecord *record;
 for (record = recordList; record != NULL; record = record->next)
     {

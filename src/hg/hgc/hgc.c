@@ -14,7 +14,7 @@
 #include "hvGfx.h"
 #include "portable.h"
 #include "regexHelper.h"
-#include "errabort.h"
+#include "errAbort.h"
 #include "dystring.h"
 #include "nib.h"
 #include "cheapcgi.h"
@@ -956,7 +956,8 @@ char* replaceInUrl(struct trackDb *tdb, char *url, char *idInUrl, boolean encode
 struct dyString *uUrl = NULL;
 struct dyString *eUrl = NULL;
 char startString[64], endString[64];
-char *ins[9], *outs[9];
+char begItem[64], endItem[64];
+char *ins[11], *outs[11];
 char *eItem = (encode ? cgiEncode(idInUrl) : cloneString(idInUrl));
 
 safef(startString, sizeof startString, "%d", winStart);
@@ -993,6 +994,25 @@ if (stringIn(":", idInUrl)) {
     outs[7] = idInUrl;	/* otherwise, these are not expected */
     outs[8] = idInUrl;	/* to be used */
 }
+
+// URL may now contain item boundaries
+ins[9] = "${";
+ins[10] = "$}";
+if (cartOptionalString(cart, "o") && cartOptionalString(cart, "t"))
+    {
+    int itemBeg = cartIntExp(cart, "o") + 1; // Should strip any unexpected commas
+    int itemEnd = cartIntExp(cart, "t");
+    safef(begItem, sizeof begItem, "%d", itemBeg);
+    safef(endItem, sizeof endItem, "%d", itemEnd);
+    outs[9] = begItem;
+    outs[10] = endItem;
+    }
+else // should never be but I am unwilling to bet the farm
+    {
+    outs[9] = startString;
+    outs[10] = endString;
+    }
+
 uUrl = subMulti(url, ArraySize(ins), ins, outs);
 outs[0] = eItem;
 eUrl = subMulti(url, ArraySize(ins), ins, outs);
@@ -1484,6 +1504,39 @@ if (mf != NULL)
     }
 }
 
+char **getIdNameMap(struct trackDb *tdb, struct asColumn *col, int *size)
+/* Allocate and fill an array mapping id to name.  Currently limited to specific columns. */
+{
+char *idNameTable = trackDbSetting(tdb, "sourceTable");
+if (!idNameTable || differentString("sourceIds", col->name))
+    return NULL;
+
+struct sqlResult *sr;
+char query[256];
+char **row;
+char **idNames;
+
+sqlSafef(query, sizeof(query), "select max(id) from %s", idNameTable);
+struct sqlConnection *conn = hAllocConnTrack(database, tdb);
+int maxId = sqlQuickNum(conn, query);
+AllocArray(idNames, maxId+1);
+sqlSafef(query, sizeof(query), "select id, name from %s", idNameTable);
+sr = sqlGetResult(conn, query);
+int id;
+while ((row = sqlNextRow(sr)) != NULL)
+    {
+    id = sqlUnsigned(row[0]);
+    if (id > maxId)
+        errAbort("Internal error:  id %d > maxId %d in %s", id, maxId, idNameTable);
+    idNames[id] = cloneString(row[1]);
+    }
+sqlFreeResult(&sr);
+hFreeConn(&conn);
+if (size)
+    *size = maxId+1;
+return idNames;
+}
+
 void printIdOrLinks(struct asColumn *col, struct hash *fieldToUrl, struct trackDb *tdb, char *idList)
 /* if trackDb does not contain a "urls" entry for current column name, just print idList as it is.
  * Otherwise treat idList as a comma-sep list of IDs and print one row per id, with a link to url,
@@ -1492,9 +1545,9 @@ void printIdOrLinks(struct asColumn *col, struct hash *fieldToUrl, struct trackD
 {
 // try to find a fieldName=url setting in the "urls" tdb statement, print id if not found
 char *url = NULL;
-if (fieldToUrl!=NULL)
+if (fieldToUrl != NULL)
     url = (char*)hashFindVal(fieldToUrl, col->name);
-if (url==NULL)
+if (url == NULL)
     {
     printf("<td>%s</td></tr>\n", idList);
     return;
@@ -1503,18 +1556,29 @@ if (url==NULL)
 // split the id into parts and print each part as a link
 struct slName *slIds = slNameListFromComma(idList);
 struct slName *itemId = NULL;
+
+// handle id->name mapping for multi-source items
+int nameCount;
+char **idNames = getIdNameMap(tdb, col, &nameCount);
+
 printf("<td>");
 for (itemId = slIds; itemId!=NULL; itemId = itemId->next) 
     {
-    if (itemId!=slIds)
+    if (itemId != slIds)
         printf(", ");
-    char* itemName = itemId->name;
-    itemName = trimSpaces(itemName);
-    char *idUrl = replaceInUrl(tdb, url, itemName, TRUE);
-    printf("<a href=\"%s\" target=\"_blank\">%s</a>", idUrl, itemId->name);
+    char *itemName = itemId->name;
+    if (idNames)
+        {
+        unsigned int id = sqlUnsigned(itemName);
+        if (id < nameCount)
+            itemName = idNames[sqlUnsigned(itemName)];
+        }
+    char *idUrl = replaceInUrl(tdb, url, trimSpaces(itemName), TRUE);
+    printf("<a href=\"%s\" target=\"_blank\">%s</a>", idUrl, itemName);
     } 
 printf("</td></tr>\n");
 freeMem(slIds);
+//freeMem(idNames);
 }
 
 int extraFieldsPrint(struct trackDb *tdb,struct sqlResult *sr,char **fields,int fieldCount)
@@ -19226,12 +19290,15 @@ if (cgiVarExists("o"))
 	       database, tdb->track);
 	printf("<B>Other Position Relative Orientation:</B>%s<BR>\n",
 	       dup.strand);
-	printf("<B>Filter Verdict:</B> %s<BR>\n", dup.verdict);
-	printf("&nbsp;&nbsp;&nbsp;<B> testResult:</B>%s<BR>\n", dup.testResult);
-	printf("&nbsp;&nbsp;&nbsp;<B> chits:</B>%s<BR>\n", dup.chits);
-	printf("&nbsp;&nbsp;&nbsp;<B> ccov:</B>%s<BR>\n", dup.ccov);
-	printf("&nbsp;&nbsp;&nbsp;<B> posBasesHit:</B>%d<BR>\n",
-	       dup.posBasesHit);
+	if(sameString("canFam1", database))
+	{
+		printf("<B>Filter Verdict:</B> %s<BR>\n", dup.verdict);
+		printf("&nbsp;&nbsp;&nbsp;<B> testResult:</B>%s<BR>\n", dup.testResult);
+		printf("&nbsp;&nbsp;&nbsp;<B> chits:</B>%s<BR>\n", dup.chits);
+		printf("&nbsp;&nbsp;&nbsp;<B> ccov:</B>%s<BR>\n", dup.ccov);
+		printf("&nbsp;&nbsp;&nbsp;<B> posBasesHit:</B>%d<BR>\n",
+		       dup.posBasesHit);
+	} else {};
 	if (alignUrl != NULL)
 	    printf("<A HREF=%s/%s "
 		   "TARGET=\"%s:%d-%d\">Optimal Global Alignment</A><BR>\n",
@@ -24438,12 +24505,12 @@ int qWidth = atoi(cartOptionalString(cart, "qWidth"));
 safef(otherDb, sizeof otherDb, "%s_%s", hubName, otherSpecies);
 
 
-printf("<A HREF=\"hgTracks?db=%s&position=%s:%d-%d&%s_snake%s=full\" TARGET=_BLANK><B>Link to block in other species</A><BR>\n", otherDb, qName, qs, qe,hubName,trackHubSkipHubName(database));
+printf("<A HREF=\"hgTracks?db=%s&position=%s:%d-%d&%s_snake%s=full\" TARGET=_BLANK><B>Link to block in other assembly</A><BR>\n", otherDb, qName, qs, qe,hubName,trackHubSkipHubName(database));
 
 int qCenter = (qs + qe) / 2;
 int newQs = qCenter - qWidth/2;
 int newQe = qCenter + qWidth/2;
-printf("<A HREF=\"hgTracks?db=%s&position=%s:%d-%d&%s_snake%s=full\" TARGET=\"_blank\"><B>Link to same window size in other species</A><BR>\n", otherDb, qName, newQs, newQe,hubName,trackHubSkipHubName(database));
+printf("<A HREF=\"hgTracks?db=%s&position=%s:%d-%d&%s_snake%s=full\" TARGET=\"_blank\"><B>Link to same window size in other assembly</A><BR>\n", otherDb, qName, newQs, newQe,hubName,trackHubSkipHubName(database));
 } 
 
 bool vsameWords(char *a, va_list args)

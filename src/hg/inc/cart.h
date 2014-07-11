@@ -11,7 +11,7 @@
 struct cart;         // forward definition for use in trackDb.h
 
 #include "jksql.h"
-#include "errabort.h"
+#include "errAbort.h"
 #include "dystring.h"
 #include "linefile.h"
 #include "trackDb.h"
@@ -536,6 +536,9 @@ int cartOrTdbInt(struct cart *cart, struct trackDb *tdb, char *var, int defaultV
 /* Look first in cart, then in trackDb for var.  Return defaultVal if not found. */
 
 double cartOrTdbDouble(struct cart *cart, struct trackDb *tdb, char *var, double defaultVal);
+/* Look first in cart, then in trackDb for var.  Return defaultVal if not found. */
+
+boolean cartOrTdbBoolean(struct cart *cart, struct trackDb *tdb, char *var, boolean defaultVal);
 /* Look first in cart, then in trackDb for var.  Return defaultVal if not found. */
 
 boolean cartValueHasChanged(struct cart *newCart,struct hash *oldVars,char *setting,

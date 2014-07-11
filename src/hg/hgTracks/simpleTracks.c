@@ -9616,9 +9616,17 @@ void pgSnpLeftLabels(struct track *tg, int seqStart, int seqEnd,
 		     struct hvGfx *hvg, int xOff, int yOff, int width, int height,
 		     boolean withCenterLabels, MgFont *font, Color color,
 		     enum trackVisibility vis)
-/* pgSnp draws its own left labels when it draws the item; this is a placeholder so the
- * default full-mode left labels aren't drawn too. */
+/* pgSnp draws its own left labels when it draws the item in pack or full mode.
+ * We don't want the default left labels when in full mode because they can overlap
+ * with the item-drawing labels, but we do still need dense mode left labels. */
 {
+if (tg->visibility == tvDense)
+    {
+    if (isCenterLabelIncluded(tg))
+	yOff += mgFontLineHeight(font);
+    hvGfxTextRight(hvg, leftLabelX, yOff, leftLabelWidth-1, tg->lineHeight,
+		   color, font, tg->shortLabel);
+    }
 }
 
 void pgSnpMethods (struct track *tg)
@@ -12759,6 +12767,14 @@ registerTrackHandler("snp138", snp125Methods);
 registerTrackHandler("snp138Common", snp125Methods);
 registerTrackHandler("snp138Flagged", snp125Methods);
 registerTrackHandler("snp138Mult", snp125Methods);
+registerTrackHandler("snp139", snp125Methods);
+registerTrackHandler("snp139Common", snp125Methods);
+registerTrackHandler("snp139Flagged", snp125Methods);
+registerTrackHandler("snp139Mult", snp125Methods);
+registerTrackHandler("snp141", snp125Methods);
+registerTrackHandler("snp141Common", snp125Methods);
+registerTrackHandler("snp141Flagged", snp125Methods);
+registerTrackHandler("snp141Mult", snp125Methods);
 registerTrackHandler("ld", ldMethods);
 registerTrackHandler("cnpSharp", cnpSharpMethods);
 registerTrackHandler("cnpSharp2", cnpSharp2Methods);
