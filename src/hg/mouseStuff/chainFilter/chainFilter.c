@@ -22,6 +22,7 @@ errAbort(
   "   -t=chr1,chr2 - restrict target side sequence to those named\n"
   "   -notT=chr1,chr2 - restrict target side sequence to those not named\n"
   "   -id=N - only get one with ID number matching N\n"
+  "   -idList=N,N,... - only get chains with IDs matching the IDs in the given list of numbers\n"
   "   -minScore=N - restrict to those scoring at least N\n"
   "   -maxScore=N - restrict to those scoring less than N\n"
   "   -qStartMin=N - restrict to those with qStart at least N\n"
@@ -59,6 +60,7 @@ struct optionSpec options[] = {
    {"t", OPTION_STRING},
    {"notT", OPTION_STRING},
    {"id", OPTION_INT},
+   {"idList", OPTION_STRING},
    {"minScore", OPTION_FLOAT},
    {"maxScore", OPTION_FLOAT},
    {"qStartMin", OPTION_INT},
@@ -221,10 +223,12 @@ int tMaxSize = optionInt("tMaxSize", BIGNUM);
 char *strand = optionVal("strand", NULL);
 boolean zeroGap = optionExists("zeroGap");
 int id = optionInt("id", -1);
+struct hash *idListHash = hashCommaOption("idList");
 boolean doLong = optionExists("long");
 boolean noRandom = optionExists("noRandom");
 boolean noHap = optionExists("noHap");
 int i;
+char idbuf[30];
 
 for (i=0; i<inCount; ++i)
     {
@@ -266,6 +270,11 @@ for (i=0; i<inCount; ++i)
 	    writeIt = FALSE;
 	if (id >= 0 && id != chain->id)
 	    writeIt = FALSE;
+	if (idListHash != NULL) { 
+	    sprintf(idbuf, "%d", chain->id);
+	    if (! hashLookup(idListHash, idbuf))
+	        writeIt = FALSE;
+	}
 	if (minGapless != 0)
 	    {
 	    if (!(calcMaxGapless(chain) >= minGapless))
