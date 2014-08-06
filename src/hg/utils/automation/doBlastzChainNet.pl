@@ -654,7 +654,7 @@ if($clusterType eq "genome"){
   my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make blastz_$tDb$qDb jobList -allowSpecialCharJobs -q medium\n
+para.pl make blastz_$tDb$qDb jobList -q medium\n
 para.pl check blastz_$tDb$qDb\n
 para.pl time blastz_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -720,7 +720,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make catRun_$tDb$qDb jobList -allowSpecialCharJobs\n
+para.pl make catRun_$tDb$qDb jobList\n
 para.pl check catRun_$tDb$qDb\n
 para.pl time catRun_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -791,7 +791,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make filterPsl_$tDb$qDb jobList -allowSpecialCharJobs -q long\n
+para.pl make filterPsl_$tDb$qDb jobList -q long\n
 para.pl check filterPsl_$tDb$qDb\n
 para.pl time filterPsl_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -943,7 +943,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make chainRun_$tDb$qDb jobList -allowSpecialCharJobs -q long\n
+para.pl make chainRun_$tDb$qDb jobList -q long\n
 para.pl check chainRun_$tDb$qDb\n
 para.pl time chainRun_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -1159,7 +1159,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make patchChain_$tDb$qDb jobList -allowSpecialCharJobs -q medium\n
+para.pl make patchChain_$tDb$qDb jobList -q medium\n
 para.pl check patchChain_$tDb$qDb\n
 para.pl time patchChain_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -1210,7 +1210,7 @@ para time > run.timeReChain\n
 cat run.timeReChain\n";
    if ($clusterType eq "madmax") {
 	$paraReChain = "
-para.pl make ReChain_$tDb$qDb jobListReChain -allowSpecialCharJobs -q long\n
+para.pl make ReChain_$tDb$qDb jobListReChain -q long\n
 para.pl check ReChain_$tDb$qDb\n
 para.pl time ReChain_$tDb$qDb > run.timeReChain\n
 cat run.time\n";
@@ -1283,7 +1283,7 @@ sub netChains {
   my $paraNetChain='./netChains.csh';
   if ($clusterType eq "madmax"){
   	$paraNetChain = "
-para.pl make netChain_$tDb$qDb jobList -allowSpecialCharJobs -q long\n
+para.pl make netChain_$tDb$qDb jobList -q long\n
 para.pl check netChain_$tDb$qDb\n
 para.pl time netChain_$tDb$qDb > run.time\n
 cat run.time\n";
