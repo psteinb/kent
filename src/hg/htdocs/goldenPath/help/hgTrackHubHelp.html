@@ -409,7 +409,7 @@ For information on creating and configuring bigWig tracks, see the
 
 <P><em>bigBed</em> -
 BigBed files are binary indexed versions of Browser Extensible Data
-(<A HREF="../../FAQ/FAQformat#format1">BED</A>) files.  BED format is
+(<A HREF="../../FAQ/FAQformat.html#format1">BED</A>) files.  BED format is
 useful for associating a name and (optionally) a color and a score with one 
 or more related regions on the same chromosome, such as all the exons of a gene.
 See the <A HREF="bigBed.html">bigBed Track Format</A> help page for 
@@ -766,9 +766,8 @@ variables visible. Insert the CGI variable just after the
 &quot;hgTracks&quot; portion of the URL so that it reads 
 <em>http://genome.ucsc.edu/cgi-bin/hgTracks?udcTimeout=1&</em> (with the
 remainder of the URL following the ampersand).  To restore the default
-timeout, repeat this process and set the udcTimeout variable to 300,
-i.e. <em>udcTimeout=300</em>. 
-<!--Question: does this actually work? Didn't check it. -->
+timeout, a warning message will appear on hgTracks with a link to
+clear the udcTimeout variable.
 			        </TD>
 			        <TD WIDTH=15></TD>
 			    </TR>

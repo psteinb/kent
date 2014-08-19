@@ -5055,3 +5055,248 @@ done
     # http://genomewiki.ucsc.edu/images/7/7f/Hg38.grcIncidentDb.bb
 
 #############################################################################
+# RepeatMasker Visualization track (DONE - 2014-07-25 - Hiram)
+    mkdir /hive/data/genomes/hg38/bed/rmskJoined
+    cd /hive/data/genomes/hg38/bed/rmskJoined
+
+    ln -s ../repeatMasker/hg38.sorted.fa.out .
+    ln -s ../repeatMasker/hg38.fa.align.gz .
+
+    # working on fixing this script for the next release of RM
+    /scratch/data/RepeatMasker140131/util/nextVerRmToUCSCTables.pl \
+            -out hg38.sorted.fa.out -align hg38.fa.align.gz
+
+    hgLoadBed -sqlTable=$HOME/kent/src/hg/lib/rmskJoined.sql \
+        -renameSqlTable -verbose=4 -tab \
+            -type=bed4+9 -as=$HOME/kent/src/hg/lib/rmskJoined.as hg38 \
+                rmskJoinedBaseline hg38.sorted.fa.join.bed \
+                    > loadJoined.log 2>&1
+
+    hgLoadSqlTab hg38 rmskAlignBaseline \
+        /cluster/home/hiram/kent/src/hg/lib/rmskAlign.sql \
+            hg38.fa.align.tsv > loadAlign.log 2>&1
+
+    hgLoadOutJoined -verbose=2 hg38 hg38.sorted.fa.out > loadOut.log 2>&1
+
+    featureBits -countGaps hg38 rmskJoinedBaseline
+    #    2716777279 bases of 3209286105 (84.654%) in intersection
+
+##############################################################################
+# LASTZ Macaca Mulatta RheMac2 (DONE - 2014-07-13 - braney)
+    mkdir /hive/data/genomes/hg38/bed/lastzRheMac2.2014-07-11
+    cd /hive/data/genomes/hg38/bed/lastzRheMac2.2014-07-11
+
+    # best to always specify an exact path to lastz so we know which one is used
+    # lastz default parameters are human-mouse parameters
+
+    cat << '_EOF_' > DEF
+# human vs macaca mulatta
+BLASTZ=/cluster/bin/penn/lastz-distrib-1.03.52/bin/lastz
+# maximum M allowed with lastz is only 254
+BLASTZ_M=254
+BLASTZ_Q=/scratch/data/blastz/human_chimp.v2.q
+BLASTZ_O=600
+BLASTZ_E=150
+# other parameters from panTro2 vs hg18 lastz on advice from Webb
+BLASTZ_K=4500
+BLASTZ_Y=15000
+BLASTZ_T=2
+
+# TARGET: Human Hg38
+SEQ1_DIR=/hive/data/genomes/hg38/hg38.2bit
+SEQ1_LEN=/hive/data/genomes/hg38/chrom.sizes
+SEQ1_CTGDIR=/hive/data/genomes/hg38/hg38.contigs.2bit
+SEQ1_CTGLEN=/hive/data/genomes/hg38/hg38.contigs.chrom.sizes
+SEQ1_LIFT=/hive/data/genomes/hg38/jkStuff/hg38.contigs.lift
+SEQ1_CHUNK=20000000
+SEQ1_LAP=10000
+
+# QUERY: Macaca Mulatta RheMac2
+SEQ2_DIR=/scratch/data/rheMac2/rheMac2.2bit
+SEQ2_LEN=/scratch/data/rheMac2/chrom.sizes
+SEQ2_CHUNK=20000000
+SEQ2_LAP=0
+SEQ2_IN_CONTIGS=0
+
+BASE=/hive/data/genomes/hg38/bed/lastzRheMac2.2014-07-11
+TMPDIR=/dev/shm
+'_EOF_'
+    # << happy emacs
+    time $HOME/kent/src/hg/utils/automation/doBlastzChainNet.pl \
+        `pwd`/DEF \
+        -syntenicNet -fileServer=hgwdev \
+	-chainMinScore=5000 -chainLinearGap=medium \
+        -workhorse=hgwdev -smallClusterHub=ku -bigClusterHub=ku > do.log 2>&1
+    #  Elapsed time: 141m36s
+    cat fb.hg38.chainRheMac2Link.txt
+    # 2455106923 bases of 3049335806 (80.513%) in intersection
+
+    #   running the swap
+    mkdir /hive/data/genomes/rheMac2/bed/blastz.hg38.swap
+    cd /hive/data/genomes/rheMac2/bed/blastz.hg38.swap
+    time nice -n +19 doBlastzChainNet.pl -verbose=2 \
+        /hive/data/genomes/hg38/bed/lastzRheMac2.2014-07-11/DEF \
+        -swap -syntenicNet -chainMinScore=5000 -chainLinearGap=medium \
+        -workhorse=hgwdev -smallClusterHub=ku -bigClusterHub=ku > swap.log 2>&1
+    # 83m26.095s
+    cat fb.rheMac2.chainHg38Link.txt
+    # 2313950599 bases of 2646704109 (87.428%) in intersection
+#
+
+#########################################################################
+# LASTZ Chlorocebus sabaeus  (DONE - 2014-07-13 - braney)
+    mkdir /hive/data/genomes/hg38/bed/lastzChlSab2.2014-07-11
+    cd /hive/data/genomes/hg38/bed/lastzChlSab2.2014-07-11
+
+    # best to always specify an exact path to lastz so we know which one is used
+    # lastz default parameters are human-mouse parameters
+
+    cat << '_EOF_' > DEF
+# human vs Chlorocebus sabaeus
+BLASTZ=/cluster/bin/penn/lastz-distrib-1.03.52/bin/lastz
+# maximum M allowed with lastz is only 254
+BLASTZ_M=254
+BLASTZ_Q=/scratch/data/blastz/human_chimp.v2.q
+BLASTZ_O=600
+BLASTZ_E=150
+# other parameters from panTro2 vs hg18 lastz on advice from Webb
+BLASTZ_K=4500
+BLASTZ_Y=15000
+BLASTZ_T=2
+
+
+# TARGET: Human Hg38
+SEQ1_DIR=/hive/data/genomes/hg38/hg38.2bit
+SEQ1_LEN=/hive/data/genomes/hg38/chrom.sizes
+SEQ1_CTGDIR=/hive/data/genomes/hg38/hg38.contigs.2bit
+SEQ1_CTGLEN=/hive/data/genomes/hg38/hg38.contigs.chrom.sizes
+SEQ1_LIFT=/hive/data/genomes/hg38/jkStuff/hg38.contigs.lift
+SEQ1_CHUNK=20000000
+SEQ1_LAP=10000
+
+# QUERY Chlorocebus sabaeus chlSab2
+SEQ2_DIR=/scratch/data/chlSab2/chlSab2.2bit
+SEQ2_LEN=/scratch/data/chlSab2/chrom.sizes
+SEQ2_CHUNK=20000000
+SEQ2_LAP=0
+SEQ2_IN_CONTIGS=0
+
+BASE=/hive/data/genomes/hg38/bed/lastzChlSab2.2014-07-11
+TMPDIR=/dev/shm
+'_EOF_'
+    # << happy emacs
+    time $HOME/kent/src/hg/utils/automation/doBlastzChainNet.pl \
+        `pwd`/DEF \
+        -syntenicNet -fileServer=hgwdev \
+	-chainMinScore=5000 -chainLinearGap=medium \
+        -workhorse=hgwdev -smallClusterHub=ku -bigClusterHub=ku > do.log 2>&1
+    # Elapsed time: 142m4s
+    cat fb.hg38.chainChlSab2Link.txt
+    # 2573435303 bases of 3049335806 (84.393%) in intersection
+
+    #   running the swap
+    mkdir /hive/data/genomes/chlSab2/bed/blastz.hg38.swap
+    cd /hive/data/genomes/chlSab2/bed/blastz.hg38.swap
+    time nice -n +19 doBlastzChainNet.pl -verbose=2 \
+        /hive/data/genomes/hg38/bed/lastzChlSab2.2014-07-11/DEF \
+        -swap -syntenicNet -chainMinScore=5000 -chainLinearGap=medium \
+        -workhorse=hgwdev -smallClusterHub=ku -bigClusterHub=ku > swap.log 2>&1
+    # 88m48.411s
+    cat fb.chlSab2.chainHg38Link.txt
+    # 2429053010 bases of 2752019208 (88.264%) in intersection
+
+#########################################################################
+# SEGMENTAL DUPLICATIONS (DONE - 2014-08-13 - Hiram)
+    # redmine issue: refs #13580
+
+    # file received in email from Archana Natarajan Raja (araja at uw.edu)
+    mkdir /hive/data/genomes/hg38/bed/genomicSuperDups
+    cd /hive/data/genomes/hg38/bed/genomicSuperDups
+# -rw-r--r-- 1 16478617 Aug 11 16:18 GenomicSuperDup.tab
+
+    # no longer filtering items smaller than 1,000 bases, see note
+    # in redmine issue refs #13580
+# While the size of the 24 alignments are less than 1000 bases , the size of
+# their pairs to which they align are always >1000, you can confirm this by
+# looking at the value in column 22 in your table (alignB -ucsc format), will
+# always be >1000 bp . We are seeing this only now because there are lots of
+# new and resolved duplications added to hg38. Hence , I would recommend not
+# filtering these items and uploading the current set as is.
+
+    # there is no chrEBV in the browser:
+    grep -v chrEBV GenomicSuperDup.tab \
+      | hgLoadBed hg38 genomicSuperDups stdin \
+	-sqlTable=$HOME/kent/src/hg/lib/genomicSuperDups.sql
+    #  Read 69894 elements of size 29 from stdin
+
+    checkTableCoords  hg38 genomicSuperDups
+    # <silence>  (the chrEBV was found with this check)
+
+    featureBits -countGaps hg38 genomicSuperDups
+    # 175429664 bases of 3209286105 (5.466%) in intersection
+
+    featureBits -countGaps hg19 genomicSuperDups
+    #  166092393 bases of 3137161264 (5.294%) in intersection
+    featureBits -countGaps hg18 genomicSuperDups
+    #  159204446 bases of 3107677273 (5.123%) in intersection
+
+    featureBits -countGaps mm10 genomicSuperDups
+    # 214917441 bases of 2730871774 (7.870%) in intersection
+    featureBits -countGaps mm9 genomicSuperDups
+    # 208214567 bases of 2725765481 (7.639%) in intersection
+
+#########################################################################
+2014-08-11: import of UCSC GENCODE group processing of GENCODE V20 (markd)
+    # download files
+    mkdir -p /hive/data/genomes/hg38/bed/gencodeV20/data
+    cd /hive/data/genomes/hg38/bed/gencodeV20
+
+    # download gencode release
+    cd data
+    wget -nv -r -np ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_20
+    mv ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_20 .
+    rm -rf ftp.sanger.ac.uk
+
+    cd ..
+    # create Makefile from previous one.
+    cp /hive/data/genomes/hg19/bed/gencodeV19/Makefile .
+
+    # build and load tables
+    (time nice make -j 10) >&build.1.out&
+
+    # compare tables from previous release to see if number changed makes
+    # sense.
+        make cmpRelease >gencode-cmp.tsv
+
+    ## Copy and update trackDb files from previous release.
+    ## Change version and use lower priority so it sorts to top of
+    ## super track page.
+    ## Important to make sure filter attrs.transcriptType matches current set
+    ## figured out with
+    select distinct transcriptType from wgEncodeGencodeAttrsV20 order by transcriptType;
+    cd kent/src/hg/makeDb/trackDb
+    cp human/hg38/wgEncodeGencodeV18.ra human/hg38/wgEncodeGencodeV20.ra
+    cp human/hg38/wgEncodeGencodeV18.html human/hg38/wgEncodeGencodeV20.html
+
+    # edit these plus human/hg38/trackDb.wgEncode.ra
+    # - set priorities in wgEncodeGencodeV20.ra in reverse order with previous
+    #   tracks so newest shows up first
+    #     priority - set to previous version priority minus 0.001
+    #     searchPriority - set each to previous minus 0.001
+    # - make current track default to pack and hide previous [ONLY if it's going to be pushed]
+    #     superTrack wgEncodeGencodeSuper pack
+    # - Update wgEncodeGencodeSuper.html to describe new release and to
+    #   pick up other updates.
+
+    ### IMPORTANT: make sure that hgTracks/gencodeTracks.c registers
+    ### track handler for this version of gencode:
+    registerTrackHandler("wgEncodeGencodeV20", gencodeGeneMethods);
+
+    # update all.joiner and validate
+    # look for the last section `begin Gencode V??' in all.joiner
+    # and copy and update version
+    # repeat this until happy, editing minCheck as needed
+    cd /hive/data/genomes/hg38/bed/gencodeV20
+    make joinerCheck  # output in check/joiner.out
+
+##############################################################################

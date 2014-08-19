@@ -19298,7 +19298,7 @@ if (cgiVarExists("o"))
 		printf("&nbsp;&nbsp;&nbsp;<B> ccov:</B>%s<BR>\n", dup.ccov);
 		printf("&nbsp;&nbsp;&nbsp;<B> posBasesHit:</B>%d<BR>\n",
 		       dup.posBasesHit);
-	} else {};
+	}
 	if (alignUrl != NULL)
 	    printf("<A HREF=%s/%s "
 		   "TARGET=\"%s:%d-%d\">Optimal Global Alignment</A><BR>\n",
@@ -24810,6 +24810,10 @@ else if (sameWord(table, "wabaCbr"))
     {
     doHgCbr(tdb, item);
     }
+else if (startsWith("rmskJoined", table))
+    {
+    doJRepeat(tdb, item);
+    }
 else if (startsWith("rmsk", table))
     {
     doHgRepeat(tdb, item);
@@ -25412,7 +25416,7 @@ else if (sameWord(table, "esRegGeneToMotif"))
     {
     doTriangle(tdb, item, "esRegMotif");
     }
-else if (sameWord(table, "wgEncodeRegTfbsClusteredMotifs"))
+else if (startsWith("wgEncodeRegTfbsClusteredMotifs", table))
     {
     doTriangle(tdb, item, "transRegCodeMotif");
     }
@@ -25425,9 +25429,7 @@ else if (sameWord(table, "transRegCodeProbe"))
     doTransRegCodeProbe(tdb, item, "transRegCode", "transRegCodeMotif",
                         "transRegCodeCondition", "growthCondition");
     }
-else if (sameWord(table, "wgEncodeRegDnaseClustered")
-     ||  sameWord(table, "wgEncodeRegDnaseClusteredV2")
-     ||  sameWord(table, "wgEncodeRegDnaseClusteredOn7"))
+else if (startsWith("wgEncodeRegDnaseClustered", table))
     {
     doPeakClusters(tdb, item);
     }

@@ -7,6 +7,7 @@
 hg38
 hg19
 mm10
+rn6
 # 
 # Most recent assembly for each org
 #
@@ -68,7 +69,7 @@ monDom5
 musFur1
 myoLuc2
 nomLeu3
-ochPri2
+ochPri3
 oreNil2
 ornAna1
 oryCun2
@@ -84,11 +85,10 @@ priPac1
 proCap1
 pteVam1
 rheMac3
-rn5
 sacCer3
 saiBol1
 sarHar1
-sorAra1
+sorAra2
 speTri2
 strPur2
 susScr3
@@ -150,16 +150,19 @@ monDom4
 monDom1
 nomLeu2
 nomLeu1
+ochPri2
 oviAri1
 panTro3
 panTro2
 panTro1
 petMar1
 rheMac2
+rn5
 rn4
 rn3
 sacCer2
 sacCer1
+sorAra1
 strPur1
 susScr2
 taeGut1

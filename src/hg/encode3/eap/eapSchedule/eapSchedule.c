@@ -9,6 +9,7 @@
 #include "portable.h"
 #include "bamFile.h"
 #include "obscure.h"
+#include "intValTree.h"
 #include "../../encodeDataWarehouse/inc/encodeDataWarehouse.h"
 #include "../../encodeDataWarehouse/inc/edwLib.h"
 #include "../../../../parasol/inc/paraMessage.h"
@@ -26,6 +27,7 @@ boolean clUpgrade = FALSE;
 char *clStep = "*";
 char *clInFormat = "*";
 char *clTarget = "hg38";
+char *clIdFile = NULL;
 int clMax = 0;
 
 void usage()
@@ -46,6 +48,7 @@ errAbort(
   "   -ignoreQa - if set then ignore QA results when scheduling\n"
   "   -justLink - just symbolically link rather than copy EDW files to cache\n"
   "   -max=count - Maximum number of jobs to schedule\n"
+  "   -idFile=file - Restrict to file id's in file, which is whitespace separated\n"
   "   -dry - just print out the commands that would result\n"
   );
 }
@@ -63,6 +66,7 @@ static struct optionSpec options[] = {
    {"ignoreQa", OPTION_BOOLEAN},
    {"justLink", OPTION_BOOLEAN},
    {"max", OPTION_INT},
+   {"idFile", OPTION_STRING},
    {"dry", OPTION_BOOLEAN},
    {NULL, 0},
 };
@@ -224,6 +228,7 @@ struct edwAssembly *targetAssemblyForDbAndSex(struct sqlConnection *conn, char *
 /* Figure out best target assembly for something that is associated with a given ucscDB.  
  * In general this will be the most recent for the organism. */
 {
+sex = "sponge"; // uglyf
 char sexedName[128];
 safef(sexedName, sizeof(sexedName), "%s.%s", sex, clTarget);
 char query[256];
@@ -657,13 +662,16 @@ freez(&controlName);
 return edwExperimentLoadByQuery(conn, query);
 }
 
-struct edwFile *mustFindChipControlFile(struct sqlConnection *conn, 
+struct edwFile *mayFindChipControlFile(struct sqlConnection *conn, 
     struct edwValidFile *vf, struct edwExperiment *exp)
-/* Find control file for this chip file */
+/* Find control file for this chip file. Return NULL if not found */
 {
 struct edwExperiment *controlExp = findChipControlExp(conn, exp->accession);
 if (controlExp == NULL)
-    errAbort("Can't find control experiment for ChIP experiment %s", exp->accession);
+    {
+    verbose(2, "Can't find control experiment for ChIP experiment %s\n", exp->accession);
+    return NULL;
+    }
 
 // Got control experiment,  now let's go for a matching bam file. 
 char query[PATH_LEN*3];
@@ -699,7 +707,10 @@ for (controlVf = controlVfList; controlVf != NULL; controlVf = controlVf->next)
 	}
     }
 if (bestControl == NULL)
-    errAbort("Can't find control file for ChIP experiment %s", exp->accession);
+    {
+    verbose(2, "Can't find control file for ChIP experiment %s\n", exp->accession);
+    return NULL;
+    }
 
 // Figure out control bam file info
 return edwFileFromId(conn, bestControl->fileId);
@@ -733,7 +744,9 @@ else
 verbose(2, "Looking for control for chip file %s\n", ef->edwFileName);
 
 // Get control bam file info
-struct edwFile *controlEf = mustFindChipControlFile(conn, vf, exp);
+struct edwFile *controlEf = mayFindChipControlFile(conn, vf, exp);
+if (controlEf == NULL)
+    return;
 verbose(2, "schedulingSppChip on %s with control %s,  step %s, script %s\n", ef->edwFileName, 
     controlEf->edwFileName, analysisStep, scriptName);
 
@@ -785,7 +798,9 @@ else
     }
 
 // Get control bam file info
-struct edwFile *controlEf = mustFindChipControlFile(conn, vf, exp);
+struct edwFile *controlEf = mayFindChipControlFile(conn, vf, exp);
+if (controlEf == NULL)
+    return;
 verbose(2, "schedulingMacsChip on %s with control %s,  step %s, script %s\n", ef->edwFileName, 
     controlEf->edwFileName, analysisStep, scriptName);
 
@@ -976,7 +991,7 @@ if (alreadyTakenCareOf(conn, assembly, analysisStep, ef->id))
     sqlSafef(query, sizeof(query), "select count(*) from eapOutput where fileId=%u", ef->id);
     if (sqlQuickNum(conn, query) == 0)
         {
-	uglyf("Skipping fileId %u,  not an EAP output", ef->id);
+	verbose(2, "Skipping fileId %u,  not an EAP output", ef->id);
 	return;
 	}
     }
@@ -1441,6 +1456,25 @@ if (vf->replicateQaStatus > 0)
     }
 }
 
+struct rbTree *intTreeFromFile(char *fileName)
+/* Create intVal tree with empty vals from a space separated file of integer IDs */
+{
+struct rbTree *it = intValTreeNew();
+struct lineFile *lf = lineFileOpen(fileName, TRUE);
+char *line;
+while (lineFileNextReal(lf, &line))
+    {
+    char *word;
+    while ((word = nextWord(&line)) != NULL)
+        {
+	int key = sqlUnsigned(word);
+	intValTreeAdd(it, key, NULL);
+	}
+    }
+lineFileClose(&lf);
+return it;
+}
+
 void edwScheduleAnalysis(int startFileId, int endFileId)
 /* edwScheduleAnalysis - Schedule analysis runs.. */
 {
@@ -1453,8 +1487,21 @@ if (clTest)
     return;
     }
 
+struct rbTree *idTree = NULL;
+if (clIdFile != NULL)
+    {
+    idTree = intTreeFromFile(clIdFile);
+    verbose(1, "%d items in %s\n", idTree->n, clIdFile);
+    }
+
 for (ef = efList; ef != NULL; ef = ef->next)
     {
+    if (idTree != NULL)
+        {
+	struct intVal iv = {ef->id, NULL};
+	if (rbTreeFind(idTree, &iv) == NULL)
+	    continue;
+	}
     struct edwValidFile *vf = edwValidFileFromFileId(conn, ef->id);
     if (vf != NULL && wildMatch(clInFormat, vf->format) && targetsCompatible(vf->ucscDb, clTarget))
 	{
@@ -1492,6 +1539,7 @@ clInFormat = optionVal("inFormat", clInFormat);
 clMax = optionInt("max", clMax);
 clUpgrade = optionExists("upgrade");
 clTarget = optionVal("target", clTarget);
+clIdFile = optionVal("idFile", clIdFile);
 if (clUpgrade)
     gRedoPriority = eapUpgrade;
 gRedoThresholdCache = hashNew(8);
