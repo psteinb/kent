@@ -5815,7 +5815,7 @@ char *debugTmp = NULL;
 cart = theCart;
 
 /* perform view operations if any */
-doHillerLabViewOperations(oldDb,userSeqString);
+doHillerLabViewOperations();
 
 measureTiming = hPrintStatus() && isNotEmpty(cartOptionalString(cart, "measureTiming"));
 if (measureTiming)

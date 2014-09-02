@@ -32,62 +32,53 @@
 
 /* global variables */
 char *HViewMenu[HVIEWMAXNUMVIEWS] = {" "};
-int sizeofHviewMenu=8;
-char *oldDb = NULL;
 int hViewMode = 0;
-struct slName *name;
-struct cart *tmpCart = NULL;	/*tmp hash to load view*/
+int sizeofHviewMenu=8;
+/* Pradeeps old code */
+/*
+char *oldDb = NULL;
+struct cart *tmpCart = NULL;	*tmp hash to load view*/
 
 
-/* Hide All */
-void hideAllTracks(struct cart *ct){
-
-	struct slName *tr;
-   for(tr = slNameCloneList(hvName) ; tr != NULL; tr = tr->next){
-		cartSetString(ct,tr->name,"hide");
-	}
-}
 
 void initializeHviewMenu(){
 /* Initialize  the HViewMenu */	
-
 	int i;
 	for (i = 1 ; i < HVIEWMAXNUMVIEWS ; i++)
 		HViewMenu[i] = NULL;
-
 }	
-	
-	
+
 void makeViewDropDown()
 {
-/*populate drop down list */
-
+/* populate drop down list with view names */
+	struct slName *SQLResultList;
 	struct sqlConnection *conn = hAllocConn(HVIEWDBNAME);
 	char query[100];
 	char *tableName = HVIEWTABLE;
 	int i = 1;//initial value is a empty string
 	safef(query, sizeof(query), "select view  from %s",tableName);
-	name = sqlQuickList(conn,query);
+	SQLResultList = sqlQuickList(conn,query);
 	initializeHviewMenu();
 	sizeofHviewMenu = 8; 
-	while(name != NULL)
+	while(SQLResultList != NULL)
 	{
-		HViewMenu[i]=name->name;
+		HViewMenu[i] = SQLResultList->name;
 		sizeofHviewMenu += 8; 
 		fflush(stdout);
-		name = name->next;
+		SQLResultList = SQLResultList->next;
 		i++;
 	}	
 }
 
 
-void doHillerLabViewOperations(char *oldDb,char *userSeqString)
+void doHillerLabViewOperations()
 {	
 	/*Perform view operations if any of them selected*/
 
-	char *vName ;
+	char *vName ;	/* view name */
 
-	/*Get the track list if database changes*/
+/* old code. Not used anymore.
+	*Get the track list if database changes*
 	if (!oldDb)
 	{	
 		oldDb = cartString(cart,"db");
@@ -98,7 +89,7 @@ void doHillerLabViewOperations(char *oldDb,char *userSeqString)
 		oldDb = cartString(cart,"db");
 		getTrackListFromDb(userSeqString);
 	}	
-
+*/
 	if(hTableExists(HVIEWDBNAME,HVIEWTABLE))
 		makeViewDropDown();
 
@@ -129,29 +120,56 @@ void doHillerLabViewOperations(char *oldDb,char *userSeqString)
 
 }	
 
-
 void loadView(char *viewName)
 {
-/* Load  selected view from database */
+/* Load selected view from database */
 
 	char *tableName = HVIEWTABLE;
-	struct slName *tr;
 	struct sqlConnection *conn = hAllocConn(HVIEWDBNAME);
 	struct dyString *query = dyStringNew(0);
+	struct slName *SQLResultList;
 
+	/* get the settings from the SQL table. Result is a list */
 	safef(query->string, query->bufSize, "select params from %s where view='%s'",tableName,viewName);
-	name = sqlQuickList(conn,query->string);
-	
+	SQLResultList = sqlQuickList(conn,query->string);
 
+#if debugHillerLabView
+	printf("restore from %s :<br>", viewName); 
+#endif
+
+	/* convert the list into a dyString object */
+	struct slName *el;
+	struct dyString *viewSettings = dyStringNew(HVIEWPARAMSIZE);
+	for (el = SQLResultList; el != NULL; el = el->next) {
+		dyStringAppend(viewSettings,el->name);
+#if debugHillerLabView
+		printf("&nbsp;&nbsp;&nbsp;&nbsp;%s <br>",el->name);
+#endif
+	}
+	slFreeList(SQLResultList);
+
+	/* now wrap a lineFile object around that string and perform the same operations as hgSession does */
+	struct lineFile *lf = lineFileOnString("settingsFromView", TRUE, viewSettings->string);
+	if (lf != NULL) {
+		cartLoadSettings(lf, cart, NULL, NULL);
+		hubConnectLoadHubs(cart);
+		cartCopyCustomTracks(cart);
+//    checkForCustomTracks(dyMessage);
+		lineFileClose(&lf);
+	}
+	freeDyString(&viewSettings);
+
+
+/*	Pradeeps old code. This code does not put back all stored key->value settings */
+/*
+	struct slName *tr;
 	char *pch = strtok(name->name,"\n");
-
 	char *varval;
 
 	if(!tmpCart)
 		tmpCart = cartOfNothing();
 
-	/*create a tempcart hash with stored view data*/
-
+	* create a tempcart hash with stored view data *
 	while (pch != NULL)
 	{	
 		varval = malloc (strlen(pch)+1);
@@ -168,25 +186,25 @@ void loadView(char *viewName)
 		pch = strtok (NULL, "\n");
 	}				
 
-	/*hide all the tracks before loading a view*/
+	* hide all the tracks before loading a view *
 	hideAllTracks(cart);
 
-	/*load cart from tempcart */
-	 for(tr = slNameCloneList(hvName) ; tr != NULL; tr = tr->next)
-	 {
-		 struct slPair *sl  = cartVarsWithPrefix(tmpCart,tr->name);
-
-		 while (sl != NULL)
-		 {
+	* load cart from tempcart *
+	for(tr = slNameCloneList(hvName) ; tr != NULL; tr = tr->next)
+	{
+		struct slPair *sl  = cartVarsWithPrefix(tmpCart,tr->name);
+		while (sl != NULL)
+		{
 			cartSetString(cart,sl->name,sl->val);
 			sl = sl->next;
 		}
 	}
 
 	 tmpCart = NULL;
+*/
+
 	 freeDyString(&query);
 	 hFreeConn(&conn);
-
 #if debugHillerLabView
 	 customCartDump1(NULL,"loadView");
 #endif
@@ -195,7 +213,7 @@ void loadView(char *viewName)
 
 void saveView()
 {
-/*Save view into database */	
+/* Save view into database */	
 	char *tableName = HVIEWTABLE;
 
 	char *tableFormat =
@@ -211,14 +229,14 @@ void saveView()
 	char tviewName[HVIEWMAXVIEWLEN + 1];
 
 
-	viewName =skipLeadingSpaces(viewName);
+	viewName = skipLeadingSpaces(viewName);
 	sqlDyStringPrintf(createSql, tableFormat, tableName);
 	
 #if debugHillerLabView
 	customCartDump1(cart,"saveview");
 #endif
 
-	//chop if viewName is longer than HVIEWMAXVIEWLEN (60) chars
+	/* chop if viewName is longer than HVIEWMAXVIEWLEN (60) chars */
 	if(strlen(viewName) > HVIEWMAXVIEWLEN)
 	{
 		safencpy(tviewName,HVIEWMAXVIEWLEN + 1,viewName,HVIEWMAXVIEWLEN - 1);
@@ -226,41 +244,65 @@ void saveView()
 	}
 	if (sqlMaybeMakeTable(conn, tableName, createSql->string))
 	{
-	       dyStringFree(&createSql);
-	}	 
-	
-		cartRemove(cart,"hgt.saveView");
-#if debugHillerLabView 
-	struct slName *el;
-	for (el = slNameCloneList(hvName) ; el != NULL ; el = el->next)
-	{	
-		printf("name  is  ==============>%s\n",el->name);
-		fflush(stdout);
+		dyStringFree(&createSql);
 	}
+
+	cartRemove(cart,"hgt.saveView");
+
+#if debugHillerLabView
+	printf("FULL CART DUMP for debugging !! <br>");
+	struct hashEl *elListDEBUG = hashElListHash(cart->hash);
+	cartDumpList(elListDEBUG,1);
+	printf("CART DUMP end<br><br>");
 #endif
 
-	/* here we go to the list of all tracks and store only cart entries referring to existing tracks in the table */
+	/* here we store the entire cart, except those prefixes listed in HVIEWBLACKLISTEDCARTENTRIES */
+	/* We make a list out of the string. */
+	struct slName *blackListedPrefixes = slNameListFromString(HVIEWBLACKLISTEDCARTENTRIES,',');
+	struct hashEl *elList = hashElListHash(cart->hash);
+	struct hashEl *el;
+	slSort(&elList, hashElCmp);
+	for (el = elList; el != NULL; el = el->next) {
+		if (slNameInList(blackListedPrefixes, el->name)) {
+#if debugHillerLabView
+			printf("SKIP    &nbsp;&nbsp;&nbsp;&nbsp;sl->name:  %s --> %s<br>",el->name,(char*)el->val);
+#endif
+		}else{
+			dyStringAppend(params,el->name);
+			dyStringAppend(params,"\t");
+			dyStringAppend(params,el->val);
+			dyStringAppend(params,"\n");
+#if debugHillerLabView
+			printf("&nbsp;&nbsp;&nbsp;&nbsp;sl->name:  %s --> %s<br>",el->name,(char*)el->val);
+#endif
+		}
+	}
+	hashElFreeList(&elList);
+
+/* Pradeeps old code. For some reason, some settings such as "33wayVIEWalign.showCfg --> off" were never stored */
+/*
 	struct slName *tel;
 	for (tel = hvName; tel != NULL; tel = tel->next)
 	{	
+		printf("&nbsp;&nbsp;tel->name %s<br>",tel->name);
 		struct slPair *sl  = cartVarsWithPrefix(cart,tel->name);
-		 while (sl != NULL)
-		 {
+		while (sl != NULL)
+		{
+			printf("&nbsp;&nbsp;&nbsp;&nbsp;sl->name:  %s --> %s<br>",sl->name,(char*)sl->val);
 			dyStringAppend(params,sl->name);
 			dyStringAppend(params,"\t");
 			dyStringAppend(params,sl->val);
 			dyStringAppend(params,"\n");
-       			sl = sl->next;
-	       }
-
+			sl = sl->next;
+		}
 	}
+*/
 	struct dyString *query = dyStringNew(params->bufSize);
 	safef(query->string, query->bufSize, "INSERT into %s VALUES(\"%s\",\"%s\")", tableName,viewName,params->string );
 	sqlUpdate(conn,query->string);
 	freeDyString(&params);
 	freeDyString(&query);
 	hFreeConn(&conn);
-
 }	
 
 
@@ -277,10 +319,20 @@ void deleteView(char *viewName)
 	hFreeConn(&conn);
 }	
 	 
+/* 
+old code. Not used anymore
 
-void  getTrackListFromDb(char *userSeqString)
+* Hide All *
+void hideAllTracks(struct cart *ct){
+	struct slName *tr;
+   for(tr = slNameCloneList(hvName) ; tr != NULL; tr = tr->next){
+		cartSetString(ct,tr->name,"hide");
+	}
+}
+
+void getTrackListFromDb(char *userSeqString)
 {
-	/* Get tracks list for the selected species */
+	* Get tracks list for the selected species *
 	struct trackDb *tdb,*tdbList = NULL;
 	tdbList =  hTrackDb(cartString(cart,"db"));
 	//struct track *trackList = hillerViewTrackList;//getTrackList(&groupList,-3);
@@ -331,13 +383,13 @@ void  getTrackListFromDb(char *userSeqString)
 		getSubTracks(track->tdb);//Add subtracks to list
 	}
 
-	/*These are not grouped under standard TDB tracks */
+	*These are not grouped under standard TDB tracks *
 
 	slNameAddHead(&hvName, "ruler");
 	slNameAddHead(&hvName, "hgt.");
 
 #if debugHillerLabView 
-	/*If you want to store custom tracks just use below one it will work*/
+	*If you want to store custom tracks just use below one it will work*
 	slNameAddHead(&hvName, "ct");
 
 	struct slName *el;
@@ -350,7 +402,7 @@ void  getTrackListFromDb(char *userSeqString)
 
 } 
 
-/* Get sub tracks */
+* Get sub tracks *
 void getSubTracks (struct trackDb *tdb)
 {
 
@@ -362,6 +414,8 @@ void getSubTracks (struct trackDb *tdb)
 	       slNameAddHead (&hvName,subtdb->track);
 	}	
 } 
+*/
+
 
 #if debugHillerLabView 
 void customCartDump1(struct cart *ct,char *place )
@@ -410,3 +464,4 @@ void customCartDump1(struct cart *ct,char *place )
 	fclose (fp);
 }
 #endif
+
