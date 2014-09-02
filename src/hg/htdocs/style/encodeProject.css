@@ -2,33 +2,15 @@
         (Mostly re-using Genome Browser styles)
 */
 
-/* over-riding alignment so we don't have to nest in a table */
+body {
+    font-family: arial,Geneva,Helvetica,sans-serif;
+    background-color: #fff;
+}
+
 .topBlueBar {
     text-align: left;
     background-color: #00457c;
     position: relative;
-}
-
-.leftBlueBar {
-    /*float: left; */
-    background-color: #00457c;
-}
-
-.leftBarSection {
-    color: #ffcc00;
-    background-color: #00457c;
-    font-style: italic;
-    font-weight: bold;
-    font-size: smaller;
-}
-
-.leftbar {
-    background-color: #00457c;
-}
-
-body {
-    font-family: arial,Geneva,Helvetica,sans-serif;
-    background-color: #fff;
 }
 
 .encodeHeader {
@@ -42,6 +24,12 @@ body {
     float: left;
     height: 70px;
     line-height:  70px;
+}
+
+.encodeHeaderDates {
+    font-size: 18px;
+    background-color: #efefef;
+    padding: 4px 5px;
 }
 
 /* image shown when ajax is loading data
@@ -85,10 +73,63 @@ table, th, td {
 }
 
 .wrapper {
-	border: 1px solid gray;
-	padding:0px;
-	margin: 7px 0px 20px 0px;
+    border: 1px solid gray;
+    padding:0px;
+    margin: 7px 0px 20px 0px;
 }
+
+.bar {
+    background-color: rgb(239,239,239);
+    color: rgb(85,85,85);
+    width: 100%;
+    margin: 0px;
+    padding: 3px 0px 3px 0px;
+    /* padding: 0 */
+    height: 27px;
+}
+
+/* styles for controlled vocabulary pages (hgEncodeVocab) */
+
+.vocabTable {
+    width: 100%;
+    border: none;
+    margin-top: 10px;
+}
+
+.vocabWrapper {
+    background-color: #fff9d2;
+    border: 2px solid black;
+}
+
+.vocabBar {
+    color: black;
+    background-color: #fff9d2;
+    width: 100%;
+    margin: 0px;
+    padding: 3px 0px 3px 0px;
+    height: 27px;
+}
+
+.topLink {
+    font-size: large;
+    font-weight: bold;
+}
+
+/* styles used on downloads (human and mouse) pages */
+
+.hd2 { 
+    font-size: 100%; 
+    text-align: left; 
+    font-weight:bold; 
+    text-indent:.1em;
+}
+
+.itemTbl { 
+    border: 1px solid #000088;
+}
+
+
+/**/
 
 .content {
     margin: 0px;
@@ -99,15 +140,6 @@ h4.title {
     text-align: left;
     margin: 0px;
     padding: 3px 0px 0px 7px;
-}
-
-.bar {
-    background-color: rgb(239,239,239);
-    color: rgb(85,85,85);
-    width: 100%;
-    margin: 0px;
-    padding: 3px 0px 3px 0px;
-    height: 27px;
 }
 
 dt {
@@ -129,12 +161,16 @@ dd {
     text-decoration:underline
 }
 
+.undecoratedLink {
+    text-decoration: none;
+}
+
 .big {
     font-size: 16pt;
 }
 
 .gold {
-    background-color: #FFDB70;
+    background-color: #f1b521;
 }
 
 .date {

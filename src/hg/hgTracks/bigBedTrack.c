@@ -144,6 +144,7 @@ freeMem(rest);
 return field;
 }
 
+
 void bigBedAddLinkedFeaturesFrom(struct track *track,
 	char *chrom, int start, int end, int scoreMin, int scoreMax, boolean useItemRgb,
 	int fieldCount, struct linkedFeatures **pLfList)
@@ -173,6 +174,8 @@ for (bb = bbList; bb != NULL; bb = bb->next)
     if (scoreFilter == NULL || lf->score >= minScore)
 	slAddHead(pLfList, lf);
     lf->mouseOver   = mouseOver; // leaks some memory, cloneString handles NULL ifself 
+    if (sameString(track->tdb->type, "bigGenePred"))
+	lf->original = genePredFromBigGenePred(chromName, bb); 
     }
 lmCleanup(&lm);
 }
