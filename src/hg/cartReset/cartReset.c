@@ -34,7 +34,7 @@ struct dyString *headText = newDyString(512);
 char *destination = cgiUsualString("destination", defaultDestination);
 
 dyStringPrintf(headText,
-	       "<META HTTP-EQUIV=\"REFRESH\" CONTENT=\"2;URL=%s\">"
+	       "<META HTTP-EQUIV=\"REFRESH\" CONTENT=\"0;URL=%s\">"
 	       "<META HTTP-EQUIV=\"Pragma\" CONTENT=\"no-cache\">"
 	       "<META HTTP-EQUIV=\"Expires\" CONTENT=\"-1\">"
 	       ,destination);
