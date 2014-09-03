@@ -5978,7 +5978,7 @@ char *highlightDef = cartOptionalString(cart, "highlight");
 if (highlightDef && startsWith(database,highlightDef) && highlightDef[strlen(database)] == '.')
     jsonObjectAdd(jsonForClient, "highlight", newJsonString(highlightDef));
 jsonObjectAdd(jsonForClient, "enableHighlightingDialog",
-              newJsonBoolean(cartUsualBoolean(cart, "enableHighlightingDialog", TRUE)));
+              newJsonBoolean(cartUsualBoolean(cart, "enableHighlightingDialog", FALSE)));
 hPrintf("<script type='text/javascript'>\n");
 jsonPrint((struct jsonElement *) jsonForClient, "hgTracks", 0);
 hPrintf("</script>\n");
