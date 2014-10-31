@@ -25,3 +25,6 @@ export AUTH_MACHINE="genome"
 export AUTH_USER=mueller
 export GLOBAL_CONFIG_FILE=${CGI_BIN}/hg.conf 
 export HGCGI=$CGI_BIN
+export HGDOWNLOAD="rsync://hgdownload.cse.ucsc.edu"
+export BROWSERHOME=/var/www/
+export RSYNC="rsync -rltgoD"

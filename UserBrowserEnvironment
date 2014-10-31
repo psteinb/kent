@@ -26,3 +26,6 @@ export AUTH_USER=$USER
 export GLOBAL_CONFIG_FILE=${CGI_BIN}/hg.conf 
 export HGCGI=$CGI_BIN
 export PATH=$PATH:$KENTHOME/bin/x86_64:$KENTHOME/bin/scripts
+export HGDOWNLOAD="rsync://hgdownload.cse.ucsc.edu"
+export BROWSERHOME=/var/www/
+export RSYNC="rsync -rltgoD"
