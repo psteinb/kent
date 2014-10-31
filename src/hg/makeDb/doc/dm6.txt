@@ -436,10 +436,67 @@ close (FH);
     # 16809665 bases of 143726002 (11.696%) in intersection
 
 #############################################################################
-# cytoBandIdeo - (NEED more work 2014-08-28 - Hiram)
+# cytoBandIdeo - (OBSOLETE, redone below 2014-08-28 - Hiram)
     mkdir /hive/data/genomes/dm6/bed/cytoBand
     cd /hive/data/genomes/dm6/bed/cytoBand
     makeCytoBandIdeo.csh dm6
+
+#########################################################################
+# CHROMOSOME BANDS (DONE - 2014-10-09 - Hiram)
+    ssh hgwdev
+    cd /cluster/data/dm6/bed/cytoBand
+    # As of 5.3, the GFF now includes what we need to make cytoBandIdeo
+    # directly:
+
+    zgrep chromosome_band ../../flyBase/dmel-all-r6.02.gff.gz > chromBand.gff
+
+    cat << '_EOF_' > gffToBand.pl
+#!/usr/bin/env perl
+
+use warnings;
+use strict;
+
+open (FH, "<chromBand.gff") or die "can not read chromBand.gff";
+while (my $line = <FH>) {
+  chomp $line;
+  my @w = split('\t', $line);
+  $w[3]--;
+  $w[3] = 0 if ($w[3] < 0);
+  $w[8] =~ s/^.*Name=band-//;
+  $w[8] =~ s/[;].*$//;
+  if ($w[8] !~ /^\d+[A-Z]\d+$/) { next; }
+  if ($w[4] <= 0) { next; }
+  printf "chr%s\t%d\t%d\t%s\tn/a\n", $w[0], $w[3], $w[4], $w[8];
+}
+close (FH);
+'_EOF_'
+    # << happy emacs
+    chmod +x gffToBand.pl
+    ./gffToBand.pl > dm6.cytoBand.tab
+
+    # re-use items from the previously loaded cytoBand data to add
+    # to the ones defined for the 'real' cytoBand data:
+    egrep -v -w "chr2L|chr2R|chr3L|chr3R|chr4|chrX" dm6.cytoBand \
+       > dm6.combined.bed
+    cat dm6.cytoBand.tab >> dm6.combined.bed
+
+    featureBits -bed=notCovered.bed -not -countGaps dm6 dm6.combined.bed
+    awk '{printf "%s\t%d\t%d\tn/a\tgneg\n", $1, $2, $3}' notCovered.bed \
+       >> dm6.combined.bed
+
+    featureBits -countGaps dm6 dm6.combined.bed
+
+    maxLen=`awk '{print length($1)}' dm6.combined.bed | sort -rn | head -1`
+
+    sed -e "s/12/${maxLen}/;" ~/kent/src/hg/lib/cytoBand.sql > dm6.cytoBand.sql
+
+    hgLoadSqlTab dm6 cytoBand dm6.cytoBand.sql dm6.combined.bed
+
+    checkTableCoords -verbose=2  dm6 cytoBand
+
+    hgLoadSqlTab dm6 cytoBandIdeo dm6.cytoBand.sql dm6.combined.bed
+
+    checkTableCoords -verbose=2  dm6 cytoBandIdeo
 
 ##########################################################################
 # cpgIslands - (DONE - 2014-08-28 - Hiram)
@@ -2101,7 +2158,7 @@ TMPDIR=/dev/shm
     # 33622643 bases of 691751600 (4.861%) in intersection
 
 #########################################################################
-## 7-Way Multiz (DONE - 2014-06-02 - Hiram)
+## 27-Way Multiz (DONE - 2014-09-05 - Hiram)
     ssh hgwdev
     mkdir /hive/data/genomes/dm6/bed/multiz27way
     cd /hive/data/genomes/dm6/bed/multiz27way
@@ -2499,5 +2556,97 @@ done >> multiz27way.maf
 -rw-rw-r-- 1   7215723 Sep  5 15:35 multiz27waySummary.tab
 
     rm multiz27way*.tab
+
+##############################################################################
+# multiz27way MAF FRAMES (DONE - 2014-09-11 - Hiram)
+    ssh hgwdev
+    mkdir /hive/data/genomes/dm6/bed/multiz27way/frames
+    cd /hive/data/genomes/dm6/bed/multiz27way/frames
+#   survey all the genomes to find out what kinds of gene tracks they have
+    cat << '_EOF_' > showGenes.csh
+#!/bin/csh -fe
+foreach db (`cat ../species.list`)
+    echo -n "${db}: "
+    set tables = `hgsql $db -N -e "show tables like '%Gene%'"`
+    foreach table ($tables)
+        if ($table == "ensGene" || $table == "refGene" || \
+           $table == "mgcGenes" || $table == "knownGene" || \
+           $table == "xenoRefGene" ) then
+           set count = `hgsql $db -N -e "select count(*) from $table"`
+            echo -n "${table}: ${count}, "
+        endif
+    end
+    set orgName = `hgsql hgcentraltest -N -e \
+            "select scientificName from dbDb where name='$db'"`
+    set orgId = `hgsql hg19 -N -e \
+            "select id from organism where name='$orgName'"`
+    if ($orgId == "") then
+        echo "Mrnas: 0"
+    else
+        set count = `hgsql hg19 -N -e "select count(*) from gbCdnaInfo where organism=$orgId"`
+        echo "Mrnas: ${count}"
+    endif
+end
+'_EOF_'
+    # << happy emacs
+    chmod +x ./showGenes.csh
+    time ./showGenes.csh
+
+# dm6: refGene: 36039, xenoRefGene: 49470, Mrnas: 907097
+# droSim1: xenoRefGene: 256763, Mrnas: 119083
+# droSec1: xenoRefGene: 223223, Mrnas: 38274
+# droYak3: Mrnas: 11950
+# droEre2: Mrnas: 22704
+# droBia2: Mrnas: 0
+# droSuz1: Mrnas: 1
+# droAna3: Mrnas: 23405
+# droBip2: Mrnas: 3
+# droEug2: Mrnas: 5
+# droEle2: Mrnas: 1
+# droKik2: Mrnas: 2
+# droTak2: Mrnas: 1
+# droRho2: Mrnas: 4
+# droFic2: Mrnas: 1
+# droPse3: Mrnas: 18
+# droPer1: xenoRefGene: 221008, Mrnas: 34
+# droMir2: Mrnas: 2
+# droWil2: Mrnas: 26771
+# droVir3: Mrnas: 22882
+# droMoj3: Mrnas: 19869
+# droAlb1: Mrnas: 1
+# droGri2: Mrnas: 21278
+# musDom2: Mrnas: 9396
+# anoGam1: ensGene: 15802, xenoRefGene: 107609, Mrnas: 217467
+# apiMel4: Mrnas: 199705
+# triCas2: Mrnas: 65947
+
+######################################################################
+# construct downloads files and pushQ entry (DONE - 2014-10-14 - Hiram)
+#   before starting downloads, the joinerCheck should be clean
+#   after dm6 is added to all.joiner:
+    joinerCheck -tableCoverage -database=dm6 all.joiner
+    joinerCheck -keys -database=dm6 all.joiner
+
+    cd /hive/data/genomes/dm6
+    makeDownloads.pl -dbHost=hgwdev -workhorse=hgwdev dm6 \
+	> downloads.log 2>&1
+    # real    28m50.409s
+
+    # examine the goldenPath/*/README.txt files to verify the text
+
+    # ready for pushQ entry (DONE - 2014-10-14 - Hiram)
+    mkdir /hive/data/genomes/dm6/pushQ
+    cd /hive/data/genomes/dm6/pushQ
+    makePushQSql.pl dm6 > dm6.sql 2> stderr.out
+    # real    1m52.294s
+    # some errors are legitimate and OK:
+     head stderr.out
+# WARNING: hgwdev does not have /gbdb/dm6/wib/gc5Base.wib
+# WARNING: hgwdev does not have /gbdb/dm6/wib/quality.wib
+# WARNING: hgwdev does not have /gbdb/dm6/bbi/qualityBw/quality.bw
+# WARNING: dm6 does not have seq
+
+    scp -p dm6.sql qateam@hgwbeta:/tmp
+    ssh qateam@hgwbeta './bin/x86_64/hgsql qapushq < /tmp/dm6.sql'
 
 ##############################################################################
