@@ -5,6 +5,7 @@ all: utils cgi blatSuite
 
 alpha: clean
 	${MAKE} utils-alpha cgi-alpha blatSuite tags-all
+	rsync -rltgoD --stats rsync://hgdownload.cse.ucsc.edu/cgi-bin/encode/ ${CGI_BIN}/encode/
 alphalustre: clean 
 	${MAKE} utils-alpha cgi-alpha blatSuite 
 alphanoclean: 
