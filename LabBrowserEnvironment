@@ -1,13 +1,18 @@
 export KENTHOME=/genome/src/kent
 export USE_BAM=1
-export SAMDIR=/genome/src/samtools/samtools-0.1.18/
-export SAMINC=${SAMDIR}
-export SAMLIB=${SAMDIR}/libbam.a
-export USE_TABIX=1
-export TABIXDIR=/genome/src/tabix/tabix-0.2.5/
-export TABIXINC=$TABIXDIR
-export TABIXLIB=$TABIXDIR/libtabix.a
-export KNETFILE_HOOKS=1
+export SAMTABIXDIR=/genome/src/samtabix
+export USE_SAMTABIX=1
+
+# obsolete settings (now replaced by samtabix)
+#export SAMDIR=/genome/src/samtools/samtools-0.1.18/
+#export SAMINC=${SAMDIR}
+#export SAMLIB=${SAMDIR}/libbam.a
+#export USE_TABIX=1
+#export TABIXDIR=/genome/src/tabix/tabix-0.2.5/
+#export TABIXINC=$TABIXDIR
+#export TABIXLIB=$TABIXDIR/libtabix.a
+#export KNETFILE_HOOKS=1
+
 export MACHTYPE=`uname -m`
 export MYSQLINC=/usr/include/mysql
 export MYSQLLIBS="-L/usr/lib64/mysql -lmysqlclient -lz -lcrypt -lnsl -lm -L/usr/lib -L/usr/lib64 -lssl -lcrypto"
