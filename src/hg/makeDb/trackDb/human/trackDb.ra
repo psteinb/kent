@@ -4218,7 +4218,40 @@ html numtSeq
     showDiffBasesMaxZoom 100
     maxWindowToDraw 1000000
 
+track cooperDevDelay
+shortLabel Cooper Dev. Delay
+longLabel Copy Number Variation Morbidity Map of Developmental Delay, Cooper et al. 2011
+group phenDis
+visibility hide
+#color 0,0,200
+type gvf
+noScoreFilter .
+compositeTrack on
 
+    track cooperDevDelayControl
+    shortLabel Control
+    longLabel Control
+    parent cooperDevDelay on
+    type gvf
+    visibility pack
+    priority 1
+
+    track cooperDevDelayCase
+    shortLabel Case
+    longLabel Case
+    parent cooperDevDelay on
+    type gvf
+    visibility pack
+    priority 2
+
+track gwipsvizRiboseq
+type bigWig
+shortLabel GWIPS-viz Riboseq
+longLabel Ribosome Profiling from GWIPS-viz
+group expression
+visibility hide
+autoScale on
+html gwipsvizRiboseq
 
 searchTable numtSMitochondrionChrPlacement
 searchMethod exact

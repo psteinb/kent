@@ -231,7 +231,7 @@ if (withLogo)
 
 /* Put up the hot links bar. */
 
-char *menuStr = menuBar(theCart);
+char *menuStr = menuBar(theCart, db);
 if(menuStr)
     {
     puts(menuStr);
@@ -1253,9 +1253,12 @@ if(label)
     contextSpecificHelpLabel = cloneString(label);
 }
 
-char *menuBar(struct cart *cart)
+char *menuBar(struct cart *cart, char *db)
 // Return HTML for the menu bar (read from a configuration file);
 // we fixup internal CGI's to add hgsid's and include the appropriate js and css files.
+//
+// Note this function is also called by hgTracks which extends the menu bar
+//  with a View menu defined in hgTracks/menu.c
 {
 char *docRoot = hDocumentRoot();
 char *menuStr, buf[4096], uiVars[128];
@@ -1311,6 +1314,32 @@ if (cart)
     freez(&menuStr);
     menuStr = dyStringCannibalize(&dy);
     }
+
+if(scriptName)
+    {
+    // Provide hgTables options for some CGIs.
+    char hgTablesOptions[1024] = "";
+    char *track = (cart == NULL ? NULL :
+                   (endsWith(scriptName, "hgGene") ?
+                    cartOptionalString(cart, "hgg_type") :
+                    cartOptionalString(cart, "g")));
+    if (track && cart && db &&
+        (endsWith(scriptName, "hgc") || endsWith(scriptName, "hgTrackUi") ||
+         endsWith(scriptName, "hgGene")))
+        {
+        struct trackDb *tdb = hTrackDbForTrack(db, track);
+        if (tdb)
+	    {
+	    struct trackDb *topLevel = trackDbTopLevelSelfOrParent(tdb); 
+	    safef(hgTablesOptions, sizeof  hgTablesOptions, 
+		    "../cgi-bin/hgTables?hgta_doMainPage=1&hgta_group=%s&hgta_track=%s&hgta_table=%s&", 
+		    topLevel->grp, topLevel->track, tdb->table);
+	    menuStr = replaceChars(menuStr, "../cgi-bin/hgTables?", hgTablesOptions);
+	    trackDbFree(&tdb);
+	    }
+        }
+    }
+
 if(!loginSystemEnabled())
     stripRegEx(menuStr, "<\\!-- LOGIN_START -->.*<\\!-- LOGIN_END -->", REG_ICASE);
 
@@ -1345,6 +1374,10 @@ if(scriptName)
 	dyStringAppend(viewMenu, "</ul>\n</li>\n");
     	menuStr = replaceChars(menuStr, "<!-- OPTIONAL_VIEW_MENU -->", viewMenu->string);
 	dyStringFree(&viewMenu);
+	}
+    else if (!endsWith(scriptName, "hgTracks"))
+	{
+    	replaceChars(menuStr, "<!-- OPTIONAL_VIEW_MENU -->", "");
 	}
     dyStringFree(&viewItems);
     }

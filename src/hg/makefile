@@ -12,7 +12,7 @@ BROWSER_BINS=cartReset das hgBlat makeDb/hgCgiData hgConvert hgHubConnect \
 	encode/hgEncodeDataVersions \
 	encode/hgEncodeVocab encode/hgEncodeApi \
 	phyloGif hgCustom hgPal hgFileUi hgFileSearch\
-	makeDb/hgCgiData js htdocs/style hgMirror
+	makeDb/hgCgiData js htdocs/style hgMirror hgBeacon
 
 ifdef LOWELAB
     BROWSER_BINS += $(HOME)/lowelab/src/browser/tooltip $(HOME)/lowelab/src/browser/chooseorg
@@ -27,7 +27,7 @@ endif
 
 TEST_DIRS = lib autoDtd autoSql blastToPsl checkTableCoords embossToPsl \
             genePredSingleCover genePredHisto genePredToBed genePredToGtf \
-	    genePredToMafFrames gbGetEntries hgGetAnn liftAcross \
+	    genePredToMafFrames gbGetEntries hgGetAnn liftAcross liftOver \
             mouseStuff mrnaToGene pslCDnaFilter pslDiff pslHisto \
             pslPartition pslSelect pslStats pslSwap pslToBed spideyToPsl \
 	    sqlToXml xmlToSql utils

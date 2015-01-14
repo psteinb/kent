@@ -311,6 +311,18 @@ rgbColor.b = (rgbColor.b+128)/2;
 return hvGfxFindColorIx(hvg, rgbColor.r, rgbColor.g, rgbColor.b);
 }
 
+void checkIfWiggling(struct cart *cart, struct track *tg)
+/* Check to see if a linkedFeatures track should be drawing as a wiggle. */
+{
+boolean doWiggle = cartOrTdbBoolean(cart, tg->tdb, "doWiggle" , FALSE);
+if (doWiggle)
+    {
+    tg->drawLeftLabels = wigLeftLabels;
+    tg->colorShades = shadesOfGray;
+    tg->mapsSelf = TRUE;
+    }
+}
+
 int packCountRowsOverflow(struct track *tg, int maxCount,
                           boolean withLabels, boolean allowOverflow)
 /* Return packed height. */
@@ -333,7 +345,7 @@ for (item = tg->items; item != NULL; item = item->next)
 	    start = 0;
 	else
 	    start = round((double)(baseStart - winStart)*scale);
-	if (!tg->drawName && withLabels)
+	if (!tg->drawLabelInBox && !tg->drawName && withLabels)
 	    start -= mgFontStringWidth(font,
 				       tg->itemName(tg, item)) + extraWidth;
 	if (baseEnd >= winEnd)
@@ -412,6 +424,18 @@ int tgFixedTotalHeightOptionalOverflow(struct track *tg, enum trackVisibility vi
 /* Most fixed height track groups will use this to figure out the height
  * they use. */
 {
+boolean doWiggle = cartOrTdbBoolean(cart, tg->tdb, "doWiggle" , FALSE);
+if (doWiggle)
+    {
+    struct wigCartOptions *wigCart = tg->wigCartData;
+    if (tg->wigCartData == NULL)
+	{
+	wigCart = wigCartOptionsNew(cart, tg->tdb, 0, NULL );
+	tg->wigCartData = (void *) wigCart;
+	}
+    return wigTotalHeight(tg, vis);
+    }
+
 int rows;
 double maxHeight = maximumTrackHeight(tg);
 int itemCount = slCount(tg->items);
@@ -1180,6 +1204,45 @@ if (w < 1)
 hvGfxBox(hvg, x1, y, w, height, maxColor);
 }
 
+void drawScaledBoxSampleLabel(struct hvGfx *hvg,
+     int chromStart, int chromEnd, double scale,
+     int xOff, int y, int height, Color color, MgFont *font,  char *label)
+/* Draw a box scaled from chromosome to window coordinates and draw a label onto it. 
+ * Lots of code copied from drawScaledBoxSample */
+{
+//int i;
+int x1, x2, w;
+x1 = round((double)(chromStart-winStart)*scale) + xOff;
+x2 = round((double)(chromEnd-winStart)*scale) + xOff;
+
+if (x2 >= MAXPIXELS)
+    x2 = MAXPIXELS - 1;
+
+if (x2 < xOff)
+    x2 = xOff;
+if (x2 > xOff+insideWidth)
+    x2 = xOff+insideWidth;
+if (x1 < xOff)
+    x1 = xOff;
+if (x1 > xOff+insideWidth)
+    x1 = xOff+insideWidth;
+w = x2-x1;
+if (w < 1)
+    w = 1;
+hvGfxBox(hvg, x1, y, w, height, color);
+
+char *shortLabel = cloneString(label);
+/* calculate how many characters we can squeeze into the box */
+int charsInBox = w / mgFontCharWidth(font, 'm');
+if (charsInBox > 4)
+    {
+    if (charsInBox < strlen(label))
+        strcpy(shortLabel+charsInBox-3, "...");
+    Color labelColor = hvGfxContrastingColor(hvg, color);
+    hvGfxTextCentered(hvg, x1, y, w, height, labelColor, font, shortLabel);
+    }
+}
+
 void drawScaledBoxSample(struct hvGfx *hvg,
                          int chromStart, int chromEnd, double scale,
                          int xOff, int y, int height, Color color, int score)
@@ -1187,8 +1250,14 @@ void drawScaledBoxSample(struct hvGfx *hvg,
 {
 //int i;
 int x1, x2, w;
-x1 = round((double)(chromStart-winStart)*scale) + xOff;
-x2 = round((double)(chromEnd-winStart)*scale) + xOff;
+int ourStart = chromStart;
+if (ourStart < winStart) 
+    ourStart = winStart;
+int ourEnd = chromEnd;
+if (ourEnd > winEnd) 
+    ourEnd = winEnd;
+x1 = round((double)(ourStart-winStart)*scale) + xOff;
+x2 = round((double)(ourEnd-winStart)*scale) + xOff;
 
 if (x2 >= MAXPIXELS)
     x2 = MAXPIXELS - 1;
@@ -1281,6 +1350,20 @@ char *linkedFeaturesName(struct track *tg, void *item)
 {
 struct linkedFeatures *lf = item;
 return lf->name;
+}
+
+char *linkedFeaturesNameField1(struct track *tg, void *item)
+/* return part before first space in item name */
+{
+struct linkedFeatures *lf = item;
+return cloneFirstWord(lf->name);
+}
+
+char *linkedFeaturesNameNotField1(struct track *tg, void *item)
+/* return part after first space in item name */
+{
+struct linkedFeatures *lf = item;
+return cloneNotFirstWord(lf->name);
 }
 
 void linkedFeaturesFreeList(struct linkedFeatures **pList)
@@ -2638,8 +2721,14 @@ if ((tallStart == 0 && tallEnd == 0) && lf->start != 0 && !sameWord(tg->table, "
     tallStart = lf->start;
     tallEnd   = lf->end;
     }
-x1 = round((double)((int)lf->start-winStart)*scale) + xOff;
-x2 = round((double)((int)lf->end-winStart)*scale) + xOff;
+int ourStart = lf->start;
+if (ourStart < winStart) 
+    ourStart = winStart;
+int ourEnd = lf->end;
+if (ourEnd > winEnd) 
+    ourEnd = winEnd;
+x1 = round((double)((int)ourStart-winStart)*scale) + xOff;
+x2 = round((double)((int)ourEnd-winStart)*scale) + xOff;
 w = x2-x1;
 if (lf->start==lf->end && w==0) // like a SNP insertion point of size=0
     {
@@ -2739,8 +2828,18 @@ for (sf = components; sf != NULL; sf = sf->next)
 		}
 	    else
 		{
-                drawScaledBoxSample(hvg, s, e, scale, xOff, y, heightPer,
-                                    color, lf->score );
+		if (tg->drawLabelInBox)
+                    {
+		    drawScaledBoxSampleLabel(hvg, s, e, scale, xOff, y, heightPer,
+                                color, font, lf->name );
+                    // exon arrows would overlap the text
+                    exonArrowsAlways = FALSE;
+                    exonArrows = FALSE;
+                    }
+
+		else
+		    drawScaledBoxSample(hvg, s, e, scale, xOff, y, heightPer,
+					color, lf->score);
                 }
 
             /* Display barbs only if no intron is visible on the item.
@@ -2911,7 +3010,7 @@ if (!theImgBox || tg->limitedVis != tvDense || !tdbIsCompositeChild(tg->tdb))
 
 void genericDrawNextItemStuff(struct track *tg, struct hvGfx *hvg, enum trackVisibility vis,
                               struct slList *item, int x2, int textX, int y, int heightPer,
-                              boolean snapLeft, Color color)
+                              Color color)
 /* After the item is drawn in genericDrawItems, draw next/prev item related */
 /* buttons and the corresponding mapboxes. */
 {
@@ -2933,44 +3032,25 @@ if (e > winEnd)
     hvGfxNextItemButton(hvg, insideX + insideWidth - NEXT_ITEM_ARROW_BUFFER - heightPer,
                         y, heightPer-1, heightPer-1, color, MG_WHITE, TRUE);
     }
-/* If we're in pack, there's some crazy logic. */
 if (vis == tvPack)
     {
     int w = x2-textX;
     if (lButton)
-        {
-        tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
+        { // if left-button, the label will be on far left, split out a map just for that label.
+	tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
                     s, e, textX, y, insideX-textX, heightPer);
-        tg->nextPrevExon(tg, hvg, item, insideX, y, buttonW, heightPer, FALSE);
-        if (rButton)
-            {
-            tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
-                        s, e, insideX + buttonW, y, x2 - (insideX + 2*buttonW), heightPer);
-            tg->nextPrevExon(tg, hvg, item, x2-buttonW, y, buttonW, heightPer, TRUE);
-            }
-        else
-            tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
-                        s, e, insideX + buttonW, y, x2 - (insideX + buttonW), heightPer);
-        }
-    else if (snapLeft && rButton)
-        // This is a special case where there's a next-item button, NO prev-item button,
-        // AND the gene name is drawn left of the browser window.
+	tg->nextPrevExon(tg, hvg, item, insideX, y, buttonW, heightPer, FALSE);
+	textX = insideX + buttonW; // continue on the right side of the left exon button
+	w = x2-textX;
+	}
+    if (rButton)
         {
-        tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
-                    s, e, textX, y, x2 - buttonW - textX, heightPer);
-        tg->nextPrevExon(tg, hvg, item, x2-buttonW, y, buttonW, heightPer, TRUE);
+	tg->nextPrevExon(tg, hvg, item, x2-buttonW, y, buttonW, heightPer, TRUE);
+	w -= buttonW;
         }
-    else if (rButton)
-        {
-        tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
-                    s, e, textX, y, w - buttonW, heightPer);
-        tg->nextPrevExon(tg, hvg, item, x2-buttonW, y, buttonW, heightPer, TRUE);
-        }
-    else
-        tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
-                    s, e, textX, y, w, heightPer);
+    tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
+		s, e, textX, y, w, heightPer);
     }
-/* Full mode is a little easier to deal with. */
 else if (vis == tvFull)
     {
     int geneMapBoxX = insideX;
@@ -3084,6 +3164,9 @@ int x1 = round((sClp - winStart)*scale) + xOff;
 int x2 = round((eClp - winStart)*scale) + xOff;
 int textX = x1;
 
+if (tg->drawLabelInBox)
+    withLeftLabels = FALSE;
+
 if (tg->itemNameColor != NULL)
     {
     color = tg->itemNameColor(tg, item, hvg);
@@ -3149,8 +3232,7 @@ if (!tg->mapsSelf)
     if (w > 0)
         {
         if (nextItemCompatible(tg))
-            genericDrawNextItemStuff(tg, hvg, vis, item, x2, textX, y, tg->heightPer, FALSE,
-                                     color);
+            genericDrawNextItemStuff(tg, hvg, vis, item, x2, textX, y, tg->heightPer, color);
         else
             {
             tg->mapItem(tg, hvg, item, tg->itemName(tg, item),
@@ -3159,6 +3241,162 @@ if (!tg->mapsSelf)
         }
     }
     withIndividualLabels = TRUE; /* reset in case done with pgSnp */
+}
+
+static int normalizeCount(struct preDrawElement *el, double countFactor, 
+    double minVal, double maxVal, double sumData, double sumSquares)
+/* Normalize statistics to be based on an integer number of valid bases. 
+ * Integer value is the smallest integer not less than countFactor. */
+{
+bits32 validCount = ceil(countFactor);
+double normFactor = (double)validCount/countFactor;
+
+el->count = validCount;
+el->min = minVal;
+el->max = maxVal;
+el->sumData = sumData * normFactor;
+el->sumSquares = sumSquares * normFactor;
+
+return validCount;
+}
+
+static unsigned *countOverlaps(struct track *track)
+/* Count up overlap of linked features. */
+{
+struct slList *items = track->items;
+struct slList *item;
+unsigned size = winEnd - winStart;
+unsigned *counts = needHugeZeroedMem(size * sizeof(unsigned));
+
+for (item = items; item; item = item->next)
+    {
+    unsigned start = track->itemStart(track, item);
+    unsigned end = track->itemEnd(track, item);
+    if (positiveRangeIntersection(start, end, winStart, winEnd) <= 0)
+	continue;
+
+    int x1 = max((int)start - (int)winStart, 0); 
+    int x2 = min((int)end - (int)winStart, size);
+
+    for(; x1 < x2; x1++)
+	counts[x1]++;
+    }
+
+return counts;
+}
+
+static void countsToPixelsUp(unsigned *counts, struct preDrawContainer *pre)
+/* Up sample counts into pixels. */
+{
+int preDrawZero = pre->preDrawZero;
+unsigned size = winEnd - winStart;
+double countsPerPixel = size / (double) insideWidth;
+int pixel;
+
+for (pixel=0; pixel<insideWidth; ++pixel)
+    {
+    struct preDrawElement *pe = &pre->preDraw[pixel + preDrawZero];
+    unsigned index = pixel * countsPerPixel;
+    pe->count = 1;
+    pe->min = counts[index];
+    pe->max = counts[index];
+    pe->sumData = counts[index] ;
+    pe->sumSquares = counts[index] * counts[index];
+    }
+}
+
+static void countsToPixelsDown(unsigned *counts, struct preDrawContainer *pre)
+/* Down sample counts into pixels. */
+{
+int preDrawZero = pre->preDrawZero;
+unsigned size = winEnd - winStart;
+double countsPerPixel = size / (double) insideWidth;
+int pixel;
+
+for (pixel=0; pixel<insideWidth; ++pixel)
+    {
+    struct preDrawElement *pe = &pre->preDraw[pixel + preDrawZero];
+    double startReal = pixel * countsPerPixel;
+    double endReal = (pixel + 1) * countsPerPixel;
+    unsigned startUns = startReal;
+    unsigned endUns = endReal;
+    double realCount, realSum, realSumSquares, max, min;
+
+    realCount = realSum = realSumSquares = 0.0;
+    max = min = counts[startUns];
+
+    assert(startUns != endUns);
+    unsigned ceilUns = ceil(startReal);
+
+    if (ceilUns != startUns)
+	{
+	/* need a fraction of the first count */
+	double frac = (double)ceilUns - startReal;
+	realCount = frac;
+	realSum = frac * counts[startUns];
+	realSumSquares = realSum * realSum;
+	startUns++;
+	}
+
+    // add in all the counts that are totally in this pixel
+    for(; startUns < endUns; startUns++)
+	{
+	realCount += 1.0;
+	realSum += counts[startUns];
+	realSumSquares += counts[startUns] * counts[startUns];
+	if (max < counts[startUns])
+	    max = counts[startUns];
+	if (min > counts[startUns])
+	    min = counts[startUns];
+	}
+
+    // add any fraction of the count that's only partially in this pixel
+    double lastFrac = endReal - endUns;
+    double lastSum = lastFrac * counts[endUns];
+    if (lastFrac > 0.0)
+	{
+	if (max < counts[endUns])
+	    max = counts[endUns];
+	if (min > counts[endUns])
+	    min = counts[endUns];
+	realCount += lastFrac;
+	realSum += lastSum;
+	realSumSquares += lastSum * lastSum;
+	}
+
+    pe->count = normalizeCount(pe, realCount, min, max, realSum, realSumSquares);
+    }
+}
+
+static void countsToPixels(unsigned *counts, struct preDrawContainer *pre)
+/* Sample counts into pixels. */
+{
+unsigned size = winEnd - winStart;
+double countsPerPixel = size / (double) insideWidth;
+
+if (countsPerPixel <= 1.0)
+    countsToPixelsUp(counts, pre);
+else
+    countsToPixelsDown(counts, pre);
+}
+
+static void genericDrawItemsWiggle(struct track *tg, int seqStart, int seqEnd,
+                                       struct hvGfx *hvg, int xOff, int yOff, int width,
+                                       MgFont *font, Color color, enum trackVisibility vis)
+/* Draw a list of linked features into a wiggle. */
+{
+struct preDrawContainer *pre = tg->preDrawContainer = initPreDrawContainer(insideWidth);
+unsigned *counts = countOverlaps(tg);
+
+countsToPixels(counts, pre);
+freez(&counts);
+
+hvGfxSetClip(hvg, insideX, yOff, insideWidth, tg->height);
+tg->mapsSelf = FALSE; // some magic to turn off the link out
+wigDrawPredraw(tg, seqStart, seqEnd, hvg, xOff, yOff, width, font, color, vis,
+	       tg->preDrawContainer, tg->preDrawContainer->preDrawZero, tg->preDrawContainer->preDrawSize, &tg->graphUpperLimit, &tg->graphLowerLimit);
+tg->mapsSelf = TRUE;
+hvGfxUnclip(hvg);
 }
 
 static void genericDrawItemsPackSquish(struct track *tg, int seqStart, int seqEnd,
@@ -3235,11 +3473,10 @@ for (item = tg->items; item != NULL; item = item->next)
                     }
                 }
         #endif ///def IMAGEv2_NO_LEFTLABEL_ON_FULL
-            genericDrawNextItemStuff(tg, hvg, vis, item, x2, x1, y, tg->heightPer, FALSE,color);
+            genericDrawNextItemStuff(tg, hvg, vis, item, x2, x1, y, tg->heightPer, color);
             }
 #else//ifndef IMAGEv2_SHORT_MAPITEMS
-            genericDrawNextItemStuff(tg, hvg, vis, item, -1, -1, y, tg->heightPer, FALSE,
-                                     color);
+            genericDrawNextItemStuff(tg, hvg, vis, item, -1, -1, y, tg->heightPer, color);
 #endif//ndef IMAGEv2_SHORT_MAPITEMS
         y += tg->lineHeight;
         }
@@ -3256,11 +3493,17 @@ if (tg->mapItem == NULL)
     tg->mapItem = genericMapItem;
 if (vis != tvDense && (! bedItemRgb(tg->tdb)) && baseColorCanDraw(tg))
     baseColorInitTrack(hvg, tg);
-if (vis == tvPack || vis == tvSquish)
-{
+boolean doWiggle = cartOrTdbBoolean(cart, tg->tdb, "doWiggle" , FALSE);
+if (doWiggle)
+    {
+    genericDrawItemsWiggle(tg, seqStart, seqEnd, hvg, xOff, yOff, width,
+				   font, color, vis);
+    }
+else if (vis == tvPack || vis == tvSquish)
+    {
     genericDrawItemsPackSquish(tg, seqStart, seqEnd, hvg, xOff, yOff, width,
                                font, color, vis);
-}
+    }
 else
     genericDrawItemsFullDense(tg, seqStart, seqEnd, hvg, xOff, yOff, width,
                               font, color, vis);
@@ -3284,6 +3527,7 @@ void linkedFeaturesDraw(struct track *tg, int seqStart, int seqEnd,
 /* Draw linked features items. */
 {
 clearColorBin();
+
 if (tg->items == NULL && vis == tvDense && canDrawBigBedDense(tg))
     {
     bigBedDrawDense(tg, seqStart, seqEnd, hvg, xOff, yOff, width, font, color);
@@ -3547,6 +3791,12 @@ tg->itemEnd = linkedFeaturesItemEnd;
 tg->itemNameColor = linkedFeaturesNameColor;
 tg->nextPrevExon = linkedFeaturesNextPrevItem;
 tg->nextPrevItem = linkedFeaturesLabelNextPrevItem;
+
+if (trackDbSettingClosestToHomeOn(tg->tdb, "linkIdInName"))
+    {
+    tg->mapItemName = linkedFeaturesNameField1;
+    tg->itemName = linkedFeaturesNameNotField1;
+    }
 }
 
 int linkedFeaturesSeriesItemStart(struct track *tg, void *item)
@@ -9091,6 +9341,9 @@ enum trackVisibility limitVisibility(struct track *tg)
 if (!tg->limitedVisSet)
     {
     tg->limitedVisSet = TRUE;  // Prevents recursive loop!
+    
+    // optional setting to draw labels onto the feature boxes, not next to them
+    tg->drawLabelInBox = cartOrTdbBoolean(cart, tg->tdb, "labelOnFeature" , FALSE);
     if (trackShouldUseAjaxRetrieval(tg))
         {
         tg->limitedVis = tg->visibility;
@@ -12425,6 +12678,7 @@ for (subtrack = track->subtracks; subtrack != NULL; subtrack = subtrack->next)
 	    lastTime = clock1000();
 	    if (!subtrack->loadItems) // This could happen if track type has no handler (eg, for new types)
 		errAbort("Error: No loadItems() handler for subtrack (%s) of composite track (%s) (is this a new track 'type'?)\n", subtrack->track, track->track);
+	    checkIfWiggling(cart, subtrack);
 	    subtrack->loadItems(subtrack);
 	    if (measureTiming)
 		{

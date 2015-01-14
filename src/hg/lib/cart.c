@@ -51,6 +51,26 @@ else
     }
 }
 
+static struct dyString *hubWarnDy;
+
+void cartHubWarn(char *format, va_list args)
+/* save up hub related warnings to put out later */
+{
+char warning[1024];
+vsnprintf(warning,sizeof(warning),format, args);
+if (hubWarnDy == NULL)
+    hubWarnDy = newDyString(100);
+dyStringPrintf(hubWarnDy, "%s\n", warning);
+}
+
+void cartFlushHubWarnings()
+/* flush the hub warning (if any) */
+{
+if (hubWarnDy)
+    warn("%s",hubWarnDy->string);
+}
+
+
 void cartTrace(struct cart *cart, char *when, struct sqlConnection *conn)
 /* Write some properties of the cart to stderr for debugging. */
 {
@@ -701,7 +721,9 @@ setUdcTimeout(cart);
 if (cartVarExists(cart, hgHubDoDisconnect))
     doDisconnectHub(cart);
 
+pushWarnHandler(cartHubWarn);
 char *newDatabase = hubConnectLoadHubs(cart);
+popWarnHandler();
 
 #ifndef GBROWSE
 if (didSessionLoad)
@@ -1725,6 +1747,22 @@ cartCheckout(&cart);
 cartFooter();
 }
 
+static void cartEmptyShellMaybeContent(void (*doMiddle)(struct cart *cart), char *cookieName,
+                                       char **exclude, struct hash *oldVars, boolean doContentType)
+/* Get cart and cookies and set up error handling.
+ * If doContentType, print out Content-type:text/html
+ * but don't start writing any html yet.
+ * The doMiddleFunction has to call cartHtmlStart(title), and
+ * cartHtmlEnd(), as well as writing the body of the HTML.
+ * oldVars - those in cart that are overlayed by cgi-vars are
+ * put in optional hash oldVars. */
+{
+struct cart *cart = cartAndCookieWithHtml(cookieName, exclude, oldVars, doContentType);
+setThemeFromCart(cart);
+cartWarnCatcher(doMiddle, cart, cartEarlyWarningHandler);
+cartCheckout(&cart);
+}
+
 void cartEmptyShell(void (*doMiddle)(struct cart *cart), char *cookieName,
                     char **exclude, struct hash *oldVars)
 /* Get cart and cookies and set up error handling, but don't start writing any
@@ -1733,10 +1771,17 @@ void cartEmptyShell(void (*doMiddle)(struct cart *cart), char *cookieName,
  * oldVars - those in cart that are overlayed by cgi-vars are
  * put in optional hash oldVars. */
 {
-struct cart *cart = cartAndCookie(cookieName, exclude, oldVars);
-setThemeFromCart(cart);
-cartWarnCatcher(doMiddle, cart, cartEarlyWarningHandler);
-cartCheckout(&cart);
+cartEmptyShellMaybeContent(doMiddle, cookieName, exclude, oldVars, TRUE);
+}
+
+void cartEmptyShellNoContent(void (*doMiddle)(struct cart *cart), char *cookieName,
+                             char **exclude, struct hash *oldVars)
+/* Get cart and cookies and set up error handling.
+ * The doMiddle function must write the Content-Type header line.
+ * oldVars - those in cart that are overlayed by cgi-vars are
+ * put in optional hash oldVars. */
+{
+cartEmptyShellMaybeContent(doMiddle, cookieName, exclude, oldVars, FALSE);
 }
 
 void cartHtmlShell(char *title, void (*doMiddle)(struct cart *cart),

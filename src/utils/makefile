@@ -69,6 +69,7 @@ UTILS_APPLIST = \
 	paraFetch \
 	paraSync \
 	pslLiftSubrangeBlat \
+	pslPosTarget \
 	pslScore \
 	pslToPslx \
 	randomLines \
@@ -186,7 +187,19 @@ scripts: $(SCRIPT_FILES:%=%.scripts)
 	cp -p $* ${SCRIPTS}
 	chmod +x ${SCRIPTS}/$*
 
+# the following three targets are for the hgBeacon CGI which needs 
+# two tools copied into the cgi-bin/utils directory
+cgi:
+	cd bigBedToBed && ${MAKE} cgi
+	cd bigBedInfo && ${MAKE} cgi
+
 alpha: scripts all
+	cd bigBedToBed && ${MAKE} alpha
+	cd bigBedInfo && ${MAKE} alpha
+
+beta:
+	cd bigBedToBed && ${MAKE} beta
+	cd bigBedInfo && ${MAKE} beta
 
 testAll: $(ALL_APPS:%=%.testAll)
 

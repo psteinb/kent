@@ -290,7 +290,7 @@ return TRUE;
 }
 
 void extraUiLinks(char *db,struct trackDb *tdb)
-// Show downlaods, schema and metadata links where appropriate
+// Show downloads, schema and metadata links where appropriate
 {
 boolean schemaLink = (!tdbIsDownloadsOnly(tdb) && !trackHubDatabase(db)
                   && isCustomTrack(tdb->table) == FALSE)
@@ -4598,6 +4598,55 @@ if (boxed)
     puts("</td></tr></table>");
 }
 
+void wigOption(struct cart *cart, char *name, char *title, struct trackDb *tdb)
+/* let the user choose to see the track in wiggle mode */
+{
+char *canDoCoverage = cfgOptionEnvDefault("HGDB_CAN_DO_COVERAGE",
+                CanDoCoverageConfVariable, "off");
+if (differentString(canDoCoverage, "on"))
+    return;
+
+printf("<BR><B>Display data as a density graph:</B> ");
+char varName[64];
+safef(varName, sizeof(varName), "%s.doWiggle", name);
+boolean option = cartUsualBoolean(cart, varName, FALSE);
+cgiMakeCheckBox(varName, option);
+printf("<BR>\n");
+wigCfgUi(cart,tdb,name,title,TRUE);
+}
+
+void wiggleScaleDropDownJavascript(char *name)
+/* print some js that deactivates the min/max range if autoscaling is activated */
+{
+printf("<script type=\"text/javascript\">\n");
+printf("  $(\"[name='%s.autoScale']\").change(function()\n", name);
+printf("  {\n");
+printf("  val= $(this).find(':selected').val(); \n");
+printf("  if (val==\"auto-scale to data view\")\n");
+printf("     {\n");
+printf("     $(\"[name='%s.minY']\")[0].disabled=true;\n", name);
+printf("     $(\"[name='%s.maxY']\")[0].disabled=true;\n", name);
+printf("     $(\".%sAutoScaleDesc\").attr('style', 'color:grey;');\n", name);
+printf("     }\n");
+printf("     else\n");
+printf("     {\n");
+printf("     $(\"[name='%s.minY']\")[0].disabled=false;\n", name);
+printf("     $(\"[name='%s.maxY']\")[0].disabled=false;\n", name);
+printf("     $(\".%sAutoScaleDesc\").attr('style', 'color:black;');\n", name);
+printf("     }\n");
+printf("  });\n");
+printf("\n");
+printf("  $( document ).ready(function()\n");
+printf("  {\n");
+printf("  val= $(\"[name='%s.autoScale']\").find(':selected').val(); \n", name);
+printf("  if (val==\"auto-scale to data view\")\n");
+printf("     $(\"[name='%s.minY']\")[0].disabled=true;\n", name);
+printf("     $(\"[name='%s.maxY']\")[0].disabled=true;\n", name);
+printf("     $(\".%sAutoScaleDesc\").attr('style', 'color:grey;');\n", name);
+printf("  });\n");
+printf("</script>\n");
+}
+
 void wigCfgUi(struct cart *cart, struct trackDb *tdb, char *name, char *title, boolean boxed)
 /* UI for the wiggle track */
 {
@@ -4685,8 +4734,17 @@ printf("pixels&nbsp;(range: %d to %d)",
        minHeightPixels, maxHeightPixels);
 puts("</TD></TR>");
 
-printf("<TR valign=center><th align=right>Vertical viewing range:</th>"
-       "<td align=left>&nbsp;min:&nbsp;");
+printf("<TR valign=center><th align=right>Data view scaling:</th><td align=left colspan=3>");
+safef(option, sizeof(option), "%s.%s", name, AUTOSCALE );
+wiggleScaleDropDown(option, autoScale);
+wiggleScaleDropDownJavascript(name);
+safef(option, sizeof(option), "%s.%s", name, ALWAYSZERO);
+printf("Always include zero:&nbsp");
+wiggleAlwaysZeroDropDown(option, alwaysZero);
+puts("</TD></TR>");
+
+printf("<TR class=\"%sAutoScaleDesc\" valign=center><th align=right>Vertical viewing range:</th>"
+       "<td align=left>&nbsp;min:&nbsp;", name);
 safef(option, sizeof(option), "%s.%s", name, MIN_Y );
 cgiMakeDoubleVarWithLimits(option, minY, "Range min", 0, NO_VALUE, NO_VALUE);
 printf("</td><td align=leftv colspan=2>max:&nbsp;");
@@ -4694,14 +4752,6 @@ safef(option, sizeof(option), "%s.%s", name, MAX_Y );
 cgiMakeDoubleVarWithLimits(option, maxY, "Range max", 0, NO_VALUE, NO_VALUE);
 printf("&nbsp;(range: %g to %g)",
        tDbMinY, tDbMaxY);
-puts("</TD></TR>");
-
-printf("<TR valign=center><th align=right>Data view scaling:</th><td align=left colspan=3>");
-safef(option, sizeof(option), "%s.%s", name, AUTOSCALE );
-wiggleScaleDropDown(option, autoScale);
-safef(option, sizeof(option), "%s.%s", name, ALWAYSZERO);
-printf("Always include zero:&nbsp");
-wiggleAlwaysZeroDropDown(option, alwaysZero);
 puts("</TD></TR>");
 
 printf("<TR valign=center><th align=right>Transform function:</th><td align=left>");
@@ -4842,6 +4892,7 @@ for (fil = mud->filterList; fil != NULL; fil = fil->next)
 endControlGrid(&cg);
 baseColorDrawOptDropDown(cart, tdb);
 indelShowOptions(cart, tdb);
+wigOption(cart, prefix, title, tdb);
 cfgEndBox(boxed);
 }
 
@@ -5521,6 +5572,8 @@ cgiMakeTextVar(optString, cartUsualStringClosestToHome(cart, tdb, parentLevel,
 if (normScoreAvailable)
     scoreCfgUi(db, cart,tdb,prefix,NULL,CHAIN_SCORE_MAXIMUM,FALSE);
 
+
+wigOption(cart, prefix, title, tdb);
 cfgEndBox(boxed);
 }
 
@@ -5862,6 +5915,7 @@ if (highlightBySet != NULL)
     filterBySetFree(&highlightBySet);
     }
 
+wigOption(cart, name, title, tdb);
 cfgEndBox(boxed);
 }
 
@@ -6385,6 +6439,9 @@ if (trackDbSettingClosestToHome(tdb, "noColorTag") == NULL)
     }
 cgiMakeRadioButton(cartVarName, BAM_COLOR_MODE_OFF, sameString(selected, BAM_COLOR_MODE_OFF));
 printf("No additional coloring");
+
+// let the user choose to see the track in wiggle mode
+wigOption(cart, name, title, tdb);
 
 //TODO: include / exclude flags
 

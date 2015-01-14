@@ -46,6 +46,9 @@ char *hgPalName();
 char *hgVarAnnogratorName();
 /* Relative URL to variant annotation integrator program. */
 
+char *hgAiName();
+/* Relative URL to annotation integrator program. */
+
 void fragToCloneName(char *fragName, char cloneName[128]);
 /* Convert fragment name to clone name. */
 
@@ -131,5 +134,8 @@ void hUserAbort(char *format, ...)
 __attribute__((format(printf, 1, 2)))
 #endif
 ;
+
+boolean hAllowAllTables(void);
+/* Return TRUE if hg.conf's hgta.disableAllTables doesn't forbid an 'all tables' menu. */
 
 #endif /* HCOMMON_H */

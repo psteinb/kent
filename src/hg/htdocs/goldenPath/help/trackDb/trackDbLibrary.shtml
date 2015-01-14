@@ -326,8 +326,10 @@
     should be used to display the track within the Browser image.  This setting is
     almost always dynamically customizable by each user.  The exact configuration of the
     display for each mode depends upon the track's type, and some modes may not be supported
-    for certain track types.  Be sure to experiment with this setting to verify that it works 
-    as expected for your track type.</P>
+    for certain track types. Please note visibility settings in composite subtracks are
+    directly inherited from the parent. Therefore, any visibility lines added at the subtrack
+    level of a composite will be ignored. Be sure to experiment with this setting to
+    verify that it works as expected for your track type and track structure.</P>
     <P>Valid settings:</P>
     <UL>
     <LI><code>hide</code>: DEFAULT. The track is not displayed in the Browser image unless
@@ -1043,6 +1045,27 @@
     <pre>   denseCoverage 100</pre>
 </DIV>
 
+<DIV class="labelOnFeature"><span class="types bed bigBed"></span>
+<div class="format"><code>labelOnFeature &lt;on/off&gt;</code></div>
+    <P>Usually, labels (the BED name field) are drawn next to the
+    features. This statement tries to draw the feature 
+    label over the exon blocks. The effect depends on the size of the feature
+    on the screen, which in turn depends on the zoom level. If there is not enough
+    space for 4 characters, no label is drawn at all. If there is more space,
+    the label is drawn with a contrasting color onto the exon-like blocks. 
+    If they are too short for the text, it is trimmed to fit into the available space
+    and the suffix "..." appended. Note that features should not have too
+    long thin (UTR) regions, as the text might be hard to read
+    in these parts.<br>
+    To keep the text readable, the arrows that indicate the strand are shown over
+    introns, but suppressed on blocks, so the statement should be used
+    for tracks where strand is not of primary importance, not defined in the
+    BED strand field or deactivated
+    with <A onclick="jumpTo(this)" HREF="#">exonArrows</A>.  </P>
+    <P><B>Example:</B></P>
+    <pre>   labelOnFeature on</pre>
+</DIV>
+
 <DIV class="exonArrows"><span class="types genePred bed broadPeak"></span>
 <div class="format"><code>exonArrows &lt;on/off&gt;</code></div>
     <P>On tracks that show
@@ -1436,6 +1459,27 @@
     setting, the label will be "Item:".</P>
     <P><B>Example:</B></P>
     <pre>   bedNameLabel Gene Id</pre>
+</DIV>
+
+<DIV class="linkIdInName"><span class="types bed bigBed"></span>
+<div class="format"><code>linkIdInName on</code></div>
+    <P>This setting changes the meaning of the bed name field
+    to "identifier description". If it is activated, the browser
+    does not show the first word of the BED item name,
+    but uses this first word for linking out to the item detail page. This
+    allows putting both an identifier, like a gene ID, and its human-readable
+    description into the BED item name field, separated by a space.
+    </P>
+    <P><B>Example:</B></P>
+    <pre>   linkIdInName on</pre>
+    <P>
+    A BED name field of "9005 PITX2" will be shown "PITX2" on the genome
+    browser, but when the user clicks on it, the URL will be built only from
+    the first word, by default cgi-bin/hgc?i=9005&amp;(...). The URL can be
+    changed with <A onclick="jumpTo(this)" HREF="#">directUrl</A>, where %s
+    is replaced by the identifier.
+    </P>
+
 </DIV>
 
 <DIV class="baseColorUseSequence"><span class="types all"></span>
@@ -4131,7 +4175,7 @@ for each cell associated with the particular TF binding location.</P>
 
         track mySecondTrack
         parent myFolder
-        visibility none
+        visibility hide
           ...    </pre>
     <P>The supertrack called "My Folder"
     contains two children.  All will be grouped under 
@@ -4201,7 +4245,9 @@ for each cell associated with the particular TF binding location.</P>
     subtrack child, not the composite itself, through this setting. Any number of subtracks may
     belong to one composite, but display performance degrades significantly beyond a
     few hundred.  Set the <code>parent</code> setting to "on" to 
-    indicate whether a subtrack should be visible (checked, selected) by default.  
+    indicate whether a subtrack should be visible (checked, selected) by default.
+    Visibility settings in composite subtracks are directly inherited from the parent. Therefore,
+    any visibility lines added at the child subtrack level of a composite will be ignored.</p>  
 </DIV>
 
 <DIV class="allButtonPair"><span class="types compositeTrack"></span>
@@ -4230,14 +4276,18 @@ for each cell associated with the particular TF binding location.</P>
 <DIV class="dragAndDrop"><span class="types compositeTrack"></span>
 <div class="format"><code>dragAndDrop subTracks</code></div>
     <!-- <P><I>TODO: Should be made obsolete (and default behavior)</I></P> -->
-    <P>The subtrack list in the configuration page can be rearranged by setting
-    a <A onclick="return jumpTo(this);" HREF="#">sortOrder</A>, as described below, 
+    <P>When you have many subtracks in a composite track, it may be useful on the
+    Track Setting page, also known as the hgTrackUi configuration page, to rearrange
+    the subtracks.  One avenue of rearranging many subtracks is to employ the
+    <A onclick="return jumpTo(this);" HREF="#">sortOrder</A> setting, as described below, 
     or by allowing the user to drag and drop the subtracks to a new order 
-    if enabled with this setting. The changed order will also be seen in the track 
-    image.  However, the order of tracks can always be rearranged through 
-    drag and drop, directly in the image.  Reordering subtracks in the image 
-    will not be reflected in the configuration page. Note: This setting will not
-    work correctly if 'container multiWig' is specified.</P>
+    on the Track Setting page. The <code>dragAndDrop subTracks</code> setting will enable
+    dragging by clicking on the check mark next to the subtrack on the configuration page.
+    Tracks can thereby be rearranged into a final desired order, that will then be seen when
+    browsing the tracks. However, the order of tracks can also be rearranged on the hgTracks 
+    Browser image by directly dragging and dropping the displayed track data. Yet reordering subtracks
+    in the Browser image in hgTracks will not be reflected back on the hgTrackUi configuration page.
+    Note: This setting will not work correctly if 'container multiWig' is specified.</P>
 </DIV>
 
 
@@ -4251,7 +4301,6 @@ for each cell associated with the particular TF binding location.</P>
     type bigWig 0 1.0
     viewLimits 0.0:0.2
     allButtonPair on
-    dragAndDrop subTracks
       ...
 
         track myFirstSubtrack
@@ -4267,9 +4316,7 @@ for each cell associated with the particular TF binding location.</P>
     (<code>parent</code> setting).  However, the Browser will display two buttons 
     (<code>allButtonPair</code> setting) that allow the user to
     select all subtracks, or deselect all of them and then check only those of 
-    interest.  The user may reorder the subtracks by dragging them on the composite
-    configuration page (<code>dragAndDrop</code> setting). Note: The dragAndDrop setting 
-    will not work correctly if 'container multiWig' is specified.</P>
+    interest.</p>
 </DIV>
 
 
@@ -4658,7 +4705,9 @@ for each cell associated with the particular TF binding location.</P>
     greater than what was inherited from parents, that subtrack's
     visibility will override the inheritance.  While the subtleties of
     inheritance can be hard to explain, they are often intuitive in
-    practice.</div></P>
+    practice. In composite subtracks, visibility settings are directly
+    inherited from the parent composite, therefore, any visibility lines
+    added at the child subtrack level of a composite will be ignored.</div></P>
 </DIV>
 
 <DIV class="view"><span class="types view"></span>

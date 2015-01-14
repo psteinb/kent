@@ -526,7 +526,12 @@ if (thickDrawItem && (w < 4))
 if (color)
     {
     hvGfxBox(hvg, x1, y, w, heightPer, color);
-    if (tg->drawName && vis != tvSquish)
+    if (tg->drawLabelInBox)
+        {
+	char *label = tg->itemName(tg, bed);
+        drawScaledBoxSampleLabel(hvg, s, e, scale, xOff, y, heightPer, color, font, label);
+        }
+    else if (tg->drawName && vis != tvSquish)
 	{
 	/* Clip here so that text will tend to be more visible... */
 	char *s = tg->itemName(tg, bed);
@@ -540,7 +545,7 @@ if (color)
                           tg->track, tg->mapItemName(tg, bed), NULL, directUrl, withHgsid, NULL);
 	}
     }
-if (tg->subType == lfWithBarbs || tg->exonArrows)
+if ((tg->subType == lfWithBarbs || tg->exonArrows) && !tg->drawLabelInBox)
     {
     int dir = 0;
     if (bed->strand[0] == '+')
@@ -581,6 +586,20 @@ struct bed *bed = item;
 if (bed->name == NULL)
     return "";
 return bed->name;
+}
+
+char *bedNameField1(struct track *tg, void *item)
+/* return part before first space in item name */
+{
+struct bed *bed = item;
+return cloneFirstWord(bed->name);
+}
+
+char *bedNameNotField1(struct track *tg, void *item)
+/* return part after first space in item name */
+{
+struct bed *bed = item;
+return cloneNotFirstWord(bed->name);
 }
 
 int bedItemStart(struct track *tg, void *item)
@@ -651,6 +670,13 @@ tg->itemEnd = bedItemEnd;
 // So, set tg->nextPrevExon = simpleBedNextPrevEdge case-by-case.
 tg->nextPrevItem = linkedFeaturesLabelNextPrevItem;
 tg->freeItems = freeSimpleBed;
+
+if (trackDbSettingClosestToHomeOn(tg->tdb, "linkIdInName"))
+    {
+    tg->mapItemName = bedNameField1;
+    tg->itemName = bedNameNotField1;
+    }
+
 }
 
 void bed9Methods(struct track *tg)

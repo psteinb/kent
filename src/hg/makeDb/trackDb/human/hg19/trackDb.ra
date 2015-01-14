@@ -555,14 +555,16 @@ visibility hide
 type bed 4 +
 
 track msr2
-shortLabel Gene Interactions
-longLabel Gene Interactions in Abstracts
+shortLabel Pathways
+longLabel Pathways and Protein Interactions
 group pub
-visibility dense
-type bigBed 4 .
+visibility hide
+type bigBed 4
 noScoreFilter on
 release alpha
 directUrl hgcGeneGraph?gene=%s
+labelOnFeature on
+linkIdInName on
 
 track pubsDev
 shortLabel Publications Beta
@@ -1266,6 +1268,16 @@ maxWindowToDraw 5000000
 chromosomes chr1,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr2,chr20,chr21,chr22,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chrX,chrY
 url http://evs.gs.washington.edu/EVS/PopStatsServlet?searchBy=rsOrChrom&target=$$&chromosome=$s&chromoStart=${&chromoEnd=$}&x=0&y=0
 urlLabel Exome Variant Server:
+
+track exacVariants
+shortLabel ExAC Variants
+longLabel Exome Aggregation Consortium (ExAC) - Variants from 61,486 Exomes
+type vcfTabix
+group varRep
+visibility hide
+maxWindowToDraw 5000000
+showHardyWeinberg on
+chromosomes chr1,chr10,chr11,chr11_gl000202_random,chr12,chr13,chr14,chr15,chr16,chr17,chr17_gl000203_random,chr17_gl000204_random,chr17_gl000205_random,chr17_gl000206_random,chr18,chr18_gl000207_random,chr19,chr19_gl000208_random,chr19_gl000209_random,chr1_gl000191_random,chr1_gl000192_random,chr2,chr20,chr21,chr21_gl000210_random,chr22,chr3,chr4,chr4_gl000193_random,chr4_gl000194_random,chr5,chr6,chr7,chr7_gl000195_random,chr8,chr8_gl000196_random,chr8_gl000197_random,chr9,chr9_gl000198_random,chr9_gl000199_random,chr9_gl000200_random,chr9_gl000201_random,chrUn_gl000211,chrUn_gl000212,chrUn_gl000213,chrUn_gl000214,chrUn_gl000215,chrUn_gl000216,chrUn_gl000217,chrUn_gl000218,chrUn_gl000219,chrUn_gl000220,chrUn_gl000221,chrUn_gl000222,chrUn_gl000223,chrUn_gl000224,chrUn_gl000225,chrUn_gl000226,chrUn_gl000227,chrUn_gl000228,chrUn_gl000229,chrUn_gl000230,chrUn_gl000231,chrUn_gl000232,chrUn_gl000233,chrUn_gl000234,chrUn_gl000235,chrUn_gl000236,chrUn_gl000237,chrUn_gl000238,chrUn_gl000239,chrUn_gl000240,chrUn_gl000241,chrUn_gl000242,chrUn_gl000243,chrUn_gl000244,chrUn_gl000245,chrUn_gl000246,chrUn_gl000247,chrUn_gl000248,chrUn_gl000249,chrX,chrY
 
 
 searchTable nscanGene
@@ -2267,44 +2279,42 @@ track ucsfRnaSeqBrainSmartCoverage override
 release alpha,beta,public
 type bigWig 1 141
 
-track cooperDevDelay
-shortLabel Cooper Dev. Delay
-longLabel Copy Number Variation Morbidity Map of Developmental Delay, Cooper et al. 2011
-group phenDis
-visibility hide
-#color 0,0,200
-type gvf 
-noScoreFilter .
-
-
-track peptideAtlas
-release alpha
-html peptideAtlas.html
+track peptideAtlasSuper
+html peptideAtlas
 superTrack on
 group expression
 shortLabel PeptideAtlas
 longLabel Peptide sequences identified by tandem MS from PeptideAtlas
 
-    track peptideAtlas2014
-    superTrack peptideAtlas
-    release alpha
-    shortLabel PeptideAtlas 2014
+    track peptideAtlas
+    table peptideAtlas2014
+    parent peptideAtlasSuper
+    shortLabel PeptideAtlas
     html peptideAtlas
-    longLabel Peptide sequences identified from tandem MS spectra of 971 samples by PeptideAtlas (2014)
+    longLabel Peptide sequences identified from MS spectra of 971 samples by PeptideAtlas
+    visibility squish
     type bed 12
-    visibility dense
     url https://db.systemsbiology.net/sbeams/cgi/PeptideAtlas/GetPeptide?atlas_build_id=433&searchWithinThis=Peptide+Name&searchForThis=$$&action=QUERY
     urlLabel Link to PeptideAtlas:
     group expression
-    minGrayLevel 4
-    color 82, 82, 160
     spectrum on
+    minGrayLevel 4
     scoreMax 51
     scoreMin 1
+    color 100, 82, 160
+
+    track pgxPeptideAtlas2014
+    parent peptideAtlasSuper
+    release alpha
+    shortLabel PeptideAtlas PGx
+    longLabel Peptide sequences identified from MS spectra of 971 samples by PeptideAtlas (PGx mapped)
+    type bed 12
+    group expression
+    color 160, 100, 50
 
     track peptideAtlasRegions2014
     release alpha
-    superTrack peptideAtlas
+    parent peptideAtlasSuper
     shortLabel PeptideAtlas Mappings 2014
     html peptideAtlas
     longLabel Peptide sequence mappings identified by tandem MS from PeptideAtlas (2014)
@@ -2317,7 +2327,7 @@ longLabel Peptide sequences identified by tandem MS from PeptideAtlas
     track peptideAtlasRegions2013
     table peptideAtlas
     release alpha
-    superTrack peptideAtlas
+    parent peptideAtlasSuper
     html peptideAtlas
     shortLabel PeptideAtlas Mappings 2013
     longLabel Peptide sequence mappings identified by tandem MS from PeptideAtlas (2013)
