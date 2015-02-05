@@ -1,4 +1,7 @@
 /** @jsx React.DOM */
+/* global ImmutableUpdate, PathUpdate, CheckboxLabel, CladeOrgDb, Icon, LabeledSelect */
+/* global LoadingImage, Modal, PositionSearch, Section, SetClearButtons, Sortable, TextInput */
+
 var pt = React.PropTypes;
 
 // AnnoGrator interface.
@@ -31,14 +34,17 @@ var RegionOrGenome = React.createClass({
         var props = this.props;
         var posInfo = props.positionInfo;
         var positionInput = null;
-        if (posInfo.get('hgai_range') !== 'genome')
+        if (posInfo.get('hgai_range') !== 'genome') {
             positionInput = <PositionSearch positionInfo={posInfo}
+                                            className='sectionItem'
                                             db={props.db}
                                             path={props.path} update={props.update}
                             />;
+        }
         return (
-            <div style={{'marginTop': '5px'}}>
+            <div className='sectionRow'>
               <LabeledSelect label='region to annotate'
+                             className='sectionItem'
                              selected={posInfo.get('hgai_range')} options={this.menuOptions}
                              update={props.update} path={props.path.concat('hgai_range')} />
               {positionInput}
@@ -55,7 +61,7 @@ var GroupTrackTable = React.createClass({
     // update(path + group|track|table) called when user changes group|track|table
 
     propTypes: { trackPath: pt.object.isRequired,    // Immutable.Map { group, track, table }
-                 trackDbInfo: pt.object.isRequired,  // Immutable.Map { groupOptions, groupTracks,
+                 trackDbInfo: pt.object.isRequired   // Immutable.Map { groupOptions, groupTracks,
                                                      // trackTables }
     },
 
@@ -70,8 +76,9 @@ var GroupTrackTable = React.createClass({
         var trackTables = props.trackDbInfo.get('trackTables');
         var trackOptions = groupTracks.get(group);
         var tableNames = trackTables.get(track);
-        if (! tableNames)
+        if (! tableNames) {
             tableNames = trackTables.get(trackOptions.getIn([0, 'value']));
+        }
         var tableOptions;
         if (tableNames) {
             tableOptions = tableNames.map(function(name) {
@@ -82,19 +89,33 @@ var GroupTrackTable = React.createClass({
         if (track !== table) {
             tableSelect =
               <LabeledSelect label='table' selected={table} options={tableOptions}
+                             className='sectionItem'
                              update={props.update} path={path.concat(['table'])} />;
         }
         return (
-          <div style={{display: "inline-block"}}>
+          <div className='sectionRow sectionItem'>
             <LabeledSelect label='track group' selected={group} options={groupOptions}
+                           className='sectionItem'
                            update={props.update} path={path.concat(['group'])} />
             <LabeledSelect label='track' selected={track} options={trackOptions}
+                           className='sectionItem'
                            update={props.update} path={path.concat(['track'])} />
             {tableSelect}
           </div>
         );
     }
 }); // GroupTrackTable
+
+function makeSchemaLink(db, group, track, table) {
+    // Return a React component link to hgTables' schema page.
+    var schemaUrl = 'hgTables?db=' + db + '&hgta_group=' + group + '&hgta_track=' + track +
+                    '&hgta_table=' + table + '&hgta_doSchema=1';
+    return <span className='smallText sectionItem'>
+              <a href={schemaUrl} target="ucscSchema"
+                 title="Open table schema in new window">
+                View table schema
+              </a></span>;
+}
 
 var AddDataSource = React.createClass({
     // A section-lite with group/track/table (or someday group/composite/view/etc) selects
@@ -111,8 +132,7 @@ var AddDataSource = React.createClass({
                                       //   groupOptions: pt.array, group menu options
                                       //   groupTracks: pt.object, maps groups to track menu options
                                       //   trackTables: pt.object  maps tracks to table lists
-                 // Optional
-                 schemaLink: pt.node                 // React component: link to hgTables schema
+                 db: pt.string.isRequired            // needed for schema link
                },
 
     onAdd: function() {
@@ -139,19 +159,22 @@ var AddDataSource = React.createClass({
             return <Icon type='spinner' />;
         }
 
+        var trackPath = this.props.trackPath;
+        var schemaLink = makeSchemaLink(this.props.db, trackPath.get('group'),
+                                        trackPath.get('track'), trackPath.get('table'));
         return (
             <div>
-              <div className='bigBoldText'>
+              <div className='bigBoldText sectionRow'>
                 Add Data Source
               </div>
               <GroupTrackTable trackPath={this.props.trackPath}
                                trackDbInfo={trackDbInfo}
                                path={path.concat('addDsTrackPath')} update={this.props.update}
                                />
-              {this.props.schemaLink}
+              {schemaLink}
               <input type='button' value='Add' onClick={this.onAdd} />
               <br />
-              <div style={{marginTop: 5}}>
+              <div className='sectionRow'>
                 get more data:<br />
                 <input type='button' value='track hubs' onClick={this.onTrackHubs} />
                 <input type='button' value='custom tracks' onClick={this.onCustomTracks} />
@@ -207,7 +230,7 @@ var FieldSelect = React.createClass({
 
     render: function() {
         if (this.props.fieldInfo) {
-            var title = <div className='bigBoldText'>Choose fields</div>;
+            var title = <div className='bigBoldText sectionRow'>Choose fields</div>;
             return (
                 <Modal title={title} path={this.props.path} update={this.props.update}>
                   {this.makeTableSections()}
@@ -271,25 +294,31 @@ var OutFileOptions = React.createClass({
         }
         return (
             <div>
-              <CheckboxLabel checked={doFile} label='Send output to file'
-                             style={{display: 'inline-block'}}
-                             path={path.concat('doFile')} update={this.props.update} />
-              <div style={{display: fileInputDisplay, 'paddingLeft': '5px' }}>
-                name:
-                <TextInput value={fileName}
-                           path={path.concat('fileName')} update={this.props.update}
-                           size={75} />
-                <CheckboxLabel checked={doGzip} label='Compress with gzip (.gz)'
-                               style={{display: 'inline-block'}}
-                               path={path.concat('doGzip')} update={this.props.update} />
+              <div className='sectionRow'>
+                <CheckboxLabel checked={doFile} label='Send output to file'
+                               className='sectionItem'
+                               path={path.concat('doFile')} update={this.props.update} />
+                <div style={{display: fileInputDisplay}}>
+                  <span className='sectionItem'>name:</span>
+                  <span className='sectionItem'>
+                    <TextInput value={fileName}
+                               path={path.concat('fileName')} update={this.props.update}
+                               size={75} />
+                  </span>
+                  <CheckboxLabel checked={doGzip} label='Compress with gzip (.gz)'
+                                 className='sectionItem'
+                                 path={path.concat('doGzip')} update={this.props.update} />
+                </div>
               </div>
-              <br />
-              <input type='button' value='Choose fields...' onClick={this.onChooseFields} />
+              <div className='sectionRow'>
+                <input type='button' value='Choose fields...' onClick={this.onChooseFields} />
+              </div>
               <FieldSelect fieldInfo={this.props.fieldInfo}
                            update={this.props.update} path={path.concat('fieldSelect')} />
-              <br />
-              <br />
-              <input type='button' value='Get output' onClick={this.onGetOutput} />
+              <div className='sectionRow'>
+                <br />
+                <input type='button' value='Get output' onClick={this.onGetOutput} />
+              </div>
               <LoadingImage loading={this.props.submitted} />
             </div>
         );
@@ -311,17 +340,6 @@ function getLabelForValue(valLabelVec, val) {
         }
     }
     return val;
-}
-
-function makeSchemaLink(db, group, track, table) {
-    // Return a React component link to hgTables' schema page.
-    var schemaUrl = 'hgTables?db=' + db + '&hgta_group=' + group + '&hgta_track=' + track +
-                    '&hgta_table=' + table + '&hgta_doSchema=1';
-    return <span style={{fontSize: 'small', paddingLeft: '10px', paddingRight: '10px'}}>
-              <a href={schemaUrl} target="ucscSchema"
-                 title="Open table schema in new window">
-                View table schema
-              </a></span>;
 }
 
 var AppComponent = React.createClass({
@@ -348,46 +366,41 @@ var AppComponent = React.createClass({
         var db = this.props.appState.getIn(['cladeOrgDb', 'db']);
         var schemaLink = makeSchemaLink(db, group, track, table);
 
-        var onMoreOptions = function (ev) {
-            this.props.update(this.props.path.concat(['dataSources', i, 'moreOptions']));
-        }.bind(this);
-
         return (
-            <div key={trackPathKey} style={{'paddingTop': '5px', 'paddingBottom': '5px'}}>
-                <div className='bigBoldText sortHandle'>
+            <div key={trackPathKey} className='dataSourceSubsection'>
+                <div className='sortHandle'>
                   <span className='floatLeft'>
-                    <Icon type='upDown' />
-                    <span style={{'marginLeft': '3px'}}>
+                    <Icon type='upDown' className='sectionItem'/>
+                    <span className='bigBoldText sectionItem'>
                       {trackLabel}
+                    </span>
+                    <span className='sectionItem'>
                       {schemaLink}
                     </span>
                   </span>
-                  <Icon type='x' extraClass='floatRight'
+                  <Icon type='x' className='floatRight'
                         update={this.props.update} path={path.concat('remove')} />
                   <div className='clear' />
                 </div>
             </div>
         );
-        //                <input type='button' value='More options...' onClick={onMoreOptions} />
     },
 
     renderDataSources: function(dataSources) {
         // Wrap Sortable around rendered dataSources if we have enough data.
-        var boxStyle = {padding: 5, border: 'black solid 1px' };
-        var emptyStyle = { padding: 5, color: 'gray', fontStyle: 'italic' };
         if (this.props.appState.getIn(['trackDbInfo', 'groupTracks']) && dataSources &&
             dataSources.size) {
             return (
                 <Sortable sortableConfig={{ handle: '.sortHandle', axis: 'y' }}
                           path={['dataSources', 'reorder']} update={this.props.update}
-                          style={boxStyle} >
+                          className='subsectionBox' >
                   {dataSources.map(this.renderDataSource).toJS()}
                 </Sortable>
             );
         } else {
             return (
-                <div style={boxStyle}>
-                  <span style={emptyStyle}>please add at least one data source</span>
+                <div className='subsectionBox'>
+                  <span className='disabledMessage'>please add at least one data source</span>
                 </div>
             );
         }
@@ -402,8 +415,6 @@ var AppComponent = React.createClass({
         var trackDbInfo = appState.get('trackDbInfo'); // groupOptions, groupTracks, trackTables
         var trackPath = appState.get('addDsTrackPath');
         var db = cladeOrgDbInfo.get('db');
-        var schemaLink = makeSchemaLink(db, trackPath.get('group'), trackPath.get('track'),
-                                        trackPath.get('table'));
         if (! (cladeOrgDbInfo && trackDbInfo && trackPath)) {
             // Waiting for initial data from server
             return <span>Loading...</span>;
@@ -415,14 +426,13 @@ var AppComponent = React.createClass({
         var submitted = appState.get('submitted');
         var disableGetOutput = (! (dataSources && dataSources.size));
         var disableGetOutputMessage =
-        <span style={{fontStyle: 'italic', color: 'gray', paddingLeft: 5}}>
+        <span className='disabledMessage'>
           At least one data source must be added.
         </span>;
         var helpText = appState.get('helpText') || '';
         return (
-            <div style={{margin: '5px'}}>
-              <span className='bigBoldText'
-                    style={{'paddingRight': '5px'}}>Annotation Integrator</span>
+            <div className='sectionContents'>
+              <span className='bigBoldText sectionRow sectionItem'>Annotation Integrator</span>
               <input type='button' value='Undo'
                      onClick={this.props.undo} disabled={!appState.get('canUndo')} />
               <input type='button' value='Redo'
@@ -438,7 +448,7 @@ var AppComponent = React.createClass({
                 {this.renderDataSources(dataSources)}
                 <AddDataSource trackPath={trackPath}
                                trackDbInfo={trackDbInfo}
-                               schemaLink={schemaLink}
+                               db={db}
                                path={[]} update={this.props.update} />
               </Section>
 
@@ -462,3 +472,6 @@ var AppComponent = React.createClass({
     }
 
 });
+
+// Without this, jshint complains that AppComponent is not used.  Module system would help.
+AppComponent = AppComponent;

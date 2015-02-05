@@ -20,6 +20,7 @@ update:
 	${MAKE} clean
 
 topLibs:
+	@./checkUmask.sh
 	@MACHTYPE=${MACHTYPE} ./machTest.sh
 	cd lib && ${MAKE}
 	cd jkOwnLib && ${MAKE}
@@ -160,7 +161,7 @@ utils-alpha: libs
 	cd utils && ${MAKE} alpha
 	cd hg && ${MAKE} utils
 
-DIRS = ameme blat index dnaDust protDust weblet aladdin primeMate fuse meta
+DIRS = ameme blat index dnaDust protDust weblet aladdin primeMate fuse meta tagStorm
 
 ##  cellar archive for obsolete programs
 

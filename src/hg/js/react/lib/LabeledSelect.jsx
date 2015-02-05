@@ -1,4 +1,5 @@
 /** @jsx React.DOM */
+/* global ImmutableUpdate, PathUpdate */
 var pt = React.PropTypes;
 
 var LabeledSelect = React.createClass({
@@ -10,7 +11,8 @@ var LabeledSelect = React.createClass({
     propTypes: { label: pt.string.isRequired,  // label that appears above select input
                  // Optional:
                  selected: pt.string,          // initial selected value
-                 options: pt.object            // Immutable.Vector [ .Map{value: x, label: y}, ... ]
+                 options: pt.object,           // Immutable.Vector [ .Map{value: x, label: y}, ... ]
+                 className: pt.string          // class(es) to pass to wrapper div
                },
 
     optionFromValueLabel: function(item) {
@@ -25,15 +27,22 @@ var LabeledSelect = React.createClass({
 
     render: function() {
         var opts = null;
-        if (this.props.options)
+        if (this.props.options) {
             opts = this.props.options.map(this.optionFromValueLabel).toJS();
+        }
         return (
-            <div className='topLabelSelect'>
-              <label style={{ display: 'block' }}>{this.props.label}</label>
-              <select className='groupMenu' value={this.props.selected} onChange={this.onChange}>
+            <div className={this.props.className}>
+              <div>
+                {this.props.label}
+              </div>
+              <select className='groupMenu' value={this.props.selected}
+                      onChange={this.onChange}>
 	        {opts}
               </select>
             </div>
         );
     }
 });
+
+// Without this, jshint complains that LabeledSelect is not used.  Module system would help.
+LabeledSelect = LabeledSelect;

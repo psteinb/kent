@@ -1,5 +1,8 @@
 /** @jsx React.DOM */
+/* global ImmutableUpdate, PathUpdate, Icon, Modal, TextInput */
 var pt = React.PropTypes;
+
+var PositionPopup = null;  // subcomponent, defined below
 
 var PositionSearch = React.createClass({
     // Text input for position or search term, optionally with autocomplete if
@@ -18,7 +21,12 @@ var PositionSearch = React.createClass({
                  //   positionMatches (Immutable.Vector of Maps): multiple search results for popup
                  //   geneSuggestTrack: optional track to use for autocomplete
                  // }
-                 db: pt.string // must be given if positionInfo includes geneSuggestTrack
+
+                 // Conditionally required
+                 db: pt.string,         // must be given if positionInfo includes geneSuggestTrack
+
+                 // Optional
+                 className: pt.string   // class(es) to pass to wrapper div
                },
 
     autoCompleteSourceFactory: function(db) {
@@ -49,7 +57,7 @@ var PositionSearch = React.createClass({
 	};
     },
 
-    autoCompleteMenuOpen: function(event, ui) {
+    autoCompleteMenuOpen: function() {
 	// This is an 'open' event callback for autocomplete to let us know when the
 	// menu showing completions is opened.
 	// See http://api.jqueryui.com/autocomplete/#event-open
@@ -61,10 +69,11 @@ var PositionSearch = React.createClass({
             var maxHeight = $(window).height() - pos - 30;
             var auto = $('.ui-autocomplete');
             var curHeight = $(auto).children().length * 21;
-            if (curHeight > maxHeight)
+            if (curHeight > maxHeight) {
                 $(auto).css({maxHeight: maxHeight+'px', overflow:'scroll', zIndex: 12});
-            else
+            } else {
                 $(auto).css({maxHeight: 'none', overflow:'hidden', zIndex: 12});
+            }
         }
     },
 
@@ -126,7 +135,7 @@ var PositionSearch = React.createClass({
         var spinner = null, posPopup = null;
         var loading = posInfo.get('loading');
         if (loading) {
-            spinner = <Icon type="spinner" extraClass="floatRight" />;
+            spinner = <Icon type="spinner" className="floatRight" />;
         }
         var matches = posInfo.get('positionMatches');
         if (matches) {
@@ -139,7 +148,7 @@ var PositionSearch = React.createClass({
             $(this.refs.input.getDOMNode()).blur();
         }
         return (
-            <div style={{display: "inline-block"}}>
+            <div className={this.props.className}>
               <TextInput value={posInfo.get('position')}
                          path={this.props.path.concat('position')} update={this.props.update}
                          size={45} ref='input' />
@@ -151,7 +160,7 @@ var PositionSearch = React.createClass({
 
 }); // PositionSearch
 
-var PositionPopup = React.createClass({
+PositionPopup = React.createClass({
     // Helper component: when there are multiple matches from position/search,
     // display them in a popup box with links for the user to choose a position.
 
@@ -212,3 +221,6 @@ var PositionPopup = React.createClass({
     }
 
 }); // PositionPopup
+
+// Without this, jshint complains that PositionSearch is not used.  Module system would help.
+PositionSearch = PositionSearch;

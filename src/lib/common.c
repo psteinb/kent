@@ -2443,7 +2443,6 @@ return cnt;
 }
 
 int stringArrayIx(char *string, char *array[], int arraySize)
-
 /* Return index of string in array or -1 if not there. */
 {
 int i;
@@ -2763,7 +2762,7 @@ if ((pFile != NULL) && ((f = *pFile) != NULL))
 	    ok = FALSE;
 	    }
         }
-    else
+    else if (f == stdout)
         {
         // One expects close() to actually flush the file and close it.  If
         // the file was opened using the magic name "stdout" and then does a

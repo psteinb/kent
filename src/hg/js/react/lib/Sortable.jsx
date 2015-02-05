@@ -1,4 +1,5 @@
 /** @jsx React.DOM */
+/* global PathUpdate */
 var pt = React.PropTypes;
 
 var Sortable = React.createClass({
@@ -14,6 +15,7 @@ var Sortable = React.createClass({
     propTypes: { // Optional:
                  sortableConfig: pt.object,  // extra configuration settings for JQuery Sortable
                  idPrefix: pt.string,        // prefix for forming unique child-wrapper keys
+                 className: pt.string,       // extra class(es) for wrapper div
                  style: pt.object            // extra style directives for wrapper div
                },
 
@@ -37,7 +39,7 @@ var Sortable = React.createClass({
         return parseInt(id.substring(this.props.idPrefix.length));
     },
 
-    handleDrop: function (event) {
+    handleDrop: function () {
         // JQuery Sortable 'toArray' gives an array of element ids in the new sequence.
         // Convert that to an array whose indices are new positions and values are old
         // positions, tell JQuery to cancel, and call update with the array.
@@ -51,7 +53,7 @@ var Sortable = React.createClass({
         // Now that we have a DOM node, make it a JQueryUi Sortable:
         var config = _.clone(this.props.sortableConfig);
         config.stop = this.handleDrop;
-        this.$jq = jQuery(this.getDOMNode());
+        this.$jq = $(this.getDOMNode());
         this.$jq.sortable(config);
     },
 
@@ -61,7 +63,14 @@ var Sortable = React.createClass({
             var id = this.intToId(ix);
             return <div id={id} key={id}>{child}</div>;
         }.bind(this));
-        return <div style={this.props.style}>{wrappedChildren}</div>;
+        return (
+            <div className={this.props.className} style={this.props.style}>
+              {wrappedChildren}
+            </div>
+        );
     }
 
 });
+
+// Without this, jshint complains that Sortable is not used.  Module system would help.
+Sortable = Sortable;
