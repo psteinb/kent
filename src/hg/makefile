@@ -126,6 +126,7 @@ UTIL_DIRS = \
 	altSplice \
 	bedOrBlocks \
 	bedSplitOnChrom \
+	bedSplitOnChromUnlimited \
 	borfBig \
 	ctgFaToFa \
 	ctgToChromFa \
