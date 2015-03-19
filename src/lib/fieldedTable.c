@@ -8,6 +8,7 @@
 #include "common.h"
 #include "localmem.h"
 #include "linefile.h"
+#include "hash.h"
 #include "fieldedTable.h"
 
 struct fieldedTable *fieldedTableNew(char *name, char **fields, int fieldCount)
@@ -62,6 +63,104 @@ for (i=0; i<rowSize; ++i)
 table->cursor = &fr->next;
 
 return fr;
+}
+
+int fieldedTableMaxColChars(struct fieldedTable *table, int colIx)
+/* Calculate the maximum number of characters in a cell for a column */
+{
+if (colIx >= table->fieldCount)
+    errAbort("fieldedTableMaxColChars on %d, but only have %d columns", colIx, table->fieldCount);
+int max = strlen(table->fields[colIx]) + 1;
+struct fieldedRow *fr;
+for (fr = table->rowList; fr != NULL; fr = fr->next)
+    {
+    char *val = fr->row[colIx];
+    if (val != NULL)
+        {
+	int len = strlen(val);
+	if (len > max)
+	   max = len;
+	}
+    }
+return max;
+}
+
+boolean fieldedTableColumnIsNumeric(struct fieldedTable *table, int fieldIx)
+/* Return TRUE if field has numeric values wherever non-null */
+{
+struct fieldedRow *fr;
+boolean anyVals = FALSE;
+for (fr = table->rowList; fr != NULL; fr = fr->next)
+    {
+    char *s = fr->row[fieldIx];
+    if (s != NULL)
+        {
+	anyVals = TRUE;
+	if (!isNumericString(s))
+	    return FALSE;
+	}
+    }
+return anyVals;
+}
+
+static int slPairCmpNumbers(const void *va, const void *vb)
+/* Compare slPairs where name is interpreted as floating point number */
+{
+const struct slPair *a = *((struct slPair **)va);
+const struct slPair *b = *((struct slPair **)vb);
+double aVal = atof(a->name);
+double bVal = atof(b->name);
+double diff = aVal - bVal;
+if (diff < 0)
+    return -1;
+else if (diff > 0)
+    return 1;
+else
+    return 0;
+}
+
+
+void fieldedTableSortOnField(struct fieldedTable *table, char *field, boolean doReverse)
+/* Sort on field.  Distinguishes between numerical and text fields appropriately.  */
+{
+/* Figure out field position */
+int fieldIx = stringArrayIx(field, table->fields, table->fieldCount);
+if (fieldIx < 0)
+    fieldIx = 0;
+boolean fieldIsNumeric = fieldedTableColumnIsNumeric(table, fieldIx);
+
+/* Make up pair list in local memory which points to rows */
+struct lm *lm = lmInit(0);
+struct slPair *pairList=NULL, *pair;
+struct fieldedRow *fr;
+for (fr = table->rowList; fr != NULL; fr = fr->next)
+    {
+    char *val = emptyForNull(fr->row[fieldIx]);
+    lmAllocVar(lm, pair);
+    pair->name = val;
+    pair->val = fr;
+    slAddHead(&pairList, pair);
+    }
+slReverse(&pairList);  
+
+/* Sort this list. */
+if (fieldIsNumeric)
+    slSort(&pairList, slPairCmpNumbers);
+else
+    slSort(&pairList, slPairCmpCase);
+if (doReverse)
+    slReverse(&pairList);
+
+/* Convert rowList to have same order. */
+struct fieldedRow *newList = NULL;
+for (pair = pairList; pair != NULL; pair = pair->next)
+    {
+    fr = pair->val;
+    slAddHead(&newList, fr);
+    }
+slReverse(&newList);
+table->rowList = newList;
+lmCleanup(&lm);
 }
 
 struct fieldedTable *fieldedTableFromTabFile(char *fileName, char *reportFileName, 
@@ -120,5 +219,43 @@ while (lineFileRowTab(lf, fields))
 /* Clean up and go home. */
 lineFileClose(&lf);
 return table;
+}
+
+int fieldedTableMustFindFieldIx(struct fieldedTable *table, char *field)
+/* Find index of field in table's row.  Abort if field not found. */
+{
+int ix = stringArrayIx(field, table->fields, table->fieldCount);
+if (ix < 0)
+    errAbort("Field %s not found in table %s", field, table->name);
+return ix;
+}
+
+struct hash *fieldedTableIndex(struct fieldedTable *table, char *field)
+/* Return hash of fieldedRows keyed by values of given field */
+{
+int fieldIx = fieldedTableMustFindFieldIx(table, field);
+struct hash *hash = hashNew(0);
+struct fieldedRow *fr;
+for (fr = table->rowList; fr != NULL; fr = fr->next)
+    {
+    hashAdd(hash,fr->row[fieldIx], fr);
+    }
+return hash;
+}
+
+struct hash *fieldedTableUniqueIndex(struct fieldedTable *table, char *field)
+/* Return hash of fieldedRows keyed by values of given field, which must be unique. */
+{
+int fieldIx = fieldedTableMustFindFieldIx(table, field);
+struct hash *hash = hashNew(0);
+struct fieldedRow *fr;
+for (fr = table->rowList; fr != NULL; fr = fr->next)
+    {
+    char *key = fr->row[fieldIx];
+    if (hashLookup(hash, key))
+        errAbort("%s duplicated in %s field of %s", key, field, table->name);
+    hashAdd(hash,fr->row[fieldIx], fr);
+    }
+return hash;
 }
 

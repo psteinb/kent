@@ -19,6 +19,15 @@ void cdwValidateIdat(char *path);
 void cdwValidatePdf(char *path);
 /* Make sure PDF really is PDF */
 
+void cdwValidateCram(char *path);
+/* Validate cram file. */
+
+void cdwValidateJpg(char *path);
+/* Check jpg file is really jpg */
+
+void cdwValidateBamIndex(char *path);
+/* Check .bam.bai really is index. */
+
 boolean cdwIsGzipped(char *path);
 /* Return TRUE if file at path starts with GZIP signature */
 
@@ -41,5 +50,21 @@ struct cdwBedType *cdwBedTypeFind(char *name);
     
 struct cdwBedType *cdwBedTypeMayFind(char *name);
 /* Return cdwBedType of given name, just return NULL if not found. */
+
+extern char *cdwAllowedTags[];
+
+struct hash *cdwAllowedTagsHash();
+/* Get hash of all allowed tags */
+
+boolean cdwValidateTagName(char *tag);
+/* Make sure that tag is one of the allowed ones. */
+
+boolean cdwValidateTagVal(char *tag, char *val);
+/* Make sure that tag is one of the allowed ones and that
+ * val is compatible */
+
+struct slPair *cdwFormatList();
+/* Return list of formats.  The name of the list items are the format names.
+ * The vals are short descriptions. */
 
 #endif /* CDWVALID_H */

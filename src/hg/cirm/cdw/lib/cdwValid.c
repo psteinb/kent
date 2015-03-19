@@ -4,6 +4,7 @@
  * See README in this or parent directory for licensing information. */
 
 #include "common.h"
+#include "hash.h"
 #include "hex.h"
 #include "linefile.h"
 #include "cdwValid.h"
@@ -114,6 +115,27 @@ if (!fileStartsWithOneOfPair(path, "%PDF", "%PDF"))
     errAbort("%s in not a valid .pdf file, it does not start with %%PDF", fileNameOnly(path));
 }
 
+void cdwValidateCram(char *path)
+/* Validate cram file. */
+{
+if (!fileStartsWithOneOfPair(path, "CRAM", "CRAM"))
+    errAbort("%s is not a valid .cram file, it does not start with CRAM", fileNameOnly(path));
+}
+
+void cdwValidateJpg(char *path)
+/* Check jpg file is really jpg */
+{
+if (!fileStartsWithOneOfPair(path, "\xff\xd8\xff\xe0", "\xff\xd8\xff\xe1"))
+    errAbort("%s is not a valid .jpeg file", fileNameOnly(path));
+}
+
+void cdwValidateBamIndex(char *path)
+/* Check .bam.bai really is index. */
+{
+if (!fileStartsWithOneOfPair(path, "BAI", "BAI"))
+    errAbort("%s is not a valid .bam.bai file", fileNameOnly(path));
+}
+
 boolean cdwIsGzipped(char *path)
 /* Return TRUE if file at path starts with GZIP signature */
 {
@@ -166,4 +188,134 @@ if (bedType == NULL)
 return bedType;
 }
 
+char *cdwAllowedTags[] = {
+    "title",
+    "lab",
+    "submitter",
+    "pmid",
+    "file",
+    "file_part",
+    "format",
+    "access",
+    "md5",
+    "antibody",
+    "assay",
+    "control",
+    "data_set_id",
+    "enriched_in",
+    "keywords",
+    "ratio_260_280",
+    "replicate",
+    "sequencer",
+    "seq_library",
+    "seq_sample",
+    "assay_seq",
+    "t",
+    "t_unit",
+    "target_epitope",
+    "target_gene",
+    "treatment",
+    "paired_end",
+    "life_stage",
+    "age",
+    "age_unit",
+    "cell_line",
+    "cell_pair",
+    "cell_count",
+    "differentiation",
+    "donor",
+    "consent",
+    "species",
+    "strain",
+    "body_part",
+    "organ",
+    "sorting",
+    "ips",
+    "sex",
+    "biosample_date",
+    "disease",
+    "inputs",
+    "ucsc_db",
+    "pipeline",
+    "output",
+    "meta",
+    "chrom",
+    };
+
+struct hash *cdwAllowedTagsHash()
+/* Get hash of all allowed tags */
+{
+static struct hash *allowedHash = NULL;
+if (allowedHash == NULL)
+    {
+    allowedHash = hashNew(7);
+    int i;
+    for (i=0; i<ArraySize(cdwAllowedTags); ++i)
+	hashAdd(allowedHash, cdwAllowedTags[i], NULL);
+    }
+return allowedHash;
+}
+
+boolean cdwValidateTagName(char *tag)
+/* Make sure that tag is one of the allowed ones. */
+{
+if (startsWith("lab_", tag) || startsWith("user_", tag))
+    {
+    return TRUE;
+    }
+else
+    {
+    return hashLookup(cdwAllowedTagsHash(), tag) != NULL;
+    }
+}
+
+boolean cdwValidateTagVal(char *tag, char *val)
+/* Make sure that tag is one of the allowed ones and that
+ * val is compatible */
+{
+return cdwValidateTagName(tag);
+}
+
+struct slPair *cdwFormatList()
+/* Return list of formats.  The name of the list items are the format names.
+ * The vals are short descriptions. */
+{
+static struct slPair *list = NULL;
+if (list == NULL)
+    {
+    static char *array[] = 
+	{
+	"2bit Two bit per base DNA format",
+	"bam Short read mapping format",
+	"bed Genome browser compatible format for genes and other discrete elements",
+	"bigBed	Compressed BED recommended for files with more than 100,000 elements",
+	"bigWig	Compressed base by base signal graphs",
+	"cram	More highly compressed short read format, currently with less validations",
+	"fasta	Standard DNA format. Must be gzipped",
+	"fastq	Illumina or sanger formatted short read format.  Must be gzipped",
+	"gtf GFF family format for gene and transcript predictions",
+	"html	A file in web page format",
+	"idat	An Illumina IDAT file",
+	"jpg JPEG image format",
+	"pdf Postscripts common document format",
+	"rcc A Nanostring RCC file",
+	"text	Unicode 8-bit formatted text file",
+	"vcf Variant call format",
+	"unknown	File is in  format unknown to the data hub.  No validations are applied",
+	};
+    int i;
+    for (i=0; i<ArraySize(array); ++i)
+        {
+	char *buf = cloneString(array[i]);
+	char *val = buf;
+	char *tag = nextWord(&val);
+	assert(tag != NULL && val != NULL);
+	struct slPair *pair = slPairNew(tag, cloneString(val));
+	slAddHead(&list, pair);
+	freeMem(buf);
+	}
+    slReverse(&list);
+    }
+return list;
+}
 

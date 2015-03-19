@@ -13,6 +13,39 @@ table cdwUser
     string email unique;   "Email address - required"
     char[37] uuid index; "Help to synchronize us with Stanford."
     byte isAdmin;	"If true the use can modify other people's files too."
+    uint primaryGroup;	"If this is non-zero then we'll make files with this group association."
+    )
+
+table cdwGroup
+"A group in the access control sense"
+    (
+    uint id primary auto;   "Autoincremented user ID"
+    string name unique; "Symbolic name for group, should follow rules of a lowercase C symbol."
+    lstring description; "Description of group"
+    )
+
+table cdwGroupFile
+"Association table between cdwFile and cdwGroup"
+    (
+    uint fileId index;	"What is the file"
+    uint groupId;	"What is the group"
+    )
+
+table cdwGroupUser
+"Association table between cdwGroup and cdwUser"
+    (
+    uint userId index;	"What is the user"
+    uint groupId index;	"What is the group"
+    )
+
+table cdwLab
+"A contributing lab"
+    (
+    uint id primary auto;      "Autoincremented user ID"
+    string name unique;	"Shorthand name for lab, all lower case"
+    string pi;   	"Principle investigator responsible for lab"
+    string institution; "University or other institution hosting lab"
+    string url;		"URL of lab page"
     )
 
 table cdwScriptRegistry
@@ -56,6 +89,14 @@ table cdwSubmitDir
     bigInt historyBits; "Open history with most recent in least significant bit. 0 for upload failed, 1 for success"
     )
 
+table cdwMetaTags
+"Where we keep expanded metadata tags for each file, though many share."
+    (
+    uint id primary auto;                    "Autoincrementing table id"
+    char[32] md5 index;               "md5 sum of tags string"
+    lstring tags;               "CGI encoded name=val pairs from manifest"
+    )
+
 table cdwFile
 "A file we are tracking that we intend to and maybe have uploaded"
     (
@@ -71,9 +112,13 @@ table cdwFile
     bigInt size;                "File size in manifest"
     char[32] md5 index;               "md5 sum of file contents"
     lstring tags;               "CGI encoded name=val pairs from manifest"
+    uint metaTagsId;      "ID of associated metadata tags"
     lstring errorMessage; "If non-empty contains last error message from upload. If empty upload is ok"
     string deprecated; "If non-empty why you shouldn't use this file any more."
     uint replacedBy;   "If non-zero id of file that replaces this one."
+    byte userAccess;  "0 - no, 1 - read, 2 - read/write"
+    byte groupAccess;  "0 - no, 1 - read, 2 - read/write"
+    byte allAccess;  "0 - no, 1 - read, 2 - read/write"
     )
 
 table cdwSubmit
@@ -168,7 +213,7 @@ table cdwValidFile
     double depth;   "Estimated genome-equivalents covered by possibly overlapping data"
     byte singleQaStatus;  "0 = untested, 1 =  pass, -1 = fail, 2 = forced pass, -2 = forced fail"
     byte replicateQaStatus;  "0 = untested, 1 = pass, -1 = fail, 2 = forced pass, -2 = forced fail"
-    string part; "Manifest's file part. Values 1,2,3... Used for fastqs split for analysis"
+    string part; "Manifest's file_part. Values 1,2,3... Used for fastqs split for analysis"
     string pairedEnd; "The paired_end tag from the manifest.  Values 1,2 or ''"
     byte qaVersion; "Version of QA pipeline making status decisions"
     double uniqueMapRatio; "Fraction of reads that map uniquely to genome for bams and fastqs"
@@ -228,6 +273,36 @@ table cdwBamFile
     double u4mUniqueRatio; "u4mUniqPos/u4mReadCount - measures library diversity"
     bigInt targetBaseCount;  "Count of bases in mapping target"
     uint targetSeqCount; "Number of chromosomes or other distinct sequences in mapping target"
+    )
+
+table cdwVcfFile
+"Info on what is in a vcf file beyond whet's in cdwValidFile"
+    (
+    uint id primary auto;   "ID in this table"
+    uint fileId unique;	"ID in cdwFile table."
+    int vcfMajorVersion; "VCF file major version"
+    int vcfMinorVersion; "VCF file minor version"
+    int genotypeCount; "How many genotypes of data"
+    bigInt itemCount; "Number of records in VCF file"
+    int chromsHit;  "Number of chromosomes (or contigs) with data"
+    bigInt passItemCount; "Number of records that PASS listed filter"
+    double passRatio; "passItemCount/itemCount"
+    bigInt snpItemCount; "Number of records that are just single base substitution, no indels"
+    double snpRatio;  "snpItemCount/itemCount"
+    bigInt sumOfSizes; "The sum of sizes of all records"
+    bigInt basesCovered; "Bases with data. Equals sumOfSizes if no overlap of records."
+    int xBasesCovered; "Number of bases of chrX covered"
+    int yBasesCovered; "Number of bases of chrY covered"
+    int mBasesCovered; "Number of bases of chrM covered"
+    bigInt haploidCount; "Number of genotype calls that are haploid"
+    double haploidRatio;  "Ratio of hapload to total calls"
+    bigInt phasedCount;	"Number of genotype calls that are phased"
+    double phasedRatio;	"Ration of phased calls to total calls"
+    byte gotDepth; "If true then have DP value in file and in depth stats below"
+    double depthMin;  "Min DP reported depth"
+    double depthMean; "Mean DP value"
+    double depthMax;	"Max DP value"
+    double depthStd;	"Standard DP deviation"
     )
 
 table cdwQaFail
@@ -377,12 +452,23 @@ table cdwJob
 table cdwSubmitJob
 "A submission job to be run asynchronously and not too many all at once."
     (
-    uint id primary auto;    "Job id"
+    uint id primary auto;    "Submit id"
     lstring commandLine; "Command line of job"
     bigInt startTime; "Start time in seconds since 1970"
     bigInt endTime; "End time in seconds since 1970"
     lstring stderr; "The output to stderr of the run - may be nonempty even with success"
     int returnCode; "The return code from system command - 0 for success"
     int pid;	"Process ID for running processes"
+    )
+
+table cdwTrackViz
+"Some files can be visualized as a track. Stuff to help define that track goes here."
+    (
+    uint id primary auto; "Id of this row in the table"
+    uint fileId;	"File this is a viz of"
+    string shortLabel;	"Up to 17 char label for track"
+    string longLabel; "Up to 100 char label for track"
+    string type;  "One of the customTrack types such as bam,vcfTabix,bigWig,bigBed"
+    string bigDataFile; "Where big data file lives relative to cdwRootDir"
     )
 

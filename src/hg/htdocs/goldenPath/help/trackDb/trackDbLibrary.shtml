@@ -1078,12 +1078,12 @@
     <pre>   exonArrows off</pre>
 </DIV>
 
-<DIV class="exonNumbers"><span class="types genePred bed broadPeak psl"></span>
+<DIV class="exonNumbers"><span class="types genePred bed psl"></span>
 <div class="format"><code>exonNumbers &lt;on/off&gt;</code></div>
     <P>On tracks that show
     exons or blocks within features, mouseover/hover shows exon and intron numbers. 
     Exon and intron numbers are typically shown by default
-    in these types of tracks, with the exception of tracks in the Regulation group. 
+    in these types of tracks. 
     The mouseover exon and intron numbers can be explicitly shown or hidden using this setting.
     </P>
     <P><B>Example:</B></P>
@@ -1491,6 +1491,17 @@
     changed with <A onclick="jumpTo(this)" HREF="#">directUrl</A>, where %s
     is replaced by the identifier.
     </P>
+    <p>
+    bigBed files are often created using the UCSC <tt>bedToBigBed</tt> program.
+    By default, this program expects only a single word for BED item names.  To
+    tell the program to accept multiple words separated by spaces (required for
+    this track setting), you will need to use the <tt>-tab</tt> option for
+    <tt>bedToBigBed</tt>.  This tells the program that that tab characters are
+    used instead of spaces to separate fields of the BED file.  Please note that
+    this option will only work if tab characters are used as the field separator
+    throughout your BED file.  More information on creating bigBed files is
+    available <a href="../bigBed.html">here</a>.
+    </p>
 
 </DIV>
 

@@ -40,10 +40,161 @@
 <HR>
 <!-- ============= 2015 archived news ============= -->
 <a name="2015"></a>
+<a name="030315"></a> <!-- add <hr> to bottom of first entry when pushing down-->
+        <p>
+        <font color="#00666" size="4"><b>03 March 2015 - Use UDR for Quick Sizable Downloads</b></font>
+        </p>
+        <p>
+        The UCSC Genome Browser is pleased to share a download protocol to use when downloading
+        large sets of files from our download servers: <b>UDR (UDT Enabled Rsync)</b>. UDR utilizes rsync
+        as the transport mechanism, but sends the data over the UDT protocol, which enables huge
+        amounts of data to be downloaded efficiently over long distances.
+        </p>
+        <p>
+        Please note that we now have two identical download servers to better serve your needs. You can use either one:
+        <p>
+        <a href="http://hgdownload.cse.ucsc.edu" target="_blank">http://hgdownload.cse.ucsc.edu</a><br>
+        <a href="http://hgdownload-sd.sdsc.edu" target="_blank">http://hgdownload-sd.sdsc.edu</a>
+        <p>
+        <h4>The Background:</h4>
+        <p>
+        Typical TCP-based protocols like http, ftp and rsync have a problem in that the further
+        away the download source is from you, the slower the speed becomes. Protocols like UDT/UDR
+        allow for many UDP packets to be sent in batch, thus allowing for much higher transmit speeds
+        over long distances. UDR will be especially useful for users who are downloading from places
+        that are far away from California. <em>The US East Coast and the international community will likely
+        see much higher download speeds by using UDR rather than rsync, http or ftp.</em></p>
+        <p>
+        <h4>Getting UDR & Setting it up on your System:</h4>
+        <p>
+        It should be noted that UDR is not written or managed by UCSC, it was written by the
+        Laboratory for Advanced Computing at the University of Chicago. It has been tested to work
+        under Linux, FreeBSD and Mac OSX, but may work under other UNIX variants. The source code can
+        be obtained here, through GitHub:</p>
+        <p>
+        <a href="https://github.com/LabAdvComp/UDR" target="_blank">https://github.com/LabAdvComp/UDR</a>
+        <p>
+        If you need help building the UDR binaries or have questions about how UDR functions,
+        please read the documentation on the GitHub page, and if necessary, contact the UDR authors
+        via the GitHub page. We recommend reading the documentation on the UDR GitHub page to better
+        understand how UDR works. UDR is written in C++. UDR is Open Source and is released under the
+        Apache 2.0 License. You must first have rsync installed on your system.</p>
+        <p>
+        For your convenience, we are offering a binary distribution of UDR for Red Hat Enterprise Linux 6.x and 7.x
+        (or variants such as CentOS 6/7 or Scientific Linux 6/7).  You'll find the rpm packages here:</p>
+        <p>
+        <a href="http://hgdownload.cse.ucsc.edu/admin/udr" target="_blank">http://hgdownload.cse.ucsc.edu/admin/udr</a>
+        <p>
+        For RHEL 6 we have 32 bit and 64 bit packages, but for RHEL 7 we have dropped the 32 bit builds and only
+        offer a 64 bit package.  But if you need a 32 bit package for RHEL 7 you can still download the source and
+        compile it yourself, as is an option for any other Linux OS.</p>
+        <p>
+        <h4>Example of Using UDR to Download ENCODE Data from the UCSC Genome Browser Download Server(s):</h4>
+        <p>
+        Once you have a working UDR binary, either by building from source or by installing the rpm
+        (if you are using RHEL 6.x or other variant), you can download files from either of our our
+        download servers in a very similar fashion to rsync. For example, using rsync, you may want
+        to download all of the ENCODE information for the mm9 database using the following command:</p>
+        <p>
+        <pre class="code">$ rsync -avP rsync://hgdownload.soe.ucsc.edu/goldenPath/mm9/encodeDCC/ /my/local/mm9/</pre>
+        <p>
+        Using UDR is very similar. The UDR syntax for downloading the same data would be:</p>
+        <p>
+        <pre class="code">$ udr rsync -avP hgdownload.cse.ucsc.edu::goldenPath/mm9/encodeDCC/ /my/local/mm9/</pre>
+        <p>
+        If you installed the rpm, use the 'man udr' command for more information via the man page;
+        if you installed from source please refer to the UDR GitHub page for more details on the
+        capabilities of UDR and how to use it.</p>
+        <p>
+        <h4>Firewall Considerations:</h4>
+        <p>
+        UDR establishes connections on TCP/9000, then transmits the data stream over UDP/9000-9100.
+        Your institution may need to modify its firewall rules to allow inbound and outbound ports
+        TCP/9000 and UDP/9000-9100 from either of the two download machines.</p>
+        <p>
+        If you decide to install and use UDR, we hope that you experience greatly increased download
+        speeds. If you have difficulties installing UDR on your system, please contact the Laboratory
+        for Advanced Computing through their gitHub page: <a href="https://github.com/LabAdvComp/UDR"
+        target="_blank">https://github.com/LabAdvComp/UDR</a>.
+        <hr>
 
+<a name="022615"></a>
+        <p>
+        <font color="#00666" size="4"><b>26 February 2015 - New Training Video!</b></font>
+        <p>
+        Ever wondered how to find the tables associated with your favorite Browser track?
+        Find out how in our new training video. See our
+        <a href="../training/index.html" target="_blank">training page</a>, our
+        <a href="http://bit.ly/genomebrowserYoutube" target=_"blank">YouTube channel</a>, and our
+        <a href="http://genome.ucsc.edu/blog/introducing-the-genome-browser-youtube-channel/" target="_blank">blog</a> for details.
+        <hr>
+
+<a name="021215"></a>
+        <p>
+        <font color="#00666" size="4"><b>12 February 2015 - Blat Your Assembly Hub</b></font>
+        </p>
+        <p>
+        Assembly data hubs, track hubs that allow researchers to annotate genomes that are
+        not in the UCSC Genome Browser, can now use blat to quickly find DNA and protein
+        sequences in their unique assemblies.
+        </p>
+        <p>
+        While running remote blat servers with the gfServer utility, you can now add lines to your
+        assembly hub's genomes.txt file to inform the Browser where to send blat searches.
+        Or by downloading and installing a virtual machine Genome Browser In a Box
+        <a href="help/gbib.html" target="_blank">(GBiB)</a>,
+        you can alternatively locally run gfServers, preinstalled on GBiB, all from your laptop.
+        For more information see the <a href="http://genomewiki.ucsc.edu/index.php/Assembly_Hubs"
+        target="_blank">Assembly Hub Wiki</a> and the new <a href="help/hubQuickStartAssembly.html"
+        target="_blank">Quick Start Guide to Assembly Hubs</a>. 
+        </p>
+        <hr>
+<a name="021115"></a>
+        <p>
+        <font color="#00666" size="4"><b>11 February 2015 -
+        dbSNP 142 Available for hg19 and hg38</b></font>
+        <p>
+        We are pleased to announce the release of four tracks derived from NCBI
+        <a href="http://www.ncbi.nlm.nih.gov/SNP/" target="_blank">dbSNP</a> Build 142
+        data, available on the two most recent human assemblies GRCh37/hg19 and GRCh38/hg38.
+        The new tracks contain a substantial amount of additional annotation data not
+        included in previous dbSNP tracks, with corresponding coloring and filtering options
+        in the Genome Browser.
+        </p>
+        <p>
+        There are four SNP tracks available as part of this release. One is a track
+        containing all mappings of reference SNPs to the human assembly, labeled
+        "All SNPs (142)". The other three tracks are subsets of this track and show
+        interesting and easily defined subsets of dbSNP:
+        </p>
+        <ul>
+        <li>Common SNPs (142): uniquely mapped variants that appear in at least 1%
+        of the population or are 100% non-reference
+        <li>Flagged SNPs (142): uniquely mapped variants, excluding Common SNPs,
+        that have been flagged by dbSNP as "clinically associated"
+        <li>Mult. SNPs (142): variants that have been mapped to more than one genomic location
+        </ul>
+        <p>
+        By default, only the Common SNPs (142) are visible; other tracks must be
+        made visible using the track controls. You will find the other SNPs (142) tracks on
+        both of GRCh37/hg19 and GRCh38/hg38 browsers in the "Variation" group.
+        </p>
+        <p>
+        The tracks were produced at UCSC by Angie Hinrichs and Jonathan Casper. We'd like
+        to thank the dbSNP group at NCBI for providing access to these data.
+        </p>
+        <p>
+        As part of this release, we are also retiring the older dbSNP Build 135 and 137
+        data from display on the GRCh37/hg19 human assembly.  Those tracks will still be
+        available for viewing on our
+        <a href="http://genome-preview.soe.ucsc.edu" target="_blank">preview server</a>,
+        and the associated masked FASTA files will continue to be available on our
+        <a href="http://hgdownload.soe.ucsc.edu" target="_blank">download server</a>.
+        </p>
+  <hr>
 <a name="020215"></a><!-- add <hr> to bottom of first entry when pushing down-->
 	<p>
-        <font color="#00666" size="4"><b>2 Febuary 2015 - Host a Genome Browser Workshop</b></font>
+        <font color="#00666" size="4"><b>2 February 2015 - Host a Genome Browser Workshop</b></font>
 	</p>
         <p>
         New timeslots are now available to host a Genome Browser workshop at your institution. Thanks to the funding support of NHGRI,
@@ -63,7 +214,7 @@
         <font color="#00666" size="4"><b>23 January 2015 - Genome Browser YouTube Channel</b></font>
 
         <p>We are pleased to announce the release of the UCSC Genome Browser
-        <a href="http://bit.ly/genomebrowserYoutube" target=_blank">YouTube channel</a>.
+        <a href="http://bit.ly/genomebrowserYoutube" target=_"blank">YouTube channel</a>.
         The channel contains short videos showing how to use the Genome Browser and associated
         tools to solve selected problems.  The videos were produced by Robert Kuhn and Pauline Fujita,
         with assistance from Luvina Guruvadoo, Jonathan Casper, Matt Speir and the rest of the Browser staff.
@@ -76,7 +227,11 @@
         send them to our training group at:
         </p>
 
-        <p>ucscgbtraining@soe.ucsc.edu
+        <p>
+&#117;&#99;&#115;&#99;g&#98;&#116;&#114;&#97;&#105;n&#105;n&#103;&#64;&#115;&#111;&#101;.
+&#117;c&#115;c.
+&#101;&#100;&#117;
+<!-- above address is ucscgbtraining at soe.ucsc.edu -->
 
        <hr>
         

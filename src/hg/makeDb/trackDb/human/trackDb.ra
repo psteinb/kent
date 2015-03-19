@@ -864,7 +864,7 @@ track snp141Common
 shortLabel Common SNPs(141)
 longLabel Simple Nucleotide Polymorphisms (dbSNP 141) Found in >= 1% of Samples
 group varRep
-visibility dense
+visibility hide
 url http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?type=rs&rs=$$
 urlLabel dbSNP:
 snpSeq snp141Seq
@@ -878,7 +878,6 @@ orangDb ponAbe2
 macaqueDb rheMac2
 hapmapPhase III
 codingAnnotations snp141CodingDbSnp,
-priority 1
 
 track snp141Flagged
 shortLabel Flagged SNPs(141)
@@ -2994,6 +2993,16 @@ type bed 4
 hgsid on
 url http://cancer.sanger.ac.uk/cosmic/mutation/overview?id=
 
+track cosmicNew
+shortLabel COSMIC
+longLabel COSMIC: Catalogue Of Somatic Mutations In Cancer
+group phenDis
+visibility hide
+color 200,0,0
+type bigBed 4 +
+url http://cancer.sanger.ac.uk/cosmic/mutation/overview?id=
+html cosmic
+
 track lovd
 shortLabel LOVD Variants
 longLabel Leiden Open Variation Database Public Variants
@@ -3967,7 +3976,7 @@ type bed 3
     parent iscaComposite
     type gvf
     noScoreFilter .
-    url https://www.iscaconsortium.org/isca/ucsc/$D/DetailsPages/$$.html
+    url http://www.ncbi.nlm.nih.gov/dbvar/?term=$$
     urlLabel ISCA details:
 
 	track iscaCuratedPathogenic

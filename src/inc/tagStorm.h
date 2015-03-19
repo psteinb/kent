@@ -25,9 +25,14 @@
  * The file is interpreted so that lower level stanzas inherit tags from higher level ones.
  * This file might be used as so:
  *   struct tagStorm *tags = tagStormFromFile("metadata.txt");
- *   struct hash *fileIndex = tagStormIndexUnique(tags, "file");
- *   struct tagStanza *stanza = hashMustFindVal(fileIndex, "hg19/chipSeq/helaCTCF.broadPeak.bigBed");
+ *   struct hash *fileIndex = tagStormUniqueIndex(tags, "file");
+ *   struct tagStanza *stanza = hashMustFindVal(fileIndex,"hg19/chipSeq/helaCTCF.broadPeak.bigBed");
  *   char *target = tagFindVal(stanza, "target");	// Target is CTCF
+ *
+ * Most commonly indentation is done one tab-character per indentation level.  Spaces may also
+ * be used.  If spaces and tabs are mixed sometimes you get surprises.  The tab-stop is interpreted
+ * as happening every 8 spaces.
+ *
  */
 
 #ifndef TAGSTORM_H
@@ -49,8 +54,10 @@ struct tagStanza
     struct tagStanza *next;	/* Pointer to next younger sibling. */
     struct tagStanza *children;	/* Pointer to eldest child. */
     struct tagStanza *parent;	/* Pointer to parent. */
-    struct slPair *tagList;	/* All tags, including the "meta" one. */
+    struct slPair *tagList;	/* All tags. Best not to count on the order. */
     };
+
+/** Read and write tag storms from/to files. */
 
 struct tagStorm *tagStormFromFile(char *fileName);
 /* Load up all tags from file.  */
@@ -69,8 +76,10 @@ void tagStormWriteAsFlatTab(struct tagStorm *tagStorm, char *fileName, char *idT
     boolean withParent, int maxDepth);
 /* Write tag storm flattening out hierarchy so kids have all of parents tags in tab-sep format */
 
+#ifdef OLD
 char *tagStanzaVal(struct tagStanza *stanza, char *tag);
 /* Return value associated with tag in stanza or any of parent stanzas */
+#endif /* OLD */
 
 struct hash *tagStormIndex(struct tagStorm *tagStorm, char *tag);
 /* Produce a hash of stanzas containing a tag keyed by tag value */
@@ -83,9 +92,9 @@ void tagStormUpdateTag(struct tagStorm *tagStorm, struct tagStanza *stanza, char
 /* Add tag to stanza in storm, replacing existing tag if any. If tag is added it's added to
  * end. */
 
-/** Stuff for constructing a tag storm a tag at a time rather than building it from file */
+/** Stuff for constructing a tag storm a tag at a time rather than building it from file  */
 
-struct tagStorm *tagStormNew(char *fileName);
+struct tagStorm *tagStormNew(char *name);
 /* Create a new, empty, tagStorm. */
 
 struct tagStanza *tagStanzaNew(struct tagStorm *tagStorm, struct tagStanza *parent);
@@ -101,9 +110,37 @@ struct slPair *tagStanzaAdd(struct tagStorm *tagStorm, struct tagStanza *stanza,
     char *tag, char *val);
 /* Add tag with given value to stanza */
 
+struct slPair *tagStanzaAppend(struct tagStorm *tagStorm, struct tagStanza *stanza, 
+    char *tag, char *val);
+/* Add tag with given value to the end of the stanza */
+
+void tagStanzaAddLongLong(struct tagStorm *tagStorm, struct tagStanza *stanza, char *var, 
+    long long val);
+/* Add long long integer valued tag to stanza */
+
+void tagStanzaAddDouble(struct tagStorm *tagStorm, struct tagStanza *stanza, char *var, 
+    double val);
+/* Add double valued tag to stanza */
+
 void tagStormReverseAll(struct tagStorm *tagStorm);
 /* Reverse order of all lists in tagStorm.  Use when all done with tagStanzaNew
  * and tagStanzaAdd (which for speed build lists backwards). */
+
+/** Information about a tag storm */
+
+struct slName *tagStormFieldList(struct tagStorm *tagStorm);
+/* Return list of all fields in storm */
+
+struct hash *tagStormFieldHash(struct tagStorm *tagStorm);
+/* Return an integer-valued hash of fields, keyed by tag name and with value
+ * number of times field is used.  For most purposes just used to make sure
+ * field exists though. */
+
+struct hash *tagStormCountTagVals(struct tagStorm *tags, char *tag);
+/* Return an integer valued hash keyed by all the different values
+ * of tag seen in tagStorm.  The hash is filled with counts of the
+ * number of times each value is used that can be recovered with 
+ * hashIntVal(hash, key) */
 
 /** Stuff for finding tags within a stanza */
 
@@ -118,5 +155,8 @@ char *tagFindVal(struct tagStanza *stanza, char *name);
 char *tagMustFindVal(struct tagStanza *stanza, char *name);
 /* Return value of tag of given name within stanza or any of it's parents. Abort if
  * not found. */
+
+struct slPair *tagListIncludingParents(struct tagStanza *stanza);
+/* Return a list of all tags including ones defined in parents. */
 
 #endif /* TAGSTORM_H */

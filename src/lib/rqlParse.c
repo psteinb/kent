@@ -89,7 +89,7 @@ switch (type)
         fprintf(f, "%s", val.s);
 	break;
     case rqlTypeInt:
-        fprintf(f, "%d", val.i);
+        fprintf(f, "%lld", val.i);
 	break;
     case rqlTypeDouble:
         fprintf(f, "%f", val.x);
@@ -159,7 +159,7 @@ else if (isdigit(c))
 	    {
 	    char buf[32];
 	    tok = tokenizerMustHaveNext(tkz);
-	    safef(buf, sizeof(buf), "%d.%s", p->val.i, tok);
+	    safef(buf, sizeof(buf), "%lld.%s", p->val.i, tok);
 	    p->type = rqlTypeDouble;
 	    p->val.x = sqlDouble(buf);
 	    }
@@ -383,9 +383,9 @@ if (tok != NULL)
     else if (sameString(tok, "<"))
         {
 	if (eatMatchingTok(tkz, "="))
-	    op = rqlOpGe;
-	else
 	    op = rqlOpLe;
+	else
+	    op = rqlOpLt;
 	}
     else if (sameString(tok, "not"))
         {
@@ -703,6 +703,15 @@ char *extra = tokenizerNext(tkz);
 if (extra != NULL)
     errAbort("Extra stuff starting with '%s' past end of statement line %d of %s", 
     	extra, lf->lineIx, lf->fileName);
+return rql;
+}
+
+struct rqlStatement *rqlStatementParseString(char *string)
+/* Return a parsed-out RQL statement based on string */
+{
+struct lineFile *lf = lineFileOnString("query", TRUE, cloneString(string));
+struct rqlStatement *rql = rqlStatementParse(lf);
+lineFileClose(&lf);
 return rql;
 }
 
