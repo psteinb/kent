@@ -97,9 +97,6 @@ struct trackDb *showTrackField(struct grp *selGroup,
 char *showTableField(struct trackDb *track, char *varName, boolean useJoiner);
 /* Show table control and label. */
 
-int trackDbCmpShortLabel(const void *va, const void *vb);
-/* Sort track by shortLabel. */
-
 struct slName *getDbListForGenome();
 /* Get list of selectable databases. */
 
@@ -168,10 +165,6 @@ char *connectingTableForTrack(char *rawTable);
 
 char *chromTable(struct sqlConnection *conn, char *table);
 /* Get chr1_table if it exists, otherwise table.
- * You can freeMem this when done. */
-
-char *chrnTable(struct sqlConnection *conn, char *table);
-/* Return chrN_table if table is split, otherwise table.
  * You can freeMem this when done. */
 
 char *getDbTable(char *db, char *table);

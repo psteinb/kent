@@ -170,23 +170,15 @@ struct dyString *requestName = getRequestName();
 struct dyString *requestURL = dyStringCreate("http://%s/%s", cgiServerNamePort(), path);
 struct dyString *greatRequest;
 
-/* Special handling for requests that originate from the Bejerano Lab. */
-char hostname[256];
-gethostname(hostname, 256);
-if (sameWord(hostname, "dev.Stanford.EDU"))
-{
-dyStringFree(&requestURL);
-requestURL = dyStringCreate("http://dev.stanford.edu/greattmp/%s", rindex(path, '/') + 1);
-greatRequest = dyStringCreate(
-    "<meta http-equiv='refresh' content='0;url=http://polg.stanford.edu/lab/cgi-bin/greatStart.php?requestURL=%s&requestSpecies=%s&requestName=%s&requestSender=UCSC%20Table%20Browser'>",
+// archive server for hg18
+if (sameWord("hg18", database))
+  greatRequest = dyStringCreate(
+    "<meta http-equiv='refresh' content='0;url=http://bejerano.stanford.edu/great/public-2.0.2/cgi-bin/greatStart.php?requestURL=%s&requestSpecies=%s&requestName=%s&requestSender=UCSC%20Table%20Browser'>",
     dyStringContents(requestURL), database, dyStringContents(requestName));
-}
 else
-{
-greatRequest = dyStringCreate(
+  greatRequest = dyStringCreate(
     "<meta http-equiv='refresh' content='0;url=http://great.stanford.edu/public/cgi-bin/greatStart.php?requestURL=%s&requestSpecies=%s&requestName=%s&requestSender=UCSC%20Table%20Browser'>",
     dyStringContents(requestURL), database, dyStringContents(requestName));
-}
 
 hPrintf("<b>GREAT</b> is processing BED data from \"%s\"...please wait.\n", dyStringContents(requestName));
 hWrites(dyStringContents(greatRequest));

@@ -1396,4 +1396,7 @@ boolean vocabSettingIsEncode(char *setting);
     (table-based vocabs)
 */
 
+boolean isEncode2(char *database);
+// Return true for ENCODE2 assemblies
+
 #endif /* HUI_H */
