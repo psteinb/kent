@@ -50,7 +50,7 @@ double total = 0, average;
 int i;
 int q1Index, q3Index;		/*	quartile positions	*/
 double q1, q3;			/*	quartile values	*/
-double outlier1, outlier2;	/* outliers, 3 * interquartile distance below Q1 or above Q3 */
+double outlier1, outlier2;	/* outliers, 1.5 * interquartile distance below Q1 or above Q3 */
 double oneVar, totalVar = 0;
 
 for (i=0; i<count; ++i)
@@ -101,8 +101,8 @@ if (tableOut)
 else
     {
 /* MH default output now is on a single line */
-	 outlier1 = q1 - ((q3-q1)*3);
-	 outlier2 = q3 + ((q3-q1)*3);
+	 outlier1 = q1 - ((q3-q1)*1.5);
+	 outlier2 = q3 + ((q3-q1)*1.5);
 	 printf("Q1 %.3f\tmedian %.3f\tQ3 %.3f\tave %.3f\tmin-max %.3f - %.3f\tcount %d\tsum %.3f\tsd %.3f\toutlier1: %.2f\toutlier2: %.2f\n", 
       q1,array[count/2],q3,average,minVal,maxVal,count,total,stdDev,outlier1,outlier2);
 
