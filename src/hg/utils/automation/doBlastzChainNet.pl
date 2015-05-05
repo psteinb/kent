@@ -596,8 +596,8 @@ _EOF_
       print( ", and a runtime over 10 minutes" );
   }
   print( " ***\n" ); 
-  if( $noJobs > 15000 ) {
-      print( "Stopped $0. You have $noJobs right now. To achieve a good number of jobs in the range of 15000, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
+  if( $noJobs > 3000 ) {
+      print( "Stopped $0. You have $noJobs right now. To achieve a good number of jobs in the range of 3000, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
       exit( 0 ); 
   } else {
       print( "Ok, continue with jobs.\n" ); 
