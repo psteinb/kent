@@ -343,7 +343,7 @@ _EOF_
   }
   $bossScript->add(<<_EOF_
 rm -rf $partDir
-$Bin/simplePartition.pl $clusterSeq 1000000 $partDir
+$Bin/simplePartition.pl $clusterSeq 4000000 $partDir
 rm -f $buildDir/RMPart
 ln -s $partDir $buildDir/RMPart
 
