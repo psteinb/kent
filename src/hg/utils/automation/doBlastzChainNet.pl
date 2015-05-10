@@ -717,10 +717,13 @@ _EOF_
   close($fh); 
 
 #customize the $myparaRun variable depending upon the clusterType: 
+# Now the cat is executed as a single job in the medium queue (can take ~30 min total)
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make catRun_$tDb$qDb jobList\n
+echo \"jobList\" > jobListCombinedClusterJob\n
+chmod +x jobList\n
+para.pl make catRun_$tDb$qDb jobListCombinedClusterJob -q medium\n
 para.pl check catRun_$tDb$qDb\n
 para.pl time catRun_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -771,19 +774,19 @@ sub doFilterPsl {
       "$successFile).\n";
   }
   
-  my $checkOutExists = " ../pslPartsFiltered/\$(file1)";
+  my $checkOutExists = " splitPSL/\$(file1).filtered";
 if($clusterType eq "genome"){
-$checkOutExists = "{check out exists" . " ../pslPartsFiltered/\$(file1)}";
+$checkOutExists = "{check out exists" . " splitPSL/\$(file1).filtered}";
 }
   &HgAutomate::mustMkdir($runDir);
-  &HgAutomate::makeGsub($runDir, "./filterPsl.csh ../pslParts/\$(file1) $checkOutExists");
+  &HgAutomate::makeGsub($runDir, "./filterPsl.csh splitPSL/\$(file1) $checkOutExists");
   
   `touch "$runDir/para_hub_$hub"`;
 
   my $fh = &HgAutomate::mustOpen(">$runDir/filterPsl.csh");
   print $fh <<_EOF_
 #!/bin/csh -ef
-zcat \$1 | filterPslIdentityEntropy.py /dev/stdin $defVars{'SEQ_IDENT'} $defVars{'MIN_ENTROPY'} $defVars{'WIN_SIZE'} $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} /dev/stdout | gzip -c > \$2
+filterPslIdentityEntropy.py \$1 $defVars{'SEQ_IDENT'} $defVars{'MIN_ENTROPY'} $defVars{'WIN_SIZE'} $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} \$2
 _EOF_
   ;
   close($fh);
@@ -802,11 +805,24 @@ cat run.time\n";
   my $bossScript = new HgRemoteScript("$runDir/doFilterPsl.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
-(cd $buildDir/pslParts; find . -maxdepth 1 -type f | grep '.psl.gz' ) > tParts.lst
-chmod a+x filterPsl.csh
+# split all psl files
+rm -rf splitPSL
+mkdir splitPSL
+(find $buildDir/pslParts/ -maxdepth 1 -type f -name "*.psl.gz" -printf "%f\\n" | sed 's/.psl.gz//g' ) | xargs -i sh -c "echo split file {}.psl.gz; pslPartition $buildDir/pslParts/{}.psl.gz splitPSL -namePrefix={}.PART -outLevels=0 -partSize=100000; echo DONE"
+
+# get a list of split files
+(find splitPSL -maxdepth 1 -type f -name "*.psl") > tParts.lst
+
+# generate joblist
 $HgAutomate::gensub2 tParts.lst single gsub jobList
-mkdir ../pslPartsFiltered
+
+# cluster run
+chmod a+x filterPsl.csh
 $myParaRun
+
+# combine split output
+mkdir ../pslPartsFiltered
+find splitPSL -maxdepth 1 -type f -name "*.psl.filtered" -exec cat {} \; | gzip > ../pslPartsFiltered/finalFiltered.psl.gz
 _EOF_
     );
   $bossScript->execute();
@@ -814,7 +830,55 @@ _EOF_
 ######################################################################
 ######################################################################
 
+############################################
+# added by Michael Hiller
+# ##########################################
+sub bundlePslForChaining {
+     my ($inputDir, $outputDir, $outputFileList, $maxBases, $gzipped) = @_; 
+ 
+     print "bundlePslForChaining: $inputDir, $outputDir, $outputFileList, maxBases=$maxBases, gzipped=$gzipped\n";
+     my $gzip = "";
+     $gzip = ".gz" if ($gzipped == 1);
 
+     # get filelist
+     my $fileList = `ls $inputDir/*psl$gzip`;
+     print "fileList: $fileList\n";
+
+     # we need 2 tmpDirs. One for pslSortAcc internally. One for the chrom-split files
+     my $splitPSL = `mktemp -d`; chomp($splitPSL);
+     my $tmpDir = `mktemp -d`; chomp($tmpDir);
+     my $call = "pslSortAcc nohead $splitPSL $tmpDir $fileList";
+     print "$call\n";
+     system("$call") == 0 || die("ERROR: $call failed\n");
+     `rm -rf $tmpDir`;
+
+     # bundle
+     $call = "bundleChromSplitPslFiles.perl $splitPSL $defVars{'SEQ1_LEN'} $outputDir -v -maxBases $maxBases";
+     print "$call\n";
+     system("$call") == 0 || die("ERROR: $call failed\n");
+     `rm -rf $splitPSL`;
+
+     # get output filelist
+     $call = "(cd $outputDir; find . -name \"*.psl\" -printf \"%f\\n\" > $outputFileList )";
+     print "$call\n";
+     system("$call") == 0 || die("ERROR: $call failed\n");
+     my $numFiles = `cat $outputFileList | wc -l`; chomp($numFiles);
+     print "outputFileList $outputFileList created with $numFiles files\n";
+}
+ 
+
+sub makePslPartsLst {
+  return if ($opt_debug);
+
+  if ($filterPsl == 1) {
+     bundlePslForChaining("$buildDir/pslPartsFiltered", "$buildDir/axtChain/run/splitPSL", "$buildDir/axtChain/run/pslParts.lst", 50000000, 1);
+  } else {
+     bundlePslForChaining("$buildDir/pslParts", "$buildDir/axtChain/run/splitPSL", "$buildDir/axtChain/run/pslParts.lst", 50000000, 1);
+  }
+}
+
+
+=pod
 sub makePslPartsLst {
   # Create a pslParts.lst file the subdirectories of pslParts; if some
   # are for subsequences of the same sequence, make a single .lst line
@@ -837,6 +901,7 @@ sub makePslPartsLst {
   my $fh = &HgAutomate::mustOpen(">$partsLst");
   my %seqs = ();
   my $count = 0;
+
   foreach my $p (@parts) {
     $p =~ s@^/.*/@@;  $p =~ s@/$@@;
     $p =~ s/\.psl\.gz//;
@@ -860,7 +925,7 @@ sub makePslPartsLst {
     die "makePslPartsLst: didn't find any pslPartsFiltered/ items." if ($filterPsl == 1);
   }
 }
-
+=cut
 
 sub doChainRun {
   # Do a small cluster run to chain alignments to each target sequence.
@@ -900,11 +965,9 @@ if($clusterType eq "genome"){
 	"-linearGap=$defaultChainLinearGap";
 
   my $fh = &HgAutomate::mustOpen(">$runDir/chain.csh");
-  my $pslPartsDir = "pslParts";
-  $pslPartsDir = "pslPartsFiltered" if ($filterPsl == 1);
   print $fh  <<_EOF_
 #!/bin/csh -ef
-zcat ../../$pslPartsDir/\$1*.psl.gz \\
+cat $buildDir/axtChain/run/splitPSL/\$1 \\
 | axtChain -psl -verbose=0 $matrix $minScore $linearGap stdin \\
     $seq1Dir \\
     $seq2Dir \\
@@ -938,6 +1001,7 @@ _EOF_
   }
   close($fh);
 
+  # this splits the psls into chroms and bundles them and produces pslParts.lst 
   &makePslPartsLst();
 #customize the $myparaRun variable depending upon the clusterType: 
 my $myParaRun = $HgAutomate::paraRun;
@@ -1173,7 +1237,7 @@ cat run.time\n";
 # first run patchChain to create the cluster run joblist
 $cat $buildDir/axtChain/$chain | \\
     patchChain.perl /dev/stdin $defVars{'SEQ1_DIR'} $defVars{'SEQ2_DIR'} $defVars{'SEQ1_LEN'} $defVars{'SEQ2_LEN'} \\
-	-chainMinScore $defVars{'CHAIN_MINSCORE'} -gapMaxSizeT $defVars{'GAPMAXSIZE_T'} -gapMaxSizeQ $defVars{'GAPMAXSIZE_Q'} \\
+    -chainMinScore $defVars{'CHAIN_MINSCORE'} -gapMaxSizeT $defVars{'GAPMAXSIZE_T'} -gapMaxSizeQ $defVars{'GAPMAXSIZE_Q'} \\
         -gapMinSizeT $defVars{'GAPMINSIZE_T'} -gapMinSizeQ $defVars{'GAPMINSIZE_Q'} -numJobs $defVars{'NUM_JOBS'} \\
         -jobDir jobs -outputDir $outputDir $filterParameters \\
         -lastzParameters "--format=axt Q=$defVars{'BLASTZ_Q'} K=$defVars{'PATCHBLASTZ_K'} L=$defVars{'PATCHBLASTZ_L'} M=0 T=0 W=$defVars{'PATCHBLASTZ_W'}" 
@@ -1221,23 +1285,28 @@ cat run.time\n";
   $bossScript->add(<<_EOF_
 
 # split by target chrom
-# KS: updated original script: pslSplitOnTarget would create one big job, if 
-# there were 4096 target chromosomes or more. Replaced by pslSortAcc, which 
-# always splits jobs per target chromosomes, no matter how many there are
-pslSortAcc nohead pslOnTarget tempDir ../pslPartsPatchedFiltered/oldAndPatched.psl.gz
+setenv splitPSL `mktemp -d`
+setenv tmpDir `mktemp -d`
+pslSortAcc nohead \$splitPSL \$tmpDir $outputDir/oldAndPatched.psl.gz
+rm -rf \$tmpDir
+
+# and bundle into at least 50 Mb chunks
+bundleChromSplitPslFiles.perl \$splitPSL $defVars{'SEQ1_LEN'} pslBundled -v -maxBases 50000000
+rm -rf \$splitPSL
 
 # create a new chain
-# cluster job: run for every target chrom
+# cluster job: run for every bundle
 mkdir chain
 chmod +x rechain.csh
-find pslOnTarget -name \"*.psl\" | sed 's/.psl\$//g' | sed 's/pslOnTarget\\///g' | awk '{print "./rechain.csh pslOnTarget/"\$1".psl chain/"\$1".chain"}' > jobListReChain
+(cd pslBundled; find . -maxdepth 1 -type f -name "*.psl" -printf "%f\\n") | sed 's/.psl\$//g' | awk '{print "./rechain.csh pslBundled/"\$1".psl chain/"\$1".chain"}' > jobListReChain
+
 $paraReChain
 
 # merge
 find chain -name \"*.chain\" | chainMergeSort -inputList=stdin | gzip -c > $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz
 
 # cleanup a bit and gzip
-rm -rf chain pslOnTarget
+rm -rf chain pslBundled
 _EOF_
     );
 
