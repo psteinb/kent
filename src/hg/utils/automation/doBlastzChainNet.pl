@@ -794,7 +794,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "madmax") {
 	$myParaRun = "
-para.pl make filterPsl_$tDb$qDb jobList -q long\n
+para.pl make filterPsl_$tDb$qDb jobList -q medium\n
 para.pl check filterPsl_$tDb$qDb\n
 para.pl time filterPsl_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -822,7 +822,7 @@ $myParaRun
 
 # combine split output
 mkdir ../pslPartsFiltered
-find splitPSL -maxdepth 1 -type f -name "*.psl.filtered" -exec cat {} \; | gzip > ../pslPartsFiltered/finalFiltered.psl.gz
+find splitPSL -maxdepth 1 -type f -name "*.psl.filtered" -exec cat {} \\; | gzip > ../pslPartsFiltered/finalFiltered.psl.gz
 _EOF_
     );
   $bossScript->execute();
@@ -841,7 +841,8 @@ sub bundlePslForChaining {
      $gzip = ".gz" if ($gzipped == 1);
 
      # get filelist
-     my $fileList = `ls $inputDir/*psl$gzip`;
+     my $fileList = `find $inputDir -name "*psl$gzip" -printf "%p "`; 
+     chomp($fileList);
      print "fileList: $fileList\n";
 
      # we need 2 tmpDirs. One for pslSortAcc internally. One for the chrom-split files
@@ -853,7 +854,7 @@ sub bundlePslForChaining {
      `rm -rf $tmpDir`;
 
      # bundle
-     $call = "bundleChromSplitPslFiles.perl $splitPSL $defVars{'SEQ1_LEN'} $outputDir -v -maxBases $maxBases";
+     $call = "bundleChromSplitPslFiles.perl $splitPSL $defVars{'SEQ1_LEN'} $outputDir -maxBases $maxBases";
      print "$call\n";
      system("$call") == 0 || die("ERROR: $call failed\n");
      `rm -rf $splitPSL`;
