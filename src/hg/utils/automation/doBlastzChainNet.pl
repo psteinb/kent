@@ -711,7 +711,7 @@ if($clusterType eq "genome"){
   my $fh = &HgAutomate::mustOpen(">$runDir/cat.csh");
   print $fh <<_EOF_
 #!/bin/csh -ef
-find $outRoot/\$1/ -name "*.psl" | xargs cat | gzip -c > \$2
+find $outRoot/\$1/ -name "*.psl" | xargs cat | grep "^#" -v | gzip -c > \$2
 _EOF_
   ;
   close($fh); 
