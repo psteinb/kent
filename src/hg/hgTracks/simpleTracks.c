@@ -4737,12 +4737,45 @@ boolean knownGencodeClassFilter(struct track *tg, void *item)
 struct linkedFeatures *lf = item;
 char buffer[1024];
 
-safef(buffer, sizeof buffer, "kgID=\"%s\"", lf->name);
-char *class = sqlGetField(database, "kgXref", "tRnaName", buffer);
+safef(buffer, sizeof buffer, "name=\"%s\" and value=\"basic\"", lf->name);
+char *class = sqlGetField(database, "knownToTag", "value", buffer);
 
-if (sameString(class, "basic"))
+if (class != NULL)
     return TRUE;
 return FALSE;
+}
+
+static void loadFrames(struct sqlConnection *conn, struct linkedFeatures *lf)
+/* Load the CDS part of a genePredExt for codon display */
+{
+char query[4096];
+
+for(; lf; lf = lf->next)
+    {
+    struct genePred *gp = lf->original;
+    gp->optFields |= genePredExonFramesFld | genePredCdsStatFld | genePredCdsStatFld;
+    safef(query, sizeof query, "NOSQLINJ select * from knownCds where name=\"%s\"",
+	gp->name);
+
+    struct sqlResult *sr = sqlMustGetResult(conn, query);
+    char **row = NULL;
+    int sizeOne;
+
+    while ((row = sqlNextRow(sr)) != NULL)
+	{
+	gp->cdsStartStat = parseCdsStat(row[1]);
+	gp->cdsEndStat = parseCdsStat(row[2]);
+	int exonCount = sqlUnsigned(row[3]);
+	if (exonCount != gp->exonCount)
+	    errAbort("loadFrames: %s number of exonFrames (%d) != number of exons (%d)",
+		     gp->name, exonCount, gp->exonCount);
+	sqlSignedDynamicArray(row[4], &gp->exonFrames, &sizeOne);
+	if (sizeOne != gp->exonCount)
+	    errAbort("loadFrames: %s number of exonFrames (%d) != number of exons (%d)",
+		     gp->name, sizeOne, gp->exonCount);
+	}
+    sqlFreeResult(&sr);
+    }
 }
 
 void loadKnownGencode(struct track *tg)
@@ -4756,10 +4789,16 @@ boolean showComposite = cartUsualBoolean(cart, varName, FALSE);
 struct sqlConnection *conn = hAllocConn(database);
 tg->items = connectedLfFromGenePredInRangeExtra(tg, conn, tg->table,
                                         chromName, winStart, winEnd, TRUE);
-hFreeConn(&conn);
+
 /* filter items on selected criteria if filter is available */
 if (!showComposite)
     filterItems(tg, knownGencodeClassFilter, "include");
+
+/* if we're close enough to see the codon frames, we better load them! */
+if (zoomedToCdsColorLevel)
+    loadFrames(conn, tg->items);
+
+hFreeConn(&conn);
 }
 
 void loadGenePredWithName2(struct track *tg)
@@ -5837,13 +5876,22 @@ void lookupRefNames(struct track *tg)
 {
 struct linkedFeatures *lf;
 struct sqlConnection *conn = hAllocConn(database);
-boolean isNative = sameString(tg->table, "refGene");
+boolean isNative = !sameString(tg->table, "xenoRefGene");
 boolean labelStarted = FALSE;
 boolean useGeneName = FALSE;
 boolean useAcc =  FALSE;
 boolean useMim =  FALSE;
+char trackLabel[1024];
+char *labelString = tg->table;
+boolean isRefGene = TRUE;
+if (sameString(labelString, "ncbiRefCurated") || sameString(labelString, "ncbiRefPredicted"))
+    {
+    labelString="ncbiGene";
+    isRefGene = FALSE;
+    }
+safef(trackLabel, sizeof trackLabel, "%s.label", labelString);
 
-struct hashEl *refGeneLabels = cartFindPrefix(cart, (isNative ? "refGene.label" : "xenoRefGene.label"));
+struct hashEl *refGeneLabels = cartFindPrefix(cart, trackLabel);
 struct hashEl *label;
 char omimLabel[48];
 safef(omimLabel, sizeof(omimLabel), "omim%s", cartString(cart, "db"));
@@ -5851,9 +5899,6 @@ safef(omimLabel, sizeof(omimLabel), "omim%s", cartString(cart, "db"));
 if (refGeneLabels == NULL)
     {
     useGeneName = TRUE; /* default to gene name */
-    /* set cart to match what doing */
-    if (isNative) cartSetBoolean(cart, "refGene.label.gene", TRUE);
-    else cartSetBoolean(cart, "xenoRefGene.label.gene", TRUE);
     }
 for (label = refGeneLabels; label != NULL; label = label->next)
     {
@@ -5868,7 +5913,6 @@ for (label = refGeneLabels; label != NULL; label = label->next)
              !endsWith(label->name, omimLabel) )
         {
         useGeneName = TRUE;
-        cartRemove(cart, label->name);
         }
     }
 
@@ -5884,7 +5928,11 @@ for (lf = tg->items; lf != NULL; lf = lf->next)
         }
     if (useGeneName)
         {
-        char *gene = getGeneName(conn, lf->name);
+        char *gene;
+        if  (isRefGene)
+            gene = getGeneName(conn, lf->name);
+        else
+            gene = lf->extra;
         if (gene != NULL)
             {
             dyStringAppend(name, gene);
@@ -6020,6 +6068,16 @@ if (blastRef != NULL)
 else
     for (lf = tg->items; lf != NULL; lf = lf->next)
 	lf->extra = cloneString(lf->name);
+}
+
+void loadNcbiGene(struct track *tg)
+/* Load up RefSeq known genes. */
+{
+enum trackVisibility vis = tg->visibility;
+loadGenePredWithName2(tg);
+if (vis != tvDense)
+    lookupRefNames(tg);
+vis = limitVisibility(tg);
 }
 
 void loadRefGene(struct track *tg)
@@ -6176,6 +6234,15 @@ if (hTableExists(database,  "refSeqStatus"))
     return refGeneColorByStatus(tg, lf->name, hvg);
 else
     return(tg->ixColor);
+}
+
+void ncbiGeneMethods(struct track *tg)
+/* Make NCBI Genes track */
+{
+tg->loadItems = loadNcbiGene;
+tg->itemName = refGeneName;
+tg->mapItemName = refGeneMapName;
+tg->itemColor = refGeneColor;
 }
 
 void refGeneMethods(struct track *tg)
@@ -13357,6 +13424,7 @@ registerTrackHandler("decipher", decipherMethods);
 registerTrackHandler("rgdQtl", rgdQtlMethods);
 registerTrackHandler("rgdRatQtl", rgdQtlMethods);
 registerTrackHandler("refGene", refGeneMethods);
+registerTrackHandler("ncbiGene", ncbiGeneMethods);
 registerTrackHandler("rgdGene2", rgdGene2Methods);
 registerTrackHandler("blastMm6", blastMethods);
 registerTrackHandler("blastDm1FB", blastMethods);

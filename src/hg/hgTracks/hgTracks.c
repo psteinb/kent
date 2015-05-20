@@ -67,7 +67,7 @@
 
 /* Other than submit and Submit all these vars should start with hgt.
  * to avoid weeding things out of other program's namespaces.
- * Because the browser is a central program, most of it's cart
+ * Because the browser is a central program, most of its cart
  * variables are not hgt. qualified.  It's a good idea if other
  * program's unique variables be qualified with a prefix though. */
 char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
@@ -2036,24 +2036,6 @@ rAddToTrackHash(trackHash, trackList);
 return trackHash;
 }
 
-void domAppendToMenu(char *menu, char *url, char *label) 
-/* Add an entry to a drop down menu, by changing the DOM with jquery  */
-{
-printf("$('#%s ul li').last().after('<li><a target=\"_BLANK\" href=\"%s\">%s</a></li>');\n", menu, url, label);
-}
-
-void menuBarAppendExtTools() 
-/* printf a little javascript that adds entries to a menu */
-{
-    char url[SMALLBUF];
-    safef(url,ArraySize(url),"hgTracks?%s=%s&hgt.redirectTool=crispor",cartSessionVarName(), cartSessionId(cart));
-    printf("<script>\n");
-    printf("$(document).ready( function() {\n");
-    domAppendToMenu("tools", url, "External: Tefor CRISPR sites");
-    printf("});\n");
-    printf("</script>\n");
-}
-
 
 void makeActiveImage(struct track *trackList, char *psOutput)
 /* Make image and image map. */
@@ -3949,9 +3931,12 @@ for (track = trackList; track != NULL; track = track->next)
     if (cgiOptionalString("hideTracks"))
 	{
 	s = cgiOptionalString(track->track);
-	if (s != NULL && (hTvFromString(s) != track->tdb->visibility))
+	if (s != NULL)
 	    {
-	    cartSetString(cart, track->track, s);
+	    if (hTvFromString(s) == track->tdb->visibility)
+		cartRemove(cart, track->track);
+	    else
+		cartSetString(cart, track->track, s);
 	    }
 	}
     if (s != NULL && !track->limitedVisSet)
@@ -4394,6 +4379,7 @@ for (track = trackList; track != NULL; track = track->next)
 hPrintf("</span>\n");
 }
 
+
 void doTrackForm(char *psOutput, struct tempName *ideoTn)
 /* Make the tracks display form with the zoom/scroll buttons and the active
  * image.  If the ideoTn parameter is not NULL, it is filled in if the
@@ -4630,13 +4616,13 @@ if(trackImgOnly && !ideogramToo)
     return;  // bail out b/c we are done
     }
 
+
 if (!hideControls)
     {
     /* set white-space to nowrap to prevent buttons from wrapping when screen is
      * narrow */
     hPrintf("<DIV STYLE=\"white-space:nowrap;\">\n");
     printMenuBar();
-    menuBarAppendExtTools();
 
     /* Show title . */
     freezeName = hFreezeFromDb(database);
@@ -4995,16 +4981,9 @@ if (!hideControls)
 
             hPrintf("<table style='width:100%%;'><tr><td style='text-align:left;'>");
             hPrintf("\n<A NAME=\"%sGroup\"></A>",group->name);
-        //#define BUTTONS_BY_CSS_NOT_HERE
-        #ifdef BUTTONS_BY_CSS_NOT_HERE
-            hPrintf("<span class='pmButton toggleButton' onclick=\"vis.toggleForGroup(this,'%s')\" "
-                    "id='%s_button' title='%s this group'>%s</span>&nbsp;&nbsp;",
-                    group->name, group->name, isOpen?"Collapse":"Expand", indicator);
-        #else///ifndef BUTTONS_BY_CSS_NOT_HERE
             hPrintf("<IMG class='toggleButton' onclick=\"return vis.toggleForGroup(this, '%s');\" "
                     "id=\"%s_button\" src=\"%s\" alt=\"%s\" title='%s this group'>&nbsp;&nbsp;",
                     group->name, group->name, indicatorImg, indicator,isOpen?"Collapse":"Expand");
-        #endif///ndef BUTTONS_BY_CSS_NOT_HERE
             hPrintf("</td><td style='text-align:center; width:90%%;'>\n<B>%s</B>", group->label);
             hPrintf("</td><td style='text-align:right;'>\n");
             hPrintf("<input type='submit' name='hgt.refresh' value='refresh' "
@@ -5275,7 +5254,6 @@ trashDirFile(&psTn, "hgt", "hgt", ".eps");
 if(!trackImgOnly)
     {
     printMenuBar();
-
     printf("<div style=\"margin: 10px\">\n");
     printf("<H1>PDF Output</H1>\n");
     printf("PDF images can be printed with Acrobat Reader "
@@ -5897,6 +5875,11 @@ if(sameString(debugTmp, "on"))
     hgDebug = TRUE;
 else
     hgDebug = FALSE;
+
+if (hIsGisaidServer())
+    {
+    validateGisaidUser(cart);
+    }
 
 int timeout = cartUsualInt(cart, "udcTimeout", 300);
 if (udcCacheTimeout() < timeout)
