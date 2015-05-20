@@ -1055,8 +1055,8 @@ sub postProcessChains {
       "(can't find $successFile).\n";
   }
  
-  my $cmd="$HgAutomate::runSSH $workhorse nice ";
-  $cmd .= "'find $runDir/run/chain -name \"*.chain\" ";
+  my $cmd="$HgAutomate::runSSH $workhorse ";
+  $cmd .= "'cd $buildDir; nice find $runDir/run/chain -name \"*.chain\" ";
   $cmd .= "| chainMergeSort -inputList=stdin ";
   $cmd .= "| nice gzip -c > $runDir/$chain'";
   &HgAutomate::run($cmd);
