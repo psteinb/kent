@@ -1056,8 +1056,9 @@ sub postProcessChains {
   }
  
   my $cmd="$HgAutomate::runSSH $workhorse nice ";
-  $cmd .= "'find $runDir/run/chain -name \"*.chain\" ";
-  $cmd .= "| chainMergeSort -inputList=stdin ";
+  # MH: chainMergeSort -inputList does not work with -tempDir (( makeTempName(&tempName, inp0, ".tmp");  adds ./ to the path)) --> but it works with an input file --> we cat the chains
+  $cmd .= "'find $runDir/run/chain -name \"*.chain\" -exec cat {} \\; ";
+  $cmd .= "| chainMergeSort stdin -tempDir=$ENV{'TMPDIR'} ";
   $cmd .= "| nice gzip -c > $runDir/$chain'";
   &HgAutomate::run($cmd);
   if ($splitRef) {
