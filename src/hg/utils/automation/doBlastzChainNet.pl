@@ -88,10 +88,10 @@ my $dbHost = 'genome.pks.mpg.de';
 my $workhorseGenome = 'genome';
 my $fileServerGenome= 'genome';
 
-my $bigClusterLSF = 'madmax';
-my $smallClusterLSF = 'madmax';
-my $workhorseLSF = 'madmax';
-my $fileServerLSF = 'madmax';
+my $bigClusterLSF = 'falcon';
+my $smallClusterLSF = 'falcon';
+my $workhorseLSF = 'falcon';
+my $fileServerLSF = 'falcon';
 
 my $defaultChainLinearGap = "loose";
 my $defaultChainMinScore = "1000";	# from axtChain itself
@@ -116,8 +116,8 @@ options:
 ";
   print STDERR $stepper->getOptionHelp();
 print STDERR <<_EOF_
-    -clusterType	  MANDATORY: Specify the clusterType as either genome or madmax
-                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on madmax or ask Michael first. 
+    -clusterType	  MANDATORY: Specify the clusterType as either genome or falcon
+                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on falcon or ask Michael first. 
     -blastzOutRoot dir    Directory path where outputs of the blastz cluster
                           run will be stored.  By default, they will be
                           stored in the $HgAutomate::clusterData build directory , but
@@ -592,7 +592,7 @@ _EOF_
   my $noJobs = $noJobsT * $noJobsQ;
 
   print ( "*** The number of jobs should not exceed 10,000" ); 
-  if( $clusterType eq "madmax" ) { 
+  if( $clusterType eq "falcon" ) { 
       print( ", and a runtime over 10 minutes" );
   }
   print( " ***\n" ); 
@@ -652,7 +652,7 @@ if($clusterType eq "genome"){
  
  #customize the $myparaRun variable depending upon the clusterType: 
   my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "madmax") {
+  if ($clusterType eq "falcon") {
 	$myParaRun = "
 para.pl make blastz_$tDb$qDb jobList -q medium\n
 para.pl check blastz_$tDb$qDb\n
@@ -719,7 +719,7 @@ _EOF_
 #customize the $myparaRun variable depending upon the clusterType: 
 # Now the cat is executed as a single job in the medium queue (can take ~30 min total)
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "madmax") {
+  if ($clusterType eq "falcon") {
 	$myParaRun = "
 echo \"jobList\" > jobListCombinedClusterJob\n
 chmod +x jobList\n
@@ -792,7 +792,7 @@ _EOF_
   close($fh);
 #customize the $myparaRun variable depending upon the clusterType: 
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "madmax") {
+  if ($clusterType eq "falcon") {
 	$myParaRun = "
 para.pl make filterPsl_$tDb$qDb jobList -q medium\n
 para.pl check filterPsl_$tDb$qDb\n
@@ -1006,7 +1006,7 @@ _EOF_
   &makePslPartsLst();
 #customize the $myparaRun variable depending upon the clusterType: 
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "madmax") {
+  if ($clusterType eq "falcon") {
 	$myParaRun = "
 para.pl make chainRun_$tDb$qDb jobList -q long\n
 para.pl check chainRun_$tDb$qDb\n
@@ -1222,7 +1222,7 @@ _EOF_
   close($fh);
 #customize the $myparaRun variable depending upon the clusterType:
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "madmax") {
+  if ($clusterType eq "falcon") {
 	$myParaRun = "
 para.pl make patchChain_$tDb$qDb jobList -q medium\n
 para.pl check patchChain_$tDb$qDb\n
@@ -1273,7 +1273,7 @@ para make jobListReChain\n
 para check\n
 para time > run.timeReChain\n
 cat run.timeReChain\n";
-   if ($clusterType eq "madmax") {
+   if ($clusterType eq "falcon") {
 	$paraReChain = "
 para.pl make ReChain_$tDb$qDb jobListReChain -q long\n
 para.pl check ReChain_$tDb$qDb\n
@@ -1349,9 +1349,9 @@ sub netChains {
 	$chain = "$buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz";
   }
 
-  #customise the $paraNetChain depending upon the clusterType and create joblist file to run net step on  MADMAX cluster ONLY
+  #customise the $paraNetChain depending upon the clusterType and create joblist file to run net step on  falcon cluster ONLY
   my $paraNetChain='./netChains.csh';
-  if ($clusterType eq "madmax"){
+  if ($clusterType eq "falcon"){
   	$paraNetChain = "
 para.pl make netChain_$tDb$qDb jobList -q long\n
 para.pl check netChain_$tDb$qDb\n
@@ -1500,7 +1500,7 @@ _EOF_
     	$qRepeats = $opt_tRepeats ? "-qRepeats=$opt_tRepeats" : $defaultTRepeats;
   	}
 
- 	if ($clusterType eq "madmax") {
+ 	if ($clusterType eq "falcon") {
    		$bossScript->add(<<_EOF_
 # Add gap/repeat stats to the net file using database tables:
 # create a tmp dir on genome first
@@ -2106,9 +2106,9 @@ _EOF_
 # initializations depending on the cluster type
 $clusterType = $opt_clusterType;
 # first, check if clusterType is specified
-die "ERROR: you have to specify -clusterType parameter. Should be either genome or madmax\n" if ($clusterType eq "");
-# second check if clusterType is either genome or madmax
-die "ERROR: -clusterType must be either genome or madmax. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "madmax")) );
+die "ERROR: you have to specify -clusterType parameter. Should be either genome or falcon\n" if ($clusterType eq "");
+# second check if clusterType is either genome or falcon
+die "ERROR: -clusterType must be either genome or falcon. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "falcon")) );
 # third check if the script is executed at the given $clusterType
 die "ERROR: you gave clusterType $clusterType but you execute the code on $ENV{'HOSTNAME'}\n" if ($clusterType ne $ENV{'HOSTNAME'});
 
@@ -2117,7 +2117,7 @@ if ($clusterType eq 'genome'){
     $fileServer = $fileServerGenome;
     $workhorse = $workhorseGenome;
 	 $hub = $bigClusterHub;
-}elsif($clusterType eq 'madmax'){
+}elsif($clusterType eq 'falcon'){
     $workhorse = $workhorseLSF;
     $fileServer = $fileServerLSF;
     $hub = $bigClusterLSF;

@@ -71,8 +71,8 @@ options:
 ";
   print STDERR $stepper->getOptionHelp();
   print STDERR <<_EOF_
-    -clusterType          MANDATORY: Specify the clusterType as either genome or madmax
-                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on madmax or ask Michael first. 
+    -clusterType          MANDATORY: Specify the clusterType as either genome or falcon
+                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on falcon or ask Michael first. 
     -buildDir dir         Use dir instead of default
                           $HgAutomate::clusterData/\$db/$HgAutomate::trackBuild/RepeatMasker.\$date
                           (necessary when continuing at a later date).
@@ -273,9 +273,9 @@ _EOF_
   ;
   close($fh);
 
-  # This creates the 'gsub' file listing the template to create cluster jobs (no check out if on madmax)
+  # This creates the 'gsub' file listing the template to create cluster jobs (no check out if on falcon)
   my $templateCmd ="./RMRun.csh {check out line $partDir/\$(path1).out}";
-  if($clusterType eq "madmax"){
+  if($clusterType eq "falcon"){
 	   $templateCmd ="./RMRun.csh $partDir/\$(path1).out";
   }
   &HgAutomate::makeGsub($runDir, $templateCmd);
@@ -284,7 +284,7 @@ _EOF_
 
 #customize the $myparaRun variable depending upon the clusterType: 
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "madmax") {
+  if ($clusterType eq "falcon") {
 	$myParaRun = "
 para.pl make rmsk_$db jobList -q medium\n
 para.pl check rmsk_$db\n
@@ -600,17 +600,17 @@ _EOF_
 # initializations depending on the cluster type
 $clusterType = $opt_clusterType;
 # first, check if clusterType is specified
-die "ERROR: you have to specify -clusterType parameter. Should be either genome or madmax\n" if ($clusterType eq "");
-# second check if clusterType is either genome or madmax
-die "ERROR: -clusterType must be either genome or madmax. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "madmax")) );
+die "ERROR: you have to specify -clusterType parameter. Should be either genome or falcon\n" if ($clusterType eq "");
+# second check if clusterType is either genome or falcon
+die "ERROR: -clusterType must be either genome or falcon. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "falcon")) );
 # third check if the script is executed at the given $clusterType
 die "ERROR: you gave clusterType $clusterType but you execute the code on $ENV{'HOSTNAME'}\n" if ($clusterType ne $ENV{'HOSTNAME'});
 
 $workhorse = $clusterType;
 print STDERR "clusterType and workhorse: $workhorse\ndbhost: $dbHost\n";
 
-if ($clusterType eq "madmax") {
-	die "ERROR: You have to give the full path to the unmaskedSeq (option -unmaskedSeq) if clusterType = madmax\n" if (! defined $opt_unmaskedSeq);
+if ($clusterType eq "falcon") {
+	die "ERROR: You have to give the full path to the unmaskedSeq (option -unmaskedSeq) if clusterType = falcon\n" if (! defined $opt_unmaskedSeq);
 }
 die "ERROR: -buildDir parameter is not given\n" if (! defined $opt_buildDir);
 
