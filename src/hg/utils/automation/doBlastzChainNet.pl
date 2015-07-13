@@ -103,6 +103,7 @@ my $filterPsl = 0;			# flag for filtering psls for seq identity and entropy
 my $patchChains = 0;			# flag for patching chains
 my $workhorse = "";
 my $fileServer = "";
+my $chainingQueue = "long";	# queue for chaining jobs (long is default)
   
 sub usage {
   # Usage / help / self-documentation:
@@ -1008,7 +1009,7 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "falcon") {
 	$myParaRun = "
-para.pl make chainRun_$tDb$qDb jobList -q long\n
+para.pl make chainRun_$tDb$qDb jobList -q $chainingQueue\n
 para.pl check chainRun_$tDb$qDb\n
 para.pl time chainRun_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -1275,7 +1276,7 @@ para time > run.timeReChain\n
 cat run.timeReChain\n";
    if ($clusterType eq "falcon") {
 	$paraReChain = "
-para.pl make ReChain_$tDb$qDb jobListReChain -q long\n
+para.pl make ReChain_$tDb$qDb jobListReChain -q $chainingQueue\n
 para.pl check ReChain_$tDb$qDb\n
 para.pl time ReChain_$tDb$qDb > run.timeReChain\n
 cat run.time\n";
@@ -2163,6 +2164,9 @@ if ($patchChains == 1) {
 	print "NO chain patching. \n";
 }
 
+
+$chainingQueue = $defVars{'CHAININGQUEUE'} if (exists $defVars{'CHAININGQUEUE'});
+die "ERROR: variable CHAININGQUEUE in DEF $chainingQueue is neither long/medium/short\n" if (! ($chainingQueue eq "long" || $chainingQueue eq "medium" || $chainingQueue eq "short"));
 
 my $seq1IsSplit = (`wc -l < $defVars{SEQ1_LEN}` <=
 		   $HgAutomate::splitThreshold);
