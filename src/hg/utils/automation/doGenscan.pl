@@ -32,10 +32,10 @@ my $stepper = new HgStepManager(
 
 # Option defaults:
 # my $bigClusterHub = 'swarm';
-my $bigClusterHub = 'ku';
-my $workhorse = 'hgwdev';
-my $dbHost = 'hgwdev';
-my $defaultWorkhorse = 'hgwdev';
+my $bigClusterHub = 'genome.pks.mpg.de';
+my $workhorse = 'genome.pks.mpg.de';
+my $dbHost = 'genome.pks.mpg.de';
+my $defaultWorkhorse = 'genome.pks.mpg.de';
 my $maskedSeq = "$HgAutomate::clusterData/\$db/\$db.2bit";
 
 my $base = $0;
@@ -216,7 +216,7 @@ set resultPep = \$4
 set resultSubopt = \$5
 mkdir -p gtf/\$dir pep/\$dir subopt/\$dir
 set seqFile = hardMaskedFa/\$dir/\$chrom.fa
-/cluster/bin/x86_64/gsBig \$seqFile \$resultGtf -trans=\$resultPep -subopt=\$resultSubopt -exe=/scratch/data/genscan/genscan -par=/scratch/data/genscan/HumanIso.smat -tmp=/tmp -window=2400000
+gsBig \$seqFile \$resultGtf -trans=\$resultPep -subopt=\$resultSubopt -exe=/genome/bin/x86_64/genscan -par=/genome/src/GenScan/HumanIso.smat -tmp=/scratch/tmp -window=2400000
 _EOF_
   ;
   close($fh);
