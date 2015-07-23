@@ -12,6 +12,7 @@
 
 boolean splitOnQ = FALSE;
 int lump = 0;
+int maxOpenFileHandles = 600;
 
 void usage()
 /* Explain usage and exit. */
@@ -23,12 +24,14 @@ errAbort(
   "options:\n"
   "   -q  - Split on query (default is on target)\n"
   "   -lump=N  Lump together so have only N split files.\n"
+  "   -maxOpenFileHandles  - default: %d Set to a lower number if you get the shell error: Too many open files.\n",maxOpenFileHandles
   );
 }
 
 static struct optionSpec options[] = {
    {"q", OPTION_BOOLEAN},
    {"lump", OPTION_INT},
+   {"maxOpenFileHandles", OPTION_INT},
    {NULL, 0},
 };
 
@@ -80,6 +83,7 @@ for (inIx = 0; inIx < inCount; ++inIx)
 	char *name = (splitOnQ ? chain->qName : chain->tName);
 	if (lump > 0)
 	    name = lumpName(name);
+
 	if ((f = hashFindVal(hash, name)) == NULL)
 	    {
 	    char path[512], cmd[512];
@@ -90,9 +94,16 @@ for (inIx = 0; inIx < inCount; ++inIx)
 	    safef(cmd,sizeof(cmd), "cat %s | sort -u > %s", tpath, path);
             mustSystem(cmd);
 	    f = mustOpen(path, "a");
-	    hashAdd(hash, name, f);
+		 /* only save the file handle in the hash if we have less than maxOpenFileHandles (ulimit) files open */
+		 if (hash->elCount < maxOpenFileHandles) {
+	       hashAdd(hash, name, f);
+		 }
 	    }
 	chainWrite(chain, f);
+	/* close this file if it is not in the hash --> we have more than maxOpenFileHandles (ulimit) files open */
+	if (hashFindVal(hash, name) == NULL) {
+		fclose(f);
+	}
 	chainFree(&chain);
 	}
     lineFileClose(&lf);
@@ -105,6 +116,9 @@ int main(int argc, char *argv[])
 optionInit(&argc, argv, options);
 splitOnQ = optionExists("q");
 lump = optionInt("lump", 0);
+maxOpenFileHandles = optionInt("maxOpenFileHandles", 600);
+
+printf("Will use a maximum of %d open file handles\n", maxOpenFileHandles);
 if (argc < 3)
     usage();
 chainSplit(argv[1], argc-2, argv+2);
