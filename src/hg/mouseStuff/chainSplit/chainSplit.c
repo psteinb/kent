@@ -64,6 +64,7 @@ void chainSplit(char *outDir, int inCount, char *inFiles[])
 /* chainSplit - Split chains up by target or query sequence. */
 {
 struct hash *hash = newHash(0);
+struct hash *FileOpenedAlready = newHash(0);	/* we might have to open some files repeatedly. This hash makes sure the meta data is added to the beginning of the file only once */
 int inIx;
 char tpath[512];
 FILE *meta ;
@@ -88,16 +89,22 @@ for (inIx = 0; inIx < inCount; ++inIx)
 	    {
 	    char path[512], cmd[512];
 	    safef(path, sizeof(path),"%s/%s.chain", outDir, name);
-            if (metaOpen)
-                fclose(meta);
-            metaOpen = FALSE;
-	    safef(cmd,sizeof(cmd), "cat %s | sort -u > %s", tpath, path);
-            mustSystem(cmd);
+
+       /* add meta data only when we open the file for the very first time */
+       if (hashFindVal(FileOpenedAlready, name) == NULL) {
+          if (metaOpen)
+             fclose(meta);
+          metaOpen = FALSE;
+          safef(cmd,sizeof(cmd), "cat %s | sort -u > %s", tpath, path);
+          mustSystem(cmd);
+       }
 	    f = mustOpen(path, "a");
 		 /* only save the file handle in the hash if we have less than maxOpenFileHandles (ulimit) files open */
 		 if (hash->elCount < maxOpenFileHandles) {
 	       hashAdd(hash, name, f);
 		 }
+		 /* do not add meta data if we open this file again */
+		 hashAdd(FileOpenedAlready, name, "1");	
 	    }
 	chainWrite(chain, f);
 	/* close this file if it is not in the hash --> we have more than maxOpenFileHandles (ulimit) files open */
