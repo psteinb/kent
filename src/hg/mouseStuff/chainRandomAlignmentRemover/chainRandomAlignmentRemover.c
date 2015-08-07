@@ -185,9 +185,9 @@ struct hash *qSeqMinusStrandHash = NULL;
 /* Explain usage and exit. */
 void usage() {
   errAbort(
-  "chainRandomAligmentCleaner - Remove random local alignments from chains that would break nested chains in the net.\n"
+  "chainRandomAligmentRemover - Remove random local alignments from chains that would break nested chains in the net.\n"
   "usage:\n"
-  "   chainRandomAlignmentCleaner in.net in.chain tNibDir qNibDir out.chain\n"
+  "   chainRandomAlignmentRemover in.net in.chain tNibDir qNibDir out.chain\n"
   " Where tNibDir/qNibDir are either directories full of nib files, or the name of a .2bit file"
  "options:\n"
   "   -foldThreshold=N         threshold for removing local alignment bocks if the brokenChain score / suspect score is at least this fold threshold. Default %1.1f\n"
