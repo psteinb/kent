@@ -67,6 +67,9 @@ breakInfo                      <------------------------------------------>
 
 /* experimental. To quickly just run it on the chain with this ID */
 int OnlyThisChain = -1;
+char *onlyThisChr;
+int onlyThisStart;
+int onlyThisEnd;
 
 /* Information about a net fill region at depth>1 and its enclosing gap. */
 struct fillGapInfo
@@ -108,9 +111,9 @@ double foldThreshold = 8;
 /* if the score of the left and right fill of the brokenChain / suspect score is at least this ratio, we remove the suspect */
 double LRfoldThreshold = 8;
 /* if the suspect has more than that many bases in the target in aligning blocks, do not remove it (it is too good) */
-int maxSuspectBases = 100;
+double maxSuspectBases = 100;
 /* if the suspect subChain scores higher, do not remove it (it is too good) */
-int maxSuspectScore = 10000;
+double maxSuspectScore = 10000;
 /* threshold for min size of left/right gap. If lower, do not remove suspect (too close to one side of the rest of the breaking chain) */
 int minLRGapSize = 1000;
 
@@ -207,7 +210,7 @@ void usage() {
   "\n"  
   " Local score = we set score = 0 if score < 0 and return the max of the score that we reach for a chain\n" 
   "   -doLocalScore     default=FALSE. compute and return the local score only if the overall score is negative\n"
-  , foldThreshold, foldThreshold/2, maxSuspectBases, maxSuspectScore, minLRGapSize, gapCalcSampleFileContents());
+  , foldThreshold, foldThreshold/2, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize, gapCalcSampleFileContents());
 }
 
 /* command line options */
@@ -218,9 +221,13 @@ struct optionSpec options[] = {
    {"debug", OPTION_BOOLEAN},
    {"foldThreshold", OPTION_DOUBLE},
    {"LRfoldThreshold", OPTION_DOUBLE},
-   {"maxSuspectBases", OPTION_INT}, 
-   {"maxSuspectScore", OPTION_INT},
+   {"maxSuspectBases", OPTION_DOUBLE}, 
+   {"maxSuspectScore", OPTION_DOUBLE},
    {"minLRGapSize", OPTION_INT},
+	{"onlyThisChr", OPTION_STRING},
+	{"onlyThisStart", OPTION_INT},
+	{"onlyThisEnd", OPTION_INT},
+   {NULL, 0},
 };
 
 
@@ -552,6 +559,9 @@ void readChainsOfInterest(char *chainFile) {
       /* need to keep track of the highest chain Id for later when we create new chains representing the removed blocks */
       if (maxChainId < chain->id)
          maxChainId = chain->id;
+ 		if (onlyThisChr != NULL && (! sameString(onlyThisChr, chain->tName))) 
+			continue;
+
       if (chainIsOfInterest(chain->id)) {
          verbose(4, "\t\tread chain ID %d  --> is a breaking or broken chain (chainOfInterest)\n", chain->id);
          slAddHead(&chainList, chain);
@@ -890,6 +900,14 @@ void getValidBreaks(struct hashEl *el)
          if (fillGap->next == NULL) 
             break;
 
+		if (onlyThisChr != NULL && (! sameString(onlyThisChr, fillGap->chrom))) 
+			continue;
+		if (onlyThisChr != NULL && onlyThisStart != fillGap->gapEnd)
+			continue;
+		if (onlyThisChr != NULL && onlyThisEnd != fillGap->next->gapStart)
+			continue;
+
+
          verbose(2, "\t\tconsider break candidate:  depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d    AND    depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d\n", 
             fillGap->depth, fillGap->chainId, fillGap->chrom, fillGap->fillStart, fillGap->fillEnd, fillGap->gapStart, fillGap->gapEnd, fillGap->parentChainId, 
             fillGap->next->depth, fillGap->next->chainId, fillGap->next->chrom, fillGap->next->fillStart, fillGap->next->fillEnd, fillGap->next->gapStart, fillGap->next->gapEnd, fillGap->next->parentChainId);
@@ -951,6 +969,8 @@ void getValidBreaks(struct hashEl *el)
          assert(breakP->LfillEnd <= breakP->suspectStart);
          assert(breakP->RfillStart >= breakP->suspectEnd);
          assert(breakP->RfillEnd > breakP->suspectEnd);
+
+
 
 /* ################################## Michael to remove ############################*/
 if (OnlyThisChain != -1 && OnlyThisChain != fillGap->parentChainId) 
@@ -1023,6 +1043,8 @@ void getFillGapAndValidBreaks(char *netFile) {
 
    /* now parse all the nets, fill the fillGapInfo struct for every chain at depth>1 */
    for (net = netList; net != NULL; net = net->next) {
+		if (onlyThisChr != NULL && (! sameString(onlyThisChr, net->name)))
+			continue;
       verbose(2, "\tparse net %s of size %d\n", net->name, net->size);
       tName = net->name;         /* need to keep track of the current target chrom/scaffold */
       parseFill(net->fillList, 1, tName);
@@ -1035,6 +1057,8 @@ void getFillGapAndValidBreaks(char *netFile) {
    rangeTreeAliBlocks = genomeRangeTreeNew();
    verbose(1, "1.3 get aligning regions from %s ...\n", netFile);
    for (net = netList; net != NULL; net = net->next) {
+		if (onlyThisChr != NULL && (! sameString(onlyThisChr, net->name)))
+			continue;
       verbose(2, "\tget aligning regions from net %s\n", net->name);
       tName = net->name;         /* need to keep track of the current target chrom/scaffold */
       rConvert(net->fillList, tName);
@@ -1347,14 +1371,21 @@ doLocalScore = optionExists("doLocalScore");
 debug = optionExists("debug");
 foldThreshold = optionDouble("foldThreshold", 8.0);
 LRfoldThreshold = optionDouble("LRfoldThreshold", foldThreshold/2);
-maxSuspectBases = optionInt("maxSuspectBases", maxSuspectBases);
-maxSuspectScore = optionInt("maxSuspectScore", maxSuspectScore);
+maxSuspectBases = optionDouble("maxSuspectBases", maxSuspectBases);
+maxSuspectScore = optionDouble("maxSuspectScore", maxSuspectScore);
 minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
+
+onlyThisChr = optionVal("onlyThisChr", NULL);
+onlyThisStart = optionInt("onlyThisStart", -1);
+onlyThisEnd = optionInt("onlyThisEnd", -1);
+
+if (onlyThisChr != NULL)
+	verbose(1, "ONLY %s %d %d\n", onlyThisChr, onlyThisStart, onlyThisEnd);
 
 printf("Verbosity level: %d\n", verboseLevel());
 if (doLocalScore)
    verbose(2, " doLocal set\n ");
-printf("foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, maxSuspectBases, maxSuspectScore, minLRGapSize);
+printf("foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
 
 
 
