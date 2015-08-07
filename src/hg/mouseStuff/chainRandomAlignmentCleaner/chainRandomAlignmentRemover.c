@@ -1,0 +1,1492 @@
+/*******************
+ TO DO   
+ - max of global vs local score 
+ - check memory free
+ - free chains and other stuff at the end 
+ 
+ 
+ 
+ **************************************************/
+
+
+
+
+/* Michael Hiller, 2015 */
+
+/* Copyright (C) 2011 The Regents of the University of California 
+ * See README in this or parent directory for licensing information. */
+
+
+
+/*   
+Definitions: 
+
+A break is a case where a chain is broken into >=2 pieces in the nets by a fill block of a higher scoring chain.
+breaking chain: chain that contains a local alignment block that breaks another lower-scoring chain in the nets into two or more pieces
+broken chain: lower-scoring chain that is broken into two or more pieces
+suspect: the local alignment block(s) in the higher-scoring chain that causes the broken chain to be broken into pieces. 
+         This block(s) is suspected to be a random alignment. The breaking chain can have more than one suspect. 
+
+Example:
+X = fill (aligning region); - = gap (unaligning region)
+
+breaking chain: XXXXXXXXXXXXXXX-----------------------XX-------------------XXXXXXXXXXXXXXXXXXXXXXXXX
+broken chain:                   XXXXXXXXXXXXXXXXX----------XXXXXXXXXXXXX
+
+Nets:
+depth 1:        XXXXXXXXXXXXXXX-----------------------XX-------------------XXXXXXXXXXXXXXXXXXXXXXXXX
+depth 2:                        XXXXXXXXXXXXXXXXX          XXXXXXXXXXXXX
+
+
+Most important data structures:
+breaking chain: XXXXXXXXXXXXXXX-----------------------XX-------------------XXXXXXXXXXXXXXXXXXXXXXXXX
+broken chain:                   XXXXXXXXXXXXXXXXX----------XXXXXXXXXXXXX
+fillGapInfo                    <--------------------->  <----------------->
+breakInfo                      <------------------------------------------>
+
+*/
+
+#include "common.h"
+#include "linefile.h"
+#include "hash.h"
+#include "localmem.h"
+#include "options.h"
+#include "chainNet.h"
+#include "chain.h"
+#include "rbTree.h"
+#include "obscure.h"
+#include "gapCalc.h"
+#include "dnaseq.h"
+#include "chainConnect.h"
+#include "twoBit.h"
+#include "axt.h"
+#include "nib.h"
+#include "dystring.h"
+#include "basicBed.h"
+#include "genomeRangeTree.h"
+
+/* experimental. To quickly just run it on the chain with this ID */
+int OnlyThisChain = -1;
+
+/* Information about a net fill region at depth>1 and its enclosing gap. */
+struct fillGapInfo
+    {
+    struct fillGapInfo *next;
+    int depth;                    /* depth of the fill region */
+    int gapDepth;                 /* depth of the enclosing gap region */
+    int chainId;                  /* chainId of the fill */
+    int parentChainId;            /* ID of parent chain */
+    char *chrom;                  /* reference chrom */
+    int fillStart, fillEnd;       /* start and end of the fill in the reference assembly */
+    int gapStart, gapEnd;         /* start and end of the gap in the reference assembly */
+    char *gapInfo;                /* temporarily used: tab-separated string containing gapStart, gapEnd, parentChainId. After we found a broken chain, chop this string and fill gapStart/gapEnd/parentChainId */
+    struct chain *chain;          /* pointer to the chain */
+    struct chain *parentChain;    /* pointer to the parent chain */
+    };
+
+
+/* Information a break. That is the left and right aligning (fill) region of the broken chain and the suspect in the breaking chain. */
+struct breakInfo
+    {
+    struct breakInfo *next;
+    struct breakInfo *prev;       /* double linked list */
+    int depth;                    /* depth of the fill region */
+    int chainId;                  /* chainId of the fill */
+    int parentChainId;            /* ID of parent chain */
+    char *chrom;                  /* reference chrom */
+    int LfillStart, LfillEnd;       /* start and end of the left fill of the broken chain in the reference assembly */
+    int RfillStart, RfillEnd;       /* start and end of the right fill in the reference assembly */
+    int LgapStart, LgapEnd;         /* start and end of the left gap in the reference assembly */
+    int RgapStart, RgapEnd;         /* start and end of the right gap in the reference assembly */
+    int suspectStart, suspectEnd;   /* start and end of the suspect (the aligning blocks between the 2 gaps in the breaking chain) in the reference assembly */
+    struct chain *chain;          /* pointer to the chain */
+    struct chain *parentChain;    /* pointer to the parent chain */
+    };
+
+/* if the brokenChain score / suspect score is at least this ratio, we remove the suspect */
+double foldThreshold = 8;
+/* if the score of the left and right fill of the brokenChain / suspect score is at least this ratio, we remove the suspect */
+double LRfoldThreshold = 8;
+/* if the suspect has more than that many bases in the target in aligning blocks, do not remove it (it is too good) */
+int maxSuspectBases = 100;
+/* if the suspect subChain scores higher, do not remove it (it is too good) */
+int maxSuspectScore = 10000;
+/* threshold for min size of left/right gap. If lower, do not remove suspect (too close to one side of the rest of the breaking chain) */
+int minLRGapSize = 1000;
+
+
+/* final output file for the chains that will contain
+    - the untouched chains
+    - the broken chains (untouched unless they contain suspects themself)
+    - the new breaking chains (potentially without some suspects)
+    - the new chains representing the removed suspects
+*/
+FILE *finalChainOutFile = NULL;
+/* final output bed file, containing the coordinates of the removed suspects + the subchain scores and the foldRatio */
+FILE *suspectsRemovedOutBedFile = NULL;
+/* counts how often we see a chain ID at depth > 1 in the net file */
+struct hash *chainId2Count = NULL;
+/* hash keyed by chainId that holds a list of fillGapInfo structs for all fills of that chain at depth>1 */
+struct hash *fillGapInfoHash = NULL;
+
+/* size of the depth2* arrays. 64 should be more than enough */
+int maxNetDepth = 64;
+/* tab-separated string containing start, end of the current gap at each depth (array index) and the chainId of the chain having the gap */
+struct dyString **depth2gap = NULL;
+/* chain ID that has the fill at each depth (array index) */
+int *depth2chainId = NULL;  
+
+/* genomeRangeTree containing all net aligning blocks (can span gap that are not filled by children) */
+struct genomeRangeTree *rangeTreeAliBlocks = NULL;
+
+
+/* keyed by the breaking chain ID that contains one more more suspects. Contains list of breaks for this chain. */
+struct hash *breakHash = NULL;
+/* keyed by all chainIds that are either breaking or broken chains. Contains TRUE */
+struct hash *chainId2IsOfInterest = NULL;
+/* keyed by all chainIds that are modified breaking chains and thus needs rescoring before writing. Contains TRUE */
+struct hash *chainId2NeedsRescoring = NULL;
+/* pointer to chain keyed by chainId */
+struct hash *chainId2chain = NULL;
+int maxChainId = -1;
+/* for debugging */
+boolean debug = FALSE; 
+FILE *suspectChainFile = NULL;
+FILE *brokenChainLfillChainFile = NULL;
+FILE *brokenChainRfillChainFile = NULL;
+FILE *brokenChainfillChainFile = NULL;
+FILE *suspectFillBedFile = NULL;
+FILE *HernandoCompareFile = NULL;
+
+
+/* for chain scoring */
+char *gapFileName = NULL;
+struct gapCalc *gapCalc = NULL;   /* Gap scoring scheme to use. */
+struct axtScoreScheme *scoreScheme = NULL;
+boolean doLocalScore = FALSE;
+
+/* for the target and query DNA seqs */
+char *tNibDir = NULL;    /* t and q nib or 2bit file */
+char *qNibDir = NULL;
+boolean tIsTwoBit;       /* flags */
+boolean qIsTwoBit;
+/* contains pointers to the open 2bit files */
+struct hash *twoBitFileHash = NULL;
+/* hash keyed by target chromname, holding pointers to the seq */
+struct hash *tSeqHash = NULL;
+/* hash keyed by query chromname, holding pointers to the seq */
+struct hash *qSeqHash = NULL;
+/* hash keyed by query chromname, will hold a pointer to the reverse complemented seq. But we fill it on demand */
+struct hash *qSeqMinusStrandHash = NULL;
+
+
+
+
+/* Explain usage and exit. */
+void usage() {
+  errAbort(
+  "chainRandomAligmentCleaner - Remove random local alignments from chains that would break nested chains in the net.\n"
+  "usage:\n"
+  "   chainRandomAlignmentCleaner in.net in.chain tNibDir qNibDir out.chain\n"
+  " Where tNibDir/qNibDir are either directories full of nib files, or the name of a .2bit file"
+ "options:\n"
+  "   -foldThreshold=N         threshold for removing local alignment bocks if the brokenChain score / suspect score is at least this fold threshold. Default %1.1f\n"
+  "   -LRfoldThreshold=N       threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
+  "   -maxSuspectBases=N       threshold for number of target bases in aligning blocks of the suspect subChain. If higher, do not remove suspect. Default %d\n"
+  "   -maxSuspectScore=N       threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
+  "   -minLRGapSize=N          threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If higher, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
+  "\n"
+  "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
+  "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
+  "              *Must* specify this argument to one of these choices.\n"
+  "              loose is chicken/human linear gap costs.\n"
+  "              medium is mouse/human linear gap costs.\n"
+  "              Or specify a piecewise linearGap tab delimited file.\n"
+  "   sample linearGap file (loose)\n"
+  "%s"
+  "\n"  
+  " Local score = we set score = 0 if score < 0 and return the max of the score that we reach for a chain\n" 
+  "   -doLocalScore     default=FALSE. compute and return the local score only if the overall score is negative\n"
+  , foldThreshold, foldThreshold/2, maxSuspectBases, maxSuspectScore, minLRGapSize, gapCalcSampleFileContents());
+}
+
+/* command line options */
+struct optionSpec options[] = {
+   {"scoreScheme", OPTION_STRING},
+   {"linearGap", OPTION_STRING},
+   {"doLocalScore", OPTION_BOOLEAN},     /* compute and return the local score only if the overall score is negative . */
+   {"debug", OPTION_BOOLEAN},
+   {"foldThreshold", OPTION_DOUBLE},
+   {"LRfoldThreshold", OPTION_DOUBLE},
+   {"maxSuspectBases", OPTION_INT}, 
+   {"maxSuspectScore", OPTION_INT},
+   {"minLRGapSize", OPTION_INT},
+};
+
+
+
+/* ################################################################################### */
+/*   small helper functions to deal with integers as keys for a hash                   */
+/* ################################################################################### */
+
+/****************************************************************
+   Increment integer value in hash, where key is a int
+****************************************************************/
+void hashIncInt_IntKey(struct hash *hash, int key) {
+   char keyBuf [30];
+   safef(keyBuf, sizeof(keyBuf), "%d", key);
+   hashIncInt(hash, keyBuf);
+}
+
+/****************************************************************
+   add a key to the hash (with value TRUE), where key is a int
+****************************************************************/
+void hashAddIntTrue(struct hash *hash, int key) {
+   char keyBuf [30];
+   safef(keyBuf, sizeof(keyBuf), "%d", key);
+   if (hashLookup(hash, keyBuf) != NULL)
+      return;
+   hashAddInt(hash, keyBuf, TRUE);
+}
+
+/****************************************************************
+   add a key-value pair to the hash, where key is a int
+****************************************************************/
+void hashAddIntKey(struct hash *hash, int key, void *val) {
+   char keyBuf [30];
+   safef(keyBuf, sizeof(keyBuf), "%d", key);
+   hashAdd(hash, keyBuf, val);
+}
+
+/****************************************************************
+   returns TRUE if chainID is a breaking or broken chain
+****************************************************************/
+boolean chainIsOfInterest(int chainId) {
+   char keyBuf [30];
+   safef(keyBuf, sizeof(keyBuf), "%d", chainId);
+   if (hashFindVal(chainId2IsOfInterest, keyBuf) == NULL)
+      return FALSE;
+   else
+      return TRUE;
+}
+
+/****************************************************************
+   returns value of hash, where key is a int
+****************************************************************/
+void *hashFindValIntKey(struct hash *hash, int key) {
+   char keyBuf [30];
+   safef(keyBuf, sizeof(keyBuf), "%d", key);
+   return hashFindVal(hash, keyBuf);
+}
+
+
+
+/****************************************************************
+   returns chain pointer from the hash
+****************************************************************/
+struct chain *getChainPointerFromHash(int chainId) 
+{
+   char keyBuf [30];
+   safef(keyBuf, sizeof(keyBuf), "%d", chainId);
+   return hashFindVal(chainId2chain, keyBuf);
+}
+
+
+/* ################################################################################### */
+/* functions for verbose output                                                        */
+/* ################################################################################### */
+
+/****************************************************************
+   Print out memory used and other stuff from linux. Taken from chainNet.c
+****************************************************************/
+void printMem()
+{
+struct lineFile *lf = lineFileOpen("/proc/self/stat", TRUE);
+char *line, *words[50];
+int wordCount;
+if (lineFileNext(lf, &line, NULL))
+    {
+    wordCount = chopLine(line, words);
+    if (wordCount >= 23)
+        verbose(1, "memory usage %s, utime %s s/100, stime %s\n", 
+      words[22], words[13], words[14]);
+    }
+lineFileClose(&lf);
+}
+
+/****************************************************************
+   verbose output of a single fillGapInfo
+****************************************************************/
+void printSingleFillGap(struct fillGapInfo *fillGap) {
+   char *gapInfo;
+   char *words[5];
+   int wordCount;
+
+   /* lets split gapInfo string into its components. But clone it before, as we will  */
+   gapInfo = cloneString(fillGap->gapInfo);
+   wordCount = chopLine(gapInfo, words);
+   if (wordCount != 5)
+      errAbort("Expecting 5 tab-separated words in %s but can parse only %d\n", fillGap->gapInfo, wordCount);
+   verbose(3, "\t\tfillGap: depth %d  fill coords:  %s:%d-%d   enclosing gap: %s:%s-%s   (breaking chainID %s, broken chainID %d)\n", fillGap->depth, fillGap->chrom, fillGap->fillStart, fillGap->fillEnd, words[0], words[1], words[2], words[3], fillGap->chainId);
+   freeMem(gapInfo);
+}
+
+/****************************************************************
+   verbose output about how often we see each chain at depth > 1 together with the fillGapInfo
+****************************************************************/
+void printFillGapInfoList(struct hashEl *el) {
+   struct fillGapInfo *fillGapList = NULL, *fillGap;
+   
+   verbose(3, "\tchainID %s seen %d times in net file\n", el->name, (int)ptToInt(el->val));
+   if ((int)ptToInt(el->val) == 1) return;
+
+   fillGapList = hashMustFindVal(fillGapInfoHash, el->name);
+   verbose(3, "\t\t%d Entries in fillGapList\n", slCount(fillGapList));
+   for (fillGap = fillGapList; fillGap != NULL; fillGap = fillGap->next) 
+      printSingleFillGap(fillGap);
+   
+   /* sanity check */
+   if (slCount(fillGapList) != (int)ptToInt(el->val))
+      errAbort("ERROR: chainId %s has a different count vs entries in fillGapList  %d vs %d \n", el->name,slCount(fillGapList),(int)ptToInt(el->val));
+}
+
+/****************************************************************
+   print single break information
+****************************************************************/
+void printSingleBreak(struct breakInfo *breakP) {
+   if (breakP == NULL)
+      return;
+   verbose(3, "\t\t\tbreak: depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d\n", 
+      breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
+}
+
+
+/****************************************************************
+   loop over all entries in breakHash (i.e. loop over all breaking chains)
+   and print every break
+****************************************************************/
+void printAllBreaks() {
+   struct breakInfo *breakP = NULL, *breakList = NULL; 
+   struct hashEl *hel, *helList = hashElListHash(breakHash);
+   
+   /* hel is a pointer to a list of breaks for one parentChain */
+   for (hel = helList; hel != NULL; hel = hel->next)  {
+      breakList = hel->val;
+      if (breakList == NULL) 
+         errAbort("ERROR: breakList for chain %6d is NULL\n", breakList->parentChainId); 
+      verbose(3, "\tlist of breaks for breaking chainID %d\n", breakList->parentChainId); 
+      for (breakP = breakList; breakP != NULL; breakP = breakP->next) 
+         printSingleBreak(breakP);
+   }
+}
+
+
+/* ################################################################################### */
+/* functions for loading and getting DNA seqs                                          */
+/* ################################################################################### */
+
+/****************************************************************
+   Load sequence and add to hash, unless it is already loaded.  Do not reverse complement.
+****************************************************************/
+void loadSeq(char *seqPath, boolean isTwoBit, char *newName, struct hash *hash) {
+   struct dnaSeq *seq;
+
+   if (hashFindVal(hash, newName) == NULL)  {
+      /* need to load */
+      if (isTwoBit) {
+         struct twoBitFile *tbf = hashMustFindVal(twoBitFileHash, seqPath);
+         seq = twoBitReadSeqFrag(tbf, newName, 0, 0);
+         verbose(3, "\t\t\tLoaded %d bases of %s from %s\n", seq->size, newName, seqPath);
+      } else {
+         char fileName[512];
+         snprintf(fileName, sizeof(fileName), "%s/%s.nib", seqPath, newName);
+         seq = nibLoadAllMasked(NIB_MASK_MIXED, fileName);
+         verbose(3, "\t\t\tLoaded %d bases in %s\n", seq->size, fileName);
+      }
+      hashAdd(hash, newName, seq);
+   }
+}
+
+/****************************************************************
+   will be called for every key in the chainId2IsOfInterest hash. 
+   Loads the t and q seq by calling loadSeq
+****************************************************************/
+void loadTandQSeqs(struct hashEl *el) {
+   struct chain *chain = NULL;
+   
+   verbose(5, "\t\tload t and q seq for chain Id %s\n", el->name);
+   chain = hashFindVal(chainId2chain, el->name);
+   if (chain == NULL) 
+      errAbort("ERROR: cannot get chain with Id %s from chainId2chain hash\n", el->name);
+
+   loadSeq(tNibDir, tIsTwoBit, chain->tName, tSeqHash);
+   loadSeq(qNibDir, qIsTwoBit, chain->qName, qSeqHash);
+}
+
+
+/****************************************************************
+   return dnaSeq struct from hash 
+   abort if the dnaSeq is not in the hash
+   if strand is - (must be a query seq), look up in qSeqMinusStrandHash and fill if not already present 
+****************************************************************/
+struct dnaSeq *getSeqFromHash(char *chrom, char strand, struct hash *hash) {
+   struct dnaSeq *seq = hashFindVal(hash, chrom);
+
+   if (seq == NULL)
+      errAbort("ERROR: seq %s is not loaded in hash\n", chrom);
+
+   if (strand == '+') {
+      verbose(6, "\t\t\t\t\tgetSeqFromHash: load %s %c from hash\n", chrom, strand); fflush(stdout);
+      return seq;
+   } else {
+      /* must be query seq */
+      /* check if we have this seq in the qSeqMinusStrandHash */
+      struct dnaSeq *rcSeq = hashFindVal(qSeqMinusStrandHash, chrom);
+      if (rcSeq != NULL) {
+         verbose(6, "\t\t\t\t\tgetSeqFromHash: load %s %c from revcomp hash\n", chrom, strand); fflush(stdout);
+         return rcSeq;
+      } else {
+         /* get rc seq, store in hash and return */
+         rcSeq = cloneDnaSeq(seq);
+         reverseComplement(rcSeq->dna, rcSeq->size);
+         hashAdd(qSeqMinusStrandHash, chrom, rcSeq);
+         verbose(6, "\t\t\t\t\tgetSeqFromHash: add %s %c to revcomp hash\n", chrom, strand); fflush(stdout);
+         return rcSeq;
+      }
+   }
+   return NULL;
+}
+
+
+/****************************************************************
+   free all dnaSeq struct from hash 
+****************************************************************/
+void freeDnaSeqHash(struct hash *hash) {
+   struct hashEl *hel, *helList = hashElListHash(hash);
+   
+   for (hel = helList; hel != NULL; hel = hel->next)  {
+      freeDnaSeq(hel->val);
+   }
+}
+
+
+/* ################################################################################### */
+/* functions for calculating chain scores                                              */
+/* ################################################################################### */
+
+/****************************************************************
+  Calculate chain score locally. 
+  That means, we reset score = 0 if score < 0 and return the max of the score that we reach for this chain.
+  This is nearly identical to chainCalcScore() from chainConnect.c just a few modifications for the local score. 
+****************************************************************/
+double chainCalcScoreLocal(struct chain *chain, struct axtScoreScheme *ss, struct gapCalc *gapCalc, struct dnaSeq *query, struct dnaSeq *target) {
+   struct cBlock *b1, *b2;
+   double score = 0;
+   double maxScore = 0;
+   for (b1 = chain->blockList; b1 != NULL; b1 = b2) {
+      score += chainScoreBlock(query->dna + b1->qStart, target->dna + b1->tStart, b1->tEnd - b1->tStart, ss->matrix);
+      verbose(2, "  score %f  (max %f)\n ", score,maxScore);
+
+      if (score > maxScore) 
+         maxScore = score; 
+
+      b2 = b1->next;
+      if (b2 != NULL) {
+         score -=  gapCalcCost(gapCalc, b2->qStart - b1->qEnd, b2->tStart - b1->tEnd);
+         verbose(2, "     after gap: score %f  (max %f)\n ", score,maxScore);
+         if (score < 0) 
+            score = 0;  
+      }
+   }
+   return maxScore;
+}
+
+
+/****************************************************************
+   calculate the score of the given chain
+   calculate the local (always >0) score if -doLocalScore and if the global score is negative
+****************************************************************/
+double getChainScore (struct chain *chain) {
+   struct dnaSeq *qSeq = NULL, *tSeq = NULL;
+//   printf("\tcalc score for chain with ID %d\n", chain->id);fflush(stdout);
+
+   /* load the seqs */
+   qSeq = getSeqFromHash(chain->qName, chain->qStrand, qSeqHash);
+   tSeq = getSeqFromHash(chain->tName, '+', tSeqHash);
+
+//   printf("adjust score for chain %d (t %s %d-%d  q %c %s %d-%d) from %1.0f to ", chain->id, chain->tName, chain->tStart, chain->tEnd, chain->qStrand, chain->qName, chain->qStart, chain->qEnd, chain->score); fflush(stdout);
+   chain->score = chainCalcScore(chain, scoreScheme, gapCalc, qSeq, tSeq);
+//   printf("%1.0f ", chain->score); fflush(stdout);
+
+   if (chain->score <= 0 && doLocalScore) {
+      printf(" SCORE IS NEG --> doLocal set  %f\n ", chain->score); fflush(stdout);
+      chain->score = chainCalcScoreLocal(chain, scoreScheme, gapCalc, qSeq, tSeq);
+      printf(" local score %f\n ", chain->score); fflush(stdout);
+   }
+   return chain->score;
+}
+
+
+
+/* ################################################################################### */
+/* functions for reading, writing chains and removing blocks from chains               */
+/* ################################################################################### */
+
+
+/****************************************************************
+   Read in all chains. 
+   Write those immediately to outFile that are neither breaking nor broken chains
+****************************************************************/
+void readChainsOfInterest(char *chainFile) {
+   struct lineFile *lf = NULL;
+   FILE *f = NULL; 
+   struct chain *chainList = NULL, *chain;
+
+   lf = lineFileOpen(chainFile, TRUE);
+   lineFileSetMetaDataOutput(lf, finalChainOutFile);
+   if (debug)
+      f = mustOpen("chainsOfInterest.chain", "w");
+   chainId2chain = newHash(0); 
+
+   while ((chain = chainRead(lf)) != NULL) {
+      /* need to keep track of the highest chain Id for later when we create new chains representing the removed blocks */
+      if (maxChainId < chain->id)
+         maxChainId = chain->id;
+      if (chainIsOfInterest(chain->id)) {
+         verbose(4, "\t\tread chain ID %d  --> is a breaking or broken chain (chainOfInterest)\n", chain->id);
+         slAddHead(&chainList, chain);
+         /* also store a pointer to this chain in the hash keyed by chainId */
+         hashAddIntKey(chainId2chain, chain->id, chain);
+         if (debug)
+            chainWrite(chain, f);
+      } else {
+         verbose(4, "\t\tread chain ID %d\n", chain->id);
+         chainWrite(chain, finalChainOutFile);
+      }
+   }
+   lineFileClose(&lf);
+   if (debug)
+      carefulClose(&f);
+}
+
+
+/****************************************************************
+   write all the (new) breaking and broken chains to the final chain output file
+   Will be called for every entry in the chainId2IsOfInterest hash
+****************************************************************/
+void writeAndFreeChainsOfInterest(struct hashEl *el) {
+   struct chain *chain = NULL;
+   
+   verbose(4, "\t\twrite breaking or broken chain with ID %s to final chain output file ... ", el->name); 
+   chain = hashFindVal(chainId2chain, el->name);
+   if (chain == NULL) 
+      errAbort("\nERROR: cannot get chain with Id %s from chainId2chain hash\n", el->name);
+
+   if (hashFindVal(chainId2NeedsRescoring, el->name) != NULL) {
+      verbose(4, "\n\t\t\trecompute score for this modified chain:   old score %6d   ", (int)chain->score); 
+      getChainScore(chain);
+      verbose(4, "new score %6d\n\t\t", (int)chain->score); 
+   }
+
+   chainWrite(chain, finalChainOutFile);
+   chainFree(&chain);
+   verbose(4, "DONE\n"); 
+}
+
+
+/****************************************************************
+   Remove blocks from the chain between target coords tStart and tEnd (the suspect coords). 
+****************************************************************/
+void chainRemoveBlocks(struct chain *chain, int tStart, int tEnd) {
+   struct cBlock *curBlock = NULL, *nextBlock = NULL, *firstBlock = NULL, *lastBlock = NULL;
+
+   /* find the last block upstream of tStart */
+   firstBlock = chain->blockList;
+   for (curBlock = chain->blockList; curBlock != NULL; curBlock = curBlock->next){
+      if (curBlock->tStart >= tStart)
+         break;
+      firstBlock = curBlock;
+   }
+   if (firstBlock == curBlock) 
+      errAbort("ERROR in chainRemoveBlocks: boundaries imply that we remove the first block of chain Id %d (tStart %d - tEnd %d)\n", chain->id, tStart, tEnd);
+
+   /* now find the first block downstream of tEnd */
+   for (curBlock = firstBlock->next; curBlock != NULL; curBlock = curBlock->next){
+      if (curBlock->tStart >= tEnd)
+         break;
+   }
+   lastBlock = curBlock;
+   if (lastBlock == NULL) 
+      errAbort("ERROR in chainRemoveBlocks: boundaries imply that we remove the last block of chain Id %d (tStart %d - tEnd %d)\n", chain->id, tStart, tEnd);
+   
+//   printf("found block upstream %d - %d  and downstream %d - %d\n", firstBlock->tStart, firstBlock->tEnd, lastBlock->tStart, lastBlock->tEnd); fflush(stdout);
+
+
+   /* delete the blocks in the tStart - tEnd region */
+   curBlock = firstBlock->next;
+   for (;;){
+      nextBlock = curBlock->next;
+//      printf("\tdel block %d - %d  \n", curBlock->tStart, curBlock->tEnd); fflush(stdout);
+      freeMem(curBlock);
+      curBlock = nextBlock;
+      if (curBlock == lastBlock)
+         break;
+   }
+   /* firstBlock must now point to lastBlock */
+   firstBlock->next = lastBlock;
+}
+
+
+
+
+/* ################################################################################### */
+/* functions for getting aligning blocks from the nets                                 */
+/* and adding them to genomeRangTree                                                   */
+/* ################################################################################### */
+
+/****************************************************************
+   Exact copy from netChainSubset.c 
+   Find next in list that has a non-empty child.   
+****************************************************************/
+struct cnFill *nextGapWithInsert(struct cnFill *gapList)
+{
+struct cnFill *gap;
+for (gap = gapList; gap != NULL; gap = gap->next)
+    {
+    if (gap->children != NULL)
+        break;
+    }
+return gap;
+}
+
+
+/****************************************************************
+   create a bed from the coordinates and add it to the genomeRangeTree
+****************************************************************/
+void addRangeToGenomeRangeTree(char *tName, int start, int end, int chainId) {
+   struct bed4 *bed = NULL;
+   char chainIdBuf[30];
+
+   AllocVar(bed);
+   bed->chrom = cloneString(tName);
+   bed->chromStart = start;
+   bed->chromEnd = end; 
+   safef(chainIdBuf, sizeof(chainIdBuf), "%d", chainId);
+   bed->name = cloneString(chainIdBuf);
+   genomeRangeTreeAddValList(rangeTreeAliBlocks, bed->chrom, bed->chromStart, bed->chromEnd, bed);
+}
+
+/****************************************************************
+   modified function splitWrite() from netChainSubset.c 
+   adds alignment blocks of a net that do not have children (NOTE: they can span gaps) to the genomeRangeTree
+   
+   X = fill, - = gap
+   XXXXXXXX---XXXXXX-------------------XXXXXXXXXX
+                     XXXX-----XXX--XXX
+                          XXX    
+   gives the following ranges that will be added to genomeRangeTree
+   <---------------> <--> <-> <------> <-------->
+   NOTE: The first and the fourth contain gaps that are not filled by children
+****************************************************************/
+void addAliBlocksToGenomeRangeTree(struct cnFill *fill, char *tName) {
+   int tStart = fill->tStart;
+   struct cnFill *child = fill->children;
+
+   for (;;) {
+      child = nextGapWithInsert(child);
+      if (child == NULL)
+         break;
+
+      verbose(3, "\t\tadd alignment block to genomeRangeTree: %s\t%d\t%d\t%d\n", tName, tStart, child->tStart, fill->chainId);
+      addRangeToGenomeRangeTree(tName, tStart, child->tStart, fill->chainId);
+      tStart = child->tStart + child->tSize;
+      child = child->next;
+   }
+   verbose(3, "\t\tadd alignment block to genomeRangeTree: %s\t%d\t%d\t%d\n", tName, tStart, fill->tStart + fill->tSize, fill->chainId);
+   addRangeToGenomeRangeTree(tName, tStart, fill->tStart + fill->tSize, fill->chainId);
+}
+
+
+/****************************************************************
+   modified function rConvert() from netChainSubset.c 
+   It calls addAliBlocksToGenomeRangeTree() to write the aligning blocks for this fill. 
+   Then recursively calls itself to handle the children. 
+****************************************************************/
+void rConvert(struct cnFill *fillList, char *tName) {
+   struct cnFill *fill;
+
+   for (fill = fillList; fill != NULL; fill = fill->next) {
+      if (fill->chainId) 
+         addAliBlocksToGenomeRangeTree(fill, tName);
+      if (fill->children) 
+         rConvert(fill->children, tName);
+   }
+}
+
+
+/* ################################################################################### */
+/* functions for dealing with fills/gaps from the nets and with breaks                 */
+/* they represent the core functionality                                               */
+/* ################################################################################### */
+
+/****************************************************************
+   Recursively parse the fill list. 
+   Keep track of the chainId that has the fill region at each depth, the start-end+chainId of each gap and fill the fillGapInfo struct for every fill that is at depth > 1
+   Also count how often we see each chain at depth > 1 --> we only care for those that we see more than once
+****************************************************************/
+void parseFill(struct cnFill *fillList, int depth, char *tName) {
+   struct cnFill *fill;
+   struct fillGapInfo *fillGapList = NULL, *fillGap = NULL;
+   int i;
+
+   for (fill = fillList; fill != NULL; fill = fill->next) {
+      char *type = (fill->chainId ? "fill" : "gap");
+
+      /* fill */
+      if (sameString(type, "fill")) {
+         /* update chain ID if a fill */
+         depth2chainId[depth] = fill->chainId;
+
+         /* new fillGap if depth > 1 */
+         if (depth > 1) {
+            /* increase chainId2Counter */
+            hashIncInt_IntKey(chainId2Count, fill->chainId);
+
+            /* save the information about the fill and its enclosing gap */
+            AllocVar(fillGap);
+            fillGap->depth = depth;
+            fillGap->chainId = fill->chainId;
+            fillGap->chrom = cloneString(tName);
+            fillGap->fillStart = fill->tStart;
+            fillGap->fillEnd = fill->tStart+fill->tSize;
+            fillGap->gapInfo = cloneString(depth2gap[depth-1]->string);
+
+            /* if the chainId does not have a list of fillGap blocks, create one and add to hash */
+            fillGapList = hashFindValIntKey(fillGapInfoHash, fill->chainId);
+            if (fillGapList == NULL)  {
+               slAddHead(&fillGapList, fillGap);
+               hashAddIntKey(fillGapInfoHash, fill->chainId, fillGapList);
+            } else {
+            /* otherwise just add to this fillGap to the end of the list */
+               slAddTail(&fillGapList, fillGap);
+            }
+
+            /* verbose output */
+            if (verboseLevel() >= 4) {
+               verbose(4, "\t");
+               for (i=0; i<depth; i++) verbose(4, "  ");
+               verbose(4, "new fillGapInfo: depth %d   fill coords:  %s:%d-%d  chainID %d    enclosing gap: %s       [chain ID %d occurred so far %d times in net]\n", 
+                  depth, tName, fill->tStart, fill->tStart+fill->tSize, fill->chainId, depth2gap[depth-1]->string, fill->chainId,ptToInt(hashFindValIntKey(chainId2Count, fill->chainId)));
+            }
+        } else {
+            /* verbose output */
+            if (verboseLevel() >= 4) {
+               verbose(4, "\t");
+                 for (i=0; i<depth; i++) verbose(4, "  ");
+               verbose(4, "new fill at depth %d:  fill coords:  %s:%d-%d  chainID %d\n", depth, tName, fill->tStart, fill->tStart+fill->tSize, fill->chainId);
+            }
+         }
+
+      /* update the gap information at the current depth */
+      }else if (sameString(type, "gap")) {
+         dyStringClear(depth2gap[depth]);
+         dyStringPrintf(depth2gap[depth], "%s\t%d\t%d\t%d\t%d", tName, fill->tStart, fill->tStart+fill->tSize, depth2chainId[depth-1], depth);
+
+         /* verbose output */
+         if (verboseLevel() >= 4) {
+              verbose(4, "\t");
+            for (i=0; i<depth; i++) verbose(4, "  ");
+            verbose(4, "current gap:  depth %d   gap coords: %s:%d-%d  chainID %d\n", depth, tName, fill->tStart, fill->tStart+fill->tSize, depth2chainId[depth-1]);
+         }
+         
+      /* should not happen if we are reading a proper net file */
+      } else {
+         errAbort("ERROR: current entry in fillList is neither type fill nor gap: %s\n", type);
+      }
+
+      /* recursion */
+      if (fill->children)
+         parseFill(fill->children, depth+1, tName);
+   }
+}
+
+
+
+/****************************************************************
+   check if the given coordinates overlap an aligning block from a higher scoring chain (lower chainId) that is not the breaking chain
+   If this is the case, the broken chain will still be broken by the even-higher-scoring chain, even if we remove the suspect of the breaking chain. 
+****************************************************************/
+boolean isBrokenByAnotherHigherScoringChain(char *chrom, int intervalStart, int intervalEnd, int chainId, struct fillGapInfo *fillGap) {
+   boolean isOverlapped = FALSE;
+
+   verbose(4, "\t\t\tTest if interval %s:%d-%d for chainID %d overlaps with a higher-scoring chain in the genomeRangeTree:\n", chrom, intervalStart, intervalEnd, chainId);
+   struct range *range = genomeRangeTreeAllOverlapping(rangeTreeAliBlocks, chrom, intervalStart, intervalEnd);
+   for (; range != NULL; range = range->next) {
+      struct bed4 *bed = (struct bed4 *) range->val;
+      for (; bed != NULL; bed = bed->next) {
+         verbose(5, "\t\t\t\tOverlaps with %s:%d-%d of chainID %s\n", bed->chrom, bed->chromStart, bed->chromEnd, bed->name);
+         if (atoi(bed->name) < chainId && atoi(bed->name) != fillGap->parentChainId) {
+            verbose(5, "\t\t\t\t==> HIGHER-scoring chain (lower chain ID and different from breaking chain)\n");
+            isOverlapped = TRUE;
+         }
+      }
+   }
+   verbose(4, "\t\t\t==>%s a higher-scoring chain\n", (isOverlapped ? "DOES OVERLAP" : "does not overlap"));
+   return isOverlapped;
+}
+
+/****************************************************************
+   the tab-sep string gapInfo of a fillGapInfo struct contains gapStart, gapEnd, parentChainId
+   this function chops the string and fills the fillGapInfo struct variable gapStart, gapEnd, parentChainId
+   does it for the entire list of fillGaps for one chain
+****************************************************************/
+void chopGapInfo(struct fillGapInfo *fillGapList) {
+   char *words[5];
+   int wordCount;
+   struct fillGapInfo *fillGap = NULL;
+   
+   for (fillGap = fillGapList; fillGap != NULL; fillGap = fillGap->next) {
+      wordCount = chopLine(fillGap->gapInfo, words);
+      if (wordCount != 5)
+         errAbort("chopGapInfo: Expecting 5 tab-separated words in %s but can parse only %d\n", fillGap->gapInfo, wordCount);
+      fillGap->gapStart = atoi(words[1]);
+      fillGap->gapEnd = atoi(words[2]);
+      fillGap->parentChainId = atoi(words[3]);
+      fillGap->gapDepth = atoi(words[4]);
+/* that killls it       freeMem(fillGap->gapInfo); */
+   }
+}
+
+/****************************************************************
+   get a list of pairwise breaks for all chains that come in >1 pieces at depth > 1
+   input parameter is a hash element (chainID, how_often_it_occurred_in_net)
+****************************************************************/
+void getValidBreaks(struct hashEl *el)
+{
+   struct fillGapInfo *fillGapList = NULL, *fillGap;
+   int count = (int)ptToInt(el->val);      /* number of times we have seen the chain at depth > 1 */
+   struct breakInfo *breakP = NULL, *breakList = NULL; 
+
+   if (count == 1) {
+      verbose(3, "\tchainID %s seen only once in the net\n", el->name);
+      /* free fillGapList if chain occurs only once */
+      fillGapList = hashMustFindVal(fillGapInfoHash, el->name);
+      freeMem(fillGapList->chrom);
+      freeMem(fillGapList->gapInfo);
+      slFreeList(&fillGapList);
+      hashRemove(fillGapInfoHash, el->name);
+   } else {
+      /* this chain is broken into pieces */
+      if (verboseLevel() >= 3)
+         printFillGapInfoList(el);
+
+      fillGapList = hashMustFindVal(fillGapInfoHash, el->name);
+
+      /* need to split the tab-sep string gapInfo into its fields and fill the gapStart, gapEnd, parentChainId variables of each fillGap for this chain */
+      chopGapInfo(fillGapList);
+      
+      for (fillGap = fillGapList; fillGap != NULL; fillGap = fillGap->next) {
+         /* iterate from the first to the last-but-one list element since we are considering pairs of fillGap */
+         if (fillGap->next == NULL) 
+            break;
+
+         verbose(2, "\t\tconsider break candidate:  depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d    AND    depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d\n", 
+            fillGap->depth, fillGap->chainId, fillGap->chrom, fillGap->fillStart, fillGap->fillEnd, fillGap->gapStart, fillGap->gapEnd, fillGap->parentChainId, 
+            fillGap->next->depth, fillGap->next->chainId, fillGap->next->chrom, fillGap->next->fillStart, fillGap->next->fillEnd, fillGap->next->gapStart, fillGap->next->gapEnd, fillGap->next->parentChainId);
+
+         /* test if the break candidate is valid */
+         /* we do not consider breaks at different depths as this involves >1 breaking chains */
+         if (fillGap->depth != fillGap->next->depth) {
+            verbose(2, "\t\t==> invalid: different depths\n");
+            continue;
+         }
+         /* we do not consider breaks by different breaking chains */
+         if (fillGap->parentChainId != fillGap->next->parentChainId) {
+            verbose(2, "\t\t==> invalid: at different parent IDs\n");
+            continue;
+         }
+         /* check if there is another higher-scoring chain between the two fill blocks. 
+            If this is the case, the broken chain will still be broken by the even-higher-scoring chain, even if we remove the suspect of the breaking chain. 
+          */
+         if (isBrokenByAnotherHigherScoringChain(fillGap->chrom, fillGap->fillEnd, fillGap->next->fillStart, fillGap->chainId, fillGap)) {
+            verbose(2, "\t\t==> invalid: there is a higher-scoring same-level chain block in between. Removing the suspect will not connect the two fills.\n");
+            continue;
+         }
+         /* possible that a chain is broken but the gap is exactly the same 
+            Case 1: The fill of the higher level chain that breaks the lower-level chain is filtered from the nets. 
+             111111111111111111111----------------------------------1111111111111111111111111111
+                                                   222----------------------------------------------222222222222222222222222222222222222222222222
+                                      333333------------3333333333
+             If the left 222 fill at depth 2 is filtered out, the third-level chain is still broken into two pieces. Ignore (we could stitch this chain though). 
+            Case 2: The lower-level chain is broken by a chain that has is completely contained . 
+                                        11111---111------11111111111111111
+             222222--------------------------------------------------------------22222222222
+            Regardless of the reason, nothing to do for us. 
+         */
+         if (fillGap->gapStart == fillGap->next->gapStart && fillGap->gapEnd == fillGap->next->gapEnd) {
+            verbose(2, "\t\t==> invalid: same gap %d - %d  and %d - %d \n", fillGap->gapStart, fillGap->gapEnd, fillGap->next->gapStart, fillGap->next->gapEnd);
+            continue;
+         }
+
+         /* valid: new break */
+         verbose(2, "\t\t==> VALID: ");
+         AllocVar(breakP);
+         breakP->depth = fillGap->depth;
+         breakP->chainId = fillGap->chainId;
+         breakP->parentChainId = fillGap->parentChainId;
+         breakP->chrom = cloneString(fillGap->chrom);
+         breakP->LfillStart = fillGap->fillStart;
+         breakP->LfillEnd = fillGap->fillEnd;
+         breakP->LgapStart = fillGap->gapStart;
+         breakP->LgapEnd = fillGap->gapEnd;
+         breakP->RfillStart = fillGap->next->fillStart;
+         breakP->RfillEnd = fillGap->next->fillEnd;
+         breakP->RgapStart = fillGap->next->gapStart;
+         breakP->RgapEnd = fillGap->next->gapEnd;
+         breakP->suspectStart = breakP->LgapEnd;
+         breakP->suspectEnd = breakP->RgapStart;
+         /* sanity checks */
+         assert(breakP->suspectStart < breakP->suspectEnd);
+         assert(breakP->LfillStart < breakP->suspectStart);
+         assert(breakP->LfillEnd <= breakP->suspectStart);
+         assert(breakP->RfillStart >= breakP->suspectEnd);
+         assert(breakP->RfillEnd > breakP->suspectEnd);
+
+/* ################################## Michael to remove ############################*/
+if (OnlyThisChain != -1 && OnlyThisChain != fillGap->parentChainId) 
+continue;
+
+         /* add both chains to chainId2IsOfInterest */
+         /* And add this break to hash breakHash. Value is a linked list to breakInfo structs */
+         hashAddIntTrue(chainId2IsOfInterest, fillGap->chainId);
+         hashAddIntTrue(chainId2IsOfInterest, fillGap->parentChainId);
+
+         breakList = hashFindValIntKey(breakHash, fillGap->parentChainId);
+         if (breakList == NULL)  {
+            slAddHead(&breakList, breakP);
+            breakP->prev = NULL;
+            hashAddIntKey(breakHash, fillGap->parentChainId, breakList);
+         } else {
+            /* otherwise just add to this break to the end of the list */
+            breakP->prev = slLastEl(breakList);
+            slAddTail(&breakList, breakP);
+         }
+         verbose(2, "added break to the list of the breaking chain %d:  [depth %d  breaking chainID %d  broken chainID %d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d]\n", 
+            breakP->parentChainId, breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
+      }
+
+      /* free */
+      for (fillGap = fillGapList; fillGap != NULL; fillGap = fillGap->next) {
+         freeMem(fillGap->chrom);
+         freeMem(fillGap->gapInfo);
+      }
+      slFreeList(&fillGapList);
+      hashRemove(fillGapInfoHash, el->name);
+   }
+   fflush(stdout);
+}
+
+
+/****************************************************************
+   called from main: 
+   read the net file, then parse all the fill and gap lines into the fillGapInfo struct list by calling parseFill()
+   then get valid breaks by calling getValidBreaks()
+   free a bunch of memory
+****************************************************************/
+void getFillGapAndValidBreaks(char *netFile) {
+   struct lineFile *lf = NULL;
+   struct chainNet *netList = NULL, *net;
+   char *tName = NULL;
+   int i;
+
+   /* open net and read net file */
+   verbose(1, "1.1 read net file %s into memory ...\n", netFile);
+   lf = lineFileOpen(netFile, TRUE);
+   while ((net = chainNetRead(lf)) != NULL) {
+      slAddHead(&netList, net);
+   }
+   slReverse(&netList);
+   lineFileClose(&lf);
+   verbose(1, "DONE\n\n");
+
+
+   /* we need a init and allocate a few hashes and arrays. 
+      Arrays are used with net depth being the index to keep track of which chain and which gap we currently have at each depth 
+   */
+   verbose(1, "1.2 get fills/gaps from %s ...\n", netFile);
+   chainId2Count = newHash(0);              /* counts how often we see a chain ID at depth > 1 */
+   fillGapInfoHash = newHash(0);            /* Hash keyed chainId, stores a list of fillGapInfo structs */
+   AllocArray(depth2gap, maxNetDepth);      /* information about the current gap at each depth (hash key) */
+   for (i=0; i<maxNetDepth; i++)
+      depth2gap[i] = newDyString(200);
+   AllocArray(depth2chainId, maxNetDepth);  /* information about which chain ID is the fill at each depth (hash key) */
+
+   /* now parse all the nets, fill the fillGapInfo struct for every chain at depth>1 */
+   for (net = netList; net != NULL; net = net->next) {
+      verbose(2, "\tparse net %s of size %d\n", net->name, net->size);
+      tName = net->name;         /* need to keep track of the current target chrom/scaffold */
+      parseFill(net->fillList, 1, tName);
+    }
+   verbose(1, "DONE\n\n");
+
+   /* parse the nets once and add all aligning blocks of a net that do not have children (NOTE: they can span gaps) to the genomeRangeTree 
+      We will use this in isBrokenByAnotherHigherScoringChain() to check if the broken chain is also broken by another even-higher-scoring chain 
+   */
+   rangeTreeAliBlocks = genomeRangeTreeNew();
+   verbose(1, "1.3 get aligning regions from %s ...\n", netFile);
+   for (net = netList; net != NULL; net = net->next) {
+      verbose(2, "\tget aligning regions from net %s\n", net->name);
+      tName = net->name;         /* need to keep track of the current target chrom/scaffold */
+      rConvert(net->fillList, tName);
+    }
+   verbose(1, "DONE\n\n");
+
+   /* output all fillGap if verbose>=3 */
+   if (verboseLevel() >= 3) {
+      verbose(3, "\n\nVERBOSE OUTPUT: Here are all the fillGap structs (printFillGapInfoList())\n");
+      hashTraverseEls(chainId2Count, printFillGapInfoList);
+      verbose(3, "\n");
+   }
+   
+   /* free net */
+   chainNetFreeList(&netList);
+
+   /* get valid breaks */
+   verbose(1, "1.4 get valid breaks ...\n");
+   breakHash = newHash(0);
+   chainId2IsOfInterest = newHash(0);
+   hashTraverseEls(chainId2Count, getValidBreaks);
+   verbose(1, "DONE\n");
+
+   if (verboseLevel() >= 3) {
+      verbose(3, "\n\nVERBOSE OUTPUT: Here are all the breaks (printAllBreaks())\n");
+      printAllBreaks();
+   }
+
+   /* free arrays that hold values per depth */
+   for (i=0; i<maxNetDepth; i++)
+      freeDyString(&depth2gap[i]);
+   freez(&depth2gap);
+   freez(&depth2chainId);
+
+   genomeRangeTreeFree(&rangeTreeAliBlocks);
+}
+
+/****************************************************************
+  sum up the bases in aligning blocks of the chain
+****************************************************************/
+int getSubChainBases(struct chain *chain) {
+   struct cBlock *b;
+   int numBases = 0;
+   for (b = chain->blockList; b != NULL; b = b->next) {
+      numBases += (b->tEnd - b->tStart);
+   }
+   return numBases;
+}
+
+
+/****************************************************************
+  test if suspect passes our thresholds and should be removed
+  remove the suspect blocks from the breaking chain and update the boundaries of up/downstream breaks
+  the breaksUpdated parameter is set to TRUE if a suspect is removed and boundaries or the up- and/or downstream breaks were updated (is passed on to calling function)
+  returns TRUE if this suspect is removed 
+****************************************************************/
+boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
+
+   struct chain *breakingChain = NULL, *brokenChain = NULL;
+   struct chain *subChainSuspect = NULL, *subChainLfill = NULL, *subChainRfill = NULL, *subChainfill = NULL;
+   struct chain *chainToFree1 = NULL, *chainToFree2 = NULL, *chainToFree3 = NULL, *chainToFree4 = NULL;
+   boolean isRemoved = FALSE;
+   *breaksUpdated = FALSE;
+   int subChainSuspectBases = -1;
+   
+   /* get the breaking and the broken chain */
+   breakingChain = getChainPointerFromHash(breakP->parentChainId);
+   if (breakingChain == NULL) 
+      errAbort("ERROR: cannot get breaking chain with Id %d from chainId2chain hash\n", breakP->parentChainId);
+   brokenChain = getChainPointerFromHash(breakP->chainId);
+   if (brokenChain == NULL)
+       errAbort("ERROR: cannot get broken chain with Id %d from chainId2chain hash\n", breakP->chainId);
+
+   /* get 4 subchains. the suspect, left/right and entire fill */
+   chainSubsetOnT(breakingChain, breakP->suspectStart, breakP->suspectEnd, &subChainSuspect, &chainToFree1);
+   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->LfillEnd, &subChainLfill, &chainToFree2);
+   chainSubsetOnT(brokenChain, breakP->RfillStart, breakP->RfillEnd, &subChainRfill, &chainToFree3);
+   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->RfillEnd, &subChainfill, &chainToFree4);
+
+   /* only way that the suspect subChain is NULL if it occurred more than once in the list and was deleted in the same iteration by another chain */   
+   if (subChainSuspect == NULL) {
+      verbose(3, "\t\tSuspect %d-%d is apparently already deleted as the suspect subChain is NULL\n", breakP->suspectStart, breakP->suspectEnd);
+      /* write the subChains and the bed coordinates of the suspect and the fills */
+      if (debug) {
+         chainWrite(subChainLfill, brokenChainLfillChainFile);
+         chainWrite(subChainRfill, brokenChainRfillChainFile);
+         chainWrite(subChainfill, brokenChainfillChainFile);
+         fprintf(suspectFillBedFile, "%s\t%d\t%d\tFill__score_%1.0f\t1000\t+\t%d\t%d\t0,0,255\n",    breakP->chrom, breakP->LfillStart, breakP->RfillEnd, subChainfill->score, breakP->LfillStart, breakP->RfillEnd);
+         fprintf(suspectFillBedFile, "%s\t%d\t%d\tLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->LfillEnd, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
+         fprintf(suspectFillBedFile, "%s\t%d\t%d\tRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->RfillStart, breakP->RfillEnd, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
+      }
+      return isRemoved;
+   }
+
+   /* compute the scores of the subChains */
+   getChainScore(subChainSuspect);
+   getChainScore(subChainfill);
+   getChainScore(subChainLfill);
+   getChainScore(subChainRfill);
+   /* ratios */
+   double ratio = subChainfill->score / subChainSuspect->score;
+   double ratioL = subChainLfill->score / subChainSuspect->score;
+   double ratioR = subChainRfill->score / subChainSuspect->score;
+
+
+   subChainSuspectBases = getSubChainBases(subChainSuspect);
+
+   verbose(3, "\t\t\tsuspect subChain            %d - %d   gets score %7d   (suspect subChain bases %d, left gap size %d, right gap size %d)\n", 
+      breakP->suspectStart, breakP->suspectEnd, (int)subChainSuspect->score, subChainSuspectBases, breakP->LgapEnd - breakP->LgapStart, breakP->RgapEnd - breakP->RgapStart);
+   verbose(3, "\t\t\tleft-to-right fill subChain %d - %d   gets score %7d   ratio %1.2f\n", breakP->LfillStart, breakP->RfillEnd, (int)subChainfill->score, ratio); 
+   verbose(3, "\t\t\tleft fill subChain          %d - %d   gets score %7d   ratio %1.2f\n", breakP->LfillStart, breakP->LfillEnd, (int)subChainLfill->score, ratioL); 
+   verbose(3, "\t\t\tright fill subChain         %d - %d   gets score %7d   ratio %1.2f\n", breakP->RfillStart, breakP->RfillEnd, (int)subChainRfill->score, ratioR); 
+
+   /* write the subChains and the bed coordinates of the suspect and the fills */
+   if (debug) {
+      chainWrite(subChainSuspect, suspectChainFile);
+      chainWrite(subChainLfill, brokenChainLfillChainFile);
+      chainWrite(subChainRfill, brokenChainRfillChainFile);
+      chainWrite(subChainfill, brokenChainfillChainFile);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\tSuspect__score_%1.0f__R_%1.2f__Rleft_%1.2f__Rright_%1.2f\t1000\t+\t%d\t%d\t255,0,0\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, subChainSuspect->score, ratio, ratioL, ratioR, breakP->suspectStart, breakP->suspectEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\tFill__score_%1.0f\t1000\t+\t%d\t%d\t0,0,255\n",    breakP->chrom, breakP->LfillStart, breakP->RfillEnd, subChainfill->score, breakP->LfillStart, breakP->RfillEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\tLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->LfillEnd, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\tRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->RfillStart, breakP->RfillEnd, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
+      fprintf(HernandoCompareFile, "%d\t%d\t%s\t%d\t%d\t%d\t%d\t%1.0f\t%1.0f\n", breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->suspectStart, breakP->suspectEnd, breakP->LgapStart, breakP->RgapEnd, subChainSuspect->score, subChainfill->score);
+   }
+
+
+   /* decision */
+   if (ratio >= foldThreshold && ratioL >= LRfoldThreshold && ratioR >= LRfoldThreshold && 
+         subChainSuspect->score <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
+         (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize) {
+      isRemoved = TRUE;
+      hashAddIntTrue(chainId2NeedsRescoring, breakingChain->id);
+      verbose(3, "\t\t==> REMOVE suspect from breaking chainID %d (this chain will be rescored before writing)\n", breakingChain->id);
+
+      /* output removed suspect to the bed file*/
+      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tRatio_%1.2f__RatioL_%1.2f__RatioR_%1.2f__score_%1.0f_vs_%1.0f\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, ratio, ratioL, ratioR, subChainSuspect->score, subChainfill->score);
+      /* remove suspect blocks from the chain */
+      chainRemoveBlocks(breakingChain, breakP->suspectStart, breakP->suspectEnd);
+
+      /* must give the new chain a new ID. Then write */
+      maxChainId ++;
+      subChainSuspect->id = maxChainId;
+      chainWrite(subChainSuspect, finalChainOutFile);
+      verbose(4, "\t\t\twrote new chain representing the removed suspect with ID %d\n", subChainSuspect->id); 
+
+      /* now update the fill coordinates for the up/downstream break */
+      if (breakP->prev != NULL) {
+         /* only update upstream break if 
+            - it has the same breaking and broken chain ID
+            - if the upstream left fill == current right fill (otherwise there was an invalid break candidate between the upstream and the current break) */
+         if (breakP->chainId == breakP->prev->chainId && breakP->parentChainId == breakP->prev->parentChainId &&
+             breakP->prev->RfillStart == breakP->LfillStart && breakP->prev->RfillEnd == breakP->LfillEnd) {
+            *breaksUpdated = TRUE;
+            verbose(5, "\t\t\tUpdate upstream break fill boundaries\n\t\t\t\tUpstream break:  suspect %d - %d  fill %d - %d\n\t\t\t\tCurrent break:   suspect %d - %d  fill %d - %d\n", 
+               breakP->prev->suspectStart, breakP->prev->suspectEnd, breakP->prev->LfillStart, breakP->prev->RfillEnd,
+               breakP->suspectStart, breakP->suspectEnd, breakP->LfillStart, breakP->RfillEnd);
+            assert(breakP->prev->LfillEnd < breakP->LfillStart);  /* left fill upstream must be < left fill */
+            assert(breakP->prev->suspectEnd < breakP->suspectStart);  /* suspect end upstream must be < suspect start */
+            /* update RfillEnd and RgapEnd */
+            verbose(5, "\t\t\t\t--> set upstream RfillEnd from %d to %d\n\t\t\t\t--> set upstream RgapEnd  from %d to %d\n", breakP->prev->RfillEnd, breakP->RfillEnd, breakP->prev->RgapEnd, breakP->RgapEnd);
+            breakP->prev->RfillEnd = breakP->RfillEnd;
+            breakP->prev->RgapEnd = breakP->RgapEnd;
+         }
+      }
+
+      if (breakP->next != NULL) {
+         /* only update downstream break if 
+            - it has the same breaking and broken chain ID
+            - if the current right fill == downstream left fill (otherwise there was an invalid break candidate between the current and the downstream break) */
+         if (breakP->chainId == breakP->next->chainId && breakP->parentChainId == breakP->next->parentChainId &&
+             breakP->next->LfillStart == breakP->RfillStart && breakP->next->LfillEnd == breakP->RfillEnd) {
+            *breaksUpdated = TRUE;
+            verbose(5, "\t\t\tUpdate downstream break fill boundaries\n\t\t\t\tCurrent break:     suspect %d - %d  fill %d - %d\n\t\t\t\tDownstream break:  suspect %d - %d  fill %d - %d\n", 
+               breakP->suspectStart, breakP->suspectEnd, breakP->LfillStart, breakP->RfillEnd, 
+               breakP->next->suspectStart, breakP->next->suspectEnd, breakP->next->LfillStart, breakP->next->RfillEnd); 
+            assert(breakP->next->RfillStart > breakP->RfillEnd);      /* right fill downstream must be > right fill */
+            assert(breakP->next->suspectStart > breakP->suspectEnd);  /* suspect start downstream must be > suspect end */
+            /* update LfillStart and LgapEnd */
+            verbose(5, "\t\t\t\t--> set downstream LfillStart from %d to %d\n\t\t\t\t--> set downstream LgapEnd  from %d to %d\n", breakP->next->LfillStart, breakP->LfillStart, breakP->next->LgapStart, breakP->LgapStart);
+            breakP->next->LfillStart = breakP->LfillStart;
+            breakP->next->LgapStart = breakP->LgapStart;
+         }
+      }
+
+   } else {
+      verbose(3, "\t\t==> do not remove suspect from breaking chainID %d\n", breakingChain->id);
+   }
+
+   chainFree(&chainToFree1);
+   chainFree(&chainToFree2);
+   chainFree(&chainToFree3);
+   chainFree(&chainToFree4);
+
+   return isRemoved;
+}
+
+/****************************************************************
+  go through all the breaks. 
+  For one breaking chain, 
+   - iteratively consider all breaks
+   - remove the suspects if they pass our thresholds
+   - continue iterating until (i) no break remains or (ii) no suspect was removed in the last round
+  Calls testAndRemoveSuspect()
+****************************************************************/
+void loopOverBreaks() {
+   struct breakInfo *breakP = NULL, *nextBreak = NULL, *breakList = NULL; 
+   struct hashEl *hel, *helList = hashElListHash(breakHash);
+   int parentChainId;
+   boolean currentSuspectRemoved = FALSE;
+   boolean anyBreaksUpdated = FALSE;
+   boolean currentBreaksUpdated = FALSE;
+   
+   /* hel is a pointer to a list of breaks for one parentChain */
+   for (hel = helList; hel != NULL; hel = hel->next)  {
+      breakList = hel->val;
+      if (breakList == NULL) 
+         errAbort("ERROR: breakList for breaking chainID %s is NULL\n", hel->name); 
+
+      parentChainId = breakList->parentChainId;
+        verbose(3, "\t############ Test if suspects of breaking chain %d can be removed\n", parentChainId); 
+
+      /* try to remove chain-breaking suspects in the list until we do not remove anything in the entire pass through the list 
+         NOTE: After removing one suspect, up- and downstream breaks now may get larger fill regions if the broken chain was broken into >2 pieces. 
+         Therefore, we iterate until no break remains or nothing can be removed anymore.
+      */
+      int iteration = 0;
+      for (;;) {
+         iteration++;
+
+         /* verbose output */
+         if (verboseLevel() >= 3) {
+            verbose(3, "\tIteration %d for breaking chain %d\n\t\tList of remaining breaks\n", iteration, parentChainId); 
+            for (breakP = breakList; breakP != NULL; breakP = breakP->next)
+               printSingleBreak(breakP);
+         }
+
+         anyBreaksUpdated = FALSE;
+         breakP = breakList;
+         /* now loop over all breaks in the list for this breaking chain */
+         for(;;) {
+            if (breakP == NULL) 
+               break;
+
+            verbose(3, "\t\tconsider break:  depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d\n", 
+               breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
+            /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
+            currentSuspectRemoved = testAndRemoveSuspect(breakP, &currentBreaksUpdated);
+
+            /* just keep track of if a break is updated (then we have to iterate again) */
+            if (currentBreaksUpdated) 
+               anyBreaksUpdated = TRUE;
+
+            nextBreak = breakP->next;
+            /* remove this break from the linked list, also update the prev pointer 
+               free break
+            */
+            if (currentSuspectRemoved) {
+               slRemoveEl(&breakList, breakP);
+               if (breakP->next != NULL)
+                  breakP->next->prev = breakP->prev;
+               freeMem(breakP->chrom);
+               freeMem(breakP);
+            }
+            /* continue looping with the next element in the list */
+            breakP = nextBreak;
+         }
+         
+         if (! anyBreaksUpdated) {
+            verbose(3, "\t==> no break is updated --> done with breaking chain %d\n", parentChainId); 
+            break;
+         }
+         if (breakList == NULL) {
+            verbose(3, "\t==> ALL suspect removed --> done with breaking chain %d\n", parentChainId); 
+            break;
+         }
+      }
+   }
+   hashElFreeList(&helList);
+}
+
+
+
+
+
+/* ################################################################################### */
+/*   main                                                                              */
+/* ################################################################################### */
+int main(int argc, char *argv[])
+/* Process command line. */
+{
+optionInit(&argc, argv, options);
+char *scoreSchemeName = NULL;
+optionHash(&argc, argv);
+struct twoBitFile *tbf;
+
+if (argc != 7)
+    usage();
+
+if (debug)
+   printf("### DEBUG mode ###\n");
+/* get all the options */
+tNibDir = argv[3];
+qNibDir = argv[4];
+tIsTwoBit = twoBitIsFile(tNibDir);
+qIsTwoBit = twoBitIsFile(qNibDir);
+gapFileName = optionVal("linearGap", NULL);
+scoreSchemeName = optionVal("scoreScheme", NULL);
+doLocalScore = optionExists("doLocalScore");
+debug = optionExists("debug");
+foldThreshold = optionDouble("foldThreshold", 8.0);
+LRfoldThreshold = optionDouble("LRfoldThreshold", foldThreshold/2);
+maxSuspectBases = optionInt("maxSuspectBases", maxSuspectBases);
+maxSuspectScore = optionInt("maxSuspectScore", maxSuspectScore);
+minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
+
+printf("Verbosity level: %d\n", verboseLevel());
+if (doLocalScore)
+   verbose(2, " doLocal set\n ");
+printf("foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, maxSuspectBases, maxSuspectScore, minLRGapSize);
+
+
+
+/* load score scheme */
+if (scoreSchemeName != NULL) {
+   verbose(1, "Reading scoring matrix from %s\n", scoreSchemeName);
+   scoreScheme = axtScoreSchemeRead(scoreSchemeName);
+} else {
+   scoreScheme = axtScoreSchemeDefault();
+}
+/* load gap costs */
+if (gapFileName == NULL)
+    errAbort("Must specify linear gap costs.  Use 'loose' or 'medium' for defaults\n");
+gapCalc = gapCalcFromFile(gapFileName);
+
+
+
+/* 1. read the net and the chain file */ 
+verbose(1, "1. parsing fills/gaps from %s and getting valid breaks ...\n", argv[1]);
+getFillGapAndValidBreaks(argv[1]);
+verbose(1, "DONE (parsing fills/gaps and getting valid breaks)\n\n");
+
+
+/* 2. read the chain file. Write out those that are neither breaking nor broken chains immediately */ 
+finalChainOutFile = mustOpen(argv[5], "w");
+verbose(1, "2. reading breaking and broken chains from %s and write irrelevant chains to %s ...\n", argv[2], argv[5]);
+readChainsOfInterest(argv[2]);
+verbose(1, "DONE\n\n");
+
+
+/* 3. load the sequences for all t and q chroms from the chains of interest */
+verbose(1, "3. reading target and query DNA sequences for breaking and broken chains ...\n");
+/* open the 2bit files if t or q seq is given as a 2bit file */
+twoBitFileHash = newHash(8);
+if (tIsTwoBit) {
+   tbf = twoBitOpen(tNibDir);
+   hashAdd(twoBitFileHash, tNibDir, tbf);
+}
+if (qIsTwoBit) {
+   tbf = twoBitOpen(qNibDir);
+   hashAdd(twoBitFileHash, qNibDir, tbf);
+}
+tSeqHash = newHash(0);
+qSeqHash = newHash(0);
+qSeqMinusStrandHash = newHash(0);
+dnaUtilOpen();
+hashTraverseEls(chainId2IsOfInterest, loadTandQSeqs);
+verbose(1, "DONE\n\n");
+
+
+/* 4. loop over all breaks and see if we can remove them accoring to the thresholds */
+verbose(1, "4. loop over all breaks. Remove suspects if they pass our filters and write out deleted suspects to %s ...\n", argv[6]);
+if (debug) {
+   suspectChainFile=mustOpen("suspect.chain", "w");
+   brokenChainLfillChainFile=mustOpen("brokenChainLfill.chain", "w");
+   brokenChainRfillChainFile=mustOpen("brokenChainRfill.chain", "w");
+   brokenChainfillChainFile=mustOpen("brokenChainfill.chain", "w");
+   suspectFillBedFile = mustOpen("suspectsAndFills.bed", "w");
+   HernandoCompareFile = mustOpen("HernandoCompare.bed", "w");
+}
+suspectsRemovedOutBedFile=mustOpen(argv[6], "w");   /* contains in bed format the deleted suspects */
+chainId2NeedsRescoring = newHash(0);
+loopOverBreaks();
+carefulClose(&suspectsRemovedOutBedFile);
+if (debug) {
+   carefulClose(&suspectFillBedFile);
+   carefulClose(&HernandoCompareFile);
+   carefulClose(&suspectChainFile);
+   carefulClose(&brokenChainLfillChainFile);
+   carefulClose(&brokenChainRfillChainFile);
+   carefulClose(&brokenChainfillChainFile);
+}
+verbose(1, "DONE\n\n");
+
+
+/* write the breaking or broken chains. */
+verbose(1, "5. write the (new) breaking and the broken chains to %s ...\n", argv[5]);
+hashTraverseEls(chainId2IsOfInterest, writeAndFreeChainsOfInterest);
+carefulClose(&finalChainOutFile);
+verbose(1, "DONE\n\n");
+
+
+/* free the loaded DNAseqs */
+verbose(1, "6. free memory ...\n");
+freeDnaSeqHash(tSeqHash);
+freeDnaSeqHash(qSeqHash);
+freeDnaSeqHash(qSeqMinusStrandHash); 
+freeHash(&tSeqHash);
+freeHash(&qSeqHash);
+freeHash(&qSeqMinusStrandHash);
+
+freeHash(&chainId2Count);
+freeHash(&chainId2IsOfInterest);
+freeHash(&chainId2NeedsRescoring);
+
+/*
+struct hashEl *hel, *helList = hashElListHash(chainId2chain);
+for (hel = helList; hel != NULL; hel = hel->next)  {
+   chainFree(hel->val);
+}
+freeHash(&chainId2chain);
+
+freeHash(&);
+
+
+helList = hashElListHash(fillGapInfoHash);
+for (hel = helList; hel != NULL; hel = hel->next)  {
+   for (fillGap = fillGapList; fillGap != NULL; fillGap = fillGap->next) 
+   chainFree(&hel->val);
+}
+freeHash(&chainId2chain);
+
+   fillGapInfoHash = newHash(0);   
+   breakHash = newHash(0);
+*/
+
+verbose(1, "DONE\n\n");
+
+
+printMem();
+verbose(1, "\nALL DONE. New chains are in %s. Deleted suspects in %s\n", argv[5], argv[6]);
+if (debug) {
+   verbose(1, "Debug mode created those output files: \n"
+"\tchainsOfInterest.chain     all breaking and broken chains (chain format)\n"
+"\tsuspect.chain              subChains of all suspects (chain format)\n"
+"\tbrokenChainfill.chain      subChains of all left and right parts of broken chains (chain format)\n"
+"\tbrokenChainLfill.chain     subChains of all left parts of broken chains (chain format)\n"
+"\tbrokenChainRfill.chain     subChains of all right parts of broken chains (chain format)\n"
+"\tsuspectsAndFills.bed       coordinates, scores and ratios of the suspects, the left/right parts of broken chains (bed9 format)\n");
+}
+
+
+return 0;
+}
+
