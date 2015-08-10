@@ -224,9 +224,9 @@ struct optionSpec options[] = {
    {"maxSuspectBases", OPTION_DOUBLE}, 
    {"maxSuspectScore", OPTION_DOUBLE},
    {"minLRGapSize", OPTION_INT},
-	{"onlyThisChr", OPTION_STRING},
-	{"onlyThisStart", OPTION_INT},
-	{"onlyThisEnd", OPTION_INT},
+   {"onlyThisChr", OPTION_STRING},
+   {"onlyThisStart", OPTION_INT},
+   {"onlyThisEnd", OPTION_INT},
    {NULL, 0},
 };
 
@@ -510,10 +510,12 @@ double chainCalcScoreLocal(struct chain *chain, struct axtScoreScheme *ss, struc
 
 
 /****************************************************************
-   calculate the score of the given chain
-   calculate the local (always >0) score if -doLocalScore and if the global score is negative
+   calculate the score of the given chain, both the local (always >0) and the global score
+   sets chain->score to the global score (needed for final rescoring of the breaking chains)
+   returns both global and local score in the double pointers
+   
 ****************************************************************/
-double getChainScore (struct chain *chain) {
+double getChainScore (struct chain *chain, double *globalScore, double *localScore) {
    struct dnaSeq *qSeq = NULL, *tSeq = NULL;
 //   printf("\tcalc score for chain with ID %d\n", chain->id);fflush(stdout);
 
@@ -521,9 +523,23 @@ double getChainScore (struct chain *chain) {
    qSeq = getSeqFromHash(chain->qName, chain->qStrand, qSeqHash);
    tSeq = getSeqFromHash(chain->tName, '+', tSeqHash);
 
-//   printf("adjust score for chain %d (t %s %d-%d  q %c %s %d-%d) from %1.0f to ", chain->id, chain->tName, chain->tStart, chain->tEnd, chain->qStrand, chain->qName, chain->qStart, chain->qEnd, chain->score); fflush(stdout);
    chain->score = chainCalcScore(chain, scoreScheme, gapCalc, qSeq, tSeq);
-//   printf("%1.0f ", chain->score); fflush(stdout);
+   *globalScore = chain->score;
+   *localScore = chainCalcScoreLocal(chain, scoreScheme, gapCalc, qSeq, tSeq);
+   return chain->score;
+}
+
+/*
+old code
+double getChainScore (struct chain *chain, double *globalScore, double *localScore) {
+   struct dnaSeq *qSeq = NULL, *tSeq = NULL;
+//   printf("\tcalc score for chain with ID %d\n", chain->id);fflush(stdout);
+
+   * load the seqs *
+   qSeq = getSeqFromHash(chain->qName, chain->qStrand, qSeqHash);
+   tSeq = getSeqFromHash(chain->tName, '+', tSeqHash);
+
+   chain->score = chainCalcScore(chain, scoreScheme, gapCalc, qSeq, tSeq);
 
    if (chain->score <= 0 && doLocalScore) {
       printf(" SCORE IS NEG --> doLocal set  %f\n ", chain->score); fflush(stdout);
@@ -532,6 +548,7 @@ double getChainScore (struct chain *chain) {
    }
    return chain->score;
 }
+*/
 
 
 
@@ -559,8 +576,8 @@ void readChainsOfInterest(char *chainFile) {
       /* need to keep track of the highest chain Id for later when we create new chains representing the removed blocks */
       if (maxChainId < chain->id)
          maxChainId = chain->id;
- 		if (onlyThisChr != NULL && (! sameString(onlyThisChr, chain->tName))) 
-			continue;
+       if (onlyThisChr != NULL && (! sameString(onlyThisChr, chain->tName))) 
+         continue;
 
       if (chainIsOfInterest(chain->id)) {
          verbose(4, "\t\tread chain ID %d  --> is a breaking or broken chain (chainOfInterest)\n", chain->id);
@@ -586,6 +603,7 @@ void readChainsOfInterest(char *chainFile) {
 ****************************************************************/
 void writeAndFreeChainsOfInterest(struct hashEl *el) {
    struct chain *chain = NULL;
+   double globalScore, localScore; 
    
    verbose(4, "\t\twrite breaking or broken chain with ID %s to final chain output file ... ", el->name); 
    chain = hashFindVal(chainId2chain, el->name);
@@ -594,7 +612,7 @@ void writeAndFreeChainsOfInterest(struct hashEl *el) {
 
    if (hashFindVal(chainId2NeedsRescoring, el->name) != NULL) {
       verbose(4, "\n\t\t\trecompute score for this modified chain:   old score %6d   ", (int)chain->score); 
-      getChainScore(chain);
+      getChainScore(chain, &globalScore, &localScore);
       verbose(4, "new score %6d\n\t\t", (int)chain->score); 
    }
 
@@ -900,12 +918,12 @@ void getValidBreaks(struct hashEl *el)
          if (fillGap->next == NULL) 
             break;
 
-		if (onlyThisChr != NULL && (! sameString(onlyThisChr, fillGap->chrom))) 
-			continue;
-		if (onlyThisChr != NULL && onlyThisStart != fillGap->gapEnd)
-			continue;
-		if (onlyThisChr != NULL && onlyThisEnd != fillGap->next->gapStart)
-			continue;
+      if (onlyThisChr != NULL && (! sameString(onlyThisChr, fillGap->chrom))) 
+         continue;
+      if (onlyThisChr != NULL && onlyThisStart != fillGap->gapEnd)
+         continue;
+      if (onlyThisChr != NULL && onlyThisEnd != fillGap->next->gapStart)
+         continue;
 
 
          verbose(2, "\t\tconsider break candidate:  depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d    AND    depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d\n", 
@@ -1043,8 +1061,8 @@ void getFillGapAndValidBreaks(char *netFile) {
 
    /* now parse all the nets, fill the fillGapInfo struct for every chain at depth>1 */
    for (net = netList; net != NULL; net = net->next) {
-		if (onlyThisChr != NULL && (! sameString(onlyThisChr, net->name)))
-			continue;
+      if (onlyThisChr != NULL && (! sameString(onlyThisChr, net->name)))
+         continue;
       verbose(2, "\tparse net %s of size %d\n", net->name, net->size);
       tName = net->name;         /* need to keep track of the current target chrom/scaffold */
       parseFill(net->fillList, 1, tName);
@@ -1057,8 +1075,8 @@ void getFillGapAndValidBreaks(char *netFile) {
    rangeTreeAliBlocks = genomeRangeTreeNew();
    verbose(1, "1.3 get aligning regions from %s ...\n", netFile);
    for (net = netList; net != NULL; net = net->next) {
-		if (onlyThisChr != NULL && (! sameString(onlyThisChr, net->name)))
-			continue;
+      if (onlyThisChr != NULL && (! sameString(onlyThisChr, net->name)))
+         continue;
       verbose(2, "\tget aligning regions from net %s\n", net->name);
       tName = net->name;         /* need to keep track of the current target chrom/scaffold */
       rConvert(net->fillList, tName);
@@ -1120,6 +1138,7 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
    struct chain *breakingChain = NULL, *brokenChain = NULL;
    struct chain *subChainSuspect = NULL, *subChainLfill = NULL, *subChainRfill = NULL, *subChainfill = NULL;
    struct chain *chainToFree1 = NULL, *chainToFree2 = NULL, *chainToFree3 = NULL, *chainToFree4 = NULL;
+   double subChainSuspectLocalScore, dummy;
    boolean isRemoved = FALSE;
    *breaksUpdated = FALSE;
    int subChainSuspectBases = -1;
@@ -1154,10 +1173,10 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
    }
 
    /* compute the scores of the subChains */
-   getChainScore(subChainSuspect);
-   getChainScore(subChainfill);
-   getChainScore(subChainLfill);
-   getChainScore(subChainRfill);
+   getChainScore(subChainSuspect, &dummy, &subChainSuspectLocalScore);
+   getChainScore(subChainfill, &dummy, &dummy);
+   getChainScore(subChainLfill, &dummy, &dummy);
+   getChainScore(subChainRfill, &dummy, &dummy);
    /* ratios */
    double ratio = subChainfill->score / subChainSuspect->score;
    double ratioL = subChainLfill->score / subChainSuspect->score;
@@ -1195,7 +1214,11 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
       verbose(3, "\t\t==> REMOVE suspect from breaking chainID %d (this chain will be rescored before writing)\n", breakingChain->id);
 
       /* output removed suspect to the bed file*/
-      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tRatio_%1.2f__RatioL_%1.2f__RatioR_%1.2f__score_%1.0f_vs_%1.0f\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, ratio, ratioL, ratioR, subChainSuspect->score, subChainfill->score);
+      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tsuspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
+         breakP->chrom, breakP->suspectStart, breakP->suspectEnd,       
+         (int)subChainSuspect->score, (int)subChainSuspectLocalScore, (int)subChainfill->score, ratio, ratioL, ratioR, subChainfill->score / subChainSuspectLocalScore, subChainSuspectBases, 
+         (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
+
       /* remove suspect blocks from the chain */
       chainRemoveBlocks(breakingChain, breakP->suspectStart, breakP->suspectEnd);
 
@@ -1380,7 +1403,7 @@ onlyThisStart = optionInt("onlyThisStart", -1);
 onlyThisEnd = optionInt("onlyThisEnd", -1);
 
 if (onlyThisChr != NULL)
-	verbose(1, "ONLY %s %d %d\n", onlyThisChr, onlyThisStart, onlyThisEnd);
+   verbose(1, "ONLY %s %d %d\n", onlyThisChr, onlyThisStart, onlyThisEnd);
 
 printf("Verbosity level: %d\n", verboseLevel());
 if (doLocalScore)
