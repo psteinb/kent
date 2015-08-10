@@ -190,14 +190,18 @@ void usage() {
   errAbort(
   "chainRandomAligmentRemover - Remove random local alignments from chains that would break nested chains in the net.\n"
   "usage:\n"
-  "   chainRandomAlignmentRemover in.net in.chain tNibDir qNibDir out.chain\n"
-  " Where tNibDir/qNibDir are either directories full of nib files, or the name of a .2bit file"
+  "   chainRandomAlignmentRemover in.net in.chain tNibDir qNibDir out.chain out.bed\n"
+  " Where tNibDir/qNibDir are either directories full of nib files, or the name of a .2bit file\n\n"
+  "output:\n"
+  "   out.chain      output file in chain format containing the untouched chains, the original broken chain and the modified breaking chains. NOTE: file is not sorted. Run chainSort on it.\n"
+  "   out.bed        output file in bed format containing the coords and information about the removed suspects.\n"
+  "\n"
  "options:\n"
   "   -foldThreshold=N         threshold for removing local alignment bocks if the brokenChain score / suspect score is at least this fold threshold. Default %1.1f\n"
   "   -LRfoldThreshold=N       threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
   "   -maxSuspectBases=N       threshold for number of target bases in aligning blocks of the suspect subChain. If higher, do not remove suspect. Default %d\n"
   "   -maxSuspectScore=N       threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
-  "   -minLRGapSize=N          threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If higher, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
+  "   -minLRGapSize=N          threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
   "\n"
   "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
   "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
@@ -1424,6 +1428,11 @@ if (gapFileName == NULL)
     errAbort("Must specify linear gap costs.  Use 'loose' or 'medium' for defaults\n");
 gapCalc = gapCalcFromFile(gapFileName);
 
+/* test if the seq files exist.  */
+if (! fileExists(tNibDir))
+	errAbort("ERROR: target 2bit file or nib directory %s does not exist\n", tNibDir);
+if (! fileExists(qNibDir))
+	errAbort("ERROR: query 2bit file or nib directory %s does not exist\n", qNibDir);
 
 
 /* 1. read the net and the chain file */ 
