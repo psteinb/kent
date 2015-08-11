@@ -94,8 +94,8 @@ struct breakInfo
     struct breakInfo *next;
     struct breakInfo *prev;       /* double linked list */
     int depth;                    /* depth of the fill region */
-    int chainId;                  /* chainId of the fill */
-    int parentChainId;            /* ID of parent chain */
+    int chainId;                  /* chainId of the broken chain (the one with the fill region) */
+    int parentChainId;            /* ID of parent chain, i.e. the breaking chain */
     char *chrom;                  /* reference chrom */
     int LfillStart, LfillEnd;       /* start and end of the left fill of the broken chain in the reference assembly */
     int RfillStart, RfillEnd;       /* start and end of the right fill in the reference assembly */
@@ -1218,8 +1218,8 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
       verbose(3, "\t\t==> REMOVE suspect from breaking chainID %d (this chain will be rescored before writing)\n", breakingChain->id);
 
       /* output removed suspect to the bed file*/
-      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tsuspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
-         breakP->chrom, breakP->suspectStart, breakP->suspectEnd,       
+       fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
+         breakP->chrom, breakP->suspectStart, breakP->suspectEnd, breakP->chainId, breakP->parentChainId, 
          (int)subChainSuspect->score, (int)subChainSuspectLocalScore, (int)subChainfill->score, ratio, ratioL, ratioR, subChainfill->score / subChainSuspectLocalScore, subChainSuspectBases, 
          (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
 
