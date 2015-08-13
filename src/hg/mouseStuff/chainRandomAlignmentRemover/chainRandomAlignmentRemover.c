@@ -496,7 +496,7 @@ double chainCalcScoreLocal(struct chain *chain, struct axtScoreScheme *ss, struc
    double maxScore = 0;
    for (b1 = chain->blockList; b1 != NULL; b1 = b2) {
       score += chainScoreBlock(query->dna + b1->qStart, target->dna + b1->tStart, b1->tEnd - b1->tStart, ss->matrix);
-      verbose(2, "  score %f  (max %f)\n ", score,maxScore);
+//      verbose(2, "  score %f  (max %f)\n ", score,maxScore);
 
       if (score > maxScore) 
          maxScore = score; 
@@ -504,7 +504,7 @@ double chainCalcScoreLocal(struct chain *chain, struct axtScoreScheme *ss, struc
       b2 = b1->next;
       if (b2 != NULL) {
          score -=  gapCalcCost(gapCalc, b2->qStart - b1->qEnd, b2->tStart - b1->tEnd);
-         verbose(2, "     after gap: score %f  (max %f)\n ", score,maxScore);
+//         verbose(2, "     after gap: score %f  (max %f)\n ", score,maxScore);
          if (score < 0) 
             score = 0;  
       }
@@ -1157,9 +1157,13 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
 
    /* get 4 subchains. the suspect, left/right and entire fill */
    chainSubsetOnT(breakingChain, breakP->suspectStart, breakP->suspectEnd, &subChainSuspect, &chainToFree1);
-   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->LfillEnd, &subChainLfill, &chainToFree2);
-   chainSubsetOnT(brokenChain, breakP->RfillStart, breakP->RfillEnd, &subChainRfill, &chainToFree3);
-   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->RfillEnd, &subChainfill, &chainToFree4);
+   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->RfillEnd, &subChainfill, &chainToFree2);
+/* this takes the L/R subchain only right/left of the suspect. Incorrect. We should also include the suspect, because the broken chain can have aligning seq there 
+   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->LfillEnd, &subChainLfill, &chainToFree3);
+   chainSubsetOnT(brokenChain, breakP->RfillStart, breakP->RfillEnd, &subChainRfill, &chainToFree4);
+*/
+   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->suspectEnd, &subChainLfill, &chainToFree3);
+   chainSubsetOnT(brokenChain, breakP->suspectStart, breakP->RfillEnd, &subChainRfill, &chainToFree4);
 
    /* only way that the suspect subChain is NULL if it occurred more than once in the list and was deleted in the same iteration by another chain */   
    if (subChainSuspect == NULL) {
@@ -1170,8 +1174,8 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
          chainWrite(subChainRfill, brokenChainRfillChainFile);
          chainWrite(subChainfill, brokenChainfillChainFile);
          fprintf(suspectFillBedFile, "%s\t%d\t%d\tFill__score_%1.0f\t1000\t+\t%d\t%d\t0,0,255\n",    breakP->chrom, breakP->LfillStart, breakP->RfillEnd, subChainfill->score, breakP->LfillStart, breakP->RfillEnd);
-         fprintf(suspectFillBedFile, "%s\t%d\t%d\tLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->LfillEnd, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
-         fprintf(suspectFillBedFile, "%s\t%d\t%d\tRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->RfillStart, breakP->RfillEnd, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
+         fprintf(suspectFillBedFile, "%s\t%d\t%d\tLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->suspectEnd, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
+         fprintf(suspectFillBedFile, "%s\t%d\t%d\tRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->suspectStart, breakP->RfillEnd, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
       }
       return isRemoved;
    }
@@ -1203,8 +1207,8 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
       chainWrite(subChainfill, brokenChainfillChainFile);
       fprintf(suspectFillBedFile, "%s\t%d\t%d\tSuspect__score_%1.0f__R_%1.2f__Rleft_%1.2f__Rright_%1.2f\t1000\t+\t%d\t%d\t255,0,0\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, subChainSuspect->score, ratio, ratioL, ratioR, breakP->suspectStart, breakP->suspectEnd);
       fprintf(suspectFillBedFile, "%s\t%d\t%d\tFill__score_%1.0f\t1000\t+\t%d\t%d\t0,0,255\n",    breakP->chrom, breakP->LfillStart, breakP->RfillEnd, subChainfill->score, breakP->LfillStart, breakP->RfillEnd);
-      fprintf(suspectFillBedFile, "%s\t%d\t%d\tLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->LfillEnd, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
-      fprintf(suspectFillBedFile, "%s\t%d\t%d\tRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->RfillStart, breakP->RfillEnd, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\tLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->suspectEnd, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\tRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->suspectStart, breakP->RfillEnd, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
       fprintf(HernandoCompareFile, "%d\t%d\t%s\t%d\t%d\t%d\t%d\t%1.0f\t%1.0f\n", breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->suspectStart, breakP->suspectEnd, breakP->LgapStart, breakP->RgapEnd, subChainSuspect->score, subChainfill->score);
    }
 
@@ -1218,10 +1222,11 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
       verbose(3, "\t\t==> REMOVE suspect from breaking chainID %d (this chain will be rescored before writing)\n", breakingChain->id);
 
       /* output removed suspect to the bed file*/
-       fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
+       fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d_LbrokenChainGlobalScore_%d_RbrokenChainGlobalScore_%d\n", 
          breakP->chrom, breakP->suspectStart, breakP->suspectEnd, breakP->chainId, breakP->parentChainId, 
          (int)subChainSuspect->score, (int)subChainSuspectLocalScore, (int)subChainfill->score, ratio, ratioL, ratioR, subChainfill->score / subChainSuspectLocalScore, subChainSuspectBases, 
-         (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
+         (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
+         (int)subChainLfill->score, (int)subChainRfill->score);
 
       /* remove suspect blocks from the chain */
       chainRemoveBlocks(breakingChain, breakP->suspectStart, breakP->suspectEnd);
