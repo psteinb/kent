@@ -5,6 +5,8 @@
  - free chains and other stuff at the end 
  
  
+ where to use printsinglbreak
+ 
  
  **************************************************/
 
@@ -116,7 +118,8 @@ double maxSuspectBases = 100;
 double maxSuspectScore = 10000;
 /* threshold for min size of left/right gap. If lower, do not remove suspect (too close to one side of the rest of the breaking chain) */
 int minLRGapSize = 1000;
-
+/* flag: if set, do not test if pairs of suspects can be removed */
+boolean noPairs = FALSE;
 
 /* final output file for the chains that will contain
     - the untouched chains
@@ -202,6 +205,7 @@ void usage() {
   "   -maxSuspectBases=N       threshold for number of target bases in aligning blocks of the suspect subChain. If higher, do not remove suspect. Default %d\n"
   "   -maxSuspectScore=N       threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
   "   -minLRGapSize=N          threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
+  "   -noPairs                 flag: if set, do not test if pairs of suspects can be removed\n"
   "\n"
   "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
   "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
@@ -231,6 +235,7 @@ struct optionSpec options[] = {
    {"onlyThisChr", OPTION_STRING},
    {"onlyThisStart", OPTION_INT},
    {"onlyThisEnd", OPTION_INT},
+	{"noPairs", OPTION_BOOLEAN},
    {NULL, 0},
 };
 
@@ -367,8 +372,10 @@ void printFillGapInfoList(struct hashEl *el) {
 void printSingleBreak(struct breakInfo *breakP) {
    if (breakP == NULL)
       return;
-   verbose(3, "\t\t\tbreak: depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d\n", 
-      breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
+   verbose(3, "\t\t\tbreak: depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d  (Rgap %d-%d  Lgap %d-%d)\n", 
+      breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, 
+		breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd,
+		breakP->LgapStart, breakP->LgapEnd, breakP->RgapStart, breakP->RgapEnd);
 }
 
 
@@ -890,6 +897,63 @@ void chopGapInfo(struct fillGapInfo *fillGapList) {
 }
 
 /****************************************************************
+   create a new breakInfo struct with the given values and return it
+****************************************************************/
+struct breakInfo *newBreak(int depth, int chainId, int parentChainId, char *chrom, int LfillStart, int LfillEnd, int RfillStart, int RfillEnd, 
+   int LgapStart, int LgapEnd, int RgapStart, int RgapEnd) {
+
+	struct breakInfo *breakP;
+   AllocVar(breakP);
+   breakP->depth = depth;
+   breakP->chainId = chainId;
+   breakP->parentChainId = parentChainId;
+   breakP->chrom = cloneString(chrom);
+   breakP->LfillStart = LfillStart;
+   breakP->LfillEnd = LfillEnd;
+   breakP->RfillStart = RfillStart;
+   breakP->RfillEnd = RfillEnd;
+   breakP->LgapStart = LgapStart;
+   breakP->LgapEnd = LgapEnd;
+   breakP->RgapStart = RgapStart;
+   breakP->RgapEnd = RgapEnd;
+   breakP->suspectStart = LgapEnd;
+   breakP->suspectEnd = RgapStart;
+
+   breakP->suspectStart = breakP->LgapEnd;
+   breakP->suspectEnd = breakP->RgapStart;
+
+   /* sanity checks */
+   assert(breakP->suspectStart < breakP->suspectEnd);
+   assert(breakP->LfillStart < breakP->suspectStart);
+   assert(breakP->LfillEnd <= breakP->suspectStart);
+   assert(breakP->RfillStart >= breakP->suspectEnd);
+   assert(breakP->RfillEnd > breakP->suspectEnd);
+
+	return breakP;
+}
+
+
+/****************************************************************
+   create a new breakInfo struct from two breaks that are adjacent (see isValidPair())
+
+breaking chain: XXXXXXXXXXXXXXX-----------------------XX-------------------XXXXXX--------------XXXXXXXXXXXXX
+broken chain:                   XXXXXXXXXXXXXXXXX----------XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+breakInfo upstream             <------------------------------------------>
+breakInfo downstream                                    <------------------------------------->
+new break pair                 <-------------------------------------------------------------->
+                                <-- left fill -->     <------ suspect-----------><right fill>
+										 <--- left gap -------->                           <- right gap->
+
+****************************************************************/
+struct breakInfo *newBreakPair(struct breakInfo *upstreamBreak, struct breakInfo *downstreamBreak) {
+	return newBreak(
+		upstreamBreak->depth, upstreamBreak->chainId, upstreamBreak->parentChainId, upstreamBreak->chrom,
+		upstreamBreak->LfillStart, upstreamBreak->LfillEnd, downstreamBreak->RfillStart, downstreamBreak->RfillEnd,
+		upstreamBreak->LgapStart, upstreamBreak->LgapEnd, downstreamBreak->RgapStart, downstreamBreak->RgapEnd
+	);
+}
+
+/****************************************************************
    get a list of pairwise breaks for all chains that come in >1 pieces at depth > 1
    input parameter is a hash element (chainID, how_often_it_occurred_in_net)
 ****************************************************************/
@@ -970,28 +1034,9 @@ void getValidBreaks(struct hashEl *el)
 
          /* valid: new break */
          verbose(2, "\t\t==> VALID: ");
-         AllocVar(breakP);
-         breakP->depth = fillGap->depth;
-         breakP->chainId = fillGap->chainId;
-         breakP->parentChainId = fillGap->parentChainId;
-         breakP->chrom = cloneString(fillGap->chrom);
-         breakP->LfillStart = fillGap->fillStart;
-         breakP->LfillEnd = fillGap->fillEnd;
-         breakP->LgapStart = fillGap->gapStart;
-         breakP->LgapEnd = fillGap->gapEnd;
-         breakP->RfillStart = fillGap->next->fillStart;
-         breakP->RfillEnd = fillGap->next->fillEnd;
-         breakP->RgapStart = fillGap->next->gapStart;
-         breakP->RgapEnd = fillGap->next->gapEnd;
-         breakP->suspectStart = breakP->LgapEnd;
-         breakP->suspectEnd = breakP->RgapStart;
-         /* sanity checks */
-         assert(breakP->suspectStart < breakP->suspectEnd);
-         assert(breakP->LfillStart < breakP->suspectStart);
-         assert(breakP->LfillEnd <= breakP->suspectStart);
-         assert(breakP->RfillStart >= breakP->suspectEnd);
-         assert(breakP->RfillEnd > breakP->suspectEnd);
-
+			breakP = newBreak(fillGap->depth, fillGap->chainId, fillGap->parentChainId, fillGap->chrom, 
+				fillGap->fillStart, fillGap->fillEnd, fillGap->next->fillStart, fillGap->next->fillEnd, 
+				fillGap->gapStart, fillGap->gapEnd, fillGap->next->gapStart, fillGap->next->gapEnd);
 
 
 /* ################################## Michael to remove ############################*/
@@ -1137,7 +1182,7 @@ int getSubChainBases(struct chain *chain) {
   the breaksUpdated parameter is set to TRUE if a suspect is removed and boundaries or the up- and/or downstream breaks were updated (is passed on to calling function)
   returns TRUE if this suspect is removed 
 ****************************************************************/
-boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
+boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstreamBreak, struct breakInfo *downstreamBreak, boolean *breaksUpdated) {
 
    struct chain *breakingChain = NULL, *brokenChain = NULL;
    struct chain *subChainSuspect = NULL, *subChainLfill = NULL, *subChainRfill = NULL, *subChainfill = NULL;
@@ -1146,6 +1191,8 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
    boolean isRemoved = FALSE;
    *breaksUpdated = FALSE;
    int subChainSuspectBases = -1;
+	
+	boolean isPair = (upstreamBreak != NULL && upstreamBreak->next == downstreamBreak ? FALSE : TRUE);
    
    /* get the breaking and the broken chain */
    breakingChain = getChainPointerFromHash(breakP->parentChainId);
@@ -1193,8 +1240,9 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
 
    subChainSuspectBases = getSubChainBases(subChainSuspect);
 
-   verbose(3, "\t\t\tsuspect subChain            %d - %d   gets score %7d   (suspect subChain bases %d, left gap size %d, right gap size %d)\n", 
-      breakP->suspectStart, breakP->suspectEnd, (int)subChainSuspect->score, subChainSuspectBases, breakP->LgapEnd - breakP->LgapStart, breakP->RgapEnd - breakP->RgapStart);
+   verbose(3, "\t\t\tsuspect subChain            %d - %d   gets score %7d   (local score %d, suspect subChain bases %d, left gap size %d, right gap size %d)\n", 
+      breakP->suspectStart, breakP->suspectEnd, (int)subChainSuspect->score, (int)subChainSuspectLocalScore, subChainSuspectBases, 
+		breakP->LgapEnd - breakP->LgapStart, breakP->RgapEnd - breakP->RgapStart);
    verbose(3, "\t\t\tleft-to-right fill subChain %d - %d   gets score %7d   ratio %1.2f\n", breakP->LfillStart, breakP->RfillEnd, (int)subChainfill->score, ratio); 
    verbose(3, "\t\t\tleft fill subChain          %d - %d   gets score %7d   ratio %1.2f\n", breakP->LfillStart, breakP->LfillEnd, (int)subChainLfill->score, ratioL); 
    verbose(3, "\t\t\tright fill subChain         %d - %d   gets score %7d   ratio %1.2f\n", breakP->RfillStart, breakP->RfillEnd, (int)subChainRfill->score, ratioR); 
@@ -1205,10 +1253,10 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
       chainWrite(subChainLfill, brokenChainLfillChainFile);
       chainWrite(subChainRfill, brokenChainRfillChainFile);
       chainWrite(subChainfill, brokenChainfillChainFile);
-      fprintf(suspectFillBedFile, "%s\t%d\t%d\tSuspect__score_%1.0f__R_%1.2f__Rleft_%1.2f__Rright_%1.2f\t1000\t+\t%d\t%d\t255,0,0\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, subChainSuspect->score, ratio, ratioL, ratioR, breakP->suspectStart, breakP->suspectEnd);
-      fprintf(suspectFillBedFile, "%s\t%d\t%d\tFill__score_%1.0f\t1000\t+\t%d\t%d\t0,0,255\n",    breakP->chrom, breakP->LfillStart, breakP->RfillEnd, subChainfill->score, breakP->LfillStart, breakP->RfillEnd);
-      fprintf(suspectFillBedFile, "%s\t%d\t%d\tLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->suspectEnd, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
-      fprintf(suspectFillBedFile, "%s\t%d\t%d\tRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->suspectStart, breakP->RfillEnd, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\t%sSuspect__score_%1.0f__R_%1.2f__Rleft_%1.2f__Rright_%1.2f\t1000\t+\t%d\t%d\t255,0,0\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, (isPair ? "PAIR_" : ""), subChainSuspect->score, ratio, ratioL, ratioR, breakP->suspectStart, breakP->suspectEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\t%sFill__score_%1.0f\t1000\t+\t%d\t%d\t0,0,255\n",    breakP->chrom, breakP->LfillStart, breakP->RfillEnd, (isPair ? "PAIR_" : ""), subChainfill->score, breakP->LfillStart, breakP->RfillEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\t%sLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->suspectEnd, (isPair ? "PAIR_" : ""), subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\t%sRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->suspectStart, breakP->RfillEnd, (isPair ? "PAIR_" : ""), subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
       fprintf(HernandoCompareFile, "%d\t%d\t%s\t%d\t%d\t%d\t%d\t%1.0f\t%1.0f\n", breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->suspectStart, breakP->suspectEnd, breakP->LgapStart, breakP->RgapEnd, subChainSuspect->score, subChainfill->score);
    }
 
@@ -1238,41 +1286,41 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
       verbose(4, "\t\t\twrote new chain representing the removed suspect with ID %d\n", subChainSuspect->id); 
 
       /* now update the fill coordinates for the up/downstream break */
-      if (breakP->prev != NULL) {
+      if (upstreamBreak != NULL) {
          /* only update upstream break if 
             - it has the same breaking and broken chain ID
             - if the upstream left fill == current right fill (otherwise there was an invalid break candidate between the upstream and the current break) */
-         if (breakP->chainId == breakP->prev->chainId && breakP->parentChainId == breakP->prev->parentChainId &&
-             breakP->prev->RfillStart == breakP->LfillStart && breakP->prev->RfillEnd == breakP->LfillEnd) {
+         if (breakP->chainId == upstreamBreak->chainId && breakP->parentChainId == upstreamBreak->parentChainId &&
+             upstreamBreak->RfillStart == breakP->LfillStart && upstreamBreak->RfillEnd == breakP->LfillEnd) {
             *breaksUpdated = TRUE;
             verbose(5, "\t\t\tUpdate upstream break fill boundaries\n\t\t\t\tUpstream break:  suspect %d - %d  fill %d - %d\n\t\t\t\tCurrent break:   suspect %d - %d  fill %d - %d\n", 
-               breakP->prev->suspectStart, breakP->prev->suspectEnd, breakP->prev->LfillStart, breakP->prev->RfillEnd,
+               upstreamBreak->suspectStart, upstreamBreak->suspectEnd, upstreamBreak->LfillStart, upstreamBreak->RfillEnd,
                breakP->suspectStart, breakP->suspectEnd, breakP->LfillStart, breakP->RfillEnd);
-            assert(breakP->prev->LfillEnd < breakP->LfillStart);  /* left fill upstream must be < left fill */
-            assert(breakP->prev->suspectEnd < breakP->suspectStart);  /* suspect end upstream must be < suspect start */
+            assert(upstreamBreak->LfillEnd < breakP->LfillStart);  /* left fill upstream must be < left fill */
+            assert(upstreamBreak->suspectEnd < breakP->suspectStart);  /* suspect end upstream must be < suspect start */
             /* update RfillEnd and RgapEnd */
-            verbose(5, "\t\t\t\t--> set upstream RfillEnd from %d to %d\n\t\t\t\t--> set upstream RgapEnd  from %d to %d\n", breakP->prev->RfillEnd, breakP->RfillEnd, breakP->prev->RgapEnd, breakP->RgapEnd);
-            breakP->prev->RfillEnd = breakP->RfillEnd;
-            breakP->prev->RgapEnd = breakP->RgapEnd;
+            verbose(5, "\t\t\t\t--> set upstream RfillEnd from %d to %d\n\t\t\t\t--> set upstream RgapEnd  from %d to %d\n", upstreamBreak->RfillEnd, breakP->RfillEnd, upstreamBreak->RgapEnd, breakP->RgapEnd);
+            upstreamBreak->RfillEnd = breakP->RfillEnd;
+            upstreamBreak->RgapEnd = breakP->RgapEnd;
          }
       }
 
-      if (breakP->next != NULL) {
+      if (downstreamBreak != NULL) {
          /* only update downstream break if 
             - it has the same breaking and broken chain ID
             - if the current right fill == downstream left fill (otherwise there was an invalid break candidate between the current and the downstream break) */
-         if (breakP->chainId == breakP->next->chainId && breakP->parentChainId == breakP->next->parentChainId &&
-             breakP->next->LfillStart == breakP->RfillStart && breakP->next->LfillEnd == breakP->RfillEnd) {
+         if (breakP->chainId == downstreamBreak->chainId && breakP->parentChainId == downstreamBreak->parentChainId &&
+             downstreamBreak->LfillStart == breakP->RfillStart && downstreamBreak->LfillEnd == breakP->RfillEnd) {
             *breaksUpdated = TRUE;
             verbose(5, "\t\t\tUpdate downstream break fill boundaries\n\t\t\t\tCurrent break:     suspect %d - %d  fill %d - %d\n\t\t\t\tDownstream break:  suspect %d - %d  fill %d - %d\n", 
                breakP->suspectStart, breakP->suspectEnd, breakP->LfillStart, breakP->RfillEnd, 
-               breakP->next->suspectStart, breakP->next->suspectEnd, breakP->next->LfillStart, breakP->next->RfillEnd); 
-            assert(breakP->next->RfillStart > breakP->RfillEnd);      /* right fill downstream must be > right fill */
-            assert(breakP->next->suspectStart > breakP->suspectEnd);  /* suspect start downstream must be > suspect end */
+               downstreamBreak->suspectStart, downstreamBreak->suspectEnd, downstreamBreak->LfillStart, downstreamBreak->RfillEnd); 
+            assert(downstreamBreak->RfillStart > breakP->RfillEnd);      /* right fill downstream must be > right fill */
+            assert(downstreamBreak->suspectStart > breakP->suspectEnd);  /* suspect start downstream must be > suspect end */
             /* update LfillStart and LgapEnd */
-            verbose(5, "\t\t\t\t--> set downstream LfillStart from %d to %d\n\t\t\t\t--> set downstream LgapEnd  from %d to %d\n", breakP->next->LfillStart, breakP->LfillStart, breakP->next->LgapStart, breakP->LgapStart);
-            breakP->next->LfillStart = breakP->LfillStart;
-            breakP->next->LgapStart = breakP->LgapStart;
+            verbose(5, "\t\t\t\t--> set downstream LfillStart from %d to %d\n\t\t\t\t--> set downstream LgapEnd  from %d to %d\n", downstreamBreak->LfillStart, breakP->LfillStart, downstreamBreak->LgapStart, breakP->LgapStart);
+            downstreamBreak->LfillStart = breakP->LfillStart;
+            downstreamBreak->LgapStart = breakP->LgapStart;
          }
       }
 
@@ -1288,6 +1336,58 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, boolean *breaksUpdated) {
    return isRemoved;
 }
 
+
+/****************************************************************
+  test if the two breaks would form a valid pair. 
+  That is: 
+   - they have the same breaking and broken chain ID 
+	- they have the same depth
+   - they are adjacent (upstream right gap == downstream left gap) 
+****************************************************************/
+boolean isValidBreakPair (struct breakInfo *upstreamBreak,  struct breakInfo *downstreamBreak) {
+    
+    verbose(4, "\t\tAre the following two breaks a valid pair?\n");
+	 verbose(4, "\t\t\tupstream break   :  depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lgap %d-%d  Rgap %d-%d  suspect %d-%d\n", 
+       upstreamBreak->depth, upstreamBreak->parentChainId, upstreamBreak->chainId, upstreamBreak->chrom, 
+		 upstreamBreak->LgapStart, upstreamBreak->LgapEnd, upstreamBreak->RgapStart, upstreamBreak->RgapEnd, upstreamBreak->suspectStart, upstreamBreak->suspectEnd);
+    verbose(4, "\t\t\tdownstream break :  depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lgap %d-%d  Rgap %d-%d  suspect %d-%d\n", 
+       downstreamBreak->depth, downstreamBreak->parentChainId, downstreamBreak->chainId, downstreamBreak->chrom, 
+		 downstreamBreak->LgapStart, downstreamBreak->LgapEnd, downstreamBreak->RgapStart, downstreamBreak->RgapEnd, downstreamBreak->suspectStart, downstreamBreak->suspectEnd);
+
+	if (upstreamBreak->parentChainId != downstreamBreak->parentChainId || upstreamBreak->chainId != downstreamBreak->chainId) {
+		verbose(4, "\t\t --> INVALID (different chain IDs)\n");
+		return FALSE;
+	}
+
+	if (upstreamBreak->depth != downstreamBreak->depth) {
+		verbose(4, "\t\t --> INVALID (different chain IDs)\n");
+		return FALSE;
+	}
+	
+	if (upstreamBreak->RgapStart == downstreamBreak->LgapStart && upstreamBreak->RgapEnd == downstreamBreak->LgapEnd) {
+		verbose(4, "\t\t--> Valid pair\n");
+//		printf("GG%s\t%d\t%d\t%d\n", upstreamBreak->chrom, upstreamBreak->LfillStart, downstreamBreak->RfillEnd, upstreamBreak->chainId);
+		return TRUE;
+	}else{
+		verbose(4, "\t\t --> INVALID (gap ends to not match)\n");
+		return FALSE;
+	}
+}
+
+/****************************************************************
+  return the first element in the breakList, given any element
+  (necesary since we could have removed the first element) 
+****************************************************************
+struct breakInfo *getListStart(struct breakInfo *breakP) {
+	struct breakInfo *p;
+	if (breakP == NULL)
+		return NULL;
+	if (breakP->prev == NULL)
+		return breakP;
+	for (p = breakP; p->prev != NULL; p = p->prev) ;
+	return p;
+}
+*/
 /****************************************************************
   go through all the breaks. 
   For one breaking chain, 
@@ -1306,12 +1406,12 @@ void loopOverBreaks() {
    
    /* hel is a pointer to a list of breaks for one parentChain */
    for (hel = helList; hel != NULL; hel = hel->next)  {
-      breakList = hel->val;
+      breakList = hel->val;  /* start of the list */
       if (breakList == NULL) 
          errAbort("ERROR: breakList for breaking chainID %s is NULL\n", hel->name); 
 
       parentChainId = breakList->parentChainId;
-        verbose(3, "\t############ Test if suspects of breaking chain %d can be removed\n", parentChainId); 
+      verbose(3, "\t############ Test if suspects of breaking chain %d can be removed\n", parentChainId); 
 
       /* try to remove chain-breaking suspects in the list until we do not remove anything in the entire pass through the list 
          NOTE: After removing one suspect, up- and downstream breaks now may get larger fill regions if the broken chain was broken into >2 pieces. 
@@ -1329,17 +1429,24 @@ void loopOverBreaks() {
          }
 
          anyBreaksUpdated = FALSE;
+			
+			/* consider single breaks */
          breakP = breakList;
          /* now loop over all breaks in the list for this breaking chain */
+         verbose(3, "\tTEST SINGLE BREAKS\n"); 
          for(;;) {
             if (breakP == NULL) 
                break;
 
             verbose(3, "\t\tconsider break:  depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d\n", 
-               breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
-            /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
-            currentSuspectRemoved = testAndRemoveSuspect(breakP, &currentBreaksUpdated);
+               breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, 
+					breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
 
+            /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
+            currentSuspectRemoved = testAndRemoveSuspect(breakP, breakP->prev, breakP->next, &currentBreaksUpdated);
+if (currentSuspectRemoved) {
+	printf("GG%s\t%d\t%d\tS_iteration%d_%d\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, iteration, breakP->chainId);
+}
             /* just keep track of if a break is updated (then we have to iterate again) */
             if (currentBreaksUpdated) 
                anyBreaksUpdated = TRUE;
@@ -1349,7 +1456,8 @@ void loopOverBreaks() {
                free break
             */
             if (currentSuspectRemoved) {
-               slRemoveEl(&breakList, breakP);
+               if (! slRemoveEl(&breakList, breakP))
+						errAbort("ERROR: cannot remove break from the list: suspect %s:%d-%d\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd);
                if (breakP->next != NULL)
                   breakP->next->prev = breakP->prev;
                freeMem(breakP->chrom);
@@ -1358,6 +1466,123 @@ void loopOverBreaks() {
             /* continue looping with the next element in the list */
             breakP = nextBreak;
          }
+//printf("singlebreaks done\n"); fflush(stdout);
+
+/*********************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*/
+
+			if (! noPairs) {
+	         /* now loop over all break pairs in the list of remaining breaks for this breaking chain */
+   	      verbose(3, "\tTEST PAIRS\n"); 
+ 
+/* 
+foldThreshold = 2; 
+LRfoldThreshold = 1.1;
+minLRGapSize = 100;
+*/
+	         /* verbose output */
+   	      if (verboseLevel() >= 3) {
+      	      verbose(3, "\tIteration %d for breaking chain %d\n\t\tList of remaining breaks\n", iteration, parentChainId); 
+         	   for (breakP = breakList; breakP != NULL; breakP = breakP->next)
+            	   printSingleBreak(breakP);
+         	}
+
+				/* start again at the beginning of the list */
+				breakP = breakList;
+
+         	for(;;) {
+					if (breakP == NULL)
+						break;
+	            if (breakP->next == NULL) 
+   	            break;
+
+					/* lets define pointers to the two breaks in the pair and the break up/downstream of the pair */
+					struct breakInfo *upstreamBreakInPair = breakP;
+					struct breakInfo *downstreamBreakInPair = breakP->next;
+					struct breakInfo *breakAfterPair = breakP->next->next;
+					struct breakInfo *breakBeforePair = breakP->prev; 
+	
+					if (isValidBreakPair(upstreamBreakInPair, downstreamBreakInPair)) {
+						struct breakInfo *breakPair = newBreakPair(upstreamBreakInPair, downstreamBreakInPair);
+            	
+						verbose(3, "\t\tconsider breakPair:  depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d\n", 
+               		breakPair->depth, breakPair->parentChainId, breakPair->chainId, breakPair->chrom, 
+							breakPair->LfillStart, breakPair->LfillEnd, breakPair->RfillStart, breakPair->RfillEnd, breakPair->suspectStart, breakPair->suspectEnd);
+
+            		/* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
+            		currentSuspectRemoved = testAndRemoveSuspect(breakPair, breakBeforePair, breakAfterPair, &currentBreaksUpdated);
+if (currentSuspectRemoved) verbose(1, "==> PAIR REMOVED\n");
+if (currentSuspectRemoved) {
+	printf("GG%s\t%d\t%d\tP_iteration%d_%d\n", breakPair->chrom, breakPair->suspectStart, breakPair->suspectEnd, iteration, breakPair->chainId);
+}
+
+
+	            	/* just keep track of if a break is updated (then we have to iterate again) */
+   	         	if (currentBreaksUpdated) 
+      	         	anyBreaksUpdated = TRUE;
+
+   	   	      /* remove both breaks from the pair from the linked list, also update the prev pointer 
+      	   	      free both breaks
+         	   	*/
+      	      	if (currentSuspectRemoved) {
+	      	         if (! slRemoveEl(&breakList, upstreamBreakInPair))
+								errAbort("ERROR: cannot remove break from the list: suspect %s:%d-%d\n", upstreamBreakInPair->chrom, upstreamBreakInPair->suspectStart, upstreamBreakInPair->suspectEnd);
+	            	   if (! slRemoveEl(&breakList, downstreamBreakInPair))
+								errAbort("ERROR: cannot remove break from the list: suspect %s:%d-%d\n", downstreamBreakInPair->chrom, downstreamBreakInPair->suspectStart, downstreamBreakInPair->suspectEnd);
+
+               		if (breakAfterPair != NULL)
+                  		breakAfterPair->prev = breakBeforePair;
+               		freeMem(upstreamBreakInPair->chrom);
+               		freeMem(upstreamBreakInPair);
+               		freeMem(downstreamBreakInPair->chrom);
+               		freeMem(downstreamBreakInPair);
+            		}
+					
+						/* free the pair */
+						freeMem(breakPair->chrom); 
+						freeMem(breakPair);
+					
+						/* continue looping with the next element after the pair */
+   	      		breakP = breakAfterPair;
+            	}else{
+						/* not a valid pair. Continue looping with the next element in the list */
+           			breakP = downstreamBreakInPair;
+					}
+         	}
+			}
+
+
+/*********************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*******************
+*/
+
+/*
+foldThreshold = 50; 
+LRfoldThreshold = 12;
+minLRGapSize = 100000;
+*/
+
          
          if (! anyBreaksUpdated) {
             verbose(3, "\t==> no break is updated --> done with breaking chain %d\n", parentChainId); 
@@ -1371,8 +1596,6 @@ void loopOverBreaks() {
    }
    hashElFreeList(&helList);
 }
-
-
 
 
 
@@ -1406,6 +1629,7 @@ LRfoldThreshold = optionDouble("LRfoldThreshold", foldThreshold/2);
 maxSuspectBases = optionDouble("maxSuspectBases", maxSuspectBases);
 maxSuspectScore = optionDouble("maxSuspectScore", maxSuspectScore);
 minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
+noPairs = optionExists("noPairs");
 
 onlyThisChr = optionVal("onlyThisChr", NULL);
 onlyThisStart = optionInt("onlyThisStart", -1);
@@ -1485,6 +1709,7 @@ if (debug) {
 }
 suspectsRemovedOutBedFile=mustOpen(argv[6], "w");   /* contains in bed format the deleted suspects */
 chainId2NeedsRescoring = newHash(0);
+//loopOverBreaks2();
 loopOverBreaks();
 carefulClose(&suspectsRemovedOutBedFile);
 if (debug) {
