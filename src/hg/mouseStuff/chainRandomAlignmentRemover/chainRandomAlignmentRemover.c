@@ -7,6 +7,8 @@
  
  where to use printsinglbreak
  
+ outputto outBedFile should be tailored to whihc paramters will be used at the end
+ 
  
  **************************************************/
 
@@ -1189,6 +1191,7 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
    struct chain *subChainSuspect = NULL, *subChainLfill = NULL, *subChainRfill = NULL, *subChainfill = NULL;
    struct chain *chainToFree1 = NULL, *chainToFree2 = NULL, *chainToFree3 = NULL, *chainToFree4 = NULL;
    double subChainSuspectLocalScore, dummy;
+   double subChainfillLocalScore, subChainLfillLocalScore, subChainRfillLocalScore;
    boolean isRemoved = FALSE;
    *breaksUpdated = FALSE;
    int subChainSuspectBases = -1;
@@ -1219,9 +1222,9 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
 
    /* compute the scores of the subChains */
    getChainScore(subChainSuspect, &dummy, &subChainSuspectLocalScore);
-   getChainScore(subChainfill, &dummy, &dummy);
-   getChainScore(subChainLfill, &dummy, &dummy);
-   getChainScore(subChainRfill, &dummy, &dummy);
+   getChainScore(subChainfill, &dummy, &subChainfillLocalScore);
+   getChainScore(subChainLfill, &dummy, &subChainLfillLocalScore);
+   getChainScore(subChainRfill, &dummy, &subChainRfillLocalScore);
    /* ratios */
    double ratio = subChainfill->score / subChainSuspect->score;
    double ratioL = subChainLfill->score / subChainSuspect->score;
@@ -1265,11 +1268,19 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
       verbose(3, "\t\t==> REMOVE suspect from breaking chainID %d (this chain will be rescored before writing)\n", breakingChain->id);
 
       /* output removed suspect to the bed file*/
-       fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d_LbrokenChainGlobalScore_%d_RbrokenChainGlobalScore_%d\n", 
-         breakP->chrom, breakP->suspectStart, breakP->suspectEnd, breakP->chainId, breakP->parentChainId, 
-         (int)subChainSuspect->score, (int)subChainSuspectLocalScore, (int)subChainfill->score, ratio, ratioL, ratioR, subChainfill->score / subChainSuspectLocalScore, subChainSuspectBases, 
-         (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
-         (int)subChainLfill->score, (int)subChainRfill->score);
+      if (onlyThisChr == NULL) 
+	      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\t%sbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d_LbrokenChainGlobalScore_%d_RbrokenChainGlobalScore_%d\n", 
+   	      breakP->chrom, breakP->suspectStart, breakP->suspectEnd, debugInfo, breakP->chainId, breakP->parentChainId, 
+      	   (int)subChainSuspect->score, (int)subChainSuspectLocalScore, (int)subChainfill->score, ratio, ratioL, ratioR, subChainfill->score / subChainSuspectLocalScore, subChainSuspectBases, 
+         	(breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
+	         (int)subChainLfill->score, (int)subChainRfill->score);
+		else
+      	fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_brokenChainLocalScore_%d_LbrokenChainGlobalScore_%d_LbrokenChainLocalScore_%d_RbrokenChainGlobalScore_%d_RbrokenChainLocalScore_%d_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
+				breakP->chrom, breakP->suspectStart, breakP->suspectEnd, 
+				breakP->chainId, breakP->parentChainId, (int)subChainSuspect->score, (int)subChainSuspectLocalScore, 
+				(int)subChainfill->score, (int)subChainfillLocalScore, 
+				(int)subChainLfill->score, (int)subChainLfillLocalScore, (int)subChainRfill->score, (int)subChainRfillLocalScore,
+				subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
 
       /* remove suspect blocks from the chain */
       chainRemoveBlocks(breakingChain, breakP->suspectStart, breakP->suspectEnd);
@@ -1710,7 +1721,6 @@ if (debug) {
 }
 suspectsRemovedOutBedFile=mustOpen(argv[6], "w");   /* contains in bed format the deleted suspects */
 chainId2NeedsRescoring = newHash(0);
-//loopOverBreaks2();
 loopOverBreaks();
 carefulClose(&suspectsRemovedOutBedFile);
 if (debug) {
