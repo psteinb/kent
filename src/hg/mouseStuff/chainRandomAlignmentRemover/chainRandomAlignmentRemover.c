@@ -101,11 +101,11 @@ struct breakInfo
     int chainId;                  /* chainId of the broken chain (the one with the fill region) */
     int parentChainId;            /* ID of parent chain, i.e. the breaking chain */
     char *chrom;                  /* reference chrom */
-    int LfillStart, LfillEnd;       /* start and end of the left fill of the broken chain in the reference assembly */
-    int RfillStart, RfillEnd;       /* start and end of the right fill in the reference assembly */
-    int LgapStart, LgapEnd;         /* start and end of the left gap in the reference assembly */
-    int RgapStart, RgapEnd;         /* start and end of the right gap in the reference assembly */
-    int suspectStart, suspectEnd;   /* start and end of the suspect (the aligning blocks between the 2 gaps in the breaking chain) in the reference assembly */
+    int LfillStart, LfillEnd;     /* start and end of the left fill of the broken chain in the reference assembly */
+    int RfillStart, RfillEnd;     /* start and end of the right fill in the reference assembly */
+    int LgapStart, LgapEnd;       /* start and end of the left gap in the reference assembly */
+    int RgapStart, RgapEnd;       /* start and end of the right gap in the reference assembly */
+    int suspectStart, suspectEnd; /* start and end of the suspect (the aligning blocks between the 2 gaps in the breaking chain) in the reference assembly */
     struct chain *chain;          /* pointer to the chain */
     struct chain *parentChain;    /* pointer to the parent chain */
     };
@@ -123,7 +123,8 @@ int minLRGapSize = 1000;
 /* flag: if set, do not test if pairs of suspects can be removed */
 boolean noPairs = FALSE;
 /* flag: if set, give new chains representing removed suspects a new ID */
-boolean newChainNewID = FALSE;
+char *newChainIDDict = NULL;
+FILE *newChainIDDictFile = NULL;
 
 /* final output file for the chains that will contain
     - the untouched chains
@@ -210,7 +211,8 @@ void usage() {
   "   -maxSuspectScore=N       threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
   "   -minLRGapSize=N          threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
   "   -noPairs                 flag: if set, do not test if pairs of suspects can be removed\n"
-  "   -newChainNewID           flag: if set, give new chains representing removed suspects a new ID\n"
+  "\n"
+  "   -newChainIDDict=fileName output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before.\n"
   "\n"
   "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
   "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
@@ -241,7 +243,7 @@ struct optionSpec options[] = {
    {"onlyThisStart", OPTION_INT},
    {"onlyThisEnd", OPTION_INT},
    {"noPairs", OPTION_BOOLEAN},
-   {"newChainNewID", OPTION_BOOLEAN},
+   {"newChainIDDict", OPTION_STRING},
    {NULL, 0},
 };
 
@@ -1309,13 +1311,12 @@ Code to get the cases where the broken chain has neg LR score
       /* remove suspect blocks from the chain */
       chainRemoveBlocks(breakingChain, breakP->suspectStart, breakP->suspectEnd);
 
-      if (newChainNewID) {
-         /* give the new chain a new ID */
-         maxChainId ++;
-         subChainSuspect->id = maxChainId;
-      }else{
-         /* keep ID of the breaking chain */
-         subChainSuspect->id = breakingChain->id;
+
+      /* give the new chain a new ID */
+      maxChainId ++;
+      subChainSuspect->id = maxChainId;
+      if (newChainIDDictFile != NULL) {
+         fprintf(newChainIDDictFile, "%d\t%d\n", subChainSuspect->id, breakingChain->id);
       }
       chainWrite(subChainSuspect, finalChainOutFile);
       verbose(4, "\t\t\twrote new chain representing the removed suspect with ID %d\n", subChainSuspect->id); 
@@ -1653,7 +1654,7 @@ maxSuspectBases = optionDouble("maxSuspectBases", maxSuspectBases);
 maxSuspectScore = optionDouble("maxSuspectScore", maxSuspectScore);
 minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
 noPairs = optionExists("noPairs");
-newChainNewID = optionExists("newChainNewID");
+newChainIDDict = optionVal("newChainIDDict", NULL);
 
 onlyThisChr = optionVal("onlyThisChr", NULL);
 onlyThisStart = optionInt("onlyThisStart", -1);
@@ -1732,9 +1733,16 @@ if (debug) {
    HernandoCompareFile = mustOpen("HernandoCompare.bed", "w");
 }
 suspectsRemovedOutBedFile=mustOpen(argv[6], "w");   /* contains in bed format the deleted suspects */
+/* output file that has the newChainIDs and the breaking chainIDs that contained the suspects */
+if (newChainIDDict != NULL) {
+   newChainIDDictFile = mustOpen(newChainIDDict, "w");
+}
 chainId2NeedsRescoring = newHash(0);
 loopOverBreaks();
 carefulClose(&suspectsRemovedOutBedFile);
+if (newChainIDDict != NULL) {
+   carefulClose(&newChainIDDictFile);
+}
 if (debug) {
    carefulClose(&suspectFillBedFile);
    carefulClose(&HernandoCompareFile);
