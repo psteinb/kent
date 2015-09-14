@@ -106,7 +106,8 @@ test:: $(testDirs:%=%.test)
 %.test:
 	cd $* && ${MAKE} test
 
-LIB_TAGS_IN = lib/*.[hc] */lib/*.[hc] */*/lib/*.[hc] */*/*/lib/*.[hc] jkOwnLib/*.c inc/*.h hg/inc/*.h hg/encode3/encodeDataWarehouse/lib/*.c hg/encode3/encodeDataWarehouse/inc/*.h hg/encode3/eap/inc/*.h
+LIB_TAGS_IN = lib/*.[hc] */lib/*.[hc] */*/lib/*.[hc] */*/*/lib/*.[hc] jkOwnLib/*.c \
+	inc/*.h */inc/*.h */*/inc/*.h */*/*/inc/*.h
 
 # build tags for libraries
 .PHONY: tags
@@ -146,7 +147,7 @@ utils: libs destBin
 	cd utils && ${MAKE}
 	cd hg && ${MAKE} utils
 
-utils-alpha: libs
+utils-alpha: libs destBin
 	${MKDIR} ${SCRIPTS}
 	cd parasol && ${MAKE}
 	@for D in ${DIRS} x; do \

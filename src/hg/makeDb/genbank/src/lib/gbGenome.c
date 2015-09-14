@@ -102,6 +102,8 @@ static char *susScrNames[] = {"Sus scrofa", "Sus scrofa coreanus", "Sus scrofa d
 static char *ornAnaNames[] = {"Ornithorhynchus anatinus", NULL};
 static char *petMarNames[] = {"Petromyzon marinus", NULL};
 static char *braFloNames[] = {"Branchiostoma floridae", "Branchiostoma belcheri", "Branchiostoma belcheri tsingtauense", "Branchiostoma californiense", "Branchiostoma japonicum", "Branchiostoma lanceolatum", NULL};
+static char *ancCeyNames[] = {"Ancylostoma ceylanicum", NULL};
+static char *priExsNames[] = {"Pristionchus exspectatus", NULL};
 static char *priPacNames[] = {"Pristionchus pacificus", NULL};
 static char *aplCalNames[] = {"Aplysia californica", NULL};
 /* hypothetical ancestor, will never match native */
@@ -120,6 +122,7 @@ static char *eriEurNames[] = {"Erinaceus europaeus", NULL};
 static char *gadMorNames[] = {"Gadus morhua", NULL};
 static char *latChaNames[] = {"Latimeria chalumnae", NULL};
 static char *geoForNames[] = {"Geospiza fortis", NULL};
+static char *manPenNames[] = {"Manis javanica", NULL};
 static char *melUndNames[] = {"Melopsittacus undulatus", NULL};
 static char *micMurNames[] = {"Microcebus murinus", NULL};
 static char *musFurNames[] = {"Mustela putorius furo", "Mustela putorius", NULL};
@@ -141,6 +144,7 @@ static char *rhiRoxNames[] = {"Rhinopithecus roxellana", NULL};
 static char *aquChrNames[] = {"Aquila chrysaetos canadensis", NULL};
 static char *nanParNames[] = {"Nanorana parkeri", "Nanorana pleskei", "Nanorana yunnanensis", NULL};
 static char *chlSabNames[] = {"Chlorocebus sabaeus", "Chlorocebus aethiops", "Chlorocebus pygerythrus", "Chlorocebus pygerythrus pygerythrus", "Chlorocebus tantalus", NULL};
+static char *ascSuuNames[] = {"Ascaris suum", NULL};
 
 static char *endNames[] = {NULL};
 
@@ -216,6 +220,8 @@ static struct dbToSpecies dbToSpeciesMap[] = {
     {"ornAna", ornAnaNames},
     {"petMar", petMarNames},
     {"braFlo", braFloNames},
+    {"ancCey", ancCeyNames},
+    {"priExs", priExsNames},
     {"priPac", priPacNames},
     {"canHg",  canHgNames},
     {"strPur", strPurNames},
@@ -235,6 +241,7 @@ static struct dbToSpecies dbToSpeciesMap[] = {
     {"gadMor", gadMorNames},
     {"latCha", latChaNames},
     {"geoFor", geoForNames},
+    {"manPen", manPenNames},
     {"melUnd", melUndNames},
     {"micMur", micMurNames},
     {"musFur", musFurNames},
@@ -256,6 +263,7 @@ static struct dbToSpecies dbToSpeciesMap[] = {
     {"aquChr", aquChrNames},
     {"nanPar", nanParNames},
     {"chlSab", chlSabNames},
+    {"ascSuu", ascSuuNames},
     {"CHM", hgNames},
     {"braNey", hgNames},
     {NULL, endNames}

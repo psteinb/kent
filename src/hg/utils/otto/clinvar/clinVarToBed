@@ -23,7 +23,7 @@ if options.debug:
 else:
     logging.basicConfig(level=logging.INFO)
 
-clinvarExpectHeaders = "#AlleleID	Type	Name	GeneID	GeneSymbol	ClinicalSignificance	RS# (dbSNP)	nsv (dbVar)	RCVaccession	TestedInGTR	PhenotypeIDs	Origin	Assembly	Chromosome	Start	Stop	Cytogenetic	ReviewStatus	HGVS(c.)	HGVS(p.)	NumberSubmitters	LastEvaluated	Guidelines	OtherIDs	VariantID\n"
+clinvarExpectHeaders = "#AlleleID	Type	Name	GeneID	GeneSymbol	ClinicalSignificance	RS# (dbSNP)	nsv (dbVar)	RCVaccession	TestedInGTR	PhenotypeIDs	Origin	Assembly	Chromosome	Start	Stop	Cytogenetic	ReviewStatus	HGVS(c.)	HGVS(p.)	NumberSubmitters	LastEvaluated	Guidelines	OtherIDs	VariantID	ReferenceAllele	AlternateAllele	SubmitterCategories	ChromosomeAccession\n"
 # ==== FUNCTIONs =====
 
 def shortenName(name):
@@ -116,7 +116,11 @@ ifh = gzip.open(filename)
 
 # check the header
 line1 = ifh.readline()
-assert(line1 == clinvarExpectHeaders) # test if clinvar has changed their header line again
+if (line1 != clinvarExpectHeaders): # test if clinvar has changed their header line again
+    logging.error("ClinVar has changed their header line again")
+    logging.error("current header line: %s" % line1)
+    logging.error("expected header line: %s" % clinvarExpectHeaders)
+    raise Exception("code needs fixing")
 
 # open out files
 hg19Bed = open("archive/clinvarMain.hg19.%sbed" % outSuffix, "w")
@@ -134,13 +138,16 @@ for line in ifh:
 
     alleleId, allType, name, geneId, geneSymbol, clinSign, snpAcc, dbVarAcc, \
       irvcAcc, inGtr, phenotypeIds, origin, assembly, chrom, start, end, cytogenetic, \
-      reviewStatus, hgvsCod, hgvsProt, numberSubmitters, lastEval, guidelines, otherIds, varId \
-           = line.split("\t")
+      reviewStatus, hgvsCod, hgvsProt, numberSubmitters, lastEval, guidelines, otherIds, varId, \
+      refAll, varAll, submCategories, chromAcc = line.split("\t")
 
     if chrom=="" or assembly=="" or assembly=="NCBI36":
         noAssCount += 1
         continue
 
+    if chrom=="Un" and assembly=="GRCh38":
+        print "wrong chrUn chrom on assembly hg38. Skipping %s" % irvcAcc
+        continue
     chrom = "chr"+chrom
     if chrom=="chrMT": # why does NCBI use chrMT but we use chrM ?
         chrom = "chrM"
@@ -245,11 +252,11 @@ if options.maxDiff:
         todayCount = sum(1 for line in open(fname))
         previousCount = sum(1 for line in open(previousFname))
         percDiff = (todayCount-previousCount)/float(todayCount)
-        if percDiff < 0:
-            raise Exception("line count change negative: %s %d, %s %d" % \
+        if percDiff < 0 and options.maxDiff:
+            raise Exception("line count change negative: %s %d, %s %d. Run without --maxDiff to ignore this error. Or run the cronjob script doUpdate.sh with -nocheck to ignore this error." % \
                 (previousFname, previousCount, fname, todayCount))
         if percDiff > options.maxDiff:
-            raise Exception("line count increased too much: yesterday %d , today %d. Check if the input file is OK. If yes, remove the --maxDiff option from the clinVarToBed, call it only with the --auto option." % (previousCount, todayCount))
+            raise Exception("line count increased too much: yesterday %d , today %d. Check if the input file is OK. If yes, remove the --maxDiff option from the clinVarToBed, call it only with the --auto option. Or run the cronjob script doUpdate.sh with -nocheck to ignore this error." % (previousCount, todayCount))
         # see RM 14350 do more than just linecount
         # see http://stackoverflow.com/questions/1566461/how-to-count-differences-between-two-files-on-linux
         cmd = "diff %s %s --speed-large-files | grep '^[\>\<]'  | wc -l" % (fname, previousFname)

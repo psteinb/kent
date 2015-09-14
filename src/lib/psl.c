@@ -1847,7 +1847,6 @@ else
 
 *op = *str++;
 *size = atoi(str);
-
 return TRUE;
 }
 
@@ -1862,9 +1861,9 @@ struct psl *psl = pslNew(qName, qSize, qStart, qEnd, tName, tSize, tStart, tEnd,
 
 char op;
 int size;
-int qNext = qStart, qBlkEnd = qEnd;
 int totalSize = 0;
 
+int qNext = qStart, qBlkEnd = qEnd;
 if (strand[0] == '-')
     reverseIntRange(&qNext, &qBlkEnd, qSize);
 int tNext = tStart, tBlkEnd = tEnd;
@@ -1919,8 +1918,23 @@ else
 	    }
 	}
     }
-assert(qNext == qBlkEnd);
-assert(tNext == tBlkEnd);
+
+/* CIGARs starting/ending with indels require adjusting of query/target ranges,
+ * as PSL starts/ends with matches */
+psl->qStart = psl->qStarts[0];
+psl->qEnd = pslQEnd(psl, psl->blockCount-1);
+if (strand[0] == '-')
+    reverseIntRange(&psl->qStart, &psl->qEnd, qSize);
+psl->tStart = psl->tStarts[0];
+psl->tEnd = pslTEnd(psl, psl->blockCount-1);
+if (strand[1] == '-')
+    reverseIntRange(&psl->tStart, &psl->tEnd, tSize);
+
+/* sanity check */
+if (qNext != qBlkEnd)
+    errAbort("CIGAR query length does not match specified query range %s:%d-%d", qName, qStart, qEnd);
+if (tNext != tBlkEnd)
+    errAbort("CIGAR target length does not match specified target range %s:%d-%d", tName, tStart, tEnd);
 psl->match = totalSize;
 return psl;
 }
@@ -1959,3 +1973,32 @@ float aligned = psl->match + psl->misMatch + psl->repMatch;
 return aligned/(float)psl->qSize;
 }
 
+struct psl* pslClone(struct psl *psl)
+/* clone a psl */
+{
+struct psl* pslCp = pslNew(psl->qName, psl->qSize, psl->qStart, psl->qEnd,
+                           psl->tName, psl->tSize, psl->tStart, psl->tEnd,
+                           psl->strand, psl->blockCount,
+                           ((psl->tSequence != NULL) ? PSL_XA_FORMAT : 0));
+pslCp->match = psl->match;
+pslCp->misMatch = psl->misMatch;
+pslCp->repMatch = psl->repMatch;
+pslCp->nCount = psl->nCount;
+pslCp->qNumInsert = psl->qNumInsert;
+pslCp->qBaseInsert = psl->qBaseInsert;
+pslCp->tNumInsert = psl->tNumInsert;
+pslCp->tBaseInsert = psl->tBaseInsert;
+int iBlk;
+for (iBlk = 0; iBlk < psl->blockCount; iBlk++)
+    {
+    pslCp->blockSizes[iBlk] = psl->blockSizes[iBlk];
+    pslCp->qStarts[iBlk] = psl->qStarts[iBlk];
+    pslCp->tStarts[iBlk] = psl->tStarts[iBlk];
+    if (psl->qSequence != NULL)
+        pslCp->qSequence[iBlk] = cloneString(psl->qSequence[iBlk]);
+    if (psl->tSequence != NULL)
+        pslCp->tSequence[iBlk] = cloneString(psl->tSequence[iBlk]);
+    pslCp->blockCount++;
+    }
+return pslCp;
+}

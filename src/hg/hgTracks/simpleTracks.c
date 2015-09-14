@@ -140,6 +140,8 @@
 #include "wiki.h"
 #endif /* LOWELAB_WIKI */
 
+#include "trackVersion.h"
+
 #define CHROM_COLORS 26
 
 int colorBin[MAXPIXELS][256]; /* count of colors for each pixel for each color */
@@ -4783,15 +4785,15 @@ void loadKnownGencode(struct track *tg)
  * in "extra" field (usually gene name) */
 {
 char varName[SMALLBUF];
-safef(varName, sizeof(varName), "%s.show.composite", tg->tdb->track);
-boolean showComposite = cartUsualBoolean(cart, varName, FALSE);
+safef(varName, sizeof(varName), "%s.show.comprehensive", tg->tdb->track);
+boolean showComprehensive = cartUsualBoolean(cart, varName, FALSE);
 
 struct sqlConnection *conn = hAllocConn(database);
 tg->items = connectedLfFromGenePredInRangeExtra(tg, conn, tg->table,
                                         chromName, winStart, winEnd, TRUE);
 
 /* filter items on selected criteria if filter is available */
-if (!showComposite)
+if (!showComprehensive)
     filterItems(tg, knownGencodeClassFilter, "include");
 
 /* if we're close enough to see the codon frames, we better load them! */
@@ -5040,6 +5042,7 @@ struct linkedFeatures *lf;
 struct sqlConnection *conn = hAllocConn(database);
 char *geneSymbol;
 char *protDisplayId;
+char *gencodeId;
 char *mimId;
 char cond_str[256];
 
@@ -5047,6 +5050,7 @@ boolean useGeneSymbol= FALSE;
 boolean useKgId      = FALSE;
 boolean useProtDisplayId = FALSE;
 boolean useMimId = FALSE;
+boolean useGencodeId = FALSE;
 
 struct hashEl *knownGeneLabels = cartFindPrefix(cart, "knownGene.label");
 struct hashEl *label;
@@ -5070,11 +5074,14 @@ if (hTableExists(database, "kgXref"))
             useGeneSymbol = TRUE;
         else if (endsWith(label->name, "kgId") && differentString(label->val, "0"))
             useKgId = TRUE;
+        else if (endsWith(label->name, "gencodeId") && differentString(label->val, "0"))
+            useGencodeId = TRUE;
         else if (endsWith(label->name, "prot") && differentString(label->val, "0"))
             useProtDisplayId = TRUE;
         else if (endsWith(label->name, omimLabel) && differentString(label->val, "0"))
             useMimId = TRUE;
         else if (!endsWith(label->name, "gene") &&
+                 !endsWith(label->name, "gencodeId") &&
                  !endsWith(label->name, "kgId") &&
                  !endsWith(label->name, "prot") &&
                  !endsWith(label->name, omimLabel) )
@@ -5100,6 +5107,14 @@ if (hTableExists(database, "kgXref"))
                 }
             labelStarted = TRUE;
             }
+        if (useGencodeId)
+            {
+            if (labelStarted) dyStringAppendC(name, '/');
+            else labelStarted = TRUE;
+	    sqlSafefFrag(cond_str, sizeof(cond_str), "name='%s'", lf->name);
+	    gencodeId = sqlGetField(database, "knownGene", "alignID", cond_str);
+	    dyStringAppend(name, gencodeId);
+	    }
         if (useKgId)
             {
             if (labelStarted) dyStringAppendC(name, '/');
@@ -12770,6 +12785,15 @@ else if (sameWord(type, "bigBed"))
     if (trackShouldUseAjaxRetrieval(track))
         track->loadItems = dontLoadItems;
     }
+else if (sameWord(type, "bigPsl"))
+    {
+    tdb->canPack = TRUE;
+    wordCount++;
+    words[1] = "12";
+    bigBedMethods(track, tdb, wordCount, words);
+    if (trackShouldUseAjaxRetrieval(track))
+        track->loadItems = dontLoadItems;
+    }
 else if (sameWord(type, "bigGenePred"))
     {
     tdb->canPack = TRUE;
@@ -13144,17 +13168,26 @@ track->visibility = tdb->visibility;
 track->shortLabel = cloneString(tdb->shortLabel);
 if (sameWord(tdb->track, "ensGene"))
     {
-    char ensVersionString[256];
-    char ensDateReference[256];
-    ensGeneTrackVersion(database, ensVersionString, ensDateReference,
-	sizeof(ensVersionString));
-    if (ensVersionString[0])
+    struct trackVersion *trackVersion = getTrackVersion(database, "ensGene");
+    if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
 	{
 	char longLabel[256];
-	if (ensDateReference[0] && differentWord("current", ensDateReference))
-	    safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - archive %s - %s", ensVersionString, ensDateReference);
+        if (!isEmpty(trackVersion->dateReference) && differentWord("current", trackVersion->dateReference))
+	    safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - archive %s - %s", trackVersion->version, trackVersion->dateReference);
 	else
-	    safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - %s", ensVersionString);
+	    safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - %s", trackVersion->version);
+	track->longLabel = cloneString(longLabel);
+	}
+    else
+	track->longLabel = cloneString(tdb->longLabel);
+    }
+else if (sameWord(tdb->track, "ncbiRefCurated") || sameWord(tdb->track, "ncbiRefCurated"))
+    {
+    struct trackVersion *trackVersion = getTrackVersion(database, "ncbiRefSeq");
+    if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
+	{
+	char longLabel[1024];
+	safef(longLabel, sizeof(longLabel), "%s - Annotation Release %s", tdb->longLabel, trackVersion->version);
 	track->longLabel = cloneString(longLabel);
 	}
     else
@@ -13246,39 +13279,39 @@ else
 // If parents and children put in different handlers, there's no way to know which one
 // the child will get.
 
-static TrackHandler lookupTrackHandler(char *name)
+static TrackHandler lookupTrackHandler(struct trackDb *tdb)
 /* Lookup handler for track of give name.  Return NULL if none. */
 {
 if (handlerHash == NULL)
     return NULL;
-return hashFindVal(handlerHash, name);
-}
-
-TrackHandler lookupTrackHandlerClosestToHome(struct trackDb *tdb)
-/* Lookup handler for track of give name.  Try parents if
- * subtrack has a NULL handler.  Return NULL if none. */
-{
-TrackHandler handler = lookupTrackHandler(tdb->table);
-
-// while handler is NULL and we have a parent, use the parent's handler
-for( ; (handler == NULL) && (tdb->parent != NULL);  )
-    {
-    tdb = tdb->parent;
-    handler = lookupTrackHandler(tdb->table);
-    }
-
+TrackHandler handler = hashFindVal(handlerHash, tdb->table);
 // if nothing found, try the "trackHandler" statement
 if (handler == NULL)
     {
     char *handlerName = trackDbSetting(tdb, "trackHandler");
     if (handlerName != NULL)
         {
-        handler = lookupTrackHandler(handlerName);
+        handler = hashFindVal(handlerHash, handlerName);
         if (handler==NULL)
-            errAbort("track %s defined a trackHandler in trackDb which does not exist", tdb->track);
+            errAbort("track %s defined a trackHandler '%s' in trackDb which does not exist",
+                     tdb->track, handlerName);
         }
     }
+return handler;
+}
 
+TrackHandler lookupTrackHandlerClosestToHome(struct trackDb *tdb)
+/* Lookup handler for track of give name.  Try parents if
+ * subtrack has a NULL handler.  Return NULL if none. */
+{
+TrackHandler handler = lookupTrackHandler(tdb);
+
+// while handler is NULL and we have a parent, use the parent's handler
+for( ; (handler == NULL) && (tdb->parent != NULL);  )
+    {
+    tdb = tdb->parent;
+    handler = lookupTrackHandler(tdb);
+    }
 return handler;
 }
 

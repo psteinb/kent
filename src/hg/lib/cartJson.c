@@ -3,6 +3,7 @@
 #include "cartJson.h"
 #include "cartTrackDb.h"
 #include "cheapcgi.h"
+#include "errCatch.h"
 #include "grp.h"
 #include "hdb.h"
 #include "hgFind.h"
@@ -329,6 +330,25 @@ if (tdb->settingsHash)
     }
 }
 
+static int trackDbViewCmp(const void *va, const void *vb)
+/* *** I couldn't find anything like this in hgTracks or hui, but clearly views end up
+ * *** being ordered alphabetically somehow.  Anyway...
+ * Compare two trackDbs, first by view if both have a view setting, then the usual way
+ * (by priority, then by shortLabel). */
+{
+const struct trackDb *a = *((struct trackDb **)va);
+const struct trackDb *b = *((struct trackDb **)vb);
+// The casts are necessary here unless one adds const to trackDbSetting decl
+char *viewA = trackDbSetting((struct trackDb *)a, "view");
+char *viewB = trackDbSetting((struct trackDb *)b, "view");
+int diff = 0;
+if (isNotEmpty(viewA) && isNotEmpty(viewB))
+    diff = strcmp(viewA, viewB);
+if (diff != 0)
+    return diff;
+return trackDbCmp(va, vb);
+}
+
 static struct jsonWrite *rTdbToJw(struct trackDb *tdb, struct hash *fieldHash,
                                   struct hash *excludeTypesHash, int depth, int maxDepth)
 /* Recursively build and return a new jsonWrite object with JSON for tdb and its children,
@@ -370,6 +390,7 @@ if (tdb->parent && fieldOk("parent", fieldHash))
 if (doSubtracks)
     {
     jsonWriteListStart(jwNew, "subtracks");
+    slSort(&tdb->subtracks, trackDbViewCmp);
     struct trackDb *subTdb;
     for (subTdb = tdb->subtracks;  subTdb != NULL;  subTdb = subTdb->next)
         {
@@ -490,9 +511,26 @@ void cartJsonGetGroupedTrackDb(struct cartJson *cj, struct hash *paramHash)
  * object that includes the database from which it was taken; it's possible that by the time
  * this reaches the client, the user might have switched to a new db. */
 {
+struct jsonWrite *jw = cj->jw;
 struct trackDb *fullTrackList = NULL;
 struct grp *fullGroupList = NULL;
-cartTrackDbInit(cj->cart, &fullTrackList, &fullGroupList, /* useAccessControl=*/TRUE);
+struct errCatch *errCatch = errCatchNew();
+if (errCatchStart(errCatch))
+    {
+    cartTrackDbInit(cj->cart, &fullTrackList, &fullGroupList, /* useAccessControl=*/TRUE);
+    }
+errCatchEnd(errCatch);
+if (errCatch->gotError)
+    {
+    warn("%s", errCatch->message->string);
+    jsonWriteObjectStart(jw, "groupedTrackDb");
+    jsonWriteString(jw, "db", cartString(cj->cart, "db"));
+    jsonWriteListStart(jw, "groupedTrackDb");
+    jsonWriteListEnd(jw);
+    jsonWriteObjectEnd(jw);
+    return;
+    }
+errCatchFree(&errCatch);
 struct hash *groupedTrackRefList = hashTracksByGroup(fullTrackList);
 // If the optional param 'fields' is given, hash the field names that should be returned.
 char *fields = cartJsonOptionalParam(paramHash, "fields");
@@ -504,7 +542,6 @@ int maxDepth = -1;
 char *maxDepthStr = cartJsonOptionalParam(paramHash, "maxDepth");
 if (isNotEmpty(maxDepthStr))
     maxDepth = atoi(maxDepthStr);
-struct jsonWrite *jw = cj->jw;
 jsonWriteObjectStart(jw, "groupedTrackDb");
 jsonWriteString(jw, "db", cartString(cj->cart, "db"));
 jsonWriteListStart(jw, "groupedTrackDb");
@@ -649,11 +686,11 @@ for (clade = cladeOptions;  clade != NULL;  clade = clade->next)
                 }
             }
         jsonWriteListEnd(jw);   // children (dbs)
-        jsonWriteString(jw, "default", hDefaultDbForGenome(org->name));
+        jsonWriteString(jw, "default", trimSpaces(hDefaultDbForGenome(org->name)));
         jsonWriteObjectEnd(jw); // org
         }
     jsonWriteListEnd(jw);   // children (orgs)
-    jsonWriteString(jw, "default", hDefaultGenomeForClade(clade->name));
+    jsonWriteString(jw, "default", trimSpaces(hDefaultGenomeForClade(clade->name)));
     jsonWriteObjectEnd(jw); // clade
     }
 jsonWriteListEnd(jw);
@@ -662,6 +699,7 @@ jsonWriteListEnd(jw);
 static void getCladeOrgDbPos(struct cartJson *cj, struct hash *paramHash)
 /* Get cart's current clade, org, db, position and geneSuggest track. */
 {
+jsonWriteObjectStart(cj->jw, "cladeOrgDb");
 printCladeOrgDbTree(cj->jw);
 char *db = cartString(cj->cart, "db");
 jsonWriteString(cj->jw, "db", db);
@@ -669,6 +707,7 @@ char *org = cartUsualString(cj->cart, "org", hGenome(db));
 jsonWriteString(cj->jw, "org", org);
 char *clade = cartUsualString(cj->cart, "clade", hClade(org));
 jsonWriteString(cj->jw, "clade", clade);
+jsonWriteObjectEnd(cj->jw);
 char *position = cartOptionalString(cj->cart, "position");
 if (isEmpty(position))
     position = hDefaultPos(db);

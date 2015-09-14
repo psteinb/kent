@@ -1968,9 +1968,9 @@ if (hti == NULL)
     errAbort("Could not find table info for table %s (%s)",
 	     rootName, table);
 if (hti->isSplit)
-    safef(fullTableName, sizeof(fullTableName), "%s_%s", chrom, rootName);
+    safef(fullTableName, sizeof(fullTableName), "%s_%s", chrom, hti->rootName);
 else
-    safef(fullTableName, sizeof(fullTableName), "%s", rootName);
+    safef(fullTableName, sizeof(fullTableName), "%s", hti->rootName);
 canDoUTR = hti->hasCDS;
 canDoIntrons = hti->hasBlocks;
 
@@ -3604,7 +3604,11 @@ if (bigDataUrl != NULL)
     else
         {
         char *bigDataUrlLocal = hReplaceGbdb(bigDataUrl);
-        boolean exists = fileExists(bigDataUrlLocal);
+        boolean exists;
+        if (hasProtocol(bigDataUrlLocal))
+            exists = udcExists(bigDataUrlLocal);
+        else
+            exists = fileExists(bigDataUrlLocal);
         freeMem(bigDataUrlLocal);
         return exists;
         }

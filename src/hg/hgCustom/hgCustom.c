@@ -99,32 +99,30 @@ void addIntro()
 /* display overview and help message for "add" screen */
 {
 puts(" Data must be formatted in\n"
-" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1'>BED</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bigBed.html'>bigBed</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bigGenePred.html'>bigGenePred</A>,\n"
+" <A TARGET=_BLANK HREF='../goldenPath/help/bigWig.html'>bigWig</A>,\n"
+" <A TARGET=_BLANK HREF='../goldenPath/help/bam.html'>BAM</A>,\n"
+" <A TARGET=_BLANK HREF='../goldenPath/help/vcf.html'>VCF</A>,\n"
+" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1'>BED</A>,\n"
+" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1.7'>BED detail</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bedgraph.html'>bedGraph</A>,\n"
+" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format13'>broadPeak</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format3'>GFF</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format4'>GTF</A>,\n"
-" <A TARGET=_BLANK HREF='../goldenPath/help/wiggle.html'>WIG</A>,\n"
-" <A TARGET=_BLANK HREF='../goldenPath/help/bigWig.html'>bigWig</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format5'>MAF</A>,\n"
-" <A TARGET=_BLANK HREF='../goldenPath/help/bam.html'>BAM</A>,\n"
-" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1.7'>BED detail</A>,\n"
-" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format10'>Personal Genome SNP,</A>\n"
-" <A TARGET=_BLANK HREF='../goldenPath/help/vcf.html'>VCF</A>,\n"
-" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format13'>broadPeak</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format12'>narrowPeak</A>,\n"
-" or <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format2'>PSL</A>\n"
+" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format10'>Personal Genome SNP,</A>\n"
+" <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format2'>PSL</A>,\n"
+" or <A TARGET=_BLANK HREF='../goldenPath/help/wiggle.html'>WIG</A>\n"
 " formats. To configure the display, set\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#TRACK'>track</A>\n"
 " and"
 " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#BROWSER'>browser</A>\n"
 " line attributes as described in the \n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html'>User's Guide</A>.\n"
-" Data in the bigBed, bigWig, BAM and VCF formats can be provided via only a URL or embedded in a track\n"
+" Data in the bigBed, bigWig, bigGenePred, BAM and VCF formats can be provided via only a URL or embedded in a track\n"
 " line in the box below.\n"
-" Publicly available custom tracks are listed\n"
-" <A HREF='../goldenPath/customTracks/custTracks.html'>here</A>.\n"
 " Examples are\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/customTrack.html#EXAMPLE1'>here</A>.\n"
 );
@@ -642,6 +640,39 @@ for (hel = hels; hel != NULL; hel = hel->next)
 return dbList;
 }
 
+static struct slPair *makeOtherCgiValsAndLabels()
+/* Return {value, label} pairs with other CGIs the user might wish to jump to. */
+{
+struct slPair *valsAndLabels = slPairNew(hgTracksName(), "Genome Browser");
+slAddHead(&valsAndLabels, slPairNew(hgTablesName(), "Table Browser"));
+slAddHead(&valsAndLabels, slPairNew(hgVaiName(), "Variant Annotation Integrator"));
+slAddHead(&valsAndLabels, slPairNew(hgIntegratorName(), "Data Integrator"));
+slReverse(&valsAndLabels);
+return valsAndLabels;
+}
+
+static void makeOtherCgiForm(char *pos)
+/* Make a form for navigating to other CGIs. */
+{
+struct slPair *valsAndLabels = makeOtherCgiValsAndLabels();
+// Default to the first CGI in the menu.
+#define hgCtNavDest "hgct_navDest"
+char *defaultCgi = valsAndLabels->name;
+char *selected = cartUsualString(cart, hgCtNavDest, defaultCgi);
+printf("<FORM STYLE=\"margin-bottom:0;\" METHOD=\"GET\" NAME=\"navForm\" ID=\"navForm\""
+       " ACTION=\"%s\">\n", selected);
+cartSaveSession(cart);
+if (pos)
+    cgiMakeHiddenVar("position", pos);
+printf("view in ");
+// Construct a menu of destination CGIs
+char *extraHtml = "id=\"navSelect\" "
+    "onChange=\"var newVal = $('#navSelect').val(); $('#navForm').attr('action', newVal);\"";
+puts(cgiMakeSingleSelectDropList(hgCtNavDest, valsAndLabels, selected, NULL, NULL, extraHtml));
+cgiMakeButton("submit", "go");
+puts("</FORM>");
+}
+
 static void manageCustomForm(char *warn)
 /* list custom tracks and display checkboxes so user can select for delete */
 {
@@ -726,17 +757,12 @@ else
     puts("<TD VALIGN=\"TOP\"><B><EM>No custom tracks for this genome:<B></EM>&nbsp;&nbsp;");
 puts("</TD>");
 
-/* navigation  buttons */
+/* end mainForm; navigation menu has its own form. */
+
+puts("</FORM>");
+
 puts("<TD VALIGN=\"TOP\">");
 puts("<TABLE BORDER=0>");
-
-/* button to add custom tracks */
-int buttonWidth = 18;
-puts("<TR><TD>");
-printf("<INPUT TYPE=SUBMIT NAME=\"%s\" VALUE=\"%s\" STYLE=\"width:%dem\">",
-                hgCtDoAdd, "add custom tracks", buttonWidth);
-puts("</TD></TR>");
-puts("</FORM>");
 
 /* determine if there's a navigation position for this screen */
 char *pos = NULL;
@@ -747,36 +773,19 @@ if (ctList)
         pos = ctFirstItemPos(ctList);
     }
 
-/* button for GB navigation */
 puts("<TR><TD>");
-printf("<FORM STYLE=\"margin-bottom:0;\" ACTION=\"%s\" METHOD=\"GET\" NAME=\"tracksForm\">\n",
-           hgTracksName());
-cartSaveSession(cart);
-printf("<INPUT TYPE=SUBMIT NAME=\"Submit\" VALUE=\"%s\" STYLE=\"width:%dem\">",
-        "go to genome browser", buttonWidth);
-if (pos)
-    cgiMakeHiddenVar("position", pos);
-puts("</FORM>");
+makeOtherCgiForm(pos);
 puts("</TD></TR>");
 
-/* button for TB navigation */
+/* button to add custom tracks */
 puts("<TR><TD>");
-printf("<FORM STYLE=\"margin-bottom:0;\" ACTION=\"%s\" METHOD=\"GET\" NAME=\"tablesForm\">\n",
-           hgTablesName());
-cartSaveSession(cart);
-printf("<INPUT TYPE=SUBMIT NAME=\"Submit\" VALUE=\"%s\" STYLE=\"width:%dem\">",
-        "go to table browser", buttonWidth);
-puts("</FORM>");
-puts("</TD></TR>");
-
-/* button for VAI navigation */
-puts("<TR><TD>");
-printf("<FORM STYLE=\"margin-bottom:0;\" ACTION=\"%s\" METHOD=\"GET\" NAME=\"vaiForm\">\n",
-           hgVaiName());
-cartSaveSession(cart);
-printf("<INPUT TYPE=SUBMIT NAME=\"Submit\" VALUE=\"%s\" STYLE=\"width:%dem\">",
-        "go to variant annotation integrator", buttonWidth);
-puts("</FORM>");
+printf("<INPUT TYPE=SUBMIT NAME=\"addTracksButton\" ID=\"addTracksButton\" VALUE=\"%s\" "
+       "STYLE=\"margin-top: 5px\" "
+       // This submits mainForm with a hidden input that tells hgCustom to show add tracks page:
+       "onClick='var $form = $(form[name=\"mainForm\"]); "
+                "$form.append(\"<input name=\\\"%s\\\" type=\\\"hidden\\\">\"); "
+                "$form.submit();' >\n",
+       "add custom tracks", hgCtDoAdd);
 puts("</TD></TR>");
 
 puts("</TABLE>");
@@ -784,6 +793,20 @@ puts("</TD>");
 
 cgiTableRowEnd();
 cgiTableEnd();
+
+
+// This vertically aligns the 'add tracks' button with the other-CGI select
+puts("<SCRIPT>");
+puts("function fitUnder($el1, $el2) { "
+     "  var off1 = $el1.offset(); "
+     "  var off2 = $el2.offset(); "
+     "  off2.left = off1.left; "
+     "  $el2.offset(off2);"
+     "  $el2.width($el1.width()); "
+     "};");
+puts("$(document).ready(function () { fitUnder($('#navSelect'), $('#addTracksButton')); });");
+puts("</SCRIPT>");
+
 cartSetString(cart, "hgta_group", "user");
 }
 

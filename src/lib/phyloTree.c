@@ -62,6 +62,46 @@ lineFileClose(&lf);
 return tree;
 }
 
+static char *unescapeNewark(char *s)
+/* unescape backslashed Newark punctuation chars */
+{
+char out[strlen(s)+1];
+char *o = out;
+boolean escaped = FALSE;
+while(TRUE)
+    {
+    char c = *s++;
+    if (escaped)
+	{
+	if (c == '(' || c == ')' || c == ',' || c == ':' || c == ';' || c == '\\')
+	    {
+	    *o++ = c;
+	    }
+	else  
+	    {
+	    errAbort("Expected Newark punctuation characters or backslash after a backslash.");
+	    }
+	escaped = FALSE;
+	}
+    else
+	{
+	if (c == '\\')
+	    {
+	    escaped = TRUE;
+	    }
+	else
+	    {
+	    if (c == '(' || c == ')' || c == ',' || c == ':' || c == ';' || c == '\\')
+		errAbort("Expected a backslash before Newark punctuation characters or backslash.");
+	    *o++ = c;
+	    }
+	}
+    if (c == 0)
+	break;
+    }
+return cloneString(out);
+}
+
 
 static struct phyloName *parseIdent(char **ptrPtr)
 /* read a node name with possibile branch length */
@@ -71,13 +111,21 @@ char *start = *ptrPtr;
 char *ptr = *ptrPtr;
 
 AllocVar(pName);
-/* legal id's are alphanumeric */
-while(isalpha(*ptr) || isdigit(*ptr) || (*ptr == '/')
-     || (*ptr == '\'')
-     || (*ptr == '>')
-     || (*ptr == '<')
-    || (*ptr == '.') || (*ptr == '_')) 
+
+
+/* legal id's are anything except Newick punctuation chars */
+char prev = ' ';
+char c;
+while((c = *ptr))
+    {
+    if (c == '(' || c == ')' || c == ',' || c == ':' || c == ';')
+	{
+	if (prev != '\\') // backslash escape char?
+    	    break;
+	}
     ptr++;
+    prev = c;
+    }
 
 /* did we read something? */
 if(ptr > start)
@@ -87,6 +135,8 @@ if(ptr > start)
     val = *ptr;
     *ptr = 0;
     pName->name = cloneString(start);
+    pName->name = trimSpaces(pName->name);
+    pName->name = unescapeNewark(pName->name);
     *ptr = val;
     }
 
@@ -142,6 +192,10 @@ if ((*ptr == ';') || (*ptr == ',') || (*ptr == ')') )
     return NULL;
 
 AllocVar(node);
+
+while(*ptr == ' ')
+    ptr++;
+
 if (*ptr == '(') 
     {
     struct phyloTree *edge;
@@ -163,7 +217,7 @@ if (*ptr == '(')
     }
 else 
     if ((*ptr == ':') || (isalpha(*ptr))|| (isdigit(*ptr)) 
-	 || (*ptr == '\'') || (*ptr == '.'))
+	 || (*ptr == '\'') || (*ptr == '.')) 
 	node->ident = parseIdent(&ptr);
 else
     errAbort("illegal char '%c' in phyloString",*ptr);
@@ -186,14 +240,28 @@ if (*ptr == '[')
 return node;
 }
 
+static void replaceWhitespaceWithSpaces(char *s)
+/* Replace all whitespace chars with a space char */
+{
+char c;
+for(c=*s; c != 0; c = *(++s))
+    {
+    if (isspace(c))
+	{
+	*s = ' ';
+	}
+    }
+}
+
+
 struct phyloTree *phyloParseString(char *string)
 /* build a phyloTree from a string */
 {
 struct phyloTree *tree = NULL;
+
+replaceWhitespaceWithSpaces(string);
+
 char *ptr = string;
-
-eraseWhiteSpace(string);
-
 tree = parseSubTree(&ptr);
 
 if (*ptr != ';')

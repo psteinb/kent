@@ -247,6 +247,7 @@
 #include "numtsClick.h"
 #include "geneReviewsClick.h"
 #include "bigBed.h"
+#include "bigPsl.h"
 
 static char *rootDir = "hgcData";
 
@@ -2857,6 +2858,44 @@ for (psl = pslList; psl != NULL; psl = psl->next)
 printf("</TT></PRE>\n");
 }
 
+void genericBigPslClick(struct sqlConnection *conn, struct trackDb *tdb,
+                     char *item, int start, int end)
+/* Handle click in big psl track. */
+{
+struct psl* pslList;
+char *fileName = bbiNameFromSettingOrTable(tdb, conn, tdb->table);
+struct bbiFile *bbi = bigBedFileOpen(fileName);
+struct lm *lm = lmInit(0);
+int ivStart = start, ivEnd = end;
+if (start == end)
+    {  
+    // item is an insertion; expand the search range from 0 bases to 2 so we catch it:
+    ivStart = max(0, start-1);
+    ivEnd++;
+    }  
+
+struct bigBedInterval *bb, *bbList = bigBedIntervalQuery(bbi, seqName, ivStart, ivEnd, 0, lm);
+
+char *bedRow[32];
+char startBuf[16], endBuf[16];
+for (bb = bbList; bb != NULL; bb = bb->next)
+    {
+    bigBedIntervalToRow(bb, seqName, startBuf, endBuf, bedRow, 4);
+    struct bed *bed = bedLoadN(bedRow, 4);
+    if (sameString(bed->name, item))
+	{
+	bb->next = NULL;
+	break;
+	}
+    }
+pslList = pslFromBigPsl(seqName, bb,  hChromSize(database, seqName), NULL, NULL);
+
+printf("<H3>%s/Genomic Alignments</H3>", item);
+printAlignments(pslList, start, "htcBigPslAli", tdb->table, item);
+pslFreeList(&pslList);
+printItemDetailsHtml(tdb, item);
+}
+
 void genericPslClick(struct sqlConnection *conn, struct trackDb *tdb,
                      char *item, int start, char *subType)
 /* Handle click in generic psl track. */
@@ -3921,6 +3960,10 @@ else if (wordCount > 0)
 	if ((wordCount > 2) && !sameString(words[2], "."))
 	    mrnaTable = words[2];
 	genericGenePredClick(conn, tdb, item, start, pepTable, mrnaTable);
+	}
+    else if ( sameString(type, "bigPsl"))
+        {
+	genericBigPslClick(conn, tdb, item, start, end);
 	}
     else if (sameString(type, "psl"))
         {
@@ -7247,6 +7290,52 @@ else
     }
 }
 
+void htcBigPslAli(char *acc)
+/* Show alignment for accession in bigPsl file. */
+{
+struct psl *psl;
+char *aliTable;
+int start;
+unsigned int cdsStart = 0, cdsEnd = 0;
+
+
+/* Print start of HTML. */
+writeFramesetType();
+puts("<HTML>");
+aliTable = cartString(cart, "aliTable");
+tdb = hashFindVal(trackHash, aliTable);
+printf("<HEAD>\n<TITLE>%s vs Genomic [%s]</TITLE>\n</HEAD>\n\n", acc, aliTable);
+
+/* Get some environment vars. */
+start = cartInt(cart, "l");
+int end = cartInt(cart, "r");
+char *chrom = cartString(cart, "c");
+
+char *seq, *cdsString = NULL;
+struct lm *lm = lmInit(0);
+char *fileName = bbiNameFromSettingOrTable(tdb, NULL, tdb->table);
+struct bbiFile *bbi = bigBedFileOpen(fileName);
+struct bigBedInterval *bb, *bbList = bigBedIntervalQuery(bbi, chrom, start, end, 0, lm);
+char *bedRow[32];
+char startBuf[16], endBuf[16];
+for (bb = bbList; bb != NULL; bb = bb->next)
+    {
+    bigBedIntervalToRow(bb, seqName, startBuf, endBuf, bedRow, ArraySize(bedRow));
+    struct bed *bed = bedLoadN(bedRow, 12);
+    if (sameString(bed->name, acc))
+	{
+	bb->next = NULL;
+	break;
+	}
+    }
+psl = pslFromBigPsl(seqName, bb,  hChromSize(database, seqName), &seq, &cdsString);
+genbankParseCds(cdsString,  &cdsStart, &cdsEnd);
+
+
+struct dnaSeq *rnaSeq = newDnaSeq(seq, strlen(seq), acc);
+showSomeAlignment(psl, rnaSeq, gftRna, 0, rnaSeq->size, NULL, cdsStart, cdsEnd);
+}
+
 void htcCdnaAli(char *acc)
 /* Show alignment for accession. */
 {
@@ -9109,42 +9198,16 @@ void doEnsemblGene(struct trackDb *tdb, char *item, char *itemForUrl)
 char *dupe, *type, *words[16];
 int wordCount;
 int start = cartInt(cart, "o");
-struct sqlConnection *conn = hAllocConn(database);
 char condStr[256];
-char versionString[256];
-char dateReference[256];
 char headerTitle[512];
-
-/* see if hgFixed.trackVersion exists */
-boolean trackVersionExists = hTableExists("hgFixed", "trackVersion");
-/* assume nothing found */
-versionString[0] = 0;
-dateReference[0] = 0;
-
-if (trackVersionExists)
-    {
-    char query[256];
-    sqlSafef(query, sizeof(query), "select version,dateReference from hgFixed.trackVersion where db = '%s' AND name = 'ensGene' order by updateTime DESC limit 1", database);
-    struct sqlResult *sr = sqlGetResult(conn, query);
-    char **row;
-
-    /* in case of NULL result from the table */
-    versionString[0] = 0;
-    while ((row = sqlNextRow(sr)) != NULL)
-	{
-	safef(versionString, sizeof(versionString), "Ensembl %s",
-		row[0]);
-	safef(dateReference, sizeof(dateReference), "%s",
-		row[1]);
-	}
-    sqlFreeResult(&sr);
-    }
 
 if (itemForUrl == NULL)
     itemForUrl = item;
 dupe = cloneString(tdb->type);
-if (versionString[0])
-    safef(headerTitle, sizeof(headerTitle), "%s - %s", item, versionString);
+
+struct trackVersion *trackVersion = getTrackVersion(database, tdb->track);
+if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
+    safef(headerTitle, sizeof(headerTitle), "%s - Ensembl %s", item, trackVersion->version);
 else
     safef(headerTitle, sizeof(headerTitle), "%s", item);
 
@@ -9153,20 +9216,21 @@ wordCount = chopLine(dupe, words);
 char *archive = trackDbSetting(tdb, "ensArchive");
 if (archive == NULL)
     {
-    if (dateReference[0])
+    if ((trackVersion != NULL) && !isEmpty(trackVersion->dateReference))
 	{
-	if (differentWord("current", dateReference))
-	    archive = cloneString(dateReference);
+	if (differentWord("current", trackVersion->dateReference))
+	    archive = cloneString(trackVersion->dateReference);
 	}
     }
 printEnsemblCustomUrl(tdb, itemForUrl, item == itemForUrl, archive);
 sqlSafefFrag(condStr, sizeof condStr, "name='%s'", item);
 
+struct sqlConnection *conn = hAllocConn(database);
+
 /* if this is a non-coding gene track, then print the biotype and
    the external ID */
 if (sameWord(tdb->table, "ensGeneNonCoding"))
     {
-    struct sqlConnection *conn2 = hAllocConn(database);
     char query[256];
     struct sqlResult *sr = NULL;
     char **row;
@@ -9179,7 +9243,6 @@ if (sameWord(tdb->table, "ensGeneNonCoding"))
         printf("<B>External Gene ID:</B> %s<BR>\n", row[1]);
         }
     sqlFreeResult(&sr);
-    hFreeConn(&conn2);
     }
 else
     {
@@ -11608,55 +11671,8 @@ printTrackHtml(tdb);
 hFreeConn(&conn);
 }
 
-void doNcbiRefGene(struct trackDb *tdb, char *rnaName)
-/* Process click on a NCBI RefSeq gene. */
+static struct refLink *printRefSeqInfo( struct sqlConnection *conn, struct trackDb *tdb, char *rnaName, char *version)
 {
-struct sqlConnection *conn = hAllocConn(database);
-struct sqlResult *sr;
-char **row;
-char query[256];
-char *sqlRnaName = rnaName;
-struct ncbiRefLink *rl;
-boolean isPredicted = sameString(tdb->table, "ncbiRefPredicted");
-
-/* Make sure to escape single quotes for DB parseability */
-if (strchr(rnaName, '\''))
-    {
-    sqlRnaName = replaceChars(rnaName, "'", "''");
-    }
-/* get refLink entry */
-sqlSafef(query, sizeof(query), "select * from ncbiRefLink where id = '%s'", sqlRnaName);
-sr = sqlGetResult(conn, query);
-if ((row = sqlNextRow(sr)) == NULL)
-    errAbort("Couldn't find %s in ncbiRefLink table.", rnaName);
-rl = ncbiRefLinkLoad(row);
-sqlFreeResult(&sr);
-
-/* print the first section with info  */
-if (isPredicted)
-    cartWebStart(cart, database, "NCBI Predicted RefSeq Gene");
-else
-    cartWebStart(cart, database, "NCBI Curated RefSeq Gene");
-printf("<table border=0>\n<tr>\n");
-prNcbiRefGeneInfo(conn, rnaName, sqlRnaName, rl, isPredicted);
-
-printf("</tr>\n</table>\n");
-
-htmlHorizontalLine();
-
-struct palInfo *palInfo = NULL;
-
-
-geneShowPosAndLinksPal(rl->id, NULL, tdb, NULL, "htcTranslatedProtein",
-		    "htcGeneMrna", "htcGeneInGenome", "mRNA Sequence",palInfo);
-
-printTrackHtml(tdb);
-hFreeConn(&conn);
-}
-void doRefGene(struct trackDb *tdb, char *rnaName)
-/* Process click on a known RefSeq gene. */
-{
-struct sqlConnection *conn = hAllocConn(database);
 struct sqlResult *sr;
 char **row;
 char query[256];
@@ -11664,10 +11680,6 @@ char *sqlRnaName = rnaName;
 char *summary = NULL;
 boolean isXeno = sameString(tdb->table, "xenoRefGene");
 struct refLink *rl;
-int start = cartInt(cart, "o");
-int left = cartInt(cart, "l");
-int right = cartInt(cart, "r");
-char *chrom = cartString(cart, "c");
 
 /* Make sure to escape single quotes for DB parseability */
 if (strchr(rnaName, '\''))
@@ -11675,18 +11687,29 @@ if (strchr(rnaName, '\''))
     sqlRnaName = replaceChars(rnaName, "'", "''");
     }
 /* get refLink entry */
-sqlSafef(query, sizeof(query), "select * from refLink where mrnaAcc = '%s'", sqlRnaName);
-sr = sqlGetResult(conn, query);
-if ((row = sqlNextRow(sr)) == NULL)
-    errAbort("Couldn't find %s in refLink table - this accession may no longer be available.", rnaName);
-rl = refLinkLoad(row);
-sqlFreeResult(&sr);
+if (version == NULL)
+    {
+    sqlSafef(query, sizeof(query), "select * from refLink where mrnaAcc = '%s'", sqlRnaName);
+    sr = sqlGetResult(conn, query);
+    if ((row = sqlNextRow(sr)) == NULL)
+	errAbort("Couldn't find %s in refLink table - this accession may no longer be available.", rnaName);
+    rl = refLinkLoad(row);
+    sqlFreeResult(&sr);
+    }
+else
+    {
+    sqlSafef(query, sizeof(query), "select * from refLink r, gbCdnaInfo g where mrnaAcc = '%s' and r.mrnaAcc=g.acc and g.version='%s'", sqlRnaName, version);
+    sr = sqlGetResult(conn, query);
+    if ((row = sqlNextRow(sr)) == NULL)
+	{
+	sqlFreeResult(&sr);
+	return NULL;
+	}
+    rl = refLinkLoad(row);
+    sqlFreeResult(&sr);
+    }
 
 /* print the first section with info  */
-if (isXeno)
-    cartWebStart(cart, database, "Non-%s RefSeq Gene", organism);
-else
-    cartWebStart(cart, database, "RefSeq Gene");
 printf("<table border=0>\n<tr>\n");
 prRefGeneInfo(conn, rnaName, sqlRnaName, rl, isXeno);
 addGeneExtra(rl->name);  /* adds columns if extra info is available */
@@ -11704,8 +11727,108 @@ if (summary != NULL)
     }
 htmlHorizontalLine();
 
-/* print alignments that track was based on */
+return rl;
+}
+
+void doNcbiRefGene(struct trackDb *tdb, char *rnaName)
+/* Process click on a NCBI RefSeq gene. */
 {
+struct sqlConnection *conn = hAllocConn(database);
+struct sqlResult *sr;
+char **row;
+char query[256];
+char *sqlRnaName = rnaName;
+struct ncbiRefLink *nrl;
+boolean isPredicted = sameString(tdb->table, "ncbiRefPredicted");
+int left = cartInt(cart, "l");
+int right = cartInt(cart, "r");
+char *chrom = cartString(cart, "c");
+char noDot[1024];
+
+struct dyString *dy = newDyString(1024);
+if (isPredicted)
+    dyStringPrintf(dy, "NCBI Predicted RefSeq Gene");
+else
+    dyStringPrintf(dy, "NCBI Curated RefSeq Gene");
+
+struct trackVersion *trackVersion = getTrackVersion(database, "ncbiRefSeq");
+if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
+    dyStringPrintf(dy, "- Release %s\n", trackVersion->version);
+
+cartWebStart(cart, database, "%s", dy->string);
+safecpy(noDot, sizeof noDot,  rnaName);
+char *ptr = strchr(noDot, '.');
+if (ptr)
+    *ptr++ = 0;
+
+// get info from Genbank (if any)
+struct refLink *rl = printRefSeqInfo( conn, tdb, noDot, ptr);
+
+/* Make sure to escape single quotes for DB parseability */
+if (strchr(rnaName, '\''))
+    {
+    sqlRnaName = replaceChars(rnaName, "'", "''");
+    }
+
+/* get refLink entry */
+sqlSafef(query, sizeof(query), "select * from ncbiRefLink where id = '%s'", sqlRnaName);
+sr = sqlGetResult(conn, query);
+if ((row = sqlNextRow(sr)) == NULL)
+    errAbort("Couldn't find %s in ncbiRefLink table.", rnaName);
+nrl = ncbiRefLinkLoad(row);
+sqlFreeResult(&sr);
+
+/* print the first section with info  */
+printf("<table border=0>\n<tr>\n");
+if (rl == NULL)
+    {
+    prNcbiRefGeneInfo(conn, rnaName, sqlRnaName, nrl, isPredicted);
+    htmlHorizontalLine();
+    }
+
+if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
+    {
+    printf("<B>Annotation Release:</B> <A HREF=\"%s\" TARGET=_blank> %s <BR></A>", trackVersion->comment, trackVersion->version);
+    htmlHorizontalLine();
+    }
+
+printf("</tr>\n</table>\n");
+
+struct palInfo *palInfo = NULL;
+
+if (genbankIsRefSeqCodingMRnaAcc(rnaName))
+    {
+    AllocVar(palInfo);
+    palInfo->chrom = chrom;
+    palInfo->left = left;
+    palInfo->right = right;
+    palInfo->rnaName = rnaName;
+    }
+
+geneShowPosAndLinksPal(nrl->id, NULL, tdb, NULL, "htcTranslatedProtein",
+		    "htcGeneMrna", "htcGeneInGenome", "mRNA Sequence",palInfo);
+
+printTrackHtml(tdb);
+hFreeConn(&conn);
+}
+
+void doRefGene(struct trackDb *tdb, char *rnaName)
+/* Process click on a known RefSeq gene. */
+{
+struct sqlConnection *conn = hAllocConn(database);
+int start = cartInt(cart, "o");
+int left = cartInt(cart, "l");
+int right = cartInt(cart, "r");
+char *chrom = cartString(cart, "c");
+
+boolean isXeno = sameString(tdb->table, "xenoRefGene");
+if (isXeno)
+    cartWebStart(cart, database, "Non-%s RefSeq Gene", organism);
+else
+    cartWebStart(cart, database, "RefSeq Gene");
+struct refLink *rl = printRefSeqInfo( conn, tdb, rnaName, NULL);
+
+/* print alignments that track was based on */
 char *aliTbl = (sameString(tdb->table, "refGene") ? "refSeqAli" : "xenoRefSeqAli");
 if (hTableExists(database, aliTbl))
     {
@@ -11716,7 +11839,6 @@ if (hTableExists(database, aliTbl))
 else
     warn("Sequence alignment links not shown below, the table %s.refSeqAli is not installed " 
             "on this server", database);
-}
 
 htmlHorizontalLine();
 
@@ -24727,15 +24849,22 @@ void doSnakeClick(struct trackDb *tdb, char *itemName)
 genericHeader(tdb, itemName);
 char *otherSpecies = trackHubSkipHubName(tdb->table) + strlen("snake");
 char *hubName = cloneString(database);
-char *ptr = strchr(hubName + 4, '_');
-*ptr = 0;
 char otherDb[4096];
 char *qName = cartOptionalString(cart, "qName");
 int qs = atoi(cartOptionalString(cart, "qs"));
 int qe = atoi(cartOptionalString(cart, "qe"));
 int qWidth = atoi(cartOptionalString(cart, "qWidth"));
-safef(otherDb, sizeof otherDb, "%s_%s", hubName, otherSpecies);
 
+if(trackHubDatabase(database))
+    {
+    char *ptr = strchr(hubName + 4, '_');
+    *ptr = 0;
+    safef(otherDb, sizeof otherDb, "%s_%s", hubName, otherSpecies);
+    }
+else
+    {
+    safef(otherDb, sizeof otherDb, "%s", otherSpecies);
+    }
 
 printf("<A HREF=\"hgTracks?db=%s&position=%s:%d-%d&%s_snake%s=full\" TARGET=_BLANK><B>Link to block in other assembly</A><BR>\n", otherDb, qName, qs, qe,hubName,trackHubSkipHubName(database));
 
@@ -24843,9 +24972,15 @@ if ((!isCustomTrack(track) && dbIsFound)
 ||  ((ct!= NULL) && (ct->dbTrackType != NULL) && sameString(ct->dbTrackType, "maf")))
     {
     trackHash = makeTrackHashWithComposites(database, seqName, TRUE);
-    if (isHubTrack(track))
+    if (sameString("htcBigPslAli", track) )
 	{
-	hubConnectAddHubForTrackAndFindTdb( database, track, NULL, trackHash);
+	char *aliTable = cartString(cart, "aliTable");
+	if (isHubTrack(aliTable))	
+	    tdb = hubConnectAddHubForTrackAndFindTdb( database, aliTable, NULL, trackHash);
+	}
+    else if (isHubTrack(track))
+	{
+	tdb = hubConnectAddHubForTrackAndFindTdb( database, track, NULL, trackHash);
 	}
     if (parentWigMaf)
         {
@@ -25536,6 +25671,10 @@ else if (sameWord(table, "htcChainAli"))
 else if (sameWord(table, "htcChainTransAli"))
     {
     htcChainTransAli(item);
+    }
+else if (sameWord(table, "htcBigPslAli"))
+    {
+    htcBigPslAli(item);
     }
 else if (sameWord(table, "htcCdnaAli"))
     {

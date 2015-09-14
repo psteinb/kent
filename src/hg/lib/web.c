@@ -1322,15 +1322,6 @@ if(scriptName)
         }
     }
 
-// Show Data Integrator link if hgIntegrator is present.
-if (fileExists("hgIntegrator"))
-    {
-    char hgIntegratorItem[1024];
-    safef(hgIntegratorItem, sizeof(hgIntegratorItem),
-          "<li><a href=\"../cgi-bin/hgIntegrator?%s\">Data Integrator</a></li>", uiVars);
-    menuStr = replaceChars(menuStr, "<!-- DATA_INTEGRATOR -->", hgIntegratorItem);
-    }
-
 if(!loginSystemEnabled())
     stripRegEx(menuStr, "<\\!-- LOGIN_START -->.*<\\!-- LOGIN_END -->", REG_ICASE);
 
@@ -1398,6 +1389,11 @@ if(scriptName)
         {
         link = "../goldenPath/help/hgTablesHelp.html";
         label = "Help on Table Browser";
+        }
+    else if (endsWith(scriptName, "hgIntegrator"))
+        {
+        link = "../goldenPath/help/hgIntegratorHelp.html";
+        label = "Help on Data Integrator";
         }
     else if (endsWith(scriptName, "hgGenome"))
         {

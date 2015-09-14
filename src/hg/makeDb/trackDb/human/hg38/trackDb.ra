@@ -1,3 +1,25 @@
+track coriellDelDup override
+origAssembly hg19 
+pennantIcon 19.jpg ../goldenPath/help/liftOver.html "lifted from hg19" 
+
+include nonCodingRNAs.ra
+
+#track wgRna override 
+#dataVersion miRBase Release 15.0 (April 2010) and snoRNABase Version 3
+#pennantIcon 19.jpg ../goldenPath/help/liftOver.html "lifted from hg19" 
+
+track hgIkmc override
+origAssembly hg19 
+pennantIcon 19.jpg ../goldenPath/help/liftOver.html "lifted from hg19" 
+
+track fishClones override
+origAssembly hg18
+pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
+
+track fosEndPairs override
+origAssembly hg18
+pennantIcon 18.jpg ../goldenPath/help/liftOver.html "lifted from hg18"
+
 include trackDb.wgEncode.ra
 
 track par override
@@ -172,6 +194,25 @@ group map
     baseColorDefault diffBases
     baseColorUseSequence extFile seqNcbiAltSequence extNcbiAltSequence
 
+track altSeqLiftOverBigPsl
+#superTrack altSequence pack
+visibility hide
+shortLabel Big Alt Map
+longLabel Big GRCh38 Alignments to the Alternate Sequences/Haplotypes
+type bigPsl
+bigDataUrl http://hgwdev.cse.ucsc.edu/~braney/altSeqLiftOverPsl.bb
+html altSequence
+indelDoubleInsert on
+indelQueryInsert on
+showDiffBasesAllScales .
+showDiffBasesMaxZoom 10000.0
+showCdsMaxZoom 10000.0
+showCdsAllScales .
+baseColorDefault diffBases
+baseColorUseSequence lfExtra
+#baseColorUseSequence extFile seqNcbiAltSequence extNcbiAltSequence
+release alpha
+
 track altSequenceExp
 superTrack on
 shortLabel Exp Alt Map
@@ -224,6 +265,25 @@ xrefTable refLink, ucscRetroInfo8
 dontCheckXrefQueryFormat 1
 xrefQuery select ucscRetroInfo8.name, refLink.name from %s where refLink.name like '%s%%' and refSeq = mrnaAcc 
 searchPriority 3.52
+
+track mrnaBig
+bigDataUrl http://hgwdev.cse.ucsc.edu/~braney/bigMrna.bb
+shortLabel Big $Organism mRNAs
+longLabel Big $Organism mRNAs from GenBank 
+group x
+visibility hide
+type bigPsl
+baseColorUseCds given
+#baseColorUseSequence genbank
+baseColorUseSequence lfExtra
+baseColorDefault diffCodons
+#baseColorDefault diffBases
+showDiffBasesAllScales .
+indelDoubleInsert on
+indelQueryInsert on
+indelPolyA on
+release alpha
+
 
 searchName ucscRetroInfoMrna8
 searchTable ucscRetroAli8
@@ -323,10 +383,21 @@ snpSeqFile /gbdb/hg38/snp/snp142.fa
 
 track snp142Common override
 snpSeqFile /gbdb/hg38/snp/snp142.fa
-priority 1
 
 track snp142 override
 snpSeqFile /gbdb/hg38/snp/snp142.fa
+
+track snp144Mult override
+snpSeqFile /gbdb/hg38/snp/snp144.fa
+
+track snp144Flagged override
+snpSeqFile /gbdb/hg38/snp/snp144.fa
+
+track snp144Common override
+snpSeqFile /gbdb/hg38/snp/snp144.fa
+
+track snp144 override
+snpSeqFile /gbdb/hg38/snp/snp144.fa
 
 track genomicSuperDups override
 group rep
@@ -346,7 +417,7 @@ visibility hide
 color 82,82,160
 type genePred
 hgsid on
-oldToNew kg7ToKg8
+oldToNew kg8ToKg9
 baseColorUseCds given
 baseColorDefault genomicCodons
 
@@ -360,10 +431,20 @@ searchPriority 3.53
 include trackDb.cloneEnd.ra
 
 include hg38Patch3.ra
-include knownGene.ra.alpha alpha
-include knownGene.ra.beta beta,public
+include knownGene.ra
 
 include trackDb.100way.ra
 
 track microsat override
 group rep
+
+searchTable sgpGene
+searchType genePred
+termRegex chr[0-9MUXYn]+[BGHIJKLv0-9_]+(alt_|random_)?[0-9]+(\.[0-9]+)?
+searchPriority 50
+
+searchTable geneid
+searchType genePred
+searchMethod prefix
+termRegex chr[0-9MUXYn]+[BGHIJKLv0-9_]+(alt_|random_)?[0-9]+(\.[0-9]+)?
+searchPriority 50

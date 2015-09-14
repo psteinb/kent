@@ -58,12 +58,22 @@
 
   II) Document HTML PAGES should include this trackDbLibrary.html with server side includes
   and wrapped in <DIV ID="library"> tags.
-  - Documents may differ, but using trackDbDoc.html as the quintisential example, the setting
+  - Documents may differ, but using trackDbDoc.html as the example, the setting
     documentation is organized into tables by trackDb "type", so that settings are documented in
     the context of their use.  The (usually) single cell rows contain the settings.
-    Settings table row example:
+    The settings specification includes a <DIV> with a class attribute of value "format", and the 
+    setting name embedded in <CODE> tags.  In the trackDbHub document, the <CODE> tag has
+    a class whose value defines the support level for the setting, as 'class="level-*"', where '*'
+    is one of the levels defined in the introduction of the trackDbHub document.
+    Note: New settings should always be added to the current (highest version) trackDbHub document
+    in this directory (e.g. trackDbHub.v2.html) and designated "level-new".
+    Settings table row example for trackDbDoc.html:
         <TR VALIGN=TOP><TD class="someSetting"><A name="someSetting"><IMG class='toggle detail'>
             <div class="format"><code>someSetting</code></div>
+        </TD></TR>
+    Settings table row example for trackDbHub.v?.html:
+        <TR VALIGN=TOP><TD class="someSetting"><A name="someSetting"><IMG class='toggle detail'>
+            <div class="format"><code class="level-new">someSetting</code></div>
         </TD></TR>
     - Any setting may be referenced multiple times.  To reference a setting blurb, place it in
       a table cell that contains class={setting} and a <IMG class='toggle detail'> tag.
@@ -125,7 +135,7 @@
 
 <DIV class="track"><span class="types all"></span>
     <div class="format all"><code>track</code></div>
-    <P>Required: <span class="red">Yes</span></P>
+    <P class="isRequired">Required: <span class="red">Yes</span></P>
     <P>This is the name of
     the dataset and must be unique within the Genome Browser or
     dataHub.  Typically this is the MySQL table name or remote data
@@ -138,7 +148,7 @@
 
 <DIV class="type"><span class="types all"></span>
     <div class="format"><code>type</code></div>
-    <P>Required: <span class="red">Yes</span></P>
+    <P class="isRequired">Required: <span class="red">Yes</span></P>
     <P>Declares the format of the data and is used to
     determine display methods and options.</P>
     <P>Valid settings:</P>
@@ -184,7 +194,7 @@
 
 <DIV class="type_for_hubs"><span class="types all"></span>
     <div class="format"><code>type</code></div>
-    <P>Required: <span class="red">Yes</span></P>
+    <P class="isRequired">Required: <span class="red">Yes</span></P>
     <P>Declares the format of the data and is used to
     determine display methods and options.</P>
     <P>Valid settings:</P>
@@ -205,7 +215,7 @@
 
 <DIV class="shortLabel"><span class="types all"></span>
 <div class="format"><code>shortLabel</code></div>
-    <P>Required: <span class="red">Yes</span></P>
+    <P class="isRequired">Required: <span class="red">Yes</span></P>
     <P>Specifies the track's "short label", which is used in a
     number of places in the Browser to identify the track.  For
     example, the short label is displayed alongside the track in the Browser image.
@@ -218,7 +228,7 @@
 
 <DIV class="longLabel"><span class="types all"></span>
 <div class="format"><code>longLabel</code></div>
-    <P>Required: <span class="red">Yes</span></P>
+    <P class="isRequired">Required: <span class="red">Yes</span></P>
     <P>Specifies the track's "long label", which is also used in
     numerous places in the Browser to identify a track.  For instance,
     the long label is displayed above the track's data in the Browser image.
@@ -231,7 +241,7 @@
 
 <DIV class="visibility"><span class="types all"></span>
 <div class="format"><code>visibility</code></div>
-    <P>Required: No</P>
+    <P class="isRequired">Required: No</P>
     <P>Visibility (i.e. "display mode") specifies which of 5 modes (including 'hide')
     should be used to display the track within the Browser image.  This setting is
     almost always dynamically customizable by each user.  The exact configuration of the
@@ -262,7 +272,7 @@
 
 <DIV class="html"><span class="types all"></span>
 <div class="format"><code>html</code></div>
-    <P>Required: No</P>
+    <P class="isRequired">Required: No</P>
     <P>Specifies a file that contains the
     complete description of a track in HTML format.  The path of this
     file name is relative to the path of the trackDb file.  The
@@ -316,7 +326,7 @@
 
 <DIV class="bigDataUrl"><span class="types bigBed bigWig bam vcfTabix"></span>
 <div class="format"><code>bigDataUrl &lt;url/relativePath&gt;</code></div>
-    <P>Required: <span class="red">For Hubs</span></P>
+    <P class="isRequired">Required: <span class="red">For Hubs</span></P>
     <P>The location of a remote data file containing the bulk of the data for the track.
     This setting is required for all data tracks in a track hub.  It is currently not
     supported for local tracks.</P>  

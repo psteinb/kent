@@ -107,17 +107,14 @@ var tdbDoc = {
                 return blurb;
             }
             var level = $(code).attr('class');
-            if (level.length === 0) {
-                level = 'level-';
-                // TODO: flag thse as errors ?
-                //level = 'level-new';
+            if (level.length !== 0) {
+                var start = $(blurb).find('p').first();
+                if ($(start).attr('class') !== 'level') {
+                    $(start).before('<p class="level">Support level: ' + '<span class=' + 
+                                    level + '>' + level.replace('level-','') + '</span></p>');
+                }
+                $(blurb).find('code').addClass(level);
             }
-            var start = $(blurb).find('p').first();
-            if ($(start).attr('class') !== 'level') {
-                $(start).before('<p class="level">Support level: ' + '<span class=' + level + '>' + 
-                                level.replace('level-','') + '</span></p>');
-            }
-            $(blurb).find('code').addClass(level);
             return blurb;
         }
     },
@@ -241,6 +238,9 @@ var tdbDoc = {
             }
             var row = "<tr><td><A onclick='return jumpTo(this);' HREF='#'>" + aClass + "</a></td>";
             if (tdbDoc.isHubDoc()) {
+                // hide superfluous 'Required' paragraphs
+                $('p.isRequired').hide();
+
                 //include level in the table
                 if (level === null) {
                     // settings w/o a 'blurb' can still have a level (e.g. deprecated settings)

@@ -945,10 +945,9 @@ for (i = 0; i < oregannoTypeSize; i++)
 void labelMakeCheckBox(struct trackDb *tdb, char *sym, char *desc, boolean dflt)
 /* add a checkbox use to choose labels to enable. */
 {
-/* some how the closest to home magic prepends the track name for cart  */
 char varName[64];
-safef(varName, sizeof(varName), "label.%s", sym);
-boolean option = cartOrTdbBoolean(cart, tdb, varName, dflt);
+safef(varName, sizeof(varName), "%s.label.%s", tdb->track, sym);
+boolean option = cartUsualBoolean(cart, varName, dflt);
 cgiMakeCheckBox(varName, option);
 printf(" %s&nbsp;&nbsp;&nbsp;", desc);
 }
@@ -1721,9 +1720,12 @@ char *omimAvail = NULL;
 sqlSafef(query, sizeof(query), "select kgXref.kgID from kgXref,refLink where kgXref.refseq = refLink.mrnaAcc and refLink.omimId != 0 limit 1");
 omimAvail = sqlQuickString(conn, query);
 hFreeConn(&conn);
+char *isGencode = trackDbSetting(tdb, "isGencode");
 
 printf("<B>Label:</B> ");
 labelMakeCheckBox(tdb, "gene", "gene symbol", FALSE);
+if (isGencode)
+    labelMakeCheckBox(tdb, "gencodeId", "GENCODE Transcript ID", FALSE);
 labelMakeCheckBox(tdb, "kgId", "UCSC Known Gene ID", FALSE);
 labelMakeCheckBox(tdb, "prot", "UniProt Display ID", FALSE);
 
@@ -1752,10 +1754,10 @@ printf(" %s&nbsp;&nbsp;&nbsp;", "splice variants");
 char *isGencode = trackDbSetting(tdb, "isGencode");
 if (isGencode != NULL)
     {
-    safef(varName, sizeof(varName), "%s.show.composite", tdb->track);
+    safef(varName, sizeof(varName), "%s.show.comprehensive", tdb->track);
     option = cartUsualBoolean(cart, varName, FALSE);
     cgiMakeCheckBox(varName, option);
-    printf(" %s&nbsp;&nbsp;&nbsp;", "show composite set");
+    printf(" %s&nbsp;&nbsp;&nbsp;", "show comprehensive set");
     }
 printf("<BR>\n");
 }
@@ -1862,7 +1864,7 @@ if (sameString(tdb->track, "refGene"))
     }
 
 /* Put up label line  - boxes for gene, accession or maybe OMIM. */
-printf("<B>Label:</B> ");
+printf("<BR><B>Label:</B> ");
 labelMakeCheckBox(tdb, "gene", "gene", TRUE);
 labelMakeCheckBox(tdb, "acc", "accession", FALSE);
 if (omimAvail != 0)
@@ -1886,11 +1888,11 @@ void transMapUI(struct trackDb *tdb)
 /* Put up transMap-specific controls */
 {
 printf("<B>Label:</B> ");
-labelMakeCheckBox(tdb, "orgCommon", "common name", transMapLabelDefaultOrgCommon);
-labelMakeCheckBox(tdb, "orgAbbrv", "organism abbreviation", transMapLabelDefaultOrgAbbrv);
-labelMakeCheckBox(tdb, "db", "assembly database", transMapLabelDefaultDb);
-labelMakeCheckBox(tdb, "gene", "gene", transMapLabelDefaultGene);
-labelMakeCheckBox(tdb, "acc", "accession", transMapLabelDefaultAcc);
+labelMakeCheckBox(tdb, "orgCommon", "common name", FALSE);
+labelMakeCheckBox(tdb, "orgAbbrv", "organism abbreviation", FALSE);
+labelMakeCheckBox(tdb, "db", "assembly database", FALSE);
+labelMakeCheckBox(tdb, "gene", "gene", FALSE);
+labelMakeCheckBox(tdb, "acc", "accession", FALSE);
 
 baseColorDrawOptDropDown(cart, tdb);
 indelShowOptions(cart, tdb);
@@ -2233,7 +2235,16 @@ void oligoMatchUi(struct trackDb *tdb)
 {
 char *oligo = cartUsualString(cart, oligoMatchVar, oligoMatchDefault);
 puts("<P><B>Short (2-30 base) sequence:</B>");
-cgiMakeTextVar(oligoMatchVar, oligo, 45);
+puts("<script>\
+    function packTrack () \
+    { \
+    var box = jQuery('select[name$=oligoMatch]'); \
+    if (box.val()=='hide') \
+        box.val('pack'); \
+    } \
+    </script>");
+printf("<input name=\"%s\" size=\"%d\" value=\"%s\" oninput=\"packTrack();\" type=\"TEXT\">", \
+    oligoMatchVar, 45, oligo);
 }
 
 void cutterUi(struct trackDb *tdb)
@@ -2802,6 +2813,8 @@ int count = 0;
 for(sp=speciesList; sp; sp = sp->next)
     count++;
 
+if (count == 0)
+    return;
 char codeVarName[1024];
 safef(codeVarName, sizeof codeVarName, "%s.coalescent", tdb->track);
 char **ancestors;
@@ -3118,21 +3131,30 @@ printf("<FORM ACTION=\"%s\" NAME=\""MAIN_FORM"\" METHOD=%s>\n\n",
 cartSaveSession(cart);
 if (sameWord(tdb->track,"ensGene"))
     {
-    char ensVersionString[256];
-    char ensDateReference[256];
     char longLabel[256];
-    ensGeneTrackVersion(database, ensVersionString, ensDateReference,
-        sizeof(ensVersionString));
-    if (ensVersionString[0])
+    struct trackVersion *trackVersion = getTrackVersion(database, tdb->track);
+    if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
         {
-        if (ensDateReference[0] && differentWord("current", ensDateReference))
-            safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - archive %s - %s", ensVersionString, ensDateReference);
+        if (!isEmpty(trackVersion->dateReference) && differentWord("current", trackVersion->dateReference))
+            safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - archive %s - %s", trackVersion->version, trackVersion->dateReference);
         else
-            safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - %s", ensVersionString);
+            safef(longLabel, sizeof(longLabel), "Ensembl Gene Predictions - %s", trackVersion->version);
         }
     else
         safef(longLabel, sizeof(longLabel), "%s", tdb->longLabel);
 
+    printf("<B style='font-size:200%%;'>%s%s</B>\n", longLabel, tdbIsSuper(tdb) ? " Tracks" : "");
+    }
+else if (sameWord(tdb->track, "ncbiGene"))
+    {
+    struct trackVersion *trackVersion = getTrackVersion(database, "ncbiRefSeq");
+    char longLabel[1024];
+    if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
+	{
+	safef(longLabel, sizeof(longLabel), "%s - Annotation Release %s", tdb->longLabel, trackVersion->version);
+	}
+    else
+        safef(longLabel, sizeof(longLabel), "%s", tdb->longLabel);
     printf("<B style='font-size:200%%;'>%s%s</B>\n", longLabel, tdbIsSuper(tdb) ? " Tracks" : "");
     }
 else
@@ -3184,6 +3206,8 @@ else if (sameString(tdb->track, WIKI_TRACK_TABLE))
     // special case wikiTrack (there's no trackDb entry); fixes redmine 2395
     tdb->canPack = TRUE;
 else if (sameString(tdb->type, "halSnake"))
+    tdb->canPack = TRUE;
+else if (sameString(tdb->type, "bigPsl"))
     tdb->canPack = TRUE;
 
 // Don't bother with vis controls for downloadsOnly

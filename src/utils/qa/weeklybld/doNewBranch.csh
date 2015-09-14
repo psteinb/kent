@@ -144,7 +144,7 @@ rsync -a -P --exclude=hg.conf --exclude=hg.conf.private --delete \
   /usr/local/apache/htdocs-beta/style/ qateam@hgwbeta:/data/apache/htdocs/style/
 
 echo "build on beta done for v$BRANCHNN [${0}: `date`]"
-echo "v$BRANCHNN built successfully on beta (day 16)." | mail -s "v$BRANCHNN Build complete on beta (day 16)." $USER ${BUILDMEISTER} galt kent browser-qa
+echo "v$BRANCHNN built successfully on beta (day 16)." | mail -s "v$BRANCHNN Build complete on beta (day 16)." $USER ${BUILDMEISTER} galt@soe.ucsc.edu kent@soe.ucsc.edu browser-qa@soe.ucsc.edu
 
 echo
 echo "Waiting for the background beta:git-reports to finish [${0}: `date`]"
@@ -164,7 +164,7 @@ if ( -e GitReports.ok ) then
 		git log --author=${victim} v${LASTNN}_base..v${BRANCHNN}_base --pretty=oneline > /dev/null
 		if ($? == 0) then
 		       rm -f /dev/shm/build.email.${victim}.txt
-                       echo "To: ${victim}" > /dev/shm/build.email.${victim}.txt
+                       echo "To: ${victim}.soe.ucsc.edu" > /dev/shm/build.email.${victim}.txt
                        echo "From: ann@soe.ucsc.edu" >> /dev/shm/build.email.${victim}.txt
                        echo "Subject: Code summaries are due for ${victim}" >> /dev/shm/build.email.${victim}.txt
                        echo "Cc: ann@soe.ucsc.edu" >> /dev/shm/build.email.${victim}.txt

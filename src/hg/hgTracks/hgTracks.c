@@ -62,6 +62,8 @@
 #include "iupac.h"
 #include "botDelay.h"
 #include "chromInfo.h"
+#include "extTools.h"
+
 #include "hgMarkRegion.h"
 #include "hillerLabView.h"
 
@@ -433,6 +435,7 @@ if (!IS_KNOWN(track->remoteDataSource))
     //    }
     if (startsWithWord("bigWig",track->tdb->type) || startsWithWord("bigBed",track->tdb->type) ||
 	startsWithWord("halSnake",track->tdb->type) ||
+	startsWithWord("bigPsl",track->tdb->type) ||
 	startsWithWord("bigGenePred",track->tdb->type) ||
 	startsWithWord("bam",track->tdb->type) || startsWithWord("vcfTabix", track->tdb->type))
         {
@@ -1957,20 +1960,20 @@ struct dyString *dy = newDyString(1024);
 logTrackList(dy, trackList);
 
 // put out ~1024 bye blocks to error_log because otherwise
-// it'll chop up the lines
+// Apache will chop up the lines
 char *begin = dy->string;
 char *ptr = begin;
 int count = 0;
 for(ptr=begin; ((ptr = strchr(ptr, ',')) != NULL); ptr++)
     {
-    if (ptr - begin > 900)
+    if (ptr - begin > 800)
 	{
 	*ptr = 0;
-	fprintf(stderr, "trackLog %d %s %s\n", count++, hgsid, begin);
+	fprintf(stderr, "trackLog %d %s %s %s\n", count++, database, hgsid, begin);
 	begin = ptr+1;
 	}
     }
-fprintf(stderr, "trackLog %d %s %s\n", count++, hgsid, begin);
+fprintf(stderr, "trackLog %d %s %s %s\n", count++, database, hgsid, begin);
 
 dyStringFree(&dy);
 }
@@ -3281,7 +3284,7 @@ else if (sameString(type, "bigWig"))
     if (trackShouldUseAjaxRetrieval(tg))
         tg->loadItems = dontLoadItems;
     }
-else if (sameString(type, "bigBed") || sameString(type, "bigGenePred"))
+else if (sameString(type, "bigBed")|| sameString(type, "bigGenePred") || sameString(type, "bigPsl"))
     {
     struct bbiFile *bbi = ct->bbiFile;
 
@@ -3290,6 +3293,8 @@ else if (sameString(type, "bigBed") || sameString(type, "bigGenePred"))
     char typeBuf[64];
     if (sameString(type, "bigGenePred"))
 	safef(typeBuf, sizeof(typeBuf), "bigGenePred");
+    else if (sameString(type, "bigPsl"))
+	safef(typeBuf, sizeof(typeBuf), "bigPsl");
     else
 	safef(typeBuf, sizeof(typeBuf), "bigBed %d %c", bbi->definedFieldCount, extra);
     tdb->type = cloneString(typeBuf);
@@ -4213,11 +4218,13 @@ static boolean isTrackForParallelLoad(struct track *track)
 char *bdu = trackDbSetting(track->tdb, "bigDataUrl");
 return (startsWithWord("bigWig"  , track->tdb->type)
      || startsWithWord("bigBed"  , track->tdb->type)
+     || startsWithWord("bigPsl"  , track->tdb->type)
      || startsWithWord("bigGenePred"  , track->tdb->type)
      || startsWithWord("bam"     , track->tdb->type)
      || startsWithWord("halSnake", track->tdb->type)
      || startsWithWord("vcfTabix", track->tdb->type))
      && (bdu && strstr(bdu,"://"))
+     && !(containsStringNoCase(bdu, "dl.dropboxusercontent.com"))
      && (track->subtracks == NULL);
 }
 
@@ -5865,7 +5872,7 @@ cartCheckout(&oldCart);
 cgiVarExcludeExcept(except);
 }
 
-void setupHotkeys() 
+void setupHotkeys(boolean gotExtTools)
 /* setup keyboard shortcuts and a help dialog for it */
 {
 // XX remove if statement after July 2015
@@ -5908,8 +5915,12 @@ hPrintf("Mousetrap.bind('r f', function() { $('input[name=\"hgt.refresh\"]').cli
 hPrintf("Mousetrap.bind('r v', function() { $('input[name=\"hgt.toggleRevCmplDisp\"]').click() }); \n");
 
 // focus
-hPrintf("Mousetrap.bind('/', function() { $('input[name=\"hgt.positionInput\"]').focus() }, 'keyup'); \n");
+hPrintf("Mousetrap.bind('/', function() { $('input[name=\"hgt.positionInput\"]').focus(); return false; }, 'keydown'); \n");
 hPrintf("Mousetrap.bind('?', function() { $( \"#hotkeyHelp\" ).dialog({width:'600'});}); \n");
+
+// menu
+if (gotExtTools)
+    hPrintf("Mousetrap.bind('s t', showExtToolDialog); \n");
 
 hPrintf("</script>\n");
 
@@ -5927,7 +5938,10 @@ hPrintf("<tr><td> zoom in 3x</td><td class=\"hotkey\">i</td>        <td> reverse
 hPrintf("<tr><td> zoom in 10x</td><td class=\"hotkey\">I</td>       <td> resize</td><td class=\"hotkey\">r then s</td>                     </tr>\n");
 hPrintf("<tr><td> zoom in base level</td><td class=\"hotkey\">b</td><td> refresh</td><td class=\"hotkey\">r then f</td>                    </tr>\n");
 hPrintf("<tr><td> zoom out 1.5x</td><td class=\"hotkey\">ctrl+k</td><td> jump to position box</td><td class=\"hotkey\">/</td>        </tr>\n"); 
-hPrintf("<tr><td> zoom out 3x</td><td class=\"hotkey\">k</td>               </tr>\n");
+hPrintf("<tr><td> zoom out 3x</td><td class=\"hotkey\">k</td>");
+if (gotExtTools)
+    hPrintf("<td>Send to external tool</td><td class=\"hotkey\">s then t</td>");
+hPrintf("               </tr>\n");
 hPrintf("<tr><td> zoom out 10x</td><td class=\"hotkey\">K</td>              </tr>\n");
 hPrintf("<tr><td> zoom out 100x</td><td class=\"hotkey\">0</td>             </tr>\n");
 hPrintf("</table>\n");
@@ -6130,7 +6144,10 @@ if (cartOptionalString(cart, "udcTimeout"))
 	"<A HREF=hgTracks?hgsid=%s&udcTimeout=[]>here</A>.",cartSessionId(cart));
     }
 
-setupHotkeys();
+boolean gotExtTools = extToolsEnabled();
+setupHotkeys(gotExtTools);
+if (gotExtTools)
+    printExtMenuData();
 
 }
 
