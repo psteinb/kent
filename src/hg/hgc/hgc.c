@@ -19294,7 +19294,7 @@ if (row != NULL)
 	}
 
     safef(title, sizeof title, "Genomic alignments of %s:", lfLabel);
-    webNewSection(title);
+    webNewSection("%s",title);
 
     for (i = 0; i < lfs->lfCount; i++)
         {

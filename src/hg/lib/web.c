@@ -468,7 +468,7 @@ va_start(args, format);
 
 /* output the header */
 if(!webHeadAlreadyOutputed)
-    webStart(errCart, NULL, title);
+    webStart(errCart, NULL, "%s", title);
 
 /* in text mode, have a different error */
 if(webInTextMode)
@@ -1338,7 +1338,7 @@ if(scriptName)
 if(scriptName)
     {
     // Provide view menu for some CGIs.
-    struct dyString *viewItems = dyStringCreate("");
+    struct dyString *viewItems = dyStringCreate("%s","");
     boolean hasViewMenu = TRUE;
     if (endsWith(scriptName, "hgGenome"))
         {

@@ -5391,17 +5391,10 @@ char newPos[256];
 char *defaultPosition = hDefaultPos(database);
 char titleVar[256];
 position = getPositionFromCustomTracks();
-if (NULL == position)
-    {
-    position = cloneString(cartUsualString(cart, "position", NULL));
-    }
 
-/* default if not set at all, as would happen if it came from a URL with no
- * position. Otherwise tell them to go back to the gateway. Also recognize
- * "default" as specifying the default position. */
-if (((position == NULL) || sameString(position, "default"))
-    && (defaultPosition != NULL))
-    position = cloneString(defaultPosition);
+if (position == NULL)
+    position = cartGetPosition(cart, database);
+
 if (sameString(position, ""))
     {
     hUserAbort("Please go back and enter a coordinate range or a search term in the \"search term\" field.<br>For example: chr22:20100000-20200000.\n");
@@ -5437,6 +5430,9 @@ if (NULL == chromName)
     cartSetString(cart, "position", lastPosition);
     return;
     }
+
+// save the current position to the cart var position.<db>
+cartSetDbPosition(cart, database, position);
 
 seqBaseCount = hChromSize(database, chromName);
 winBaseCount = winEnd - winStart;
@@ -5875,29 +5871,26 @@ cgiVarExcludeExcept(except);
 void setupHotkeys(boolean gotExtTools)
 /* setup keyboard shortcuts and a help dialog for it */
 {
-// XX remove if statement after July 2015
-if (!cfgOptionDefault("hotkeys", FALSE))
-    return;
 // wire the keyboard hotkeys
 hPrintf("<script type='text/javascript'>\n");
 // left
-hPrintf("Mousetrap.bind('ctrl+j', function() { $('input[name=\"hgt.left1\"]').click() }); \n");
+hPrintf("Mousetrap.bind('ctrl+j', function() { $('input[name=\"hgt.left1\"]').click(); return false; }); \n");
 hPrintf("Mousetrap.bind('j', function() { $('input[name=\"hgt.left2\"]').click() }); \n");
 hPrintf("Mousetrap.bind('J', function() { $('input[name=\"hgt.left3\"]').click() }); \n");
 
 // right
-hPrintf("Mousetrap.bind('ctrl+l', function() { $('input[name=\"hgt.right1\"]').click() }); \n");
+hPrintf("Mousetrap.bind('ctrl+l', function() { $('input[name=\"hgt.right1\"]').click(); return false; }); \n");
 hPrintf("Mousetrap.bind('l', function() { $('input[name=\"hgt.right2\"]').click() }); \n");
 hPrintf("Mousetrap.bind('L', function() { $('input[name=\"hgt.right3\"]').click() }); \n");
 
 // zoom in
-hPrintf("Mousetrap.bind('ctrl+i', function() { $('input[name=\"hgt.in1\"]').click() }); \n");
+hPrintf("Mousetrap.bind('ctrl+i', function() { $('input[name=\"hgt.in1\"]').click(); return false; }); \n");
 hPrintf("Mousetrap.bind('i', function() { $('input[name=\"hgt.in2\"]').click() }); \n");
 hPrintf("Mousetrap.bind('I', function() { $('input[name=\"hgt.in3\"]').click() }); \n");
 hPrintf("Mousetrap.bind('b', function() { $('input[name=\"hgt.inBase\"]').click() }); \n");
 
 // zoom out
-hPrintf("Mousetrap.bind('ctrl+k', function() { $('input[name=\"hgt.out1\"]').click() }); \n");
+hPrintf("Mousetrap.bind('ctrl+k', function() { $('input[name=\"hgt.out1\"]').click(); return false; }); \n");
 hPrintf("Mousetrap.bind('k', function() { $('input[name=\"hgt.out2\"]').click() }); \n");
 hPrintf("Mousetrap.bind('K', function() { $('input[name=\"hgt.out3\"]').click() }); \n");
 hPrintf("Mousetrap.bind('0', function() { $('input[name=\"hgt.out4\"]').click() }); \n");
@@ -5970,7 +5963,7 @@ char *debugTmp = NULL;
 doHillerLabViewOperations();
 
 if (measureTiming)
-    measureTime("Get cart of %d for user:%u session:%u", theCart->hash->elCount,
+    measureTime("Get cart of %d for user:%s session:%s", theCart->hash->elCount,
 	    theCart->userId, theCart->sessionId);
 /* #if 1 this to see parameters for debugging. */
 /* Be careful though, it breaks if custom track
@@ -6017,9 +6010,7 @@ if(!trackImgOnly)
     {
     // Write out includes for css and js files
     hWrites(commonCssStyles());
-    // XX remove if statement after July 2015
-    if (cfgOptionDefault("hotkeys", FALSE))
-        jsIncludeFile("mousetrap.min.js", NULL);
+    jsIncludeFile("mousetrap.min.js", NULL);
     jsIncludeFile("jquery.js", NULL);
     jsIncludeFile("jquery-ui.js", NULL);
     jsIncludeFile("utils.js", NULL);
