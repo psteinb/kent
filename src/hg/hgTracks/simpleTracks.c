@@ -7756,7 +7756,7 @@ if (vis == tvDense)
 
 for (cds = tg->items; cds != NULL; cds = cds->next)
     {
-    int wTall, wShort, end, start, blocks;
+    int end, start, blocks;
 
     for (blocks = 0; blocks < cds->ssCount; blocks++)
         {
@@ -7764,8 +7764,6 @@ for (cds = tg->items; cds != NULL; cds = cds->next)
 	tallEnd = cds->largeEnds[blocks];
 	shortStart = cds->smallStarts[blocks];
 	shortEnd = cds->smallEnds[blocks];
-	wTall = tallEnd - tallStart;
-	wShort = shortEnd - shortStart;
 
 	if (shortStart < tallStart)
 	    {
@@ -11656,7 +11654,6 @@ Color omimGene2Color(struct track *tg, void *item, struct hvGfx *hvg)
 /* set the color for omimLocation track items */
 {
 struct bed *el = item;
-char *omimId;
 char *phenClass;
 char query[256];
 struct sqlResult *sr;
@@ -11716,7 +11713,6 @@ if (row == NULL)
     }
 else
     {
-    omimId    = row[0];
     phenClass = row[1];
 
     if (sameWord(phenClass, "3"))
@@ -11995,7 +11991,6 @@ Color omimLocationColor(struct track *tg, void *item, struct hvGfx *hvg)
 /* set the color for omimLocation track items */
 {
 struct bed *el = item;
-char *omimId;
 char *phenClass;
 char query[256];
 struct sqlResult *sr;
@@ -12052,7 +12047,6 @@ if (row == NULL)
     }
 else
     {
-    omimId    = row[0];
     phenClass = row[1];
 
     if (sameWord(phenClass, "3"))
@@ -12782,6 +12776,16 @@ else if (sameWord(type, "bedLogR"))
 else if (sameWord(type, "bigBed"))
     {
     bigBedMethods(track, tdb, wordCount, words);
+    if (trackShouldUseAjaxRetrieval(track))
+        track->loadItems = dontLoadItems;
+    }
+else if (sameWord(type, "bigMaf"))
+    {
+    tdb->canPack = TRUE;
+    wordCount++;
+    words[1] = "3";
+    wigMafMethods(track, tdb, wordCount, words);
+    track->isBigBed = TRUE;
     if (trackShouldUseAjaxRetrieval(track))
         track->loadItems = dontLoadItems;
     }

@@ -1,10 +1,8 @@
-/*****************************************************************************
- * Copyright (C) 2000 Jim Kent.  This source code may be freely used         *
- * for personal, academic, and non-profit purposes.  Commercial use          *
- * permitted only by explicit agreement with Jim Kent (jim_kent@pacbell.net) *
- *****************************************************************************/
-/* Cheapcgi.h - turns variables passed from the web form into
- * something that C understands. */
+/* cheapcgi.h - turns variables passed from the web form into
+ * something that C understands. 
+ * 
+ * This file is copyright 2000 Jim Kent, but license is hereby
+ * granted for all use - public, private or commercial. */
 
 #ifndef CHEAPCGI_H
 #define CHEAPCGI_H
@@ -574,4 +572,10 @@ struct cgiParsedVars *cgiParsedVarsNew(char *cgiString);
 void cgiParsedVarsFree(struct cgiParsedVars **pTags);
 /* Free up memory associated with cgiParsedVars */
 
+char *cgiScriptDirUrl();
+/* Return the cgi-bin directory path on this webserver.
+ * This is not the local directory but the <path> part after the server
+ * in external URLs to this webserver.
+ * e.g. if CGI is called via http://localhost/subdir/cgi-bin/cgiTest
+ * the returned string is /subdir/. Must be free'd. */
 #endif /* CHEAPCGI_H */

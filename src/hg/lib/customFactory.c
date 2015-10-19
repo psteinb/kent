@@ -403,19 +403,13 @@ if (wordCount > 10)
 if (wordCount > 11)
     {
     int i;
-    int lastEnd, lastStart;
     sqlSignedDynamicArray(row[11], &bed->chromStarts, &count);
     if (count != bed->blockCount)
 	lineFileAbort(lf, "expecting %d elements in array", bed->blockCount);
     // tell the user if they appear to be using absolute starts rather than
     // relative... easy to forget!  Also check block order, coord ranges...
-    lastStart = -1;
-    lastEnd = 0;
     for (i=0;  i < bed->blockCount;  i++)
 	{
-/*
-printf("%d:%d %s %s s:%d c:%u cs:%u ce:%u csI:%d bsI:%d ls:%d le:%d<BR>\n", lineIx, i, bed->chrom, bed->name, bed->score, bed->blockCount, bed->chromStart, bed->chromEnd, bed->chromStarts[i], bed->blockSizes[i], lastStart, lastEnd);
-*/
 	if (bed->chromStarts[i]+bed->chromStart >= bed->chromEnd)
 	    {
 	    if (bed->chromStarts[i] >= bed->chromStart)
@@ -427,8 +421,6 @@ printf("%d:%d %s %s s:%d c:%u cs:%u ce:%u csI:%d bsI:%d ls:%d le:%d<BR>\n", line
 		lineFileAbort(lf,
 		    "BED chromStarts[i]+chromStart must be less than chromEnd.");
 	    }
-	lastStart = bed->chromStarts[i];
-	lastEnd = bed->chromStart + bed->chromStarts[i] + bed->blockSizes[i];
 	}
     if (bed->chromStarts[0] != 0)
 	lineFileAbort(lf,
@@ -2007,23 +1999,40 @@ if (hashLookup(settings, "viewLimits") == NULL)
     }
 }
 
+boolean isValidBigDataUrl(char *url, boolean doAbort)
+/* return True if the URL is a valid bigDataUrl. 
+ * It can be a local filename if this is allowed by udc.localDir 
+ */
+{
+if ((startsWith("http://", url)
+   || startsWith("https://", url)
+   || startsWith("ftp://", url)))
+return TRUE;
+
+char *prefix = cfgOption("udc.localDir");
+if (prefix == NULL)
+    {
+    if (doAbort)
+        errAbort("Only network protocols http, https, or ftp allowed in bigDataUrl: '%s'", url);
+    return FALSE;
+    }
+
+if (!startsWith(prefix, url))
+    {
+    if (doAbort)
+        errAbort("bigDataUrl '%s' on local file system has to start with '%s' (see udc.localDir directive in cgi-bin/hg.conf)", url, prefix);
+    return FALSE;
+    }
+        
+return TRUE;
+}
+
 static void checkAllowedBigDataUrlProtocols(char *url)
 /* Abort if url is not using one of the allowed bigDataUrl network protocols.
- * In particular, do not allow a local file reference, unless explicitely allowed 
- * by hg.conf. */
+ * In particular, do not allow a local file reference, unless explicitely
+ * allowed by hg.conf's udc.localDir directive. */
 {
-    if (!(startsWith("http://", url)
-       || startsWith("https://", url)
-       || startsWith("ftp://", url)
-    ))
-        {
-        char *prefix = cfgOption("udc.localDir");
-        if (prefix == NULL)
-            errAbort("only network protocols http, https, or ftp allowed in bigDataUrl: '%s'", url);
-        else if (!startsWith(prefix, url))
-            errAbort("bigDataUrl '%s' on local file system has to start with '%s' (see udc.localDir directive in cgi-bin/hg.conf)", url, prefix);
-            
-        }
+isValidBigDataUrl(url, TRUE);
 }
 
 static char *bigDataDocPath(char *type)

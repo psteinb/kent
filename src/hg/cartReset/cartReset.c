@@ -17,13 +17,17 @@ static char *defaultDestination = "../cgi-bin/hgGateway";
 void doMiddle()
 /* cartReset - Reset cart. */
 {
-char *destination = cgiUsualString("destination", defaultDestination);
 
 cartResetInDb(hUserCookie());
+/* 
+//Keep in case we need it later. The standards say we should provide
+//a clickable link for browsers that do not support meta refresh 
 printf("Your settings are now reset to defaults.<BR>");
-printf("You will be automatically redirected to the gateway page in 2 seconds,\n"
+char *destination = cgiUsualString("destination", defaultDestination);
+printf("You will be automatically redirected to the gateway page in 0 second,\n"
 " or you can <BR> <A href=\"%s\">click here to continue</A>.\n",
        destination);
+*/
 }
 
 int main(int argc, char *argv[])
