@@ -1,3 +1,3 @@
 kentSrc = ../../..
-A = chainRandomAlignmentRemover
+A = chainCleaner
 include ${kentSrc}/inc/userApp.mk
