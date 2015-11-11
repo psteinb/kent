@@ -181,6 +181,9 @@ char *tNibDir = NULL;    /* t and q nib or 2bit file */
 char *qNibDir = NULL;
 boolean tIsTwoBit;       /* flags */
 boolean qIsTwoBit;
+/* chrom.sizes for target and query. Only needed if the user does not provide an input net */
+char *tSizes = NULL;    
+char *qSizes = NULL;
 /* contains pointers to the open 2bit files */
 struct hash *twoBitFileHash = NULL;
 /* hash keyed by target chromname, holding pointers to the seq */
@@ -190,16 +193,24 @@ struct hash *qSeqHash = NULL;
 /* hash keyed by query chromname, will hold a pointer to the reverse complemented seq. But we fill it on demand */
 struct hash *qSeqMinusStrandHash = NULL;
 
-
-
+/* input / output files */
+char *inChainFile = NULL;
+char *outChainFile = NULL;
+char *inNetFile = NULL;
+char *outRemovedSuspectsFile = NULL;
 
 /* Explain usage and exit. */
 void usage() {
   errAbort(
-  "chainRandomAligmentRemover - Remove random local alignments from chains that would break nested chains in the net.\n"
+  "chainCleaner - Remove random local alignments from chains that would break nested chains in the net.\n"
   "usage:\n"
-  "   chainRandomAlignmentRemover in.net in.chain tNibDir qNibDir out.chain out.bed\n"
-  " Where tNibDir/qNibDir are either directories full of nib files, or the name of a .2bit file\n\n"
+  "   chainCleaner in.chain tNibDir qNibDir out.chain out.bed -net in.net \n"
+  " OR \n"
+  "   chainCleaner in.chain tNibDir qNibDir out.chain out.bed -tSizes -qSizes \n"
+  " First option: you have netted the chains and specify the net file via -net netFile\n"
+  " Second option: you have not netted the chains. Then chainCleaner will net them. In this case, you must specify the chrom.sizes file for the target and query with -tSizes/-qSizes\n"
+  " tNibDir/qNibDir are either directories with nib files, or the name of a .2bit file\n\n"
+  "\n"
   "output:\n"
   "   out.chain      output file in chain format containing the untouched chains, the original broken chain and the modified breaking chains. NOTE: file is not sorted. Run chainSort on it.\n"
   "   out.bed        output file in bed format containing the coords and information about the removed suspects.\n"
@@ -230,6 +241,9 @@ void usage() {
 
 /* command line options */
 struct optionSpec options[] = {
+   {"net", OPTION_STRING},
+   {"tSizes", OPTION_STRING},
+   {"qSizes", OPTION_STRING},
    {"scoreScheme", OPTION_STRING},
    {"linearGap", OPTION_STRING},
    {"doLocalScore", OPTION_BOOLEAN},     /* compute and return the local score only if the overall score is negative . */
@@ -1622,6 +1636,41 @@ minLRGapSize = 100000;
 }
 
 
+/****************************************************************
+  net the chains if no net file is given
+  Netting will be done by chainNet minScore=0 followed by non-nested net filtering with a minscore of 3000
+  A tempfile will be created for the nets
+****************************************************************/
+void netInputChains (char *chainFile) {
+	int fd = 0, retVal = 0;
+	struct dyString* cmd = newDyString(500);
+   char netFile[200];
+
+	/* must have the t/q sizes */
+   if (tSizes == NULL)
+      errAbort("You must specifiy -tSizes /dir/to/target/chrom.sizes if you do not provide a net file with -net in.net\n");
+   if (qSizes == NULL)
+      errAbort("You must specifiy -qSizes /dir/to/query/chrom.sizes if you do not provide a net file with -net in.net\n");
+
+   /* create a unique tempFile (and close it because mkstemp opens it */
+   safef(netFile, sizeof(netFile), "tmp.chainCleaner.XXXXXXX.net"); 
+   if ((fd = mkstemps(netFile,4)) < 0 ) {
+      errAbort("ERROR: cannot create a tempfile for netting the chain file: %s\n",strerror(errno));
+   } else {
+      verbose(1, "\t\ttempfile for netting: %s\n", netFile);
+      close(fd);
+   }
+
+   dyStringClear(cmd);
+   dyStringPrintf(cmd, "set -o pipefail; chainNet -minScore=0 %s %s %s stdout /dev/null | NetFilterNonNested.perl /dev/stdin -minScore1 3000 > %s", chainFile, tSizes, qSizes, netFile);
+   verbose(3, "\t\trunning netting command: %s\n", cmd->string);
+   retVal = system(cmd->string);
+   if (0 != retVal)
+      errAbort("ERROR: chainNet | NetFilterNonNested.perl failed. Cannot net the chains. Command: %s\n", cmd->string);
+   verbose(3, "\t\tnetting done\n");
+
+   inNetFile = cloneString(netFile);
+}
 
 /* ################################################################################### */
 /*   main                                                                              */
@@ -1633,17 +1682,24 @@ optionInit(&argc, argv, options);
 char *scoreSchemeName = NULL;
 optionHash(&argc, argv);
 struct twoBitFile *tbf;
+boolean didNetMyself = FALSE;  /* flag. True if we did the netting */
 
-if (argc != 7)
+if (argc != 6)
     usage();
 
 if (debug)
    printf("### DEBUG mode ###\n");
 /* get all the options */
-tNibDir = argv[3];
-qNibDir = argv[4];
+inChainFile = argv[1];
+tNibDir = argv[2];
+qNibDir = argv[3];
+outChainFile = argv[4];
+outRemovedSuspectsFile = argv[5];
 tIsTwoBit = twoBitIsFile(tNibDir);
 qIsTwoBit = twoBitIsFile(qNibDir);
+inNetFile = optionVal("net", NULL);
+tSizes = optionVal("tSizes", NULL);
+qSizes = optionVal("qSizes", NULL);
 gapFileName = optionVal("linearGap", NULL);
 scoreSchemeName = optionVal("scoreScheme", NULL);
 doLocalScore = optionExists("doLocalScore");
@@ -1668,8 +1724,6 @@ if (doLocalScore)
    verbose(2, " doLocal set\n ");
 printf("foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
 
-
-
 /* load score scheme */
 if (scoreSchemeName != NULL) {
    verbose(1, "Reading scoring matrix from %s\n", scoreSchemeName);
@@ -1688,19 +1742,31 @@ if (! fileExists(tNibDir))
 if (! fileExists(qNibDir))
    errAbort("ERROR: query 2bit file or nib directory %s does not exist\n", qNibDir);
 
+/* if the net is not given via -net in.net  then net the chains */
+if (inNetFile == NULL) {
+	verbose(1, "0. need to net the input chains %s (no net file given) ...\n", inChainFile);
+	didNetMyself = TRUE;
+	netInputChains(inChainFile);
+	verbose(1, "DONE (nets in %s)\n", inNetFile);
+}
+
 
 /* 1. read the net and the chain file */ 
-verbose(1, "1. parsing fills/gaps from %s and getting valid breaks ...\n", argv[1]);
-getFillGapAndValidBreaks(argv[1]);
+verbose(1, "1. parsing fills/gaps from %s and getting valid breaks ...\n", inNetFile);
+getFillGapAndValidBreaks(inNetFile);
+/* remove netfile if we created it above */
+if (didNetMyself) {
+	verbose(1, "Remove temporary netfile %s\n", inNetFile);
+	unlink(inNetFile);
+}
 verbose(1, "DONE (parsing fills/gaps and getting valid breaks)\n\n");
 
 
 /* 2. read the chain file. Write out those that are neither breaking nor broken chains immediately */ 
-finalChainOutFile = mustOpen(argv[5], "w");
-verbose(1, "2. reading breaking and broken chains from %s and write irrelevant chains to %s ...\n", argv[2], argv[5]);
-readChainsOfInterest(argv[2]);
+finalChainOutFile = mustOpen(outChainFile, "w");
+verbose(1, "2. reading breaking and broken chains from %s and write irrelevant chains to %s ...\n", inChainFile, outChainFile);
+readChainsOfInterest(inChainFile);
 verbose(1, "DONE\n\n");
-
 
 /* 3. load the sequences for all t and q chroms from the chains of interest */
 verbose(1, "3. reading target and query DNA sequences for breaking and broken chains ...\n");
@@ -1723,7 +1789,7 @@ verbose(1, "DONE\n\n");
 
 
 /* 4. loop over all breaks and see if we can remove them accoring to the thresholds */
-verbose(1, "4. loop over all breaks. Remove suspects if they pass our filters and write out deleted suspects to %s ...\n", argv[6]);
+verbose(1, "4. loop over all breaks. Remove suspects if they pass our filters and write out deleted suspects to %s ...\n", outRemovedSuspectsFile);
 if (debug) {
    suspectChainFile=mustOpen("suspect.chain", "w");
    brokenChainLfillChainFile=mustOpen("brokenChainLfill.chain", "w");
@@ -1732,7 +1798,7 @@ if (debug) {
    suspectFillBedFile = mustOpen("suspectsAndFills.bed", "w");
    HernandoCompareFile = mustOpen("HernandoCompare.bed", "w");
 }
-suspectsRemovedOutBedFile=mustOpen(argv[6], "w");   /* contains in bed format the deleted suspects */
+suspectsRemovedOutBedFile=mustOpen(outRemovedSuspectsFile, "w");   /* contains in bed format the deleted suspects */
 /* output file that has the newChainIDs and the breaking chainIDs that contained the suspects */
 if (newChainIDDict != NULL) {
    newChainIDDictFile = mustOpen(newChainIDDict, "w");
@@ -1755,7 +1821,7 @@ verbose(1, "DONE\n\n");
 
 
 /* write the breaking or broken chains. */
-verbose(1, "5. write the (new) breaking and the broken chains to %s ...\n", argv[5]);
+verbose(1, "5. write the (new) breaking and the broken chains to %s ...\n", outChainFile);
 hashTraverseEls(chainId2IsOfInterest, writeAndFreeChainsOfInterest);
 carefulClose(&finalChainOutFile);
 verbose(1, "DONE\n\n");
@@ -1799,7 +1865,7 @@ verbose(1, "DONE\n\n");
 
 
 printMem();
-verbose(1, "\nALL DONE. New chains are in %s. Deleted suspects in %s\n", argv[5], argv[6]);
+verbose(1, "\nALL DONE. New chains are in %s. Deleted suspects in %s\n", outChainFile, outRemovedSuspectsFile);
 if (debug) {
    verbose(1, "Debug mode created those output files: \n"
 "\tchainsOfInterest.chain     all breaking and broken chains (chain format)\n"
