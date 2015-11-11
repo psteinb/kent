@@ -73,6 +73,7 @@ my $stepper = new HgStepManager(
       { name => 'chainRun',   func => \&doChainRun },
       { name => 'chainMerge', func => \&doChainMerge },
       { name => 'patchChains', func => \&doPatchChains },
+      { name => 'cleanChains', func => \&doCleanChains },
       { name => 'net',        func => \&netChains },
       { name => 'load',       func => \&loadUp },  # MH: modified to run only netClass; no chain/net loading anymore
 #      { name => 'download',   func => \&doDownloads },
@@ -101,6 +102,7 @@ my $defaultSeq1Limit = 30;
 my $defaultSeq2Limit = 100;
 my $filterPsl = 0;			# flag for filtering psls for seq identity and entropy
 my $patchChains = 0;			# flag for patching chains
+my $cleanChains = 0;			# flag for cleaning chains
 my $workhorse = "";
 my $fileServer = "";
 my $chainingQueue = "long";	# queue for chaining jobs (long is default)
@@ -1319,6 +1321,80 @@ _EOF_
 
 
 
+#######################################################################
+# added by Michael Hiller
+# remove random chain-breaking alignments using chainCleaner
+#######################################################################
+sub doCleanChains {
+  if ($cleanChains == 0) {
+     print "skip cleaning Chains\n";
+     return;
+  }
+
+  # all or allpatched chains are in this runDir
+  my $runDir = "$buildDir/axtChain";
+
+  # First, make sure we're starting clean.
+  if (-e "$runDir/run.time.chainCleaning") {
+    die "doCleanChain: looks like this was run successfully already (run.time.chainCleaning exists). " . 
+        "Either run with -continue net or some later stage, or move aside/remove $runDir/run.time.chainCleaning and run again.\n";
+  }elsif (-e "$runDir/$tDb.$qDb.all.beforeCleaning.chain.gz" || -e "$runDir/$tDb.$qDb.allpatched.beforeCleaning.chain.gz") {
+    die "doCleanChain: looks like this was run successfully already ($tDb.$qDb.all*.beforeCleaning.chain.gz exists)" .  
+        "Either run with -continue net or some later stage, or move aside/remove $runDir/$tDb.$qDb.all*.beforeCleaning.chain.gz and run again.\n";
+  }
+
+  # Make sure previous stage was successful.
+  my $chain = &getAllChain($runDir);
+  if (! defined $chain && ! $opt_debug) {
+    die "doCleanChains: looks like previous stage was not successful (can't find [$tDb.$qDb.]all.chain[.gz]).\n";
+  }
+  # Make sure that the previous stage patching was successful if we do patching.
+  if ($patchChains == 1 && ! $opt_debug) {
+     die "doCleanChains: looks like previous stage was not successful (can't find $buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz)\n" if (! -e "$buildDir/axtChain/$tDb.$qDb.allpatched.chain.gz");
+     die "doCleanChains: looks like previous stage was not successful (can't find $buildDir/run.patchChain/run.timeReChain)\n" if (! -e "$buildDir/run.patchChain/run.timeReChain");
+     # use the allpatched.chain later
+     $chain = "$tDb.$qDb.allpatched.chain.gz";
+  }
+
+  # initial output chain. 
+  # NOTE: we rename the all[patched].chain.gz later as all[patched].beforeCleaning.chain.gz   and  let all[patched].chain.gz be the cleaned chain. Reason: No change in netChains necessary.
+  my $outputChain = "$tDb.$qDb.all.cleaned.chain";
+  $outputChain = "$tDb.$qDb.allpatched.cleaned.chain" if ($patchChains == 1);
+  my $renamedChain = "$tDb.$qDb.all.beforeCleaning.chain.gz";
+  $renamedChain = "$tDb.$qDb.allpatched.beforeCleaning.chain.gz" if ($patchChains == 1);
+
+ 
+  # create the script that cleans the chains
+  my $seq1Dir = $defVars{'SEQ1_CTGDIR'} || $defVars{'SEQ1_DIR'};
+  my $seq2Dir = $defVars{'SEQ2_CTGDIR'} || $defVars{'SEQ2_DIR'};
+  my $matrix = $defVars{'BLASTZ_Q'} ? "-scoreScheme=$defVars{BLASTZ_Q} " : "";
+#  my $minScore = $opt_chainMinScore ? "-minScore=$opt_chainMinScore" : "";
+  my $linearGap = $opt_chainLinearGap ? "-linearGap=$opt_chainLinearGap" : "-linearGap=$defaultChainLinearGap";
+
+
+ my $whatItDoes =
+"It performs a chainCleaner run on the machine that executes doBlastzChainNet.pl. ";
+  my $bossScript = new HgRemoteScript("$runDir/doCleanChain.csh", $hub, $runDir, $whatItDoes, $DEF);
+  $bossScript->add(<<_EOF_
+# clean chain
+time chainRandomAlignmentRemover $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -LRfoldThreshold=2 -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} > run.time.chainCleaning
+gzip $outputChain
+  
+# now rename the all[patched].chain.gz later as all[patched].beforeCleaning.chain.gz
+mv $buildDir/axtChain/$chain $buildDir/axtChain/$renamedChain
+  
+# now rename the all[patched].claned.chain.gz later as all[patched].chain.gz
+mv $buildDir/axtChain/$outputChain.gz $buildDir/axtChain/$chain
+_EOF_
+    );
+
+  $bossScript->execute();
+}  # do clean chains
+
+
+
+
+
 sub netChains {
   # Turn chains into nets (,axt,maf,.over.chain).
   # Don't do this for self alignments.
@@ -2162,6 +2238,13 @@ if ($patchChains == 1) {
 	die "ERROR: $DEF doesn't specify PATCHBLASTZ_W\n" if ( ! exists $defVars{'PATCHBLASTZ_W'});
 }else{
 	print "NO chain patching. \n";
+}
+
+$cleanChains = 1 if (exists $defVars{'CLEANCHAIN'} && $defVars{'CLEANCHAIN'} == 1);
+if ($cleanChains == 1) {
+	print "Will clean the Chains. \n";
+}else{
+	print "NO chain cleaning. \n";
 }
 
 
