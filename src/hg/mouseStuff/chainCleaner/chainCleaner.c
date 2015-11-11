@@ -1,22 +1,6 @@
-/*******************
- TO DO   
- - max of global vs local score 
- - check memory free
- - free chains and other stuff at the end 
- 
- 
- where to use printsinglbreak
- 
- output to outBedFile should be tailored to which paramters will be used at the end
+/* Michael Hiller, 2015, MPI-CBG/MPI-PKS */
 
- 
- **************************************************/
-
-
-
-
-/* Michael Hiller, 2015 */
-
+/* This code is based on the UCSC kent source code, with the UCSC copyright below */
 /* Copyright (C) 2011 The Regents of the University of California 
  * See README in this or parent directory for licensing information. */
 
@@ -50,6 +34,7 @@ breakInfo                      <------------------------------------------>
 
 */
 
+#include <limits.h>
 #include "common.h"
 #include "linefile.h"
 #include "hash.h"
@@ -69,8 +54,7 @@ breakInfo                      <------------------------------------------>
 #include "basicBed.h"
 #include "genomeRangeTree.h"
 
-/* experimental. To quickly just run it on the chain with this ID */
-int OnlyThisChain = -1;
+/* experimental. Quickly just run it on the chain with this ID and a suspect with these coords. */
 char *onlyThisChr;
 int onlyThisStart;
 int onlyThisEnd;
@@ -110,19 +94,21 @@ struct breakInfo
     struct chain *parentChain;    /* pointer to the parent chain */
     };
 
-/* if the brokenChain score / suspect score is at least this ratio, we remove the suspect */
-double foldThreshold = 8;
-/* if the score of the left and right fill of the brokenChain / suspect score is at least this ratio, we remove the suspect */
-double LRfoldThreshold = 8;
-/* if the suspect has more than that many bases in the target in aligning blocks, do not remove it (it is too good) */
-double maxSuspectBases = 100;
-/* if the suspect subChain scores higher, do not remove it (it is too good) */
-double maxSuspectScore = 10000;
+/* conditions for removing a suspect */
+/* score of the left and right fill of the brokenChain / suspect score must be at least as high this ratio to remove the suspect */
+double LRfoldThreshold = 2;
+/* brokenChain score / suspect score is at least this ratio to remove the suspect */
+double foldThreshold = 0;
+/* do not remove suspect if it has more than that many bases in the target in aligning blocks (suspect is not a random ali) */
+double maxSuspectBases = INT_MAX;
+/* do not remove suspect if the suspect subChain has a score higher than this threshold (suspect is not a random ali) */
+double maxSuspectScore = 100000;
 /* threshold for min size of left/right gap. If lower, do not remove suspect (too close to one side of the rest of the breaking chain) */
-int minLRGapSize = 1000;
+int minLRGapSize = 0;
 /* flag: if set, do not test if pairs of suspects can be removed */
 boolean noPairs = FALSE;
-/* flag: if set, give new chains representing removed suspects a new ID */
+
+/* flag: if set, output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before */
 char *newChainIDDict = NULL;
 FILE *newChainIDDictFile = NULL;
 
@@ -150,7 +136,6 @@ int *depth2chainId = NULL;
 /* genomeRangeTree containing all net aligning blocks (can span gap that are not filled by children) */
 struct genomeRangeTree *rangeTreeAliBlocks = NULL;
 
-
 /* keyed by the breaking chain ID that contains one more more suspects. Contains list of breaks for this chain. */
 struct hash *breakHash = NULL;
 /* keyed by all chainIds that are either breaking or broken chains. Contains TRUE */
@@ -160,6 +145,7 @@ struct hash *chainId2NeedsRescoring = NULL;
 /* pointer to chain keyed by chainId */
 struct hash *chainId2chain = NULL;
 int maxChainId = -1;
+
 /* for debugging */
 boolean debug = FALSE; 
 FILE *suspectChainFile = NULL;
@@ -167,14 +153,12 @@ FILE *brokenChainLfillChainFile = NULL;
 FILE *brokenChainRfillChainFile = NULL;
 FILE *brokenChainfillChainFile = NULL;
 FILE *suspectFillBedFile = NULL;
-FILE *HernandoCompareFile = NULL;
 
 
 /* for chain scoring */
 char *gapFileName = NULL;
 struct gapCalc *gapCalc = NULL;   /* Gap scoring scheme to use. */
 struct axtScoreScheme *scoreScheme = NULL;
-boolean doLocalScore = FALSE;
 
 /* for the target and query DNA seqs */
 char *tNibDir = NULL;    /* t and q nib or 2bit file */
@@ -212,18 +196,12 @@ void usage() {
   " tNibDir/qNibDir are either directories with nib files, or the name of a .2bit file\n\n"
   "\n"
   "output:\n"
-  "   out.chain      output file in chain format containing the untouched chains, the original broken chain and the modified breaking chains. NOTE: file is not sorted. Run chainSort on it.\n"
+  "   out.chain      output file in chain format containing the untouched chains, the original broken chain and the modified breaking chains. NOTE: this file is chainSort-ed.\n"
   "   out.bed        output file in bed format containing the coords and information about the removed suspects.\n"
   "\n"
  "options:\n"
-  "   -foldThreshold=N         threshold for removing local alignment bocks if the brokenChain score / suspect score is at least this fold threshold. Default %1.1f\n"
-  "   -LRfoldThreshold=N       threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
-  "   -maxSuspectBases=N       threshold for number of target bases in aligning blocks of the suspect subChain. If higher, do not remove suspect. Default %d\n"
-  "   -maxSuspectScore=N       threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
-  "   -minLRGapSize=N          threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
-  "   -noPairs                 flag: if set, do not test if pairs of suspects can be removed\n"
-  "\n"
-  "   -newChainIDDict=fileName output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before.\n"
+  "   -LRfoldThreshold=N   threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
+  "   -noPairs             flag: if set, do not test if pairs of suspects can be removed\n"
   "\n"
   "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
   "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
@@ -233,10 +211,16 @@ void usage() {
   "              Or specify a piecewise linearGap tab delimited file.\n"
   "   sample linearGap file (loose)\n"
   "%s"
-  "\n"  
-  " Local score = we set score = 0 if score < 0 and return the max of the score that we reach for a chain\n" 
-  "   -doLocalScore     default=FALSE. compute and return the local score only if the overall score is negative\n"
-  , foldThreshold, foldThreshold/2, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize, gapCalcSampleFileContents());
+  "\n"
+  "\n"
+  "Experimental options: \n"
+  "   -foldThreshold=N          threshold for removing local alignment bocks if the brokenChain score / suspect score is at least this fold threshold. Default %1.1f\n"
+  "   -maxSuspectBases=N        threshold for number of target bases in aligning blocks of the suspect subChain. If higher, do not remove suspect. Default %d\n"
+  "   -maxSuspectScore=N        threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
+  "   -minLRGapSize=N           threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
+  "   -newChainIDDict=fileName  output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before.\n"
+  "   -debug                    produces output chain files with the suspect and broken chains, and a bed file with information about all possible suspects. For debugging\n"
+  , LRfoldThreshold, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
 }
 
 /* command line options */
@@ -246,18 +230,17 @@ struct optionSpec options[] = {
    {"qSizes", OPTION_STRING},
    {"scoreScheme", OPTION_STRING},
    {"linearGap", OPTION_STRING},
-   {"doLocalScore", OPTION_BOOLEAN},     /* compute and return the local score only if the overall score is negative . */
    {"debug", OPTION_BOOLEAN},
    {"foldThreshold", OPTION_DOUBLE},
    {"LRfoldThreshold", OPTION_DOUBLE},
    {"maxSuspectBases", OPTION_DOUBLE}, 
    {"maxSuspectScore", OPTION_DOUBLE},
    {"minLRGapSize", OPTION_INT},
+   {"noPairs", OPTION_BOOLEAN},
+   {"newChainIDDict", OPTION_STRING},
    {"onlyThisChr", OPTION_STRING},
    {"onlyThisStart", OPTION_INT},
    {"onlyThisEnd", OPTION_INT},
-   {"noPairs", OPTION_BOOLEAN},
-   {"newChainIDDict", OPTION_STRING},
    {NULL, 0},
 };
 
@@ -421,6 +404,7 @@ void printAllBreaks() {
 }
 
 
+
 /* ################################################################################### */
 /* functions for loading and getting DNA seqs                                          */
 /* ################################################################################### */
@@ -546,7 +530,6 @@ double chainCalcScoreLocal(struct chain *chain, struct axtScoreScheme *ss, struc
    calculate the score of the given chain, both the local (always >0) and the global score
    sets chain->score to the global score (needed for final rescoring of the breaking chains)
    returns both global and local score in the double pointers
-   
 ****************************************************************/
 double getChainScore (struct chain *chain, double *globalScore, double *localScore) {
    struct dnaSeq *qSeq = NULL, *tSeq = NULL;
@@ -561,27 +544,6 @@ double getChainScore (struct chain *chain, double *globalScore, double *localSco
    *localScore = chainCalcScoreLocal(chain, scoreScheme, gapCalc, qSeq, tSeq);
    return chain->score;
 }
-
-/*
-old code
-double getChainScore (struct chain *chain, double *globalScore, double *localScore) {
-   struct dnaSeq *qSeq = NULL, *tSeq = NULL;
-//   printf("\tcalc score for chain with ID %d\n", chain->id);fflush(stdout);
-
-   * load the seqs *
-   qSeq = getSeqFromHash(chain->qName, chain->qStrand, qSeqHash);
-   tSeq = getSeqFromHash(chain->tName, '+', tSeqHash);
-
-   chain->score = chainCalcScore(chain, scoreScheme, gapCalc, qSeq, tSeq);
-
-   if (chain->score <= 0 && doLocalScore) {
-      printf(" SCORE IS NEG --> doLocal set  %f\n ", chain->score); fflush(stdout);
-      chain->score = chainCalcScoreLocal(chain, scoreScheme, gapCalc, qSeq, tSeq);
-      printf(" local score %f\n ", chain->score); fflush(stdout);
-   }
-   return chain->score;
-}
-*/
 
 
 
@@ -914,7 +876,6 @@ void chopGapInfo(struct fillGapInfo *fillGapList) {
       fillGap->gapEnd = atoi(words[2]);
       fillGap->parentChainId = atoi(words[3]);
       fillGap->gapDepth = atoi(words[4]);
-/* that killls it       freeMem(fillGap->gapInfo); */
    }
 }
 
@@ -1059,11 +1020,6 @@ void getValidBreaks(struct hashEl *el)
          breakP = newBreak(fillGap->depth, fillGap->chainId, fillGap->parentChainId, fillGap->chrom, 
             fillGap->fillStart, fillGap->fillEnd, fillGap->next->fillStart, fillGap->next->fillEnd, 
             fillGap->gapStart, fillGap->gapEnd, fillGap->next->gapStart, fillGap->next->gapEnd);
-
-
-/* ################################## Michael to remove ############################*/
-if (OnlyThisChain != -1 && OnlyThisChain != fillGap->parentChainId) 
-continue;
 
          /* add both chains to chainId2IsOfInterest */
          /* And add this break to hash breakHash. Value is a linked list to breakInfo structs */
@@ -1227,10 +1183,6 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
    /* get 4 subchains. the suspect, left/right and entire fill */
    chainSubsetOnT(breakingChain, breakP->suspectStart, breakP->suspectEnd, &subChainSuspect, &chainToFree1);
    chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->RfillEnd, &subChainfill, &chainToFree2);
-/* this takes the L/R subchain only right/left of the suspect. Incorrect. We should also include the suspect, because the broken chain can have aligning seq there 
-   chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->LfillEnd, &subChainLfill, &chainToFree3);
-   chainSubsetOnT(brokenChain, breakP->RfillStart, breakP->RfillEnd, &subChainRfill, &chainToFree4);
-*/
    chainSubsetOnT(brokenChain, breakP->LfillStart, breakP->suspectEnd, &subChainLfill, &chainToFree3);
    chainSubsetOnT(brokenChain, breakP->suspectStart, breakP->RfillEnd, &subChainRfill, &chainToFree4);
 
@@ -1245,10 +1197,10 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
    getChainScore(subChainfill,  &dummy, &subChainfillLocalScore);
    getChainScore(subChainLfill, &dummy, &subChainLfillLocalScore);
    getChainScore(subChainRfill, &dummy, &subChainRfillLocalScore);
-   /* ratios */
-   double ratio  = subChainfill->score  / subChainSuspect->score;
-   double ratioL = subChainLfill->score / subChainSuspect->score;
-   double ratioR = subChainRfill->score / subChainSuspect->score;
+   /* ratio between the global score of the broken chain and the local score of the suspect */
+   double ratio  = subChainfill->score  / subChainSuspectLocalScore;
+   double ratioL = subChainLfill->score / subChainSuspectLocalScore;
+   double ratioR = subChainRfill->score / subChainSuspectLocalScore;
 
    subChainSuspectBases = getSubChainBases(subChainSuspect);
 
@@ -1266,38 +1218,16 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
       isRemoved = TRUE;
    }
 
-
-
-//Code to get the cases where the broken chain has neg overall score
-   if (
-         subChainSuspect->score <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
-         (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize) {
-      if (subChainfill->score < 0 && subChainfillLocalScore/subChainSuspect->score > foldThreshold) 
-         verbose(1, "NEGATIVE %s\t%d\t%d\t%s%d_%d_%d\n",breakP->chrom, breakP->LfillStart, breakP->RfillEnd, debugInfo, (int)subChainSuspect->score, (int)subChainfill->score, (int)subChainfillLocalScore);
-   }
-
-
-/*
-Code to get the cases where the broken chain has neg LR score
-   if (ratio >= foldThreshold &&  
-         subChainSuspect->score <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
-         (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize) {
-      if (ratioL < 0 || ratioR <0) 
-         verbose(1, "NEGATIVE %s\t%d\t%d\t%s%d_%d_%d\n",breakP->chrom, breakP->suspectStart, breakP->suspectEnd, debugInfo, (int)subChainSuspect->score, 
-         (int)subChainLfill->score, (int)subChainRfill->score);
-   }
-*/
    /* write the subChains and the bed coordinates of the suspect and the fills */
    if (debug) {
       chainWrite(subChainSuspect, suspectChainFile);
       chainWrite(subChainLfill, brokenChainLfillChainFile);
       chainWrite(subChainRfill, brokenChainRfillChainFile);
       chainWrite(subChainfill, brokenChainfillChainFile);
-      fprintf(suspectFillBedFile, "%s\t%d\t%d\t%s%sSuspect__score_%1.0f__R_%1.2f__Rleft_%1.2f__Rright_%1.2f\t1000\t+\t%d\t%d\t255,0,0\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, (isRemoved ? "REMOVED_" : ""), debugInfo, subChainSuspect->score, ratio, ratioL, ratioR, breakP->suspectStart, breakP->suspectEnd);
+      fprintf(suspectFillBedFile, "%s\t%d\t%d\t%s%sSuspect__score_%1.0f__Rleft_%1.2f__Rright_%1.2f\t1000\t+\t%d\t%d\t255,0,0\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd, (isRemoved ? "REMOVED_" : ""), debugInfo, subChainSuspectLocalScore, ratioL, ratioR, breakP->suspectStart, breakP->suspectEnd);
       fprintf(suspectFillBedFile, "%s\t%d\t%d\t%sFill__score_%1.0f\t1000\t+\t%d\t%d\t0,0,255\n",    breakP->chrom, breakP->LfillStart, breakP->RfillEnd, debugInfo, subChainfill->score, breakP->LfillStart, breakP->RfillEnd);
       fprintf(suspectFillBedFile, "%s\t%d\t%d\t%sLfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->LfillStart, breakP->suspectEnd, debugInfo, subChainLfill->score, breakP->LfillStart, breakP->LfillEnd);
       fprintf(suspectFillBedFile, "%s\t%d\t%d\t%sRfill__score_%1.0f\t1000\t+\t%d\t%d\t0,125,255\n", breakP->chrom, breakP->suspectStart, breakP->RfillEnd, debugInfo, subChainRfill->score, breakP->RfillStart, breakP->RfillEnd);
-      fprintf(HernandoCompareFile, "%d\t%d\t%s\t%d\t%d\t%d\t%d\t%1.0f\t%1.0f\n", breakP->parentChainId, breakP->chainId, breakP->chrom, breakP->suspectStart, breakP->suspectEnd, breakP->LgapStart, breakP->RgapEnd, subChainSuspect->score, subChainfill->score);
    }
 
 
@@ -1430,6 +1360,7 @@ boolean isValidBreakPair (struct breakInfo *upstreamBreak,  struct breakInfo *do
    - iteratively consider all breaks
    - remove the suspects if they pass our thresholds
    - continue iterating until (i) no break remains or (ii) no suspect was removed in the last round
+  Do that for single breaks and pairs of breaks
   Calls testAndRemoveSuspect()
 ****************************************************************/
 void loopOverBreaks() {
@@ -1451,7 +1382,7 @@ void loopOverBreaks() {
       verbose(3, "\t############ Test if suspects of breaking chain %d can be removed\n", parentChainId); 
 
       /* try to remove chain-breaking suspects in the list until we do not remove anything in the entire pass through the list 
-         NOTE: After removing one suspect, up- and downstream breaks now may get larger fiative information is "completely ignored" by Spearman's coll regions if the broken chain was broken into >2 pieces. 
+         NOTE: After removing one suspect, up- and downstream breaks now may get larger fill regions if the broken chain was broken into >2 pieces. 
          Therefore, we iterate until no break remains or nothing can be removed anymore.
       */
       int iteration = 0;
@@ -1502,31 +1433,11 @@ void loopOverBreaks() {
             /* continue looping with the next element in the list */
             breakP = nextBreak;
          }
-//printf("singlebreaks done\n"); fflush(stdout);
-
-/*********************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*/
 
          if (! noPairs) {
             /* now loop over all break pairs in the list of remaining breaks for this breaking chain */
             verbose(3, "\tTEST PAIRS\n"); 
  
-/* 
-foldThreshold = 2; 
-LRfoldThreshold = 1.1;
-minLRGapSize = 100;
-*/
             /* verbose output */
             if (verboseLevel() >= 3) {
                verbose(3, "\tIteration %d for breaking chain %d\n\t\tList of remaining breaks\n", iteration, parentChainId); 
@@ -1600,28 +1511,6 @@ minLRGapSize = 100;
             }
          }
 
-
-/*********************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*******************
-*/
-
-/*
-foldThreshold = 50; 
-LRfoldThreshold = 12;
-minLRGapSize = 100000;
-*/
-
-         
          if (! anyBreaksUpdated) {
             verbose(3, "\t==> no break is updated --> done with breaking chain %d\n", parentChainId); 
             break;
@@ -1672,6 +1561,11 @@ void netInputChains (char *chainFile) {
    inNetFile = cloneString(netFile);
 }
 
+
+
+
+
+
 /* ################################################################################### */
 /*   main                                                                              */
 /* ################################################################################### */
@@ -1683,6 +1577,10 @@ char *scoreSchemeName = NULL;
 optionHash(&argc, argv);
 struct twoBitFile *tbf;
 boolean didNetMyself = FALSE;  /* flag. True if we did the netting */
+struct dyString* cmd = newDyString(500);	/* for chainSort */
+int retVal = 0;
+char outChainFileUnsorted [500];
+
 
 if (argc != 6)
     usage();
@@ -1694,6 +1592,7 @@ inChainFile = argv[1];
 tNibDir = argv[2];
 qNibDir = argv[3];
 outChainFile = argv[4];
+safef(outChainFileUnsorted, sizeof(outChainFileUnsorted), "%s.unsorted", outChainFile);
 outRemovedSuspectsFile = argv[5];
 tIsTwoBit = twoBitIsFile(tNibDir);
 qIsTwoBit = twoBitIsFile(qNibDir);
@@ -1702,10 +1601,9 @@ tSizes = optionVal("tSizes", NULL);
 qSizes = optionVal("qSizes", NULL);
 gapFileName = optionVal("linearGap", NULL);
 scoreSchemeName = optionVal("scoreScheme", NULL);
-doLocalScore = optionExists("doLocalScore");
 debug = optionExists("debug");
-foldThreshold = optionDouble("foldThreshold", 8.0);
-LRfoldThreshold = optionDouble("LRfoldThreshold", foldThreshold/2);
+foldThreshold = optionDouble("foldThreshold", foldThreshold);
+LRfoldThreshold = optionDouble("LRfoldThreshold", LRfoldThreshold);
 maxSuspectBases = optionDouble("maxSuspectBases", maxSuspectBases);
 maxSuspectScore = optionDouble("maxSuspectScore", maxSuspectScore);
 minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
@@ -1720,9 +1618,8 @@ if (onlyThisChr != NULL)
    verbose(1, "ONLY %s %d %d\n", onlyThisChr, onlyThisStart, onlyThisEnd);
 
 printf("Verbosity level: %d\n", verboseLevel());
-if (doLocalScore)
-   verbose(2, " doLocal set\n ");
 printf("foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
+
 
 /* load score scheme */
 if (scoreSchemeName != NULL) {
@@ -1763,8 +1660,8 @@ verbose(1, "DONE (parsing fills/gaps and getting valid breaks)\n\n");
 
 
 /* 2. read the chain file. Write out those that are neither breaking nor broken chains immediately */ 
-finalChainOutFile = mustOpen(outChainFile, "w");
-verbose(1, "2. reading breaking and broken chains from %s and write irrelevant chains to %s ...\n", inChainFile, outChainFile);
+finalChainOutFile = mustOpen(outChainFileUnsorted, "w");
+verbose(1, "2. reading breaking and broken chains from %s and write irrelevant chains to %s ...\n", inChainFile, outChainFileUnsorted);
 readChainsOfInterest(inChainFile);
 verbose(1, "DONE\n\n");
 
@@ -1796,7 +1693,6 @@ if (debug) {
    brokenChainRfillChainFile=mustOpen("brokenChainRfill.chain", "w");
    brokenChainfillChainFile=mustOpen("brokenChainfill.chain", "w");
    suspectFillBedFile = mustOpen("suspectsAndFills.bed", "w");
-   HernandoCompareFile = mustOpen("HernandoCompare.bed", "w");
 }
 suspectsRemovedOutBedFile=mustOpen(outRemovedSuspectsFile, "w");   /* contains in bed format the deleted suspects */
 /* output file that has the newChainIDs and the breaking chainIDs that contained the suspects */
@@ -1811,7 +1707,6 @@ if (newChainIDDict != NULL) {
 }
 if (debug) {
    carefulClose(&suspectFillBedFile);
-   carefulClose(&HernandoCompareFile);
    carefulClose(&suspectChainFile);
    carefulClose(&brokenChainLfillChainFile);
    carefulClose(&brokenChainRfillChainFile);
@@ -1821,46 +1716,34 @@ verbose(1, "DONE\n\n");
 
 
 /* write the breaking or broken chains. */
-verbose(1, "5. write the (new) breaking and the broken chains to %s ...\n", outChainFile);
+verbose(1, "5. write the (new) breaking and the broken chains to %s ...\n", outChainFileUnsorted);
 hashTraverseEls(chainId2IsOfInterest, writeAndFreeChainsOfInterest);
 carefulClose(&finalChainOutFile);
 verbose(1, "DONE\n\n");
 
 
+/* write the breaking or broken chains. */
+verbose(1, "6. chainSort %s %s ...\n", outChainFileUnsorted, outChainFile);
+dyStringClear(cmd);
+dyStringPrintf(cmd, "chainSort %s %s", outChainFileUnsorted, outChainFile);
+retVal = system(cmd->string);
+if (0 != retVal)
+   errAbort("ERROR: chainSort failed. Command: %s\n", cmd->string);
+unlink(outChainFileUnsorted);
+verbose(1, "DONE\n\n");
+
+
 /* free the loaded DNAseqs */
-verbose(1, "6. free memory ...\n");
+verbose(1, "7. free memory ...\n");
 freeDnaSeqHash(tSeqHash);
 freeDnaSeqHash(qSeqHash);
 freeDnaSeqHash(qSeqMinusStrandHash); 
 freeHash(&tSeqHash);
 freeHash(&qSeqHash);
 freeHash(&qSeqMinusStrandHash);
-
 freeHash(&chainId2Count);
 freeHash(&chainId2IsOfInterest);
 freeHash(&chainId2NeedsRescoring);
-
-/*
-struct hashEl *hel, *helList = hashElListHash(chainId2chain);
-for (hel = helList; hel != NULL; hel = hel->next)  {
-   chainFree(hel->val);
-}
-freeHash(&chainId2chain);
-
-freeHash(&);
-
-
-helList = hashElListHash(fillGapInfoHash);
-for (hel = helList; hel != NULL; hel = hel->next)  {
-   for (fillGap = fillGapList; fillGap != NULL; fillGap = fillGap->next) 
-   chainFree(&hel->val);
-}
-freeHash(&chainId2chain);
-
-   fillGapInfoHash = newHash(0);   
-   breakHash = newHash(0);
-*/
-
 verbose(1, "DONE\n\n");
 
 
