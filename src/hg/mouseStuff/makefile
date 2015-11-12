@@ -42,7 +42,8 @@ UTILS_APPLIST = \
 	netSyntenic \
 	netToAxt \
 	netToBed \
-	pslMrnaCover
+	pslMrnaCover\
+	chainCleaner
 
 # List of directories to build at UCSC
 DIRS = \
