@@ -1335,9 +1335,9 @@ sub doCleanChains {
   my $runDir = "$buildDir/axtChain";
 
   # First, make sure we're starting clean.
-  if (-e "$runDir/run.time.chainCleaning") {
-    die "doCleanChain: looks like this was run successfully already (run.time.chainCleaning exists). " . 
-        "Either run with -continue net or some later stage, or move aside/remove $runDir/run.time.chainCleaning and run again.\n";
+  if (-e "$runDir/log.chainCleaning") {
+    die "doCleanChain: looks like this was run successfully already (log.chainCleaning exists). " . 
+        "Either run with -continue net or some later stage, or move aside/remove $runDir/log.chainCleaning and run again.\n";
   }elsif (-e "$runDir/$tDb.$qDb.all.beforeCleaning.chain.gz" || -e "$runDir/$tDb.$qDb.allpatched.beforeCleaning.chain.gz") {
     die "doCleanChain: looks like this was run successfully already ($tDb.$qDb.all*.beforeCleaning.chain.gz exists)" .  
         "Either run with -continue net or some later stage, or move aside/remove $runDir/$tDb.$qDb.all*.beforeCleaning.chain.gz and run again.\n";
@@ -1377,7 +1377,7 @@ sub doCleanChains {
   my $bossScript = new HgRemoteScript("$runDir/doCleanChain.csh", $hub, $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # clean chain
-time chainRandomAlignmentRemover $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -LRfoldThreshold=2 -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} > run.time.chainCleaning
+time chainCleaner $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -LRfoldThreshold=2 -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} $defVars{'CLEANCHAIN_PARAMETERS'} > log.chainCleaning
 gzip $outputChain
   
 # now rename the all[patched].chain.gz later as all[patched].beforeCleaning.chain.gz
@@ -2242,7 +2242,12 @@ if ($patchChains == 1) {
 
 $cleanChains = 1 if (exists $defVars{'CLEANCHAIN'} && $defVars{'CLEANCHAIN'} == 1);
 if ($cleanChains == 1) {
-	print "Will clean the Chains. \n";
+	print "Will clean the Chains ";
+	if (exists $defVars{'CLEANCHAIN_PARAMETERS'}) {
+		print "with parameters: $defVars{'CLEANCHAIN_PARAMETERS'}\n";
+	}else{
+		print "\n";
+	}
 }else{
 	print "NO chain cleaning. \n";
 }
