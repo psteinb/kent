@@ -1471,7 +1471,7 @@ void loopOverBreaks() {
                   sprintf(debugInfo, "PAIR_");
                   currentSuspectRemoved = testAndRemoveSuspect(breakPair, breakBeforePair, breakAfterPair, &currentBreaksUpdated, debugInfo);
                   if (currentSuspectRemoved) 
-                     verbose(1, "\t\t\t===> PAIR REMOVED\n");
+                     verbose(3, "\t\t\t===> PAIR REMOVED\n");
 
 
                   /* just keep track of if a break is updated (then we have to iterate again) */
@@ -1617,8 +1617,8 @@ onlyThisEnd = optionInt("onlyThisEnd", -1);
 if (onlyThisChr != NULL)
    verbose(1, "ONLY %s %d %d\n", onlyThisChr, onlyThisStart, onlyThisEnd);
 
-printf("Verbosity level: %d\n", verboseLevel());
-printf("foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
+verbose(1, "Verbosity level: %d\n", verboseLevel());
+verbose(1, "foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
 
 
 /* load score scheme */
