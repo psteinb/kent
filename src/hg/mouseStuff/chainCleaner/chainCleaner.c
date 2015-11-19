@@ -103,6 +103,8 @@ double foldThreshold = 0;
 double maxSuspectBases = INT_MAX;
 /* do not remove suspect if the suspect subChain has a score higher than this threshold (suspect is not a random ali) */
 double maxSuspectScore = 100000;
+/* do not remove suspect if the score of the broken chain is less than this threshold (broken chain is not a high-scoring alignment) */
+double minBrokenChainScore = 50000;
 /* threshold for min size of left/right gap. If lower, do not remove suspect (too close to one side of the rest of the breaking chain) */
 int minLRGapSize = 0;
 /* flag: if set, do not test if pairs of suspects can be removed */
@@ -217,10 +219,11 @@ void usage() {
   "   -foldThreshold=N          threshold for removing local alignment bocks if the brokenChain score / suspect score is at least this fold threshold. Default %1.1f\n"
   "   -maxSuspectBases=N        threshold for number of target bases in aligning blocks of the suspect subChain. If higher, do not remove suspect. Default %d\n"
   "   -maxSuspectScore=N        threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
+  "   -minBrokenChainScore=N    threshold for minimum score of the entire broken chain. If the broken chain scores lower, it is less likely to be a real alignment and we will not remove the suspect. Default %d\n"
   "   -minLRGapSize=N           threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
   "   -newChainIDDict=fileName  output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before.\n"
   "   -debug                    produces output chain files with the suspect and broken chains, and a bed file with information about all possible suspects. For debugging\n"
-  , LRfoldThreshold, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
+  , LRfoldThreshold, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
 }
 
 /* command line options */
@@ -235,6 +238,7 @@ struct optionSpec options[] = {
    {"LRfoldThreshold", OPTION_DOUBLE},
    {"maxSuspectBases", OPTION_DOUBLE}, 
    {"maxSuspectScore", OPTION_DOUBLE},
+   {"minBrokenChainScore", OPTION_DOUBLE},
    {"minLRGapSize", OPTION_INT},
    {"noPairs", OPTION_BOOLEAN},
    {"newChainIDDict", OPTION_STRING},
@@ -1164,6 +1168,7 @@ int getSubChainBases(struct chain *chain) {
 boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstreamBreak, struct breakInfo *downstreamBreak, boolean *breaksUpdated, char *debugInfo) {
 
    struct chain *breakingChain = NULL, *brokenChain = NULL;
+   double breakingChainScore = 0, brokenChainScore = 0;
    struct chain *subChainSuspect = NULL, *subChainLfill = NULL, *subChainRfill = NULL, *subChainfill = NULL;
    struct chain *chainToFree1 = NULL, *chainToFree2 = NULL, *chainToFree3 = NULL, *chainToFree4 = NULL;
    double subChainSuspectLocalScore, dummy;
@@ -1176,9 +1181,11 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
    breakingChain = getChainPointerFromHash(breakP->parentChainId);
    if (breakingChain == NULL) 
       errAbort("ERROR: cannot get breaking chain with Id %d from chainId2chain hash\n", breakP->parentChainId);
+   breakingChainScore = breakingChain->score;
    brokenChain = getChainPointerFromHash(breakP->chainId);
    if (brokenChain == NULL)
        errAbort("ERROR: cannot get broken chain with Id %d from chainId2chain hash\n", breakP->chainId);
+   brokenChainScore = brokenChain->score;
 
    /* get 4 subchains. the suspect, left/right and entire fill */
    chainSubsetOnT(breakingChain, breakP->suspectStart, breakP->suspectEnd, &subChainSuspect, &chainToFree1);
@@ -1212,9 +1219,18 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
    verbose(3, "\t\t\tright fill subChain         %d - %d   gets score %7d   (local %7d)  ratio %1.2f\n", breakP->RfillStart, breakP->RfillEnd, (int)subChainRfill->score, (int)subChainRfillLocalScore, ratioR); 
 
    /* decision */
-   if (ratio >= foldThreshold && ratioL >= LRfoldThreshold && ratioR >= LRfoldThreshold && 
+   if (
+         /* left/right score ratio */
+         ratioL >= LRfoldThreshold && ratioR >= LRfoldThreshold && 
+         /* overall score ratio */
+         ratio >= foldThreshold && 
+         /* goodness of the suspect (if it scores too high) */
          subChainSuspect->score <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
-         (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize) {
+         /* goodness of the broken chain (if it scores too little) */
+         brokenChainScore >= minBrokenChainScore && 
+         /* size of the gap */
+         (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize
+      ) {
       isRemoved = TRUE;
    }
 
@@ -1239,15 +1255,16 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
 
       /* output removed suspect to the bed file*/
       if (onlyThisChr == NULL) 
-         fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\t%sbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d_LbrokenChainGlobalScore_%d_RbrokenChainGlobalScore_%d\n", 
-            breakP->chrom, breakP->suspectStart, breakP->suspectEnd, debugInfo, breakP->parentChainId, breakP->chainId, 
+         fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\t%sbreakingID_%d_score_%d_brokenID_%d_score_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d_LbrokenChainGlobalScore_%d_RbrokenChainGlobalScore_%d\n", 
+            breakP->chrom, breakP->suspectStart, breakP->suspectEnd, debugInfo, 
+            breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, 
             (int)subChainSuspect->score, (int)subChainSuspectLocalScore, (int)subChainfill->score, ratio, ratioL, ratioR, subChainfill->score / subChainSuspectLocalScore, subChainSuspectBases, 
             (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
             (int)subChainLfill->score, (int)subChainRfill->score);
       else
-         fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_brokenID_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_brokenChainLocalScore_%d_LbrokenChainGlobalScore_%d_LbrokenChainLocalScore_%d_RbrokenChainGlobalScore_%d_RbrokenChainLocalScore_%d_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
+         fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_score_%d_brokenID_%d_score_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_brokenChainLocalScore_%d_LbrokenChainGlobalScore_%d_LbrokenChainLocalScore_%d_RbrokenChainGlobalScore_%d_RbrokenChainLocalScore_%d_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
             breakP->chrom, breakP->suspectStart, breakP->suspectEnd, 
-            breakP->parentChainId, breakP->chainId, (int)subChainSuspect->score, (int)subChainSuspectLocalScore, 
+            breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, (int)subChainSuspect->score, (int)subChainSuspectLocalScore, 
             (int)subChainfill->score, (int)subChainfillLocalScore, 
             (int)subChainLfill->score, (int)subChainLfillLocalScore, (int)subChainRfill->score, (int)subChainRfillLocalScore,
             subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
@@ -1606,6 +1623,7 @@ foldThreshold = optionDouble("foldThreshold", foldThreshold);
 LRfoldThreshold = optionDouble("LRfoldThreshold", LRfoldThreshold);
 maxSuspectBases = optionDouble("maxSuspectBases", maxSuspectBases);
 maxSuspectScore = optionDouble("maxSuspectScore", maxSuspectScore);
+minBrokenChainScore = optionDouble("minBrokenChainScore", minBrokenChainScore);
 minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
 noPairs = optionExists("noPairs");
 newChainIDDict = optionVal("newChainIDDict", NULL);
@@ -1618,7 +1636,7 @@ if (onlyThisChr != NULL)
    verbose(1, "ONLY %s %d %d\n", onlyThisChr, onlyThisStart, onlyThisEnd);
 
 verbose(1, "Verbosity level: %d\n", verboseLevel());
-verbose(1, "foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, minLRGapSize);
+verbose(1, "foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minBrokenChainScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
 
 
 /* load score scheme */
