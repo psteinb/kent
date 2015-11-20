@@ -1225,7 +1225,7 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
          /* overall score ratio */
          ratio >= foldThreshold && 
          /* goodness of the suspect (if it scores too high) */
-         subChainSuspect->score <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
+         subChainSuspectLocalScore <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
          /* goodness of the broken chain (if it scores too little) */
          brokenChainScore >= minBrokenChainScore && 
          /* size of the gap */
@@ -1253,7 +1253,7 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
       hashAddIntTrue(chainId2NeedsRescoring, breakingChain->id);
       verbose(3, "\t\t\t===> REMOVE suspect from breaking chainID %d (this chain will be rescored before writing)\n", breakingChain->id);
 
-      /* output removed suspect to the bed file*/
+      /* output removed suspect to the bed file */
       if (onlyThisChr == NULL) 
          fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\t%sbreakingID_%d_score_%d_brokenID_%d_score_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d_LbrokenChainGlobalScore_%d_RbrokenChainGlobalScore_%d\n", 
             breakP->chrom, breakP->suspectStart, breakP->suspectEnd, debugInfo, 
@@ -1386,7 +1386,8 @@ void loopOverBreaks() {
    int parentChainId;
    char debugInfo[256];
    boolean currentSuspectRemoved = FALSE;
-   boolean anyBreaksUpdated = FALSE;
+   boolean anyBreaksUpdatedSingle = FALSE;
+   boolean anyBreaksUpdatedPair = FALSE;
    boolean currentBreaksUpdated = FALSE;
    
    /* hel is a pointer to a list of breaks for one parentChain */
@@ -1405,52 +1406,68 @@ void loopOverBreaks() {
       int iteration = 0;
       for (;;) {
          iteration++;
-
-         /* verbose output */
-         if (verboseLevel() >= 3) {
-            verbose(3, "\tIteration %d for breaking chain %d\n\t\tList of remaining breaks\n", iteration, parentChainId); 
-            for (breakP = breakList; breakP != NULL; breakP = breakP->next)
-               printSingleBreak(breakP);
-         }
-
-         anyBreaksUpdated = FALSE;
-         
-         /* consider single breaks */
-         breakP = breakList;
-         /* now loop over all breaks in the list for this breaking chain */
+         verbose(3, "\tOVERALL ITERATION %d for breaking chain %d\n", iteration, parentChainId); 
          verbose(3, "\tTEST SINGLE BREAKS\n"); 
-         for(;;) {
-            if (breakP == NULL) 
-               break;
 
-            verbose(3, "\t\tconsider break:  depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d\n", 
-               breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, 
-               breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
+         int iterationSingle = 0;
+         for (;;) {
+            iterationSingle++;
 
-            /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
-            sprintf(debugInfo, "SINGLE_");
-            currentSuspectRemoved = testAndRemoveSuspect(breakP, breakP->prev, breakP->next, &currentBreaksUpdated, debugInfo);
-
-            /* just keep track of if a break is updated (then we have to iterate again) */
-            if (currentBreaksUpdated) 
-               anyBreaksUpdated = TRUE;
-
-            nextBreak = breakP->next;
-            /* remove this break from the linked list, also update the prev pointer 
-               free break
-            */
-            if (currentSuspectRemoved) {
-               if (! slRemoveEl(&breakList, breakP))
-                  errAbort("ERROR: cannot remove break from the list: suspect %s:%d-%d\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd);
-               if (breakP->next != NULL)
-                  breakP->next->prev = breakP->prev;
-               freeMem(breakP->chrom);
-               freeMem(breakP);
+            /* verbose output */
+            if (verboseLevel() >= 3) {
+               verbose(3, "\tIterationSingle %d for breaking chain %d\n\t\tList of remaining breaks\n", iterationSingle, parentChainId); 
+               for (breakP = breakList; breakP != NULL; breakP = breakP->next)
+                  printSingleBreak(breakP);
             }
-            /* continue looping with the next element in the list */
-            breakP = nextBreak;
+
+            anyBreaksUpdatedSingle = FALSE;
+
+            /* consider single breaks */
+            breakP = breakList;
+            /* now loop over all breaks in the list for this breaking chain */
+            for(;;) {
+               if (breakP == NULL) 
+                  break;
+
+               verbose(3, "\t\tconsider break:  depth %d  breaking chainID %6d  broken chainID %6d  chrom %s  Lfill %d-%d  Rfill %d-%d  suspect %d-%d\n", 
+                  breakP->depth, breakP->parentChainId, breakP->chainId, breakP->chrom, 
+                  breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
+
+               /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
+               sprintf(debugInfo, "SINGLE_");
+               currentSuspectRemoved = testAndRemoveSuspect(breakP, breakP->prev, breakP->next, &currentBreaksUpdated, debugInfo);
+
+               /* just keep track of if a break is updated (then we have to iterate again) */
+               if (currentBreaksUpdated) 
+                  anyBreaksUpdatedSingle = TRUE;
+
+               nextBreak = breakP->next;
+               /* remove this break from the linked list, also update the prev pointer 
+                  free break
+               */
+               if (currentSuspectRemoved) {
+                  if (! slRemoveEl(&breakList, breakP))
+                     errAbort("ERROR: cannot remove break from the list: suspect %s:%d-%d\n", breakP->chrom, breakP->suspectStart, breakP->suspectEnd);
+                  if (breakP->next != NULL)
+                     breakP->next->prev = breakP->prev;
+                  freeMem(breakP->chrom);
+                  freeMem(breakP);
+               }
+               /* continue looping with the next element in the list */
+               breakP = nextBreak;
+            }
+
+            if (! anyBreaksUpdatedSingle) {
+               verbose(3, "\t==> no single break is updated \n"); 
+               break;
+            }
+            if (breakList == NULL) {
+               verbose(3, "\t==> ALL suspect removed --> done with breaking chain %d\n", parentChainId); 
+               break;
+            }
          }
 
+         anyBreaksUpdatedPair = FALSE;
          if (! noPairs) {
             /* now loop over all break pairs in the list of remaining breaks for this breaking chain */
             verbose(3, "\tTEST PAIRS\n"); 
@@ -1493,7 +1510,7 @@ void loopOverBreaks() {
 
                   /* just keep track of if a break is updated (then we have to iterate again) */
                   if (currentBreaksUpdated) 
-                     anyBreaksUpdated = TRUE;
+                     anyBreaksUpdatedPair = TRUE;
 
                   /* remove both breaks from the pair from the linked list, also update the prev pointer 
                      free both breaks
@@ -1528,8 +1545,8 @@ void loopOverBreaks() {
             }
          }
 
-         if (! anyBreaksUpdated) {
-            verbose(3, "\t==> no break is updated --> done with breaking chain %d\n", parentChainId); 
+         if (! anyBreaksUpdatedPair) {
+            verbose(3, "\t==> no pair of breaks is updated --> done with breaking chain %d\n", parentChainId); 
             break;
          }
          if (breakList == NULL) {
@@ -1548,11 +1565,11 @@ void loopOverBreaks() {
   A tempfile will be created for the nets
 ****************************************************************/
 void netInputChains (char *chainFile) {
-	int fd = 0, retVal = 0;
-	struct dyString* cmd = newDyString(500);
+   int fd = 0, retVal = 0;
+   struct dyString* cmd = newDyString(500);
    char netFile[200];
 
-	/* must have the t/q sizes */
+   /* must have the t/q sizes */
    if (tSizes == NULL)
       errAbort("You must specifiy -tSizes /dir/to/target/chrom.sizes if you do not provide a net file with -net in.net\n");
    if (qSizes == NULL)
@@ -1594,7 +1611,7 @@ char *scoreSchemeName = NULL;
 optionHash(&argc, argv);
 struct twoBitFile *tbf;
 boolean didNetMyself = FALSE;  /* flag. True if we did the netting */
-struct dyString* cmd = newDyString(500);	/* for chainSort */
+struct dyString* cmd = newDyString(500);   /* for chainSort */
 int retVal = 0;
 char outChainFileUnsorted [500];
 
@@ -1659,10 +1676,10 @@ if (! fileExists(qNibDir))
 
 /* if the net is not given via -net in.net  then net the chains */
 if (inNetFile == NULL) {
-	verbose(1, "0. need to net the input chains %s (no net file given) ...\n", inChainFile);
-	didNetMyself = TRUE;
-	netInputChains(inChainFile);
-	verbose(1, "DONE (nets in %s)\n", inNetFile);
+   verbose(1, "0. need to net the input chains %s (no net file given) ...\n", inChainFile);
+   didNetMyself = TRUE;
+   netInputChains(inChainFile);
+   verbose(1, "DONE (nets in %s)\n", inNetFile);
 }
 
 
@@ -1671,8 +1688,8 @@ verbose(1, "1. parsing fills/gaps from %s and getting valid breaks ...\n", inNet
 getFillGapAndValidBreaks(inNetFile);
 /* remove netfile if we created it above */
 if (didNetMyself) {
-	verbose(1, "Remove temporary netfile %s\n", inNetFile);
-	unlink(inNetFile);
+   verbose(1, "Remove temporary netfile %s\n", inNetFile);
+   unlink(inNetFile);
 }
 verbose(1, "DONE (parsing fills/gaps and getting valid breaks)\n\n");
 
