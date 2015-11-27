@@ -108,7 +108,9 @@ double minBrokenChainScore = 50000;
 /* threshold for min size of left/right gap. If lower, do not remove suspect (too close to one side of the rest of the breaking chain) */
 int minLRGapSize = 0;
 /* flag: if set, do not test if pairs of suspects can be removed */
-boolean noPairs = FALSE;
+boolean doPairs = FALSE;
+/* only consider pairs of suspects where the distance between the end of the upstream suspect and the start of the downstream suspect is at most that many bp */
+int maxPairDistance = 10000;
 
 /* flag: if set, output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before */
 char *newChainIDDict = NULL;
@@ -203,7 +205,8 @@ void usage() {
   "\n"
  "options:\n"
   "   -LRfoldThreshold=N   threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
-  "   -noPairs             flag: if set, do not test if pairs of suspects can be removed\n"
+  "   -doPairs             flag: if set, do test if pairs of suspects can be removed\n"
+  "   -maxPairDistance=N   only consider pairs of suspects where the distance between the end of the upstream suspect and the start of the downstream suspect is at most that many bp (Default %d)\n"
   "\n"
   "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
   "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
@@ -223,7 +226,7 @@ void usage() {
   "   -minLRGapSize=N           threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
   "   -newChainIDDict=fileName  output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before.\n"
   "   -debug                    produces output chain files with the suspect and broken chains, and a bed file with information about all possible suspects. For debugging\n"
-  , LRfoldThreshold, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
+  , LRfoldThreshold, maxPairDistance, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
 }
 
 /* command line options */
@@ -240,7 +243,8 @@ struct optionSpec options[] = {
    {"maxSuspectScore", OPTION_DOUBLE},
    {"minBrokenChainScore", OPTION_DOUBLE},
    {"minLRGapSize", OPTION_INT},
-   {"noPairs", OPTION_BOOLEAN},
+   {"doPairs", OPTION_BOOLEAN},
+   {"maxPairDistance", OPTION_INT},
    {"newChainIDDict", OPTION_STRING},
    {"onlyThisChr", OPTION_STRING},
    {"onlyThisStart", OPTION_INT},
@@ -1360,7 +1364,12 @@ boolean isValidBreakPair (struct breakInfo *upstreamBreak,  struct breakInfo *do
       verbose(4, "\t\t\t --> INVALID (different chain IDs)\n");
       return FALSE;
    }
-   
+
+   if (downstreamBreak->suspectStart - upstreamBreak->suspectEnd > maxPairDistance) {
+      verbose(4, "\t\t\t --> INVALID (distance between upstream suspectEnd and downstream suspectStart %d is greater than maxPairDistance %d\n", downstreamBreak->suspectStart - upstreamBreak->suspectEnd, maxPairDistance);
+      return FALSE;
+   }
+
    if (upstreamBreak->RgapStart == downstreamBreak->LgapStart && upstreamBreak->RgapEnd == downstreamBreak->LgapEnd) {
       verbose(4, "\t\t\t --> Valid pair\n");
       return TRUE;
@@ -1468,7 +1477,7 @@ void loopOverBreaks() {
          }
 
          anyBreaksUpdatedPair = FALSE;
-         if (! noPairs) {
+         if (doPairs) {
             /* now loop over all break pairs in the list of remaining breaks for this breaking chain */
             verbose(3, "\tTEST PAIRS\n"); 
  
@@ -1642,7 +1651,8 @@ maxSuspectBases = optionDouble("maxSuspectBases", maxSuspectBases);
 maxSuspectScore = optionDouble("maxSuspectScore", maxSuspectScore);
 minBrokenChainScore = optionDouble("minBrokenChainScore", minBrokenChainScore);
 minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
-noPairs = optionExists("noPairs");
+doPairs = optionExists("doPairs");
+maxPairDistance = optionInt("maxPairDistance", maxPairDistance);
 newChainIDDict = optionVal("newChainIDDict", NULL);
 
 onlyThisChr = optionVal("onlyThisChr", NULL);
@@ -1653,8 +1663,12 @@ if (onlyThisChr != NULL)
    verbose(1, "ONLY %s %d %d\n", onlyThisChr, onlyThisStart, onlyThisEnd);
 
 verbose(1, "Verbosity level: %d\n", verboseLevel());
-verbose(1, "foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minBrokenChainScore: %d  minLRGapSize: %d\n", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
-
+verbose(1, "foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minBrokenChainScore: %d  minLRGapSize: %d", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
+if (doPairs) {
+   verbose(1, " doPairs with maxPairDistance %d\n", maxPairDistance);
+}else{
+   verbose(1, "\n");
+}
 
 /* load score scheme */
 if (scoreSchemeName != NULL) {
