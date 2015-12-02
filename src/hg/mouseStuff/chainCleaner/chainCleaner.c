@@ -1,6 +1,6 @@
 /* Michael Hiller, 2015, MPI-CBG/MPI-PKS */
-
 /* This code is based on the UCSC kent source code, with the UCSC copyright below */
+
 /* Copyright (C) 2011 The Regents of the University of California 
  * See README in this or parent directory for licensing information. */
 
@@ -116,6 +116,11 @@ int maxPairDistance = 10000;
 char *newChainIDDict = NULL;
 FILE *newChainIDDictFile = NULL;
 
+/* flag: if set, output all the data for suspects to this file. If set, we do not clean any suspect as this would lead to updating the suspect values (updating the L/R fill region) */
+char *suspectDataFile = NULL;
+FILE *suspectDataFilePointer = NULL;
+int suspectID = 0;	/* used to assign a unique ID to each suspect */
+
 /* final output file for the chains that will contain
     - the untouched chains
     - the broken chains (untouched unless they contain suspects themself)
@@ -225,6 +230,7 @@ void usage() {
   "   -minBrokenChainScore=N    threshold for minimum score of the entire broken chain. If the broken chain scores lower, it is less likely to be a real alignment and we will not remove the suspect. Default %d\n"
   "   -minLRGapSize=N           threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
   "   -newChainIDDict=fileName  output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before.\n"
+  "   -suspectDataFile=fileName output all the data for suspects to this file in bed format. If set, we do not clean any suspect as this would lead to updating the suspect values (updating the L/R fill region).\n"
   "   -debug                    produces output chain files with the suspect and broken chains, and a bed file with information about all possible suspects. For debugging\n"
   , LRfoldThreshold, maxPairDistance, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
 }
@@ -246,6 +252,7 @@ struct optionSpec options[] = {
    {"doPairs", OPTION_BOOLEAN},
    {"maxPairDistance", OPTION_INT},
    {"newChainIDDict", OPTION_STRING},
+   {"suspectDataFile", OPTION_STRING},
    {"onlyThisChr", OPTION_STRING},
    {"onlyThisStart", OPTION_INT},
    {"onlyThisEnd", OPTION_INT},
@@ -1238,6 +1245,33 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
       isRemoved = TRUE;
    }
 
+	/* if set, do not clean any suspect. Only output all suspect data in bed format to this file */
+	if (suspectDataFile != NULL) {
+		isRemoved = FALSE;
+		suspectID ++;
+		
+		/* format: comma-separated
+		0:  suspectID
+		1:  breakingChainID
+		2:  breakingChainTotalScore
+		3:  brokenChainID
+		4:  brokenChainTotalScore
+		5:  suspectLocalScore
+		6:  brokenChainGlobalScore
+		7:  LEFTbrokenChainGlobalScore
+		8:  RIGHTbrokenChainGlobalScore
+		9:  numSuspectBases
+		10: sizeOfLeftGap
+		11: sizeOfRightGap
+		*/
+		fprintf(suspectDataFilePointer, "%s\t%d\t%d\t%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+			breakP->chrom, breakP->suspectStart, breakP->suspectEnd,
+			suspectID, breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore,
+			(int)subChainSuspectLocalScore, (int)subChainfill->score,
+         (int)subChainLfill->score, (int)subChainRfill->score,
+         subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
+	}
+
    /* write the subChains and the bed coordinates of the suspect and the fills */
    if (debug) {
       chainWrite(subChainSuspect, suspectChainFile);
@@ -1654,6 +1688,7 @@ minLRGapSize = optionInt("minLRGapSize", minLRGapSize);
 doPairs = optionExists("doPairs");
 maxPairDistance = optionInt("maxPairDistance", maxPairDistance);
 newChainIDDict = optionVal("newChainIDDict", NULL);
+suspectDataFile = optionVal("suspectDataFile", NULL);
 
 onlyThisChr = optionVal("onlyThisChr", NULL);
 onlyThisStart = optionInt("onlyThisStart", -1);
@@ -1748,11 +1783,19 @@ suspectsRemovedOutBedFile=mustOpen(outRemovedSuspectsFile, "w");   /* contains i
 if (newChainIDDict != NULL) {
    newChainIDDictFile = mustOpen(newChainIDDict, "w");
 }
+if (suspectDataFile != NULL) {
+   suspectDataFilePointer = mustOpen(suspectDataFile, "w");
+	/* also set doPairs to FALSE */
+	doPairs = FALSE;
+}
 chainId2NeedsRescoring = newHash(0);
 loopOverBreaks();
 carefulClose(&suspectsRemovedOutBedFile);
 if (newChainIDDict != NULL) {
    carefulClose(&newChainIDDictFile);
+}
+if (suspectDataFile != NULL) {
+   carefulClose(&suspectDataFilePointer);
 }
 if (debug) {
    carefulClose(&suspectFillBedFile);
