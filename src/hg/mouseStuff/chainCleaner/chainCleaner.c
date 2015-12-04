@@ -119,7 +119,7 @@ FILE *newChainIDDictFile = NULL;
 /* flag: if set, output all the data for suspects to this file. If set, we do not clean any suspect as this would lead to updating the suspect values (updating the L/R fill region) */
 char *suspectDataFile = NULL;
 FILE *suspectDataFilePointer = NULL;
-int suspectID = 0;	/* used to assign a unique ID to each suspect */
+int suspectID = 0;   /* used to assign a unique ID to each suspect */
 
 /* final output file for the chains that will contain
     - the untouched chains
@@ -1245,32 +1245,35 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
       isRemoved = TRUE;
    }
 
-	/* if set, do not clean any suspect. Only output all suspect data in bed format to this file */
-	if (suspectDataFile != NULL) {
-		isRemoved = FALSE;
-		suspectID ++;
-		
-		/* format: comma-separated
-		0:  suspectID
-		1:  breakingChainID
-		2:  breakingChainTotalScore
-		3:  brokenChainID
-		4:  brokenChainTotalScore
-		5:  suspectLocalScore
-		6:  brokenChainGlobalScore
-		7:  LEFTbrokenChainGlobalScore
-		8:  RIGHTbrokenChainGlobalScore
-		9:  numSuspectBases
-		10: sizeOfLeftGap
-		11: sizeOfRightGap
-		*/
-		fprintf(suspectDataFilePointer, "%s\t%d\t%d\t%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-			breakP->chrom, breakP->suspectStart, breakP->suspectEnd,
-			suspectID, breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore,
-			(int)subChainSuspectLocalScore, (int)subChainfill->score,
+   /* if set, do not clean any suspect. Only output all suspect data in bed format to this file */
+   if (suspectDataFile != NULL) {
+      isRemoved = FALSE;
+      suspectID ++;
+      
+      /* format: comma-separated
+      0:  suspectID
+      1:  breakingChainID
+      2:  breakingChainTotalScore
+      3:  brokenChainID
+      4:  brokenChainTotalScore
+      5:  suspectLocalScore
+      6:  brokenChainGlobalScore
+      7:  LEFTbrokenChainGlobalScore
+      8:  RIGHTbrokenChainGlobalScore
+      9:  numSuspectBases
+      10: sizeOfLeftGap
+      11: sizeOfRightGap
+      12: LEFTbrokenChainLOCALScore
+      13: RIGHTbrokenChainLOCALScore
+      */
+      fprintf(suspectDataFilePointer, "%s\t%d\t%d\t%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+         breakP->chrom, breakP->suspectStart, breakP->suspectEnd,
+         suspectID, breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore,
+         (int)subChainSuspectLocalScore, (int)subChainfill->score,
          (int)subChainLfill->score, (int)subChainRfill->score,
-         subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
-	}
+         subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
+         (int)subChainLfillLocalScore, (int)subChainRfillLocalScore);
+   }
 
    /* write the subChains and the bed coordinates of the suspect and the fills */
    if (debug) {
@@ -1785,8 +1788,8 @@ if (newChainIDDict != NULL) {
 }
 if (suspectDataFile != NULL) {
    suspectDataFilePointer = mustOpen(suspectDataFile, "w");
-	/* also set doPairs to FALSE */
-	doPairs = FALSE;
+   /* also set doPairs to FALSE */
+   doPairs = FALSE;
 }
 chainId2NeedsRescoring = newHash(0);
 loopOverBreaks();
