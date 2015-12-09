@@ -1450,6 +1450,7 @@ void loopOverBreaks() {
          Therefore, we iterate until no break remains or nothing can be removed anymore.
       */
       int iteration = 0;
+      int totalNumIteration = 0;
       for (;;) {
          iteration++;
          verbose(3, "\tOVERALL ITERATION %d for breaking chain %d\n", iteration, parentChainId); 
@@ -1458,6 +1459,7 @@ void loopOverBreaks() {
          int iterationSingle = 0;
          for (;;) {
             iterationSingle++;
+				totalNumIteration++;
 
             /* verbose output */
             if (verboseLevel() >= 3) {
@@ -1480,7 +1482,7 @@ void loopOverBreaks() {
                   breakP->LfillStart, breakP->LfillEnd, breakP->RfillStart, breakP->RfillEnd, breakP->suspectStart, breakP->suspectEnd);
 
                /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
-               sprintf(debugInfo, "SINGLE_");
+               sprintf(debugInfo, "SINGLE_%d",totalNumIteration);
                currentSuspectRemoved = testAndRemoveSuspect(breakP, breakP->prev, breakP->next, &currentBreaksUpdated, debugInfo);
 
                /* just keep track of if a break is updated (then we have to iterate again) */
@@ -1517,7 +1519,8 @@ void loopOverBreaks() {
          if (doPairs) {
             /* now loop over all break pairs in the list of remaining breaks for this breaking chain */
             verbose(3, "\tTEST PAIRS\n"); 
- 
+				totalNumIteration++;
+
             /* verbose output */
             if (verboseLevel() >= 3) {
                verbose(3, "\tIteration %d for breaking chain %d\n\t\tList of remaining breaks\n", iteration, parentChainId); 
@@ -1548,7 +1551,7 @@ void loopOverBreaks() {
                      breakPair->LfillStart, breakPair->LfillEnd, breakPair->RfillStart, breakPair->RfillEnd, breakPair->suspectStart, breakPair->suspectEnd);
 
                   /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
-                  sprintf(debugInfo, "PAIR_");
+                  sprintf(debugInfo, "PAIR_%d",totalNumIteration);
                   currentSuspectRemoved = testAndRemoveSuspect(breakPair, breakBeforePair, breakAfterPair, &currentBreaksUpdated, debugInfo);
                   if (currentSuspectRemoved) 
                      verbose(3, "\t\t\t===> PAIR REMOVED\n");
