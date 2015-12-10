@@ -96,7 +96,7 @@ struct breakInfo
 
 /* conditions for removing a suspect */
 /* score of the left and right fill of the brokenChain / suspect score must be at least as high this ratio to remove the suspect */
-double LRfoldThreshold = 2;
+double LRfoldThreshold = 2.5;
 /* brokenChain score / suspect score is at least this ratio to remove the suspect */
 double foldThreshold = 0;
 /* do not remove suspect if it has more than that many bases in the target in aligning blocks (suspect is not a random ali) */
@@ -109,6 +109,8 @@ double minBrokenChainScore = 50000;
 int minLRGapSize = 0;
 /* flag: if set, do not test if pairs of suspects can be removed */
 boolean doPairs = FALSE;
+/* left/right score ratio applied to pairs. Is only used with -doPairs */
+double LRfoldThresholdPairs = 10;
 /* only consider pairs of suspects where the distance between the end of the upstream suspect and the start of the downstream suspect is at most that many bp */
 int maxPairDistance = 10000;
 
@@ -208,10 +210,11 @@ void usage() {
   "   out.chain      output file in chain format containing the untouched chains, the original broken chain and the modified breaking chains. NOTE: this file is chainSort-ed.\n"
   "   out.bed        output file in bed format containing the coords and information about the removed suspects.\n"
   "\n"
- "options:\n"
-  "   -LRfoldThreshold=N   threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
-  "   -doPairs             flag: if set, do test if pairs of suspects can be removed\n"
-  "   -maxPairDistance=N   only consider pairs of suspects where the distance between the end of the upstream suspect and the start of the downstream suspect is at most that many bp (Default %d)\n"
+  "Most important options for deciding which suspects to remove:\n"
+  "   -LRfoldThreshold=N        threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
+  "   -doPairs                  flag: if set, do test if pairs of suspects can be removed\n"
+  "   -LRfoldThresholdPairs=N   threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
+  "   -maxPairDistance=N        only consider pairs of suspects where the distance between the end of the upstream suspect and the start of the downstream suspect is at most that many bp (Default %d)\n"
   "\n"
   "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
   "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
@@ -223,16 +226,19 @@ void usage() {
   "%s"
   "\n"
   "\n"
-  "Experimental options: \n"
+  "Other options for deciding which suspects to remove: \n"
   "   -foldThreshold=N          threshold for removing local alignment bocks if the brokenChain score / suspect score is at least this fold threshold. Default %1.1f\n"
   "   -maxSuspectBases=N        threshold for number of target bases in aligning blocks of the suspect subChain. If higher, do not remove suspect. Default %d\n"
   "   -maxSuspectScore=N        threshold for score of suspect subChain. If higher, do not remove suspect. Default %d\n"
   "   -minBrokenChainScore=N    threshold for minimum score of the entire broken chain. If the broken chain scores lower, it is less likely to be a real alignment and we will not remove the suspect. Default %d\n"
   "   -minLRGapSize=N           threshold for min size of left/right gap (how far the suspect is away from other blocks in the breaking chain). If lower, do not remove suspect (suspect to close to left or right part of breaking chain). Default %d\n"
+  "\n"
+  "\n"
+  "Debug and testing options: \n"
   "   -newChainIDDict=fileName  output 'newChainID{tab}breakingChainID' to this file. Gives a dictionary of the new IDs of chains representing removed suspects and the chain ID of the breaking chain that had the suspect before.\n"
   "   -suspectDataFile=fileName output all the data for suspects to this file in bed format. If set, we do not clean any suspect as this would lead to updating the suspect values (updating the L/R fill region).\n"
-  "   -debug                    produces output chain files with the suspect and broken chains, and a bed file with information about all possible suspects. For debugging\n"
-  , LRfoldThreshold, maxPairDistance, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
+  "   -debug                    produces output chain files with the suspect and broken chains, and a bed file with information about all possible suspects. For debugging.\n"
+  , LRfoldThreshold, LRfoldThresholdPairs, maxPairDistance, gapCalcSampleFileContents(), foldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
 }
 
 /* command line options */
@@ -245,6 +251,7 @@ struct optionSpec options[] = {
    {"debug", OPTION_BOOLEAN},
    {"foldThreshold", OPTION_DOUBLE},
    {"LRfoldThreshold", OPTION_DOUBLE},
+   {"LRfoldThresholdPairs", OPTION_DOUBLE},
    {"maxSuspectBases", OPTION_DOUBLE}, 
    {"maxSuspectScore", OPTION_DOUBLE},
    {"minBrokenChainScore", OPTION_DOUBLE},
@@ -1176,7 +1183,7 @@ int getSubChainBases(struct chain *chain) {
   returns TRUE if this suspect is removed 
   (debugInfo is just a string passed on to the output files created with -debug)
 ****************************************************************/
-boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstreamBreak, struct breakInfo *downstreamBreak, boolean *breaksUpdated, char *debugInfo) {
+boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstreamBreak, struct breakInfo *downstreamBreak, boolean *breaksUpdated, char *debugInfo, boolean IsPair) {
 
    struct chain *breakingChain = NULL, *brokenChain = NULL;
    double breakingChainScore = 0, brokenChainScore = 0;
@@ -1229,21 +1236,42 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
    verbose(3, "\t\t\tleft fill subChain          %d - %d   gets score %7d   (local %7d)  ratio %1.2f\n", breakP->LfillStart, breakP->LfillEnd, (int)subChainLfill->score, (int)subChainLfillLocalScore, ratioL); 
    verbose(3, "\t\t\tright fill subChain         %d - %d   gets score %7d   (local %7d)  ratio %1.2f\n", breakP->RfillStart, breakP->RfillEnd, (int)subChainRfill->score, (int)subChainRfillLocalScore, ratioR); 
 
+
+
    /* decision */
-   if (
-         /* left/right score ratio */
-         ratioL >= LRfoldThreshold && ratioR >= LRfoldThreshold && 
-         /* overall score ratio */
-         ratio >= foldThreshold && 
-         /* goodness of the suspect (if it scores too high) */
-         subChainSuspectLocalScore <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
-         /* goodness of the broken chain (if it scores too little) */
-         brokenChainScore >= minBrokenChainScore && 
-         /* size of the gap */
-         (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize
-      ) {
-      isRemoved = TRUE;
+   if (! IsPair) {
+      if (
+            /* left/right score ratio */
+            ratioL >= LRfoldThreshold && ratioR >= LRfoldThreshold && 
+            /* overall score ratio */
+            ratio >= foldThreshold && 
+            /* goodness of the suspect (if it scores too high) */
+            subChainSuspectLocalScore <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
+            /* goodness of the broken chain (if it scores too little) */
+            brokenChainScore >= minBrokenChainScore && 
+            /* size of the gap */
+            (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize
+         ) {
+         isRemoved = TRUE;
+      }
+   /* use LRfoldThresholdPairs for a pair of suspects */
+   }else{
+      if (
+            /* left/right score ratio */
+            ratioL >= LRfoldThresholdPairs && ratioR >= LRfoldThresholdPairs && 
+            /* overall score ratio */
+            ratio >= foldThreshold && 
+            /* goodness of the suspect (if it scores too high) */
+            subChainSuspectLocalScore <= maxSuspectScore && subChainSuspectBases <= maxSuspectBases && 
+            /* goodness of the broken chain (if it scores too little) */
+            brokenChainScore >= minBrokenChainScore && 
+            /* size of the gap */
+            (breakP->LgapEnd - breakP->LgapStart) >= minLRGapSize  &&  (breakP->RgapEnd - breakP->RgapStart) >= minLRGapSize
+         ) {
+         isRemoved = TRUE;
+      }
    }
+
 
    /* if set, do not clean any suspect. Only output all suspect data in bed format to this file */
    if (suspectDataFile != NULL) {
@@ -1295,24 +1323,22 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
       verbose(3, "\t\t\t===> REMOVE suspect from breaking chainID %d (this chain will be rescored before writing)\n", breakingChain->id);
 
       /* output removed suspect to the bed file */
-      if (onlyThisChr == NULL) 
-         fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\t%sbreakingID_%d_score_%d_brokenID_%d_score_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_Ratio_%1.2f_RatioL_%1.2f_RatioR_%1.2f_RatioLocal_%1.2f_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d_LbrokenChainGlobalScore_%d_RbrokenChainGlobalScore_%d\n", 
-            breakP->chrom, breakP->suspectStart, breakP->suspectEnd, debugInfo, 
-            breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, 
-            (int)subChainSuspect->score, (int)subChainSuspectLocalScore, (int)subChainfill->score, ratio, ratioL, ratioR, subChainfill->score / subChainSuspectLocalScore, subChainSuspectBases, 
-            (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
-            (int)subChainLfill->score, (int)subChainRfill->score);
-      else
-         fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_score_%d_brokenID_%d_score_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_brokenChainLocalScore_%d_LbrokenChainGlobalScore_%d_LbrokenChainLocalScore_%d_RbrokenChainGlobalScore_%d_RbrokenChainLocalScore_%d_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\n", 
-            breakP->chrom, breakP->suspectStart, breakP->suspectEnd, 
-            breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, (int)subChainSuspect->score, (int)subChainSuspectLocalScore, 
-            (int)subChainfill->score, (int)subChainfillLocalScore, 
-            (int)subChainLfill->score, (int)subChainLfillLocalScore, (int)subChainRfill->score, (int)subChainRfillLocalScore,
-            subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart));
+      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingChainID_%d_Score_%d_brokenChainID_%d_Score_%d_suspectLocalScore_%d_RatioL_%1.2f_RatioR_%1.2f\t1000\t+\t%d\t%d\t%s\n", 
+         breakP->chrom, breakP->suspectStart, breakP->suspectEnd, 
+         breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, 
+         (int)subChainSuspectLocalScore, ratioL, ratioR, 
+         breakP->suspectStart, breakP->suspectEnd, (IsPair ? "0,100,255" : "0,0,153"));
+/*      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_score_%d_brokenID_%d_score_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_brokenChainLocalScore_%d_LbrokenChainGlobalScore_%d_LbrokenChainLocalScore_%d_RbrokenChainGlobalScore_%d_RbrokenChainLocalScore_%d_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\t1000\t+\t%d\%d\t%s\n", 
+         breakP->chrom, breakP->suspectStart, breakP->suspectEnd, 
+         breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, (int)subChainSuspect->score, (int)subChainSuspectLocalScore, 
+         (int)subChainfill->score, (int)subChainfillLocalScore, 
+         (int)subChainLfill->score, (int)subChainLfillLocalScore, (int)subChainRfill->score, (int)subChainRfillLocalScore,
+         subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
+         breakP->suspectStart, breakP->suspectEnd, (IsPair ? "0,100,255" : "0,0,153"));
+*/
 
       /* remove suspect blocks from the chain */
       chainRemoveBlocks(breakingChain, breakP->suspectStart, breakP->suspectEnd);
-
 
       /* give the new chain a new ID */
       maxChainId ++;
@@ -1459,7 +1485,7 @@ void loopOverBreaks() {
          int iterationSingle = 0;
          for (;;) {
             iterationSingle++;
-				totalNumIteration++;
+            totalNumIteration++;
 
             /* verbose output */
             if (verboseLevel() >= 3) {
@@ -1483,7 +1509,7 @@ void loopOverBreaks() {
 
                /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
                sprintf(debugInfo, "SINGLE_%d",totalNumIteration);
-               currentSuspectRemoved = testAndRemoveSuspect(breakP, breakP->prev, breakP->next, &currentBreaksUpdated, debugInfo);
+               currentSuspectRemoved = testAndRemoveSuspect(breakP, breakP->prev, breakP->next, &currentBreaksUpdated, debugInfo, FALSE);   /* IsPair is FALSE */
 
                /* just keep track of if a break is updated (then we have to iterate again) */
                if (currentBreaksUpdated) 
@@ -1519,7 +1545,7 @@ void loopOverBreaks() {
          if (doPairs) {
             /* now loop over all break pairs in the list of remaining breaks for this breaking chain */
             verbose(3, "\tTEST PAIRS\n"); 
-				totalNumIteration++;
+            totalNumIteration++;
 
             /* verbose output */
             if (verboseLevel() >= 3) {
@@ -1552,7 +1578,7 @@ void loopOverBreaks() {
 
                   /* call testAndRemoveSuspect: This will remove the suspect blocks from the chain, output the new chain representing the removed suspect and updating the boundaries of up/downstream breaks */
                   sprintf(debugInfo, "PAIR_%d",totalNumIteration);
-                  currentSuspectRemoved = testAndRemoveSuspect(breakPair, breakBeforePair, breakAfterPair, &currentBreaksUpdated, debugInfo);
+                  currentSuspectRemoved = testAndRemoveSuspect(breakPair, breakBeforePair, breakAfterPair, &currentBreaksUpdated, debugInfo, TRUE);   /* IsPair is TRUE */
                   if (currentSuspectRemoved) 
                      verbose(3, "\t\t\t===> PAIR REMOVED\n");
 
@@ -1687,6 +1713,7 @@ scoreSchemeName = optionVal("scoreScheme", NULL);
 debug = optionExists("debug");
 foldThreshold = optionDouble("foldThreshold", foldThreshold);
 LRfoldThreshold = optionDouble("LRfoldThreshold", LRfoldThreshold);
+LRfoldThresholdPairs = optionDouble("LRfoldThresholdPairs", LRfoldThresholdPairs);
 maxSuspectBases = optionDouble("maxSuspectBases", maxSuspectBases);
 maxSuspectScore = optionDouble("maxSuspectScore", maxSuspectScore);
 minBrokenChainScore = optionDouble("minBrokenChainScore", minBrokenChainScore);
@@ -1706,7 +1733,7 @@ if (onlyThisChr != NULL)
 verbose(1, "Verbosity level: %d\n", verboseLevel());
 verbose(1, "foldThreshold: %f    LRfoldThreshold: %f   maxSuspectBases: %d  maxSuspectScore: %d  minBrokenChainScore: %d  minLRGapSize: %d", foldThreshold, LRfoldThreshold, (int)maxSuspectBases, (int)maxSuspectScore, (int)minBrokenChainScore, minLRGapSize);
 if (doPairs) {
-   verbose(1, " doPairs with maxPairDistance %d\n", maxPairDistance);
+   verbose(1, " doPairs with LRfoldThreshold: %f   maxPairDistance %d\n", LRfoldThresholdPairs, maxPairDistance);
 }else{
    verbose(1, "\n");
 }
@@ -1731,6 +1758,19 @@ if (! fileExists(qNibDir))
 
 /* if the net is not given via -net in.net  then net the chains */
 if (inNetFile == NULL) {
+   /* test if chainNet and NetFilterNonNested.perl are installed and in $PATH */
+   dyStringClear(cmd);
+   dyStringPrintf(cmd, "which chainNet > /dev/null");
+   retVal = system(cmd->string);
+   if (0 != retVal)
+      errAbort("ERROR: chainNet (kent source code) is not a binary in $PATH. Either install the kent source code or provide the nets as input.\n");
+   dyStringClear(cmd);
+   dyStringPrintf(cmd, "which NetFilterNonNested.perl > /dev/null");
+   retVal = system(cmd->string);
+   if (0 != retVal)
+      errAbort("ERROR: NetFilterNonNested.perl (comes with the chainCleaner source code) is not a binary in $PATH. Either install it or provide the nets as input.\n");
+   
+   /* now net */
    verbose(1, "0. need to net the input chains %s (no net file given) ...\n", inChainFile);
    didNetMyself = TRUE;
    netInputChains(inChainFile);
