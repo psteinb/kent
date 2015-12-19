@@ -1232,8 +1232,11 @@ para.pl check patchChain_$tDb$qDb\n
 para.pl time patchChain_$tDb$qDb > run.time\n
 cat run.time\n";
 }
+
+  my $lastzParameters = "--format=axt K=$defVars{'PATCHBLASTZ_K'} L=$defVars{'PATCHBLASTZ_L'} M=0 T=0 W=$defVars{'PATCHBLASTZ_W'}";
+  $lastzParameters = "--format=axt K=$defVars{'PATCHBLASTZ_K'} L=$defVars{'PATCHBLASTZ_L'} M=0 T=0 W=$defVars{'PATCHBLASTZ_W'}  Q=$defVars{'BLASTZ_Q'}" if (exists $defVars{'BLASTZ_Q'});
  
- my $whatItDoes =
+  my $whatItDoes =
 "It sets up and performs a cluster run to patch chains and rebuild chains using the old and new alignments. ";
   my $bossScript = new HgRemoteScript("$runDir/doPatchChain.csh", $hub,
 				      $runDir, $whatItDoes, $DEF);
@@ -1244,7 +1247,7 @@ $cat $buildDir/axtChain/$chain | \\
     -chainMinScore $defVars{'CHAIN_MINSCORE'} -gapMaxSizeT $defVars{'GAPMAXSIZE_T'} -gapMaxSizeQ $defVars{'GAPMAXSIZE_Q'} \\
         -gapMinSizeT $defVars{'GAPMINSIZE_T'} -gapMinSizeQ $defVars{'GAPMINSIZE_Q'} -numJobs $defVars{'NUM_JOBS'} \\
         -jobDir jobs -outputDir $outputDir $filterParameters \\
-        -lastzParameters "--format=axt Q=$defVars{'BLASTZ_Q'} K=$defVars{'PATCHBLASTZ_K'} L=$defVars{'PATCHBLASTZ_L'} M=0 T=0 W=$defVars{'PATCHBLASTZ_W'}" 
+        -lastzParameters "$lastzParameters"
 
 # create the output dir (we test above if that dir exist, so no mkdir -p is necessary)
 mkdir $outputDir
