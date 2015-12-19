@@ -133,7 +133,11 @@ singleBamDetails(rightBam);
 printf("</TD></TR></TABLE>\n");
 }
 
+#ifdef USE_HTS
+static int oneBam(const bam1_t *bam, void *data, bam_hdr_t *header)
+#else
 static int oneBam(const bam1_t *bam, void *data)
+#endif
 /* This is called on each record retrieved from a .bam file. */
 {
 const bam1_core_t *core = &bam->core;
@@ -168,6 +172,8 @@ return 0;
 void doBamDetails(struct trackDb *tdb, char *item)
 /* Show details of an alignment from a BAM file. */
 {
+cramInit(tdb);
+
 if (item == NULL)
     errAbort("doBamDetails: NULL item name");
 int start = cartInt(cart, "o");

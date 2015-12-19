@@ -3141,7 +3141,17 @@ if (otherOrg == NULL)
     otherOrg = firstWordInLine(cloneString(tdb->shortLabel));
     }
 
-chain = chainLoadIdRange(database, tdb->table, seqName, winStart, winEnd, atoi(item));
+if (isHubTrack(tdb->track))
+    {
+    char *fileName = bbiNameFromSettingOrTable(tdb, conn, tdb->table);
+    char *linkFileName = trackDbSetting(tdb, "linkDataUrl");
+    chain = chainLoadIdRangeHub(fileName, linkFileName, seqName, winStart, winEnd, atoi(item));
+    }
+else
+    {
+    chain = chainLoadIdRange(database, tdb->table, seqName, winStart, winEnd, atoi(item));
+    }
+
 chainSubsetOnT(chain, winStart, winEnd, &subChain, &toFree);
 
 if (subChain == NULL)
@@ -3867,7 +3877,7 @@ headerItem = cloneString(item);
 if (container == NULL && wordCount > 0)
     {
     type = words[0];
-    if (sameString(type, "maf") || sameString(type, "wigMaf") || sameString(type, "netAlign")
+    if (sameString(type, "maf") || sameString(type, "wigMaf") || sameString(type, "bigMaf") || sameString(type, "netAlign")
         || sameString(type, "encodePeak"))
         headerItem = NULL;
     else if ((  sameString(type, "narrowPeak")
@@ -3952,7 +3962,7 @@ else if (wordCount > 0)
 	    errAbort("Missing field in netAlign track type field");
 	genericNetClick(conn, tdb, item, start, words[1], words[2]);
 	}
-    else if (sameString(type, "chain"))
+    else if (sameString(type, "chain") || sameString(type, "bigChain") )
         {
 	if (wordCount < 2)
 	    errAbort("Missing field in chain track type field");
@@ -3962,7 +3972,7 @@ else if (wordCount > 0)
         {
 	genericMafClick(conn, tdb, item, start);
 	}
-    else if (sameString(type, "wigMaf"))
+    else if (sameString(type, "wigMaf") ||  sameString(type, "bigMaf"))
         {
 	genericMafClick(conn, tdb, item, start);
         }
@@ -4055,6 +4065,12 @@ if (imagePath)
     if (shouldBeTwo != 2)
 	errAbort("bigItemImagePath setting for %s track incorrect. Needs to be \"itemImagePath <path> <suffix>\".", tdb->track);
     printf("<A HREF=\"%s/%s.%s\">Download Original Image</A><BR>\n", bothWords[0], item, bothWords[1]);
+    }
+
+if (sameString(tdb->table,"altLocations") && (!strchr(item,':')))
+    {
+    char *hgsid = cartSessionId(cart);
+    printf("<A HREF=\"/cgi-bin/hgTracks?hgsid=%s&virtModeType=singleHaplo&singleHaploId=%s\">Show this alternate haplotype placed on its chromosome</A><BR>\n", hgsid, item);
     }
 
 printTrackHtml(tdb);
@@ -4193,7 +4209,6 @@ return (sameString("cytoBand", track) ||
 	sameString("gap", track) ||
 	startsWith("mouseSyn", track));
 }
-
 
 struct customTrack *getCtList()
 /* initialize theCtList if necessary and return it */
@@ -21499,7 +21514,7 @@ void doScaffoldEcores(struct trackDb *tdb, char *item)
 /* Creates details page and gets the scaffold co-ordinates for unmapped */
 /* genomes for display and to use to create the correct outside link URL */
 {
-char *words[16];
+char *dupe, *words[16];
 int start = cartInt(cart, "o");
 struct sqlConnection *conn = hAllocConn(database);
 int num;
@@ -21514,6 +21529,8 @@ char *old = "_";
 char *new = "";
 char *pat = "fold";
 int hasBin = 1;
+dupe = cloneString(tdb->type);
+chopLine(dupe,words);
 /* get bed size */
 num = 0;
 num = atoi(words[1]);
@@ -21541,6 +21558,7 @@ genericBedClick(conn, tdb, item, start, num);
 printTrackHtml(tdb);
 
 dyStringFree(&itemUrl);
+freez(&dupe);
 sqlFreeResult(&sr);
 hFreeConn(&conn);
 }
@@ -24863,6 +24881,31 @@ scientificName = hScientificName(database);
 
 dbIsFound = trackHubDatabase(database) || sqlDatabaseExists(database);
 
+// Try to deal with virt chrom position used by hgTracks.
+// Hack the cart vars to set to a non virtual chrom mode position
+if (startsWith("virt:", cartUsualString(cart, "position", "")))
+    {
+    char *nvPos = cartUsualString(cart, "nonVirtPosition", "");
+    /* parse non-virtual position */
+    char *pos = cloneString(nvPos);
+    char *colon = strchr(pos, ':');
+    if (!colon)
+    errAbort("position has no colon");
+    char *dash = strchr(pos, '-');
+    if (!dash)
+    errAbort("position has no dash");
+    *colon = 0;
+    *dash = 0;
+    char *chromName = cloneString(pos);
+    int winStart = atol(colon+1) - 1;
+    int winEnd = atol(dash+1);
+    cartSetString(cart, "position", nvPos);
+    cartSetString(cart, "c", chromName);
+    cartSetInt(cart, "l", winStart);
+    cartSetInt(cart, "r", winEnd);
+    }
+
+
 if (dbIsFound)
     seqName = hgOfficialChromName(database, cartString(cart, "c"));
 else
@@ -26115,6 +26158,10 @@ else if (startsWith("peptideAtlas", table))
     {
     doPeptideAtlas(tdb, item);
     }
+else if (startsWith("gtexGene", table))
+    {
+    doGtexGeneExpr(tdb, item);
+    }
 else if (startsWith("snake", trackHubSkipHubName(table)))
     {
     doSnakeClick(tdb, item);
@@ -26174,3 +26221,5 @@ cartEmptyShell(cartDoMiddle, hUserCookie(), excludeVars, NULL);
 cgiExitTime("hgc", enteredMainTime);
 return 0;
 }
+
+

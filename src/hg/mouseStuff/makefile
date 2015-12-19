@@ -63,7 +63,6 @@ DIRS = \
 	axtToChain \
 	calcGap \
 	chainDbToFile \
-	chainStats \
 	gcForBed \
 	knownVsBlat \
 	libScan \

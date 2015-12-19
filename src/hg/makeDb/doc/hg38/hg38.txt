@@ -3251,6 +3251,18 @@ cp  /hive/users/pchan/tRNAs/Eukaryota/hg38/hg38-tRNAs.bed .
 
 hgLoadBed -tab hg38 tRNAs hg38-tRNAs.bed -sqlTable=$HOME/kent/src/hg/lib/tRNAs.sql
 
+## tRNAs track (2015-10-04, Chris FINISHING BUILD FOR RELEASE) 
+    cd /hive/data/genomes/hg38/bed/tRNAs
+    cp /hive/users/pchan/gtrnadb2/Eukaryota/hg38/hg38-tRNAs.bed hg38-tRNAs2.bed
+    hgsql hg38 -e 'drop table if exists tRNAs' 
+    hgLoadBed -tab hg38 tRNAs hg38-tRNAs2.bed -sqlTable=$HOME/kent/src/hg/lib/tRNAs.sql
+    mkdir gif
+    cp -p /hive/users/pchan/gtrnadb2/Eukaryota/hg38/images/* gif
+    cd /hive/data/gbdb/hg38
+    ln -s /hive/data/genomes/hg38/bed/tRNAs/gif RNA-img 
+    cd /usr/local/apache/htdocs-ceisenhart/RNA-img
+    ln -s /gbdb/hg38/RNA-img hg38
+
 ############################################################################
 # EXONIPHY , lifted from hg19 (DONE - braney 2014-02-19)
 #	needed for ucscGenes building
@@ -6336,6 +6348,52 @@ rm tmpChrom
     # repeat this until happy, editing minCheck as needed
     # output in check/joiner.out
     cd /hive/data/genomes/hg38/bed/gencodeV23
+    make  -f ~/kent/src/hg/makeDb/outside/gencode/gencodeLoad.mk joinerCheck
+
+#########################################################################
+2015-12-08: import of UCSC GENCODE group processing of GENCODE V24 (markd)
+    -- not for release to RR
+    # download files
+    mkdir -p /hive/data/genomes/hg38/bed/gencodeV24
+    cd /hive/data/genomes/hg38/bed/gencodeV24
+
+    # edit hg/makeDb/outside/gencode/gencodeLoad.mk to set 
+    # release and transcript support versions
+
+
+    # download, build and load tables
+    (time nice make -j 10 -f ~/kent/src/hg/makeDb/outside/gencode/gencodeLoad.mk) >&build.1.out&
+
+    # compare tables from previous release to see if number changed makes
+    # sense (results in gencode-cmp.tsv)
+        make -f ~/kent/src/hg/makeDb/outside/gencode/gencodeLoad.mk cmpRelease
+
+    ## Copy and update trackDb files from previous release.
+    ## Change version and use lower priority so it sorts to top of
+    ## super track page.
+    ## Important to make sure filter attrs.transcriptType matches current set
+    ## figured out with
+    select distinct transcriptType from wgEncodeGencodeAttrsV24 order by transcriptType;
+    cd kent/src/hg/makeDb/trackDb
+    cp human/hg38/wgEncodeGencodeV23.ra human/hg38/wgEncodeGencodeV24.ra
+    cp human/hg38/wgEncodeGencodeV23.html human/hg38/wgEncodeGencodeV24.html
+
+    # edit these plus human/hg38/trackDb.wgEncode.ra
+    # - set priorities in wgEncodeGencodeV24.ra tracks so newest shows up first
+    #     priority - set to previous version priority minus 0.001
+    #     searchPriority - set each to previous minus 0.001
+    # - make current track default to pack and hide previous [ONLY if it's going to be pushed]
+    #     superTrack wgEncodeGencodeSuper pack
+    # - Update wgEncodeGencodeSuper.html to describe new release and to
+    #   pick up other updates.
+
+    # update all.joiner and validate
+    # look for the last section `begin Gencode V??' in all.joiner
+    # and copy and update version
+    # repeat this until happy, editing minCheck as needed
+    # output in check/joiner.out
+    ### NOT DONE SINCE TRACK NOT BEING PUSHED
+    cd /hive/data/genomes/hg38/bed/gencodeV24
     make  -f ~/kent/src/hg/makeDb/outside/gencode/gencodeLoad.mk joinerCheck
 
 #########################################################################

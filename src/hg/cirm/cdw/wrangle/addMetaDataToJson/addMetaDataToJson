@@ -22,20 +22,34 @@ def parseArgs(args):
     parser.add_argument ("jsonFile",
     help = " The input json file. ",
     type = argparse.FileType("r"))
+    parser.add_argument ("htmlFile",
+    help = " The input meta data file ",
+    action = "store")
     parser.add_argument ("metaDataFile",
     help = " The input meta data file ",
-    type = argparse.FileType("r"))
-    parser.add_argument ("outputFile",
+    action = "store")
+    parser.add_argument ("outputJson",
+    help = " The output file. ",
+    type =argparse.FileType("w"))
+    parser.add_argument ("outputHtml",
     help = " The output file. ",
     type =argparse.FileType("w"))
     parser.add_argument ("--keyCol",
-    help = " The meta data key column. ",
+    help = " The meta data key column. Defaults to 'meta' column. ",
     type = int)
     parser.add_argument ("--fields", 
     nargs="+",
-    type = int)
-    parser.set_defaults(keyCol = 5)
-    parser.set_defaults(fields = [1]) 
+    action = "store")
+    parser.add_argument ("--verbose",
+    help = " Spit out messages during runtime. ",
+    action = "store_true")
+    
+    parser.set_defaults(verbose = False)
+    parser.set_defaults(keyCol = None)
+    parser.set_defaults(fields = ["age"]) 
+    if (len(sys.argv) == 1): 
+        parser.print_help()
+        exit(1)
     options = parser.parse_args()
     return options
 
@@ -71,12 +85,35 @@ def addJsonNameValPair(string, name, val):
     result += nameVal + string[findLastQuotation(string):]
     return result
 
+
+def updateHtml(htmlLine, name, count, oldName, newName): 
+    """
+    A function that modifies an existing .html file.  The .html file is embeded with 
+    'identifier' tags that can be used to insert at the correct spot.  
+
+    """
+    htmlCode = htmlLine.replace(oldName,newName).split("Identifier") # The html file should only have one line
+    addButton = "<button onclick=\"metaData(%i)\">%s</button> "%(count, name)
+    addIf = "if (val==%i)return colors(d.%s);"%(count, name)
+    return (htmlCode[0][:-3] + addButton + "<! Identifier  >"  + htmlCode[1][3:-3]   + addIf + "/* Identifier */" + htmlCode[2][3:])
+
 def main(args):
     """
     Initialized options and calls other functions.
     """
     options = parseArgs(args)
-    metaData = common.readInTable(options.metaDataFile, options.keyCol, "\t") 
+    if (options.verbose): print ("Start adding meta data to the clustered .json and .html files.")
+    
+    with open(options.metaDataFile, "r") as f:
+        firstLine = f.readline()[:-1].split("\t")
+
+    metaData = common.readInTable(open(options.metaDataFile, "r"), firstLine.index("meta"), "\t")
+    metaFieldToCol = dict()
+    for item in options.fields: 
+        metaFieldToCol.setdefault(item,firstLine.index(item))
+        
+    htmlCode = open(options.htmlFile, "r").readline()
+    doOnce = True
     for line in options.jsonFile: # Lets abuse python's string manipulation a bit...
         if "name" in line: 
             elements = line.split(",")
@@ -86,12 +123,20 @@ def main(args):
                     newLine = line[:-1]
                     count = 0
                     for item in options.fields: # Add in the new meta data fields to the json entry
-                        swap = addJsonNameValPair(newLine, "metaField" + str(count), metaData[name][item])
+                        swap = addJsonNameValPair(newLine, item, metaData[name][metaFieldToCol[item]])
                         newLine = swap 
+                        if doOnce:
+                            swap2 = updateHtml(htmlCode,item, count, options.jsonFile.name, options.outputJson.name)
+                            
+                            htmlCode = swap2
                         count +=1
-                    options.outputFile.write(newLine+"\n") # Print the json entry
+                    doOnce = False
+                    options.outputJson.write(newLine+"\n") # Print the json entry
                     continue 
-        options.outputFile.write(line) # Print everything else
+        options.outputJson.write(line) # Print everything else
+    options.outputHtml.write(htmlCode)    
+
+    if (options.verbose): print ("Completed adding meta data to the clustered .json and .html files.")
 
 if __name__ == "__main__" : 
     sys.exit(main(sys.argv))

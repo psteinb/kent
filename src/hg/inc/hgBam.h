@@ -19,6 +19,8 @@
 #include "jksql.h"
 #endif
 
+#include "trackDb.h"
+
 char *bamFileNameFromTable(struct sqlConnection *conn, char *table, char *bamSeqName);
 /* Return file name from table.  If table has a seqName column, then grab the 
  * row associated with bamSeqName (which can be e.g. '1' not 'chr1' if that is the
@@ -29,7 +31,11 @@ struct samAlignment *bamFetchSamAlignment(char *fileOrUrl, char *chrom, int star
 /* Fetch region as a list of samAlignments - which is more or less an unpacked
  * bam record.  Results is allocated out of lm, since it tends to be large... */
 
+#ifdef USE_HTS
+struct samAlignment *bamReadNextSamAlignments(samfile_t *fh, bam_hdr_t *header,  int count, struct lm *lm);
+#else
 struct samAlignment *bamReadNextSamAlignments(samfile_t *fh, int count, struct lm *lm);
+#endif
 /* Read next count alignments in SAM format, allocated in lm.  May return less than
  * count at end of file. */
 
@@ -37,5 +43,8 @@ struct ffAli *bamToFfAli(const bam1_t *bam, struct dnaSeq *target, int targetOff
 			 boolean useStrand, char **retQSeq);
 /* Convert from bam to ffAli format.  If retQSeq is non-null, set it to the 
  * query sequence into which ffAli needle pointers point. */
+
+void cramInit(struct trackDb *tdb);
+/* Initialize variables needed for CRAM parsing. */
 
 #endif//ndef HGBAM_H
