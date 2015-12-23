@@ -599,7 +599,7 @@ _EOF_
       print( ", and a runtime over 10 minutes" );
   }
   print( " ***\n" ); 
-  if( $noJobs > 3000 ) {
+  if( $noJobs > 4000 ) {
       print( "Stopped $0. You have $noJobs right now. To achieve a good number of jobs in the range of 3000, you can adapt your DEF file. Run 'rm -rf run.blastz psl' before restarting the alignment.\n" );
       exit( 0 ); 
   } else {
