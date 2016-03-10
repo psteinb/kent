@@ -12,8 +12,8 @@ Definitions:
 A break is a case where a chain is broken into >=2 pieces in the nets by a fill block of a higher scoring chain.
 breaking chain: chain that contains a local alignment block that breaks another lower-scoring chain in the nets into two or more pieces
 broken chain: lower-scoring chain that is broken into two or more pieces
-suspect: the local alignment block(s) in the higher-scoring chain that causes the broken chain to be broken into pieces. 
-         This block(s) is suspected to be a random alignment. The breaking chain can have more than one suspect. 
+suspect: (also called "chain-breaking alignment" or CBA in the paper) the local alignment block(s) in the higher-scoring chain that causes the broken chain to be broken into pieces. 
+         This block(s) is suspected to be a random or paralogous alignment. The breaking chain can have more than one suspect. 
 
 Example:
 X = fill (aligning region); - = gap (unaligning region)
@@ -197,7 +197,10 @@ char *outRemovedSuspectsFile = NULL;
 /* Explain usage and exit. */
 void usage() {
   errAbort(
-  "chainCleaner - Remove random local alignments from chains that would break nested chains in the net.\n"
+  "chainCleaner - Remove chain-breaking alignments from chains that break nested chains.\n"
+  "\n"
+  "NOTATION: The \"breaking chain\" contains a local alignment block (called \"chain-breaking alignment\" (CBA) or \"suspect\") that breaks a nested chain (\"broken chain\") into two nets.\n"
+  "\n"
   "usage:\n"
   "   chainCleaner in.chain tNibDir qNibDir out.chain out.bed -net=in.net \n"
   " OR \n"
@@ -208,13 +211,13 @@ void usage() {
   "\n"
   "output:\n"
   "   out.chain      output file in chain format containing the untouched chains, the original broken chain and the modified breaking chains. NOTE: this file is chainSort-ed.\n"
-  "   out.bed        output file in bed format containing the coords and information about the removed suspects.\n"
+  "   out.bed        output file in bed format containing the coords and information about the removed chain-breaking alignments.\n"
   "\n"
-  "Most important options for deciding which suspects to remove:\n"
-  "   -LRfoldThreshold=N        threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
-  "   -doPairs                  flag: if set, do test if pairs of suspects can be removed\n"
-  "   -LRfoldThresholdPairs=N   threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / suspect score is at least this fold threshold. Default %1.1f\n"
-  "   -maxPairDistance=N        only consider pairs of suspects where the distance between the end of the upstream suspect and the start of the downstream suspect is at most that many bp (Default %d)\n"
+  "Most important options for deciding which chain-breaking alignments (CBA) to remove:\n"
+  "   -LRfoldThreshold=N        threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / CBA score is at least this fold threshold. Default %1.1f\n"
+  "   -doPairs                  flag: if set, do test if pairs of CBAs can be removed\n"
+  "   -LRfoldThresholdPairs=N   threshold for removing local alignment bocks if the score of the left and right fill of brokenChain / CBA score is at least this fold threshold. Default %1.1f\n"
+  "   -maxPairDistance=N        only consider pairs of CBAs where the distance between the end of the upstream CBA and the start of the downstream CBA is at most that many bp (Default %d)\n"
   "\n"
   "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
   "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
@@ -593,7 +596,8 @@ void readChainsOfInterest(char *chainFile) {
       /* need to keep track of the highest chain Id for later when we create new chains representing the removed blocks */
       if (maxChainId < chain->id)
          maxChainId = chain->id;
-       if (onlyThisChr != NULL && (! sameString(onlyThisChr, chain->tName))) 
+      /* experimental. Quickly just run it on the chain with this ID and a suspect with these coords. */
+      if (onlyThisChr != NULL && (! sameString(onlyThisChr, chain->tName))) 
          continue;
 
       if (chainIsOfInterest(chain->id)) {
@@ -991,13 +995,14 @@ void getValidBreaks(struct hashEl *el)
          if (fillGap->next == NULL) 
             break;
 
-      if (onlyThisChr != NULL && (! sameString(onlyThisChr, fillGap->chrom))) 
-         continue;
-      if (onlyThisChr != NULL && onlyThisStart != fillGap->gapEnd)
-         continue;
-      if (onlyThisChr != NULL && onlyThisEnd != fillGap->next->gapStart)
-         continue;
-
+         /* experimental. Quickly just run it on the chain with this ID and a suspect with these coords. */
+         if (onlyThisChr != NULL && (! sameString(onlyThisChr, fillGap->chrom))) 
+            continue;
+         if (onlyThisChr != NULL && onlyThisStart != fillGap->gapEnd)
+            continue;
+         if (onlyThisChr != NULL && onlyThisEnd != fillGap->next->gapStart)
+            continue;
+         /* */
 
          verbose(2, "\t\tconsider break candidate:  depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d    AND    depth %d  chainID %d  fill: %s:%d-%d  gap: %d-%d %d\n", 
             fillGap->depth, fillGap->chainId, fillGap->chrom, fillGap->fillStart, fillGap->fillEnd, fillGap->gapStart, fillGap->gapEnd, fillGap->parentChainId, 
