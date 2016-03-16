@@ -61,6 +61,7 @@ use vars qw/
     $opt_noLoadChainSplit
     $opt_loadChainSplit
 	 $opt_clusterType
+	 $opt_doNotRescoreSubNets
     /;
 $opt_clusterType = "";
 
@@ -136,6 +137,7 @@ print STDERR <<_EOF_
                                   axtChain command.
     -chainLinearGap type  Add -linearGap=<loose|medium|filename> to the
                                   axtChain command.  (default: loose)
+    -doNotRescoreSubNets  flag: if set, do not use chainNet -rescore to properly compute score of nested subnets
     -tRepeats table       Add -tRepeats=table to netClass (default: rmsk)
     -qRepeats table       Add -qRepeats=table to netClass (default: rmsk)
     -ignoreSelf           Do not assume self alignments even if tDb == qDb
@@ -271,6 +273,7 @@ my %defVars = ();
 my ($DEF, $tDb, $qDb, $QDb, $isSelf, $selfSplit, $buildDir,$hub,$clusterRun,$paraRun,$paraReChain,$paraNetChain);
 my ($swapDir, $splitRef, $inclHap, $secondsStart, $secondsEnd);
 my $clusterType = "";
+my $rescoreSubNets = "";
 
 sub isInDirList {
   # Return TRUE if $dir is under (begins with) something in dirList.
@@ -313,7 +316,8 @@ sub checkOptions {
             "inclHap",
             "noLoadChainSplit",
             "loadChainSplit",
-		      "clusterType=s"
+		      "clusterType=s",
+		      "doNotRescoreSubNets"
 		     );
   &usage(1) if (!$ok);
   &usage(0, 1) if ($opt_help);
@@ -1448,7 +1452,7 @@ cat run.time\n";
 #!/bin/csh -ef
 # Make nets ("noClass", i.e. without rmsk/class stats which are added later):
 chainPreNet $inclHap $chain $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} stdout \\
-| chainNet $inclHap stdin -minSpace=1 $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} stdout /dev/null \\
+| chainNet $inclHap stdin -minSpace=1 $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} stdout /dev/null $rescoreSubNets \\
 | netSyntenic stdin noClass.net
 
 # Make liftOver chains:
@@ -2255,6 +2259,18 @@ if ($cleanChains == 1) {
 	print "NO chain cleaning. \n";
 }
 
+
+if ($opt_doNotRescoreSubNets) {
+	$rescoreSubNets = "";
+	print "chainNet will NOT compute real subnet scores but will approximate them. \n";
+}else{
+	my $matrix = $defVars{'BLASTZ_Q'} ? "-scoreScheme=$defVars{BLASTZ_Q} " : "";
+	my $linearGap = $opt_chainLinearGap ? "-linearGap=$opt_chainLinearGap" : "-linearGap=$defaultChainLinearGap";
+	my $seq1Dir = $defVars{'SEQ1_CTGDIR'} || $defVars{'SEQ1_DIR'};
+	my $seq2Dir = $defVars{'SEQ2_CTGDIR'} || $defVars{'SEQ2_DIR'};
+	$rescoreSubNets = " -rescore $matrix $linearGap -tNibDir=$seq1Dir -qNibDir=$seq2Dir ";
+	print "chainNet will compute real subnet scores (parameters: $rescoreSubNets \n";
+}
 
 $chainingQueue = $defVars{'CHAININGQUEUE'} if (exists $defVars{'CHAININGQUEUE'});
 die "ERROR: variable CHAININGQUEUE in DEF $chainingQueue is neither long/medium/short\n" if (! ($chainingQueue eq "long" || $chainingQueue eq "medium" || $chainingQueue eq "short"));
