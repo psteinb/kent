@@ -1,5 +1,9 @@
 /* chainNet - Make alignment nets out of chains. */
 
+/* March 2016: Michael Hiller (MPI-CBG, Dresden) added code to rescore the sub-nets properly. 
+   The added code mostly comes from chainCleaner, which comes more or less from the kent source code 
+*/
+
 /* Copyright (C) 2014 The Regents of the University of California 
  * See README in this or parent directory for licensing information. */
 #include "common.h"
@@ -11,6 +15,12 @@
 #include "rbTree.h"
 #include "chainBlock.h"
 #include "portable.h"
+#include "gapCalc.h"
+#include "chainConnect.h"
+#include "twoBit.h"
+#include "axt.h"
+#include "nib.h"
+
 
 
 int minSpace = 25;	/* Minimum gap size to fill. */
@@ -18,12 +28,41 @@ int minFill;		/* Minimum fill to record. */
 double minScore = 2000;	/* Minimum chain score to look at. */
 boolean inclHap = FALSE; /* include haplotype pseudochromosome queries */
 
+
+/* flag: if set, compute the real score of the sub-net (do not approximate based on the fraction of aligning bases in the subnet) */
+boolean rescore = FALSE;
+
+/* for chain scoring */
+char *gapFileName = NULL;
+struct gapCalc *gapCalc = NULL;   /* Gap scoring scheme to use. */
+struct axtScoreScheme *scoreScheme = NULL;
+
+/* for the target and query DNA seqs */
+char *tNibDir = NULL;    /* t and q nib or 2bit file */
+char *qNibDir = NULL;
+boolean tIsTwoBit;       /* flags */
+boolean qIsTwoBit;
+/* contains pointers to the open 2bit files */
+struct hash *twoBitFileHash = NULL;
+/* hash keyed by target chromname, holding pointers to the seq */
+struct hash *tSeqHash = NULL;
+/* hash keyed by query chromname, holding pointers to the seq */
+struct hash *qSeqHash = NULL;
+/* hash keyed by query chromname, will hold a pointer to the reverse complemented seq. But we fill it on demand */
+struct hash *qSeqMinusStrandHash = NULL;
+
+
 /* command line option specifications */
 static struct optionSpec optionSpecs[] = {
     {"minSpace", OPTION_INT},
     {"minFill", OPTION_INT},
     {"minScore", OPTION_DOUBLE},
     {"inclHap", OPTION_BOOLEAN},
+    {"rescore", OPTION_BOOLEAN},
+    {"tNibDir", OPTION_STRING},
+    {"qNibDir", OPTION_STRING},
+    {"scoreScheme", OPTION_STRING},
+    {"linearGap", OPTION_STRING},
     {NULL, 0}
 };
 
@@ -48,7 +87,24 @@ errAbort(
   "   -inclHap - include query sequences name in the form *_hap*|*_alt*.\n"
   "              Normally these are excluded from nets as being haplotype\n"
   "              pseudochromosomes\n"
-  , minSpace, minScore);
+  "\n"
+  "\n"
+  "   -rescore                    compute the real score of the sub-net (instead of approximating it based on the fraction of aligning bases in the subnet)\n"
+  "                               The real score will be much more precise especially for imbalanced chains where most aligning blocks are on one side.\n"
+  "                               This flag will set minScore=0. Each subnet with a negative score gets score 0. Afterwards, run a non-nested score filter.\n"
+  "                               Note: Rescoring is only implemented for the target species net.\n"
+  "                               With this flag, you need to give the target and query genome sequence (-tNibDir and -qNibDir) and specify -linearGap\n"
+  "   -tNibDir=fileName           target genome file (2bit or nib format)\n"
+  "   -qNibDir=fileName           query genome file (2bit or nib format)\n"
+  "   -scoreScheme=fileName       Read the scoring matrix from a blastz-format file\n"
+  "   -linearGap=<medium|loose|filename> Specify type of linearGap to use.\n"
+  "              *Must* specify this argument to one of these choices.\n"
+  "              loose is chicken/human linear gap costs.\n"
+  "              medium is mouse/human linear gap costs.\n"
+  "              Or specify a piecewise linearGap tab delimited file.\n"
+  "   sample linearGap file (loose)\n"
+  "%s"
+  , minSpace, minScore, gapCalcSampleFileContents());
 }
 
 struct gap
@@ -89,6 +145,110 @@ struct chrom
     struct rbTree *spaces;  /* Store gaps here for fast lookup. Items are spaces. */
     };
 
+
+/****************************************************************/
+/* functions for proper subnet re scoring */
+
+
+/****************************************************************
+   Load sequence and add to hash, unless it is already loaded.  Do not reverse complement.
+****************************************************************/
+void loadSeq(char *seqPath, boolean isTwoBit, char *newName, struct hash *hash) {
+   struct dnaSeq *seq;
+
+   if (hashFindVal(hash, newName) == NULL)  {
+      /* need to load */
+      if (isTwoBit) {
+         struct twoBitFile *tbf = hashMustFindVal(twoBitFileHash, seqPath);
+         seq = twoBitReadSeqFrag(tbf, newName, 0, 0);
+         verbose(3, "\t\t\tLoaded %d bases of %s from %s\n", seq->size, newName, seqPath);
+      } else {
+         char fileName[512];
+         snprintf(fileName, sizeof(fileName), "%s/%s.nib", seqPath, newName);
+         seq = nibLoadAllMasked(NIB_MASK_MIXED, fileName);
+         verbose(3, "\t\t\tLoaded %d bases in %s\n", seq->size, fileName);
+      }
+      hashAdd(hash, newName, seq);
+   }
+}
+
+
+/****************************************************************
+   Loads the t and q seq by calling loadSeq unless we loaded them already
+****************************************************************/
+void loadTandQSeqsIfNecessary(struct chain *chain) {
+    if (hashFindVal(tSeqHash, chain->tName) == NULL) {
+        verbose(3, "\t\tload t seq %s for chain id %d\n", chain->tName, chain->id);
+        loadSeq(tNibDir, tIsTwoBit, chain->tName, tSeqHash);
+    }
+
+    if (hashFindVal(qSeqHash, chain->qName) == NULL) {
+        verbose(3, "\t\tload q seq %s for chain id %d\n", chain->qName, chain->id);
+        loadSeq(qNibDir, qIsTwoBit, chain->qName, qSeqHash);    
+    }
+}
+
+
+/****************************************************************
+   return dnaSeq struct from hash 
+   abort if the dnaSeq is not in the hash
+   if strand is - (must be a query seq), look up in qSeqMinusStrandHash and fill if not already present 
+****************************************************************/
+struct dnaSeq *getSeqFromHash(char *chrom, char strand, struct hash *hash) {
+   struct dnaSeq *seq = hashFindVal(hash, chrom);
+
+   if (seq == NULL)
+      errAbort("ERROR: seq %s is not loaded in hash\n", chrom);
+
+   if (strand == '+') {
+      verbose(4, "\t\t\tgetSeqFromHash: load %s %c from hash\n", chrom, strand); fflush(stdout);
+      return seq;
+   } else {
+      /* must be query seq */
+      /* check if we have this seq in the qSeqMinusStrandHash */
+      struct dnaSeq *rcSeq = hashFindVal(qSeqMinusStrandHash, chrom);
+      if (rcSeq != NULL) {
+         verbose(4, "\t\t\tgetSeqFromHash: load %s %c from revcomp hash\n", chrom, strand); fflush(stdout);
+         return rcSeq;
+      } else {
+         /* get rc seq, store in hash and return */
+         rcSeq = cloneDnaSeq(seq);
+         reverseComplement(rcSeq->dna, rcSeq->size);
+         hashAdd(qSeqMinusStrandHash, chrom, rcSeq);
+         verbose(4, "\t\t\tgetSeqFromHash: add %s %c to revcomp hash\n", chrom, strand); fflush(stdout);
+         return rcSeq;
+      }
+   }
+   return NULL;
+}
+
+
+/****************************************************************
+   calculate the score of the given chain, both the local (always >0) and the global score
+   sets chain->score to the global score (needed for final rescoring of the breaking chains)
+   returns both global and local score in the double pointers
+****************************************************************/
+double getChainScore (struct chain *chain) {
+   struct dnaSeq *qSeq = NULL, *tSeq = NULL;
+   double score;
+
+    /* load the target / query sequence unless they are loaded already */
+    loadTandQSeqsIfNecessary(chain);
+
+   /* get pointer to the seqs */
+   qSeq = getSeqFromHash(chain->qName, chain->qStrand, qSeqHash);
+   tSeq = getSeqFromHash(chain->tName, '+', tSeqHash);
+
+   score = chainCalcScore(chain, scoreScheme, gapCalc, qSeq, tSeq);
+    /* set score to 0 if it is negative. Idea: Let all nets pass at this step (even if negative). We later filter them non-nested. */
+    if (score < 0) 
+        score = 0;
+    verbose(2, "\t\tRecompute the score of sub-chain %d : %d\n", chain->id, (int)score);
+   return score;
+}
+
+
+/****************************************************************/
 
 static boolean inclQuery(struct chain *chain)
 /* should this query be included? */
@@ -637,6 +797,8 @@ void subchainInfo(struct chain *chain, int start, int end, boolean isQ,
 /* Return score of subchain. */
 {
 int fullSize = chainBaseCount(chain);
+struct chain *subChain = NULL, *chainToFree = NULL;
+
 if (isQ)
     {
     if (chain->qStrand == '-')
@@ -652,7 +814,7 @@ if (isQ)
 	*retScore = chain->score * subSize / fullSize;
 	*retSize = subSize;
 	// uglyf("subchainInfo Q%c %d,%d %d,%d ali %d, subSize %d, score %f, subScore %f\n", chain->qStrand, start, end, chain->qStart, chain->qEnd, fullSize, subSize, chain->score, *retScore);
-	}
+    }
     }
 else
     {
@@ -662,11 +824,21 @@ else
 	*retSize = fullSize;
 	}
     else
-        {
-	int subSize = chainBaseCountSubT(chain, start, end);
-	*retScore = chain->score * subSize / fullSize;
-	*retSize = subSize;
-	}
+   {
+        int subSize = chainBaseCountSubT(chain, start, end);
+        *retSize = subSize;
+
+        /* proper re-scoring of this subnet */
+        if (rescore) {
+            chainSubsetOnT(chain, start, end, &subChain, &chainToFree);
+            *retScore = getChainScore(subChain);
+            chainFree(&chainToFree);
+
+        /* approximating the score based on the fraction of aligning bases in the subnet */
+        }else{
+            *retScore = chain->score * subSize / fullSize;
+        }
+    }
     }
 }
 
@@ -741,7 +913,6 @@ if (lf != NULL)
     lineFileClose(&lf);
     }
 }
-
 
 
 void chainNet(char *chainFile, char *tSizes, char *qSizes, 
@@ -833,6 +1004,9 @@ if (verboseLevel() > 1)
 int main(int argc, char *argv[])
 /* Process command line. */
 {
+char *scoreSchemeName = NULL;
+struct twoBitFile *tbf;
+
 optionInit(&argc, argv, optionSpecs);
 if (argc != 6)
     usage();
@@ -840,6 +1014,58 @@ minSpace = optionInt("minSpace", minSpace);
 minFill = optionInt("minFill", minSpace/2);
 minScore = optionInt("minScore", minScore);
 inclHap = optionExists("inclHap");
+
+rescore = optionExists("rescore");
+
+/* if we compute real subnet scores, get additional parameters and open 2bit */
+if (rescore) {
+    minScore=0; /* set minScore to 0 because real subnet scores can be negative (in which case we set them to 0) */
+
+    tNibDir = optionVal("tNibDir", NULL);
+    qNibDir = optionVal("qNibDir", NULL);
+    if (tNibDir == NULL)
+        errAbort("With -rescore you must specify the target genome file (parameter -tNibDir)\n");
+    if (qNibDir == NULL)
+        errAbort("With -rescore you must specify the query genome file (parameter -qNibDir)\n");
+    tIsTwoBit = twoBitIsFile(tNibDir);
+    qIsTwoBit = twoBitIsFile(qNibDir);
+
+    gapFileName = optionVal("linearGap", NULL);
+    scoreSchemeName = optionVal("scoreScheme", NULL);
+
+    /* load score scheme */
+    if (scoreSchemeName != NULL) {
+        verbose(1, "Reading scoring matrix from %s\n", scoreSchemeName);
+        scoreScheme = axtScoreSchemeRead(scoreSchemeName);
+    } else {
+        scoreScheme = axtScoreSchemeDefault();
+    }
+    /* load gap costs */
+    if (gapFileName == NULL)
+        errAbort("Must specify linear gap costs.  Use 'loose' or 'medium' for defaults\n");
+    gapCalc = gapCalcFromFile(gapFileName);
+
+    /* verbose */
+    verbose(1, "-rescore is set: read target/query genome from %s and %s. scoreSchemeName %s. gap costs %s.\n", tNibDir, qNibDir, (scoreSchemeName != NULL ? scoreSchemeName : "default"), gapFileName);
+    
+    
+    verbose(2, "reading target and query DNA sequences for breaking and broken chains ...\n");
+    /* open the 2bit files if t or q seq is given as a 2bit file */
+    twoBitFileHash = newHash(8);
+    if (tIsTwoBit) {
+        tbf = twoBitOpen(tNibDir);
+        hashAdd(twoBitFileHash, tNibDir, tbf);
+    }
+    if (qIsTwoBit) {
+        tbf = twoBitOpen(qNibDir);
+        hashAdd(twoBitFileHash, qNibDir, tbf);
+    }
+    tSeqHash = newHash(0);
+    qSeqHash = newHash(0);
+    qSeqMinusStrandHash = newHash(0);
+    dnaUtilOpen();
+}
+
 chainNet(argv[1], argv[2], argv[3], argv[4], argv[5]);
 return 0;
 }
