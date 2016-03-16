@@ -107,6 +107,14 @@ struct track
     int (*itemRightPixels)(struct track *tg, void *item);
     /* Return number of pixels needed to right of item for additional labeling. (Optional) */
 
+    void (*preDrawMultiRegion)(struct track *tg);
+    /* Handle multi-region issues after predraw and before draw such as autoScale for wigs. */
+
+    void (*preDrawItems)(struct track *tg, int seqStart, int seqEnd,
+	struct hvGfx *hvg, int xOff, int yOff, int width,
+	MgFont *font, Color color, enum trackVisibility vis);
+    /* Do PreDraw item list, one per track. */
+
     void (*drawItems)(struct track *tg, int seqStart, int seqEnd,
 	struct hvGfx *hvg, int xOff, int yOff, int width,
 	MgFont *font, Color color, enum trackVisibility vis);
@@ -449,6 +457,7 @@ extern boolean virtMode;            /* Are we in virtual chrom mode? */
 extern boolean virtChromChanged;     /* Has the virtChrom changed? */
 extern boolean emAltHighlight;      /* Highlight alternativing regions in virt view? */
 extern int emPadding;               /* # bases padding for exon-mostly regions */
+extern int gmPadding;               /* # bases padding for gene-mostly regions */
 extern char *emGeneTable;           /* Gene table to use for exon mostly */
 extern struct track *emGeneTrack;   /* Track for gene table for exon mostly */
 extern struct rgbColor vertWindowSeparatorColor; /* color for vertical windows separator */
