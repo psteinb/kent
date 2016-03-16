@@ -240,7 +240,7 @@ double getChainScore (struct chain *chain) {
    score = chainCalcScore(chain, scoreScheme, gapCalc, qSeq, tSeq);
    /* set score to 1 if it is negative. Idea: Let all nets pass at this step (even if negative). We later filter them non-nested. 
       We set the score to 1 and not 0 because not netClass removes the score field for score=0 nets */
-   if (score < 0) 
+   if (score <= 0) 
        score = 1;
    verbose(2, "\t\tRecompute the score of sub-chain %d : %d\n", chain->id, (int)score);
    return score;
