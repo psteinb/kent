@@ -91,7 +91,7 @@ errAbort(
   "\n"
   "   -rescore                    compute the real score of the sub-net (instead of approximating it based on the fraction of aligning bases in the subnet)\n"
   "                               The real score will be much more precise especially for imbalanced chains where most aligning blocks are on one side.\n"
-  "                               This flag will set minScore=0. Each subnet with a negative score gets score 0. Afterwards, run a non-nested score filter.\n"
+  "                               This flag will set minScore=0. Each subnet with a negative score gets score 1. Afterwards, run a non-nested score filter.\n"
   "                               Note: Rescoring is only implemented for the target species net.\n"
   "                               With this flag, you need to give the target and query genome sequence (-tNibDir and -qNibDir) and specify -linearGap\n"
   "   -tNibDir=fileName           target genome file (2bit or nib format)\n"
@@ -224,26 +224,25 @@ struct dnaSeq *getSeqFromHash(char *chrom, char strand, struct hash *hash) {
 
 
 /****************************************************************
-   calculate the score of the given chain, both the local (always >0) and the global score
-   sets chain->score to the global score (needed for final rescoring of the breaking chains)
-   returns both global and local score in the double pointers
+   calculate the score of the given subchain
 ****************************************************************/
 double getChainScore (struct chain *chain) {
    struct dnaSeq *qSeq = NULL, *tSeq = NULL;
    double score;
 
-    /* load the target / query sequence unless they are loaded already */
-    loadTandQSeqsIfNecessary(chain);
+   /* load the target / query sequence unless they are loaded already */
+   loadTandQSeqsIfNecessary(chain);
 
    /* get pointer to the seqs */
    qSeq = getSeqFromHash(chain->qName, chain->qStrand, qSeqHash);
    tSeq = getSeqFromHash(chain->tName, '+', tSeqHash);
 
    score = chainCalcScore(chain, scoreScheme, gapCalc, qSeq, tSeq);
-    /* set score to 0 if it is negative. Idea: Let all nets pass at this step (even if negative). We later filter them non-nested. */
-    if (score < 0) 
-        score = 0;
-    verbose(2, "\t\tRecompute the score of sub-chain %d : %d\n", chain->id, (int)score);
+   /* set score to 1 if it is negative. Idea: Let all nets pass at this step (even if negative). We later filter them non-nested. 
+      We set the score to 1 and not 0 because not netClass removes the score field for score=0 nets */
+   if (score < 0) 
+       score = 1;
+   verbose(2, "\t\tRecompute the score of sub-chain %d : %d\n", chain->id, (int)score);
    return score;
 }
 
