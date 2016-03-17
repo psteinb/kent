@@ -1378,13 +1378,38 @@ sub doCleanChains {
 #  my $minScore = $opt_chainMinScore ? "-minScore=$opt_chainMinScore" : "";
   my $linearGap = $opt_chainLinearGap ? "-linearGap=$opt_chainLinearGap" : "-linearGap=$defaultChainLinearGap";
 
+  #customise the $paraCleanChain depending upon the clusterType and create joblist file to run chainClean step on falcon cluster ONLY
+  my $paraCleanChain='./cleanChains.csh';
+  if ($clusterType eq "falcon"){
+	# request 20 GB
+  	$paraCleanChain = "
+para.pl make cleanChain_$tDb$qDb jobListChainCleaner -q short  -p '-R \"rusage[mem=20000]\"'\n
+para.pl check cleanChain_$tDb$qDb\n
+para.pl time cleanChain_$tDb$qDb > run.time.chainClean\n
+cat run.time.chainClean\n";
+   open FILE, ">$runDir/jobListChainCleaner" or die $!; 
+   print FILE "./cleanChains.csh\n";
+   close FILE;
+ }
 
- my $whatItDoes =
-"It performs a chainCleaner run on the machine that executes doBlastzChainNet.pl. ";
+  # cleanChains.csh runs the actual chainCleaner command
+  my $fh = &HgAutomate::mustOpen(">$runDir/cleanChains.csh");
+  print $fh <<_EOF_
+#!/bin/csh -ef
+time chainCleaner $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} $defVars{'CLEANCHAIN_PARAMETERS'} >& log.chainCleaner
+_EOF_
+  ;
+  close($fh);
+
+ my $whatItDoes = "It performs a chainCleaner run on the cluster.";
+
+  # script that we execute. This pushes the chainCleaner cluster job.
   my $bossScript = new HgRemoteScript("$runDir/doCleanChain.csh", $hub, $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # clean chain
-time chainCleaner $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} $defVars{'CLEANCHAIN_PARAMETERS'} 
+chmod a+x cleanChains.csh
+$paraCleanChain
+
 gzip $outputChain
   
 # now rename the all[patched].chain.gz later as all[patched].beforeCleaning.chain.gz
@@ -1397,7 +1422,6 @@ _EOF_
 
   $bossScript->execute();
 }  # do clean chains
-
 
 
 
@@ -1437,7 +1461,7 @@ sub netChains {
   my $paraNetChain='./netChains.csh';
   if ($clusterType eq "falcon"){
   	$paraNetChain = "
-para.pl make netChain_$tDb$qDb jobList -q long\n
+para.pl make netChain_$tDb$qDb jobList -q medium\n
 para.pl check netChain_$tDb$qDb\n
 para.pl time netChain_$tDb$qDb > run.time\n
 cat run.time\n";
@@ -1483,7 +1507,7 @@ _EOF_
 #  | gzip -c > axtNet/\$f:t:r.$tDb.$qDb.net.axt.gz
 #end
 # Make mafNet for multiz: one .maf per $tDb seq.
-#mkdir mafNet
+mkdir mafNet
 #foreach f (axtNet/*.$tDb.$qDb.net.axt.gz)
 #  axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. \$f \\
 #        $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
@@ -1503,7 +1527,7 @@ _EOF_
 #| gzip -c > ../axtNet/$tDb.$qDb.net.axt.gz
 
 # Make mafNet for multiz: one .maf for all of $tDb.
-#mkdir ../mafNet
+mkdir ../mafNet
 #axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. ../axtNet/$tDb.$qDb.net.axt.gz \\
 #  $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
 #  stdout \\
