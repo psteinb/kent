@@ -1384,7 +1384,7 @@ sub doCleanChains {
   my $bossScript = new HgRemoteScript("$runDir/doCleanChain.csh", $hub, $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # clean chain
-time chainCleaner $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} $defVars{'CLEANCHAIN_PARAMETERS'} > log.chainCleaning
+time chainCleaner $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} $defVars{'CLEANCHAIN_PARAMETERS'} 
 gzip $outputChain
   
 # now rename the all[patched].chain.gz later as all[patched].beforeCleaning.chain.gz
@@ -1466,48 +1466,48 @@ _EOF_
   	# if we have patched chains, we need to remove the axtChain/chain dir and split the allpatched chains
 	if ($patchChains == 1) {
   		print $fh <<_EOF_
-rm -rf $runDir/chain
-chainSplit $runDir/chain $chain
+#rm -rf $runDir/chain
+#chainSplit $runDir/chain $chain
 _EOF_
  ;
  	}  
   	print $fh <<_EOF_ 
 # Make axtNet for download: one .axt per $tDb seq.
-netSplit noClass.net net
-cd ..
-mkdir axtNet
-foreach f (axtChain/net/*.net)
-netToAxt \$f axtChain/chain/\$f:t:r.chain \\
-  $seq1Dir $seq2Dir stdout \\
-  | axtSort stdin stdout \\
-  | gzip -c > axtNet/\$f:t:r.$tDb.$qDb.net.axt.gz
-end
+#netSplit noClass.net net
+#cd ..
+#mkdir axtNet
+#foreach f (axtChain/net/*.net)
+#netToAxt \$f axtChain/chain/\$f:t:r.chain \\
+#  $seq1Dir $seq2Dir stdout \\
+#  | axtSort stdin stdout \\
+#  | gzip -c > axtNet/\$f:t:r.$tDb.$qDb.net.axt.gz
+#end
 # Make mafNet for multiz: one .maf per $tDb seq.
-mkdir mafNet
-foreach f (axtNet/*.$tDb.$qDb.net.axt.gz)
-  axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. \$f \\
-        $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
-        stdout \\
-  | gzip -c > mafNet/\$f:t:r:r:r:r:r.maf.gz
-end    
+#mkdir mafNet
+#foreach f (axtNet/*.$tDb.$qDb.net.axt.gz)
+#  axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. \$f \\
+#        $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
+#        stdout \\
+#  | gzip -c > mafNet/\$f:t:r:r:r:r:r.maf.gz
+#end    
 _EOF_
 ;
   } 
   else {
     print $fh <<_EOF_ 
 # Make axtNet for download: one .axt for all of $tDb.
-mkdir ../axtNet
-netToAxt -verbose=0 noClass.net $chain \\
-  $seq1Dir $seq2Dir stdout \\
-| axtSort stdin stdout \\
-| gzip -c > ../axtNet/$tDb.$qDb.net.axt.gz
+#mkdir ../axtNet
+#netToAxt -verbose=0 noClass.net $chain \\
+#  $seq1Dir $seq2Dir stdout \\
+#| axtSort stdin stdout \\
+#| gzip -c > ../axtNet/$tDb.$qDb.net.axt.gz
 
 # Make mafNet for multiz: one .maf for all of $tDb.
-mkdir ../mafNet
-axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. ../axtNet/$tDb.$qDb.net.axt.gz \\
-  $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
-  stdout \\
-| gzip -c > ../mafNet/$tDb.$qDb.net.maf.gz
+#mkdir ../mafNet
+#axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. ../axtNet/$tDb.$qDb.net.axt.gz \\
+#  $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
+#  stdout \\
+#| gzip -c > ../mafNet/$tDb.$qDb.net.maf.gz
 _EOF_
     ;      
   }  
@@ -1586,6 +1586,7 @@ _EOF_
 
  	if ($clusterType eq "falcon") {
    		$bossScript->add(<<_EOF_
+
 # Add gap/repeat stats to the net file using database tables:
 # create a tmp dir on genome first
 # in that dir we will scp the noClass.net and run netClass
