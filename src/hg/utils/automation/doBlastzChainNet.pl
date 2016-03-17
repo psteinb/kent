@@ -1384,13 +1384,13 @@ sub doCleanChains {
   my $bossScript = new HgRemoteScript("$runDir/doCleanChain.csh", $hub, $runDir, $whatItDoes, $DEF);
   $bossScript->add(<<_EOF_
 # clean chain
-time chainCleaner $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -LRfoldThreshold=2 -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} $defVars{'CLEANCHAIN_PARAMETERS'} > log.chainCleaning
+time chainCleaner $buildDir/axtChain/$chain $seq1Dir $seq2Dir $outputChain removedSuspects.bed $linearGap $matrix -tSizes=$defVars{SEQ1_LEN} -qSizes=$defVars{SEQ2_LEN} $defVars{'CLEANCHAIN_PARAMETERS'} > log.chainCleaning
 gzip $outputChain
   
 # now rename the all[patched].chain.gz later as all[patched].beforeCleaning.chain.gz
 mv $buildDir/axtChain/$chain $buildDir/axtChain/$renamedChain
   
-# now rename the all[patched].claned.chain.gz later as all[patched].chain.gz
+# now rename the all[patched].cleaned.chain.gz later as all[patched].chain.gz
 mv $buildDir/axtChain/$outputChain.gz $buildDir/axtChain/$chain
 _EOF_
     );
