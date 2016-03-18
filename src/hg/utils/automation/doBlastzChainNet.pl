@@ -1461,7 +1461,7 @@ sub netChains {
   my $paraNetChain='./netChains.csh';
   if ($clusterType eq "falcon"){
   	$paraNetChain = "
-para.pl make netChain_$tDb$qDb jobList -q medium\n
+para.pl make netChain_$tDb$qDb jobList -q medium  -p '-R \"rusage[mem=20000]\"'\n
 para.pl check netChain_$tDb$qDb\n
 para.pl time netChain_$tDb$qDb > run.time\n
 cat run.time\n";
