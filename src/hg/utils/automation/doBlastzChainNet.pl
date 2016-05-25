@@ -95,6 +95,11 @@ my $smallClusterLSF = 'falcon';
 my $workhorseLSF = 'falcon';
 my $fileServerLSF = 'falcon';
 
+my $bigClusterSlurm = 'falcon1';
+my $smallClusterSlurm = 'falcon1';
+my $workhorseSlurm = 'falcon1';
+my $fileServerSlurm = 'falcon1';
+
 my $defaultChainLinearGap = "loose";
 my $defaultChainMinScore = "1000";	# from axtChain itself
 my $defaultTRepeats = "";		# for netClass option tRepeats
@@ -120,8 +125,8 @@ options:
 ";
   print STDERR $stepper->getOptionHelp();
 print STDERR <<_EOF_
-    -clusterType	  MANDATORY: Specify the clusterType as either genome or falcon
-                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on falcon or ask Michael first. 
+    -clusterType	  MANDATORY: Specify the clusterType as either genome or falcon or falcon1
+                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on falcon or falcon1 or ask Michael first. 
     -blastzOutRoot dir    Directory path where outputs of the blastz cluster
                           run will be stored.  By default, they will be
                           stored in the $HgAutomate::clusterData build directory , but
@@ -599,7 +604,7 @@ _EOF_
   my $noJobs = $noJobsT * $noJobsQ;
 
   print ( "*** The number of jobs should not exceed 10,000" ); 
-  if( $clusterType eq "falcon" ) { 
+  if( $clusterType eq "falcon1" || $clusterType eq "falcon") { 
       print( ", and a runtime over 10 minutes" );
   }
   print( " ***\n" ); 
@@ -659,11 +664,11 @@ if($clusterType eq "genome"){
  
  #customize the $myparaRun variable depending upon the clusterType: 
   my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "falcon") {
+  if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
 	$myParaRun = "
-para.pl make blastz_$tDb$qDb jobList -q medium\n
-para.pl check blastz_$tDb$qDb\n
-para.pl time blastz_$tDb$qDb > run.time\n
+para make blastz_$tDb$qDb jobList -q medium\n
+para check blastz_$tDb$qDb\n
+para time blastz_$tDb$qDb > run.time\n
 cat run.time\n";
 }
 
@@ -726,13 +731,13 @@ _EOF_
 #customize the $myparaRun variable depending upon the clusterType: 
 # Now the cat is executed as a single job in the medium queue (can take ~30 min total)
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "falcon") {
+  if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
 	$myParaRun = "
 echo \"jobList\" > jobListCombinedClusterJob\n
 chmod +x jobList\n
-para.pl make catRun_$tDb$qDb jobListCombinedClusterJob -q medium\n
-para.pl check catRun_$tDb$qDb\n
-para.pl time catRun_$tDb$qDb > run.time\n
+para make catRun_$tDb$qDb jobListCombinedClusterJob -q medium\n
+para check catRun_$tDb$qDb\n
+para time catRun_$tDb$qDb > run.time\n
 cat run.time\n";
 }
   my $whatItDoes =
@@ -799,11 +804,11 @@ _EOF_
   close($fh);
 #customize the $myparaRun variable depending upon the clusterType: 
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "falcon") {
+  if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
 	$myParaRun = "
-para.pl make filterPsl_$tDb$qDb jobList -q medium\n
-para.pl check filterPsl_$tDb$qDb\n
-para.pl time filterPsl_$tDb$qDb > run.time\n
+para make filterPsl_$tDb$qDb jobList -q medium\n
+para check filterPsl_$tDb$qDb\n
+para time filterPsl_$tDb$qDb > run.time\n
 cat run.time\n";
 }
   
@@ -1013,11 +1018,11 @@ _EOF_
   &makePslPartsLst();
 #customize the $myparaRun variable depending upon the clusterType: 
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "falcon") {
+  if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
 	$myParaRun = "
-para.pl make chainRun_$tDb$qDb jobList -q $chainingQueue\n
-para.pl check chainRun_$tDb$qDb\n
-para.pl time chainRun_$tDb$qDb > run.time\n
+para make chainRun_$tDb$qDb jobList -q $chainingQueue\n
+para check chainRun_$tDb$qDb\n
+para time chainRun_$tDb$qDb > run.time\n
 cat run.time\n";
 }
 
@@ -1229,11 +1234,11 @@ _EOF_
   close($fh);
 #customize the $myparaRun variable depending upon the clusterType:
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "falcon") {
+  if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
 	$myParaRun = "
-para.pl make patchChain_$tDb$qDb jobList -q medium\n
-para.pl check patchChain_$tDb$qDb\n
-para.pl time patchChain_$tDb$qDb > run.time\n
+para make patchChain_$tDb$qDb jobList -q medium\n
+para check patchChain_$tDb$qDb\n
+para time patchChain_$tDb$qDb > run.time\n
 cat run.time\n";
 }
 
@@ -1283,11 +1288,11 @@ para make jobListReChain\n
 para check\n
 para time > run.timeReChain\n
 cat run.timeReChain\n";
-   if ($clusterType eq "falcon") {
+   if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
 	$paraReChain = "
-para.pl make ReChain_$tDb$qDb jobListReChain -q $chainingQueue\n
-para.pl check ReChain_$tDb$qDb\n
-para.pl time ReChain_$tDb$qDb > run.timeReChain\n
+para make ReChain_$tDb$qDb jobListReChain -q $chainingQueue\n
+para check ReChain_$tDb$qDb\n
+para time ReChain_$tDb$qDb > run.timeReChain\n
 cat run.time\n";
 }
 
@@ -1380,12 +1385,12 @@ sub doCleanChains {
 
   #customise the $paraCleanChain depending upon the clusterType and create joblist file to run chainClean step on falcon cluster ONLY
   my $paraCleanChain='./cleanChains.csh';
-  if ($clusterType eq "falcon"){
+  if ($clusterType eq "falcon1" || $clusterType eq "falcon"){
 	# request 20 GB
   	$paraCleanChain = "
-para.pl make cleanChain_$tDb$qDb jobListChainCleaner -q short  -p '-R \"rusage[mem=20000]\"'\n
-para.pl check cleanChain_$tDb$qDb\n
-para.pl time cleanChain_$tDb$qDb > run.time.chainClean\n
+para make cleanChain_$tDb$qDb jobListChainCleaner -q short  -p '-R \"rusage[mem=20000]\"'\n
+para check cleanChain_$tDb$qDb\n
+para time cleanChain_$tDb$qDb > run.time.chainClean\n
 cat run.time.chainClean\n";
    open FILE, ">$runDir/jobListChainCleaner" or die $!; 
    print FILE "./cleanChains.csh\n";
@@ -1459,11 +1464,11 @@ sub netChains {
 
   #customise the $paraNetChain depending upon the clusterType and create joblist file to run net step on  falcon cluster ONLY
   my $paraNetChain='./netChains.csh';
-  if ($clusterType eq "falcon"){
+  if ($clusterType eq "falcon1" || $clusterType eq "falcon"){
   	$paraNetChain = "
-para.pl make netChain_$tDb$qDb jobList -q medium  -p '-R \"rusage[mem=20000]\"'\n
-para.pl check netChain_$tDb$qDb\n
-para.pl time netChain_$tDb$qDb > run.time\n
+para make netChain_$tDb$qDb jobList -q medium  -p '-R \"rusage[mem=20000]\"'\n
+para check netChain_$tDb$qDb\n
+para time netChain_$tDb$qDb > run.time\n
 cat run.time\n";
    open FILE, ">$runDir/jobList" or die $!; 
    print FILE './netChains.csh'."\n";
@@ -1608,7 +1613,7 @@ _EOF_
     	$qRepeats = $opt_tRepeats ? "-qRepeats=$opt_tRepeats" : $defaultTRepeats;
   	}
 
- 	if ($clusterType eq "falcon") {
+ 	if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
    		$bossScript->add(<<_EOF_
 
 # Add gap/repeat stats to the net file using database tables:
@@ -2215,9 +2220,9 @@ _EOF_
 # initializations depending on the cluster type
 $clusterType = $opt_clusterType;
 # first, check if clusterType is specified
-die "ERROR: you have to specify -clusterType parameter. Should be either genome or falcon\n" if ($clusterType eq "");
+die "ERROR: you have to specify -clusterType parameter. Should be either genome or falcon or falcon1\n" if ($clusterType eq "");
 # second check if clusterType is either genome or falcon
-die "ERROR: -clusterType must be either genome or falcon. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "falcon")) );
+die "ERROR: -clusterType must be either genome or falcon or falcon1. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "falcon1") || ($clusterType eq "falcon") ) );
 # third check if the script is executed at the given $clusterType
 die "ERROR: you gave clusterType $clusterType but you execute the code on $ENV{'HOSTNAME'}\n" if ($clusterType ne $ENV{'HOSTNAME'});
 
@@ -2226,6 +2231,10 @@ if ($clusterType eq 'genome'){
     $fileServer = $fileServerGenome;
     $workhorse = $workhorseGenome;
 	 $hub = $bigClusterHub;
+}elsif($clusterType eq 'falcon1'){
+    $workhorse = $workhorseSlurm;
+    $fileServer = $fileServerSlurm;
+    $hub = $bigClusterSlurm;
 }elsif($clusterType eq 'falcon'){
     $workhorse = $workhorseLSF;
     $fileServer = $fileServerLSF;
