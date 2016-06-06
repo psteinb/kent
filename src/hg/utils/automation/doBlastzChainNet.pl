@@ -1512,7 +1512,7 @@ _EOF_
 #  | gzip -c > axtNet/\$f:t:r.$tDb.$qDb.net.axt.gz
 #end
 # Make mafNet for multiz: one .maf per $tDb seq.
-mkdir mafNet
+mkdir ../mafNet
 #foreach f (axtNet/*.$tDb.$qDb.net.axt.gz)
 #  axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. \$f \\
 #        $defVars{SEQ1_LEN} $defVars{SEQ2_LEN} \\
