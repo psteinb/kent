@@ -1475,9 +1475,18 @@ sub netChains {
 
   #customise the $paraNetChain depending upon the clusterType and create joblist file to run net step on  falcon cluster ONLY
   my $paraNetChain='./netChains.csh';
-  if ($clusterType eq "falcon1" || $clusterType eq "falcon"){
+  if ($clusterType eq "falcon"){
   	$paraNetChain = "
 para make netChain_$tDb$qDb jobList -q medium  -p '-R \"rusage[mem=20000]\"'\n
+para check netChain_$tDb$qDb\n
+para time netChain_$tDb$qDb > run.time\n
+cat run.time\n";
+   open FILE, ">$runDir/jobList" or die $!; 
+   print FILE './netChains.csh'."\n";
+   close FILE;
+ }elsif ($clusterType eq "falcon1"){
+  	$paraNetChain = "
+para make netChain_$tDb$qDb jobList -q medium -memoryMb 25000\n
 para check netChain_$tDb$qDb\n
 para time netChain_$tDb$qDb > run.time\n
 cat run.time\n";
