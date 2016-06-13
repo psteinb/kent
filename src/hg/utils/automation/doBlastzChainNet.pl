@@ -1385,7 +1385,7 @@ sub doCleanChains {
 
   #customise the $paraCleanChain depending upon the clusterType and create joblist file to run chainClean step on falcon cluster ONLY
   my $paraCleanChain='./cleanChains.csh';
-  if ($clusterType eq "falcon1" || $clusterType eq "falcon"){
+  if ($clusterType eq "falcon"){
 	# request 20 GB
   	$paraCleanChain = "
 para make cleanChain_$tDb$qDb jobListChainCleaner -q short  -p '-R \"rusage[mem=20000]\"'\n
@@ -1395,7 +1395,18 @@ cat run.time.chainClean\n";
    open FILE, ">$runDir/jobListChainCleaner" or die $!; 
    print FILE "./cleanChains.csh\n";
    close FILE;
+ }elsif ($clusterType eq "falcon1"){
+	# request 25 GB
+  	$paraCleanChain = "
+para make cleanChain_$tDb$qDb jobListChainCleaner -q short  -memoryMb 25000\n
+para check cleanChain_$tDb$qDb\n
+para time cleanChain_$tDb$qDb > run.time.chainClean\n
+cat run.time.chainClean\n";
+   open FILE, ">$runDir/jobListChainCleaner" or die $!; 
+   print FILE "./cleanChains.csh\n";
+   close FILE;
  }
+ 
 
   # cleanChains.csh runs the actual chainCleaner command
   my $fh = &HgAutomate::mustOpen(">$runDir/cleanChains.csh");
