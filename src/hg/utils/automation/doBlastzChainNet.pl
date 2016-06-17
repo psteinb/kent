@@ -1018,13 +1018,21 @@ _EOF_
   &makePslPartsLst();
 #customize the $myparaRun variable depending upon the clusterType: 
 my $myParaRun = $HgAutomate::paraRun;
-  if ($clusterType eq "falcon1" || $clusterType eq "falcon") {
+  if ($clusterType eq "falcon") {
 	$myParaRun = "
 para make chainRun_$tDb$qDb jobList -q $chainingQueue\n
 para check chainRun_$tDb$qDb\n
 para time chainRun_$tDb$qDb > run.time\n
 cat run.time\n";
+}elsif ($clusterType eq "falcon1") {
+# request 15 GB of mem for the chaining jobs. Some take more than 5 GB apparently
+	$myParaRun = "
+para make chainRun_$tDb$qDb jobList -q $chainingQueue -memoryMb 15000\n
+para check chainRun_$tDb$qDb\n
+para time chainRun_$tDb$qDb > run.time\n
+cat run.time\n";
 }
+
 
   my $whatItDoes =
 "It sets up and performs a small cluster run to chain all alignments
@@ -1396,9 +1404,9 @@ cat run.time.chainClean\n";
    print FILE "./cleanChains.csh\n";
    close FILE;
  }elsif ($clusterType eq "falcon1"){
-	# request 25 GB
+	# request 60 GB
   	$paraCleanChain = "
-para make cleanChain_$tDb$qDb jobListChainCleaner -q short  -memoryMb 25000\n
+para make cleanChain_$tDb$qDb jobListChainCleaner -q short  -memoryMb 60000\n
 para check cleanChain_$tDb$qDb\n
 para time cleanChain_$tDb$qDb > run.time.chainClean\n
 cat run.time.chainClean\n";
