@@ -174,8 +174,11 @@ push @okOut, $buildDir;
   my $inHive = 0;
   $inHive = 1 if ($okIn[0] =~ m#/hive/data/genomes#);
   my $clusterSeqDir = "$okIn[0]/$db";
+  $clusterSeqDir = "$buildDir" if ($opt_unmaskedSeq);
   my $clusterSeq = "$clusterSeqDir/$db.unmasked.2bit";
+  $clusterSeq = "$unmaskedSeq" if ($opt_unmaskedSeq);
   my $partDir .= "$okOut[0]/$db/RMPart";
+  $partDir = "$buildDir/RMPart" if ($opt_unmaskedSeq);
   my $species = $opt_species ? $opt_species : &HgAutomate::getSpecies($dbHost, $db);
   my $customLib = $opt_customLib;
   my $repeatLib = "";
@@ -334,18 +337,29 @@ echo "# RepeatMasker library options: '$repeatLib'"
 _EOF_
     );
   }
-  if (! $inHive) {
+  if ( ! $opt_unmaskedSeq && ! $inHive) {
     $bossScript->add(<<_EOF_
 mkdir -p $clusterSeqDir
 rsync -av $unmaskedSeq $clusterSeq
 _EOF_
     );
   }
-  $bossScript->add(<<_EOF_
+  if ($opt_unmaskedSeq) {
+    $bossScript->add(<<_EOF_
+rm -rf $partDir
+$Bin/simplePartition.pl $clusterSeq 500000 $partDir
+_EOF_
+    );
+  } else {
+    $bossScript->add(<<_EOF_
 rm -rf $partDir
 $Bin/simplePartition.pl $clusterSeq 4000000 $partDir
 rm -f $buildDir/RMPart
 ln -s $partDir $buildDir/RMPart
+_EOF_
+    );
+  }
+  $bossScript->add(<<_EOF_
 
 $HgAutomate::gensub2 $partDir/partitions.lst single gsub jobList
 
@@ -353,7 +367,7 @@ $myParaRun
 
 _EOF_
   );
-  if (! $inHive) {
+  if (! $opt_unmaskedSeq && ! $inHive) {
     $bossScript->add(<<_EOF_
 rm -f $clusterSeq
 _EOF_

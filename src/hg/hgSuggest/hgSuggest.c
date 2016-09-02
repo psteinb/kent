@@ -7,17 +7,12 @@
 #include "jksql.h"
 #include "hdb.h"
 #include "cheapcgi.h"
+#include "htmshell.h"
 #include "dystring.h"
 #include "jsonParse.h"
 #include "suggest.h"
 #include "genbank.h"
 
-static void fail(char *msg)
-{
-puts("Status: 400\n\n");
-puts(msg);
-exit(-1);
-}
 
 int main(int argc, char *argv[])
 {
@@ -39,13 +34,15 @@ boolean hasKnownCanonical;
 struct dyString *str = newDyString(10000);
 char *table;
 
+pushAbortHandler(htmlVaBadRequestAbort);
 if(prefix == NULL || database == NULL)
-    fail("Missing prefix or database parameter");
+    errAbort("%s", "Missing prefix and/or db CGI parameter");
 
 conn = hAllocConn(database);
 table = connGeneSuggestTable(conn);
 if(table == NULL)
-    fail("gene autosuggest is not supported for this assembly");
+    errAbort("gene autosuggest is not supported for db '%s'", database);
+popAbortHandler();
 
 hasKnownCanonical = sameString(table, "knownCanonical");
 
@@ -87,9 +84,20 @@ while ((row = sqlNextRow(sr)) != NULL)
     // ignore funny chroms (e.g. _hap chroms. See redmine #4257.
     if(!strchr(row[1], '_'))
         {
+        // We have some very long descriptions, e.g. 4277 chars for hg38 CLOCK, so truncate:
+        const int maxDesc = 120;
+        char *description = row[5];
+        if (strlen(description) > maxDesc + 4)
+            strcpy(description + maxDesc, "...");
         count++;
-        dyStringPrintf(str, "%s{\"value\": \"%s (%s)\", \"id\": \"%s:%d-%s\", \"internalId\": \"%s\"}", count == 1 ? "" : ",\n",
-                       row[0], jsonStringEscape(row[5]), row[1], atoi(row[2])+1, row[3], jsonStringEscape(row[4]));
+        dyStringPrintf(str, "%s{\"value\": \"%s (%s)\", "
+                       "\"id\": \"%s:%d-%s\", "
+                       "\"geneSymbol\": \"%s\", "
+                       "\"internalId\": \"%s\"}",
+                       count == 1 ? "" : ",\n", row[0], jsonStringEscape(description),
+                       row[1], atoi(row[2])+1, row[3],
+                       jsonStringEscape(row[0]),
+                       jsonStringEscape(row[4]));
         }
     }
 

@@ -1,3 +1,4 @@
+kentSrc = ../../..
 # Build all directories in makeDb 
 
 include ../../../inc/common.mk
@@ -16,6 +17,7 @@ DIRS = \
 	hgFlyBase \
 	hgGnfMicroarray \
 	hgGtex \
+	hgGtexAse \
 	hgGtexExonBed \
 	hgGtexGeneBed \
 	hgJaxQtl \

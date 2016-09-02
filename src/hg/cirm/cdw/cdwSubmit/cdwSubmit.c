@@ -29,6 +29,7 @@
 
 boolean doUpdate = FALSE;
 boolean noRevalidate = FALSE;
+boolean justTest = FALSE;
 
 void usage()
 /* Explain usage and exit. */
@@ -36,12 +37,18 @@ void usage()
 errAbort(
   "cdwSubmit - Submit URL with validated.txt to warehouse.\n"
   "usage:\n"
-  "   cdwSubmit email /path/to/manifest.tab meta.tag\n"
+  "   cdwSubmit email manifest.txt meta.txt\n"
+  "where email is the email address associated with the data set, typically from the lab, not the\n"
+  "wrangler.  You need to do a cdwAddUser with the email address if it's the first submission \n"
+  "from that user.  Manifest.txt is a tab separated file with a header line and then one line \n"
+  "per file. Meta.txt is in tagStorm format.\n"
+  "\n"
   "options:\n"
   "   -update  If set, will update metadata on file it already has. The default behavior is to\n"
   "            report an error if metadata doesn't match.\n"
   "   -noRevalidate - if set don't run revalidator on update\n"
-  "   -md5=md5sum.txt Take list of file MD5s from output of md5sum command on list of files\n");
+  "   -md5=md5sum.txt Take list of file MD5s from output of md5sum command on list of files\n"
+  "   -test This will look at the manifest and meta, but not actually load the database\n");
 }
 
 char *localPrefix = "local://localhost/";
@@ -52,6 +59,7 @@ static struct optionSpec options[] = {
    {"update", OPTION_BOOLEAN},
    {"noRevalidate", OPTION_BOOLEAN},
    {"md5", OPTION_STRING},
+   {"test", OPTION_BOOLEAN},
    {NULL, 0},
 };
 
@@ -245,8 +253,9 @@ int makeNewEmptySubmitRecord(struct sqlConnection *conn, char *submitUrl, unsign
 /* Create a submit record around URL and return it's id. */
 {
 struct dyString *query = dyStringNew(0);
-sqlDyStringAppend(query, "insert cdwSubmit (url, startUploadTime, userId) ");
-sqlDyStringPrintf(query, "VALUES('%s', %lld,  %d)", submitUrl, cdwNow(), userId);
+sqlDyStringAppend(query, "insert cdwSubmit (url, startUploadTime, userId, wrangler) ");
+sqlDyStringPrintf(query, "VALUES('%s', %lld,  %d, '%s')", submitUrl, cdwNow(), 
+	    userId, getenv("USER"));
 sqlUpdate(conn, query->string);
 dyStringFree(&query);
 return sqlLastAutoId(conn);
@@ -341,9 +350,23 @@ if (context->lastChecked != now)  // Only do check every second
 return context->isInterrupted;
 }
 
+char *metaManiFieldVal(char *field, struct fieldedTable *table, struct fieldedRow *row,
+    int metaIx, struct hash *metaHash)
+/* Look up value of field in table if it exists.  If not in table, look in tagStorm
+ * that is indexed by metaHash.  If not in either return NULL. */
+{
+int tableIx = stringArrayIx(field, table->fields, table->fieldCount);  // In manifest
+if (tableIx >= 0)
+    return row->row[tableIx];
+char *meta = row->row[metaIx];
+struct tagStanza *stanza = hashFindVal(metaHash, meta);
+return tagFindVal(stanza, field);
+}
+
 int cdwFileFetch(struct sqlConnection *conn, struct cdwFile *ef, int fd, 
 	char *submitUrl, unsigned submitId, unsigned submitDirId, unsigned hostId,
-	struct cdwUser *user)
+	struct cdwUser *user, struct fieldedTable *table, struct fieldedRow *row, 
+	int metaIx, struct hash *metaHash)
 /* Fetch file and if successful update a bunch of the fields in ef with the result. 
  * Returns fileId. */
 {
@@ -358,8 +381,17 @@ copyFile(ef->submitFileName, cdwPath);
 chmod(cdwPath, 0444);
 ef->cdwFileName = cloneString(cdwFile);
 ef->endUploadTime = cdwNow();
+char *access = metaManiFieldVal("access", table, row, metaIx, metaHash);
+if (access == NULL)
+    access = "group";
+
 ef->userAccess = cdwAccessWrite;
-ef->groupAccess = cdwAccessRead;
+if (sameString(access, "all"))
+    ef->allAccess = cdwAccessRead;
+else if (sameString(access, "group"))
+    ef->groupAccess = cdwAccessRead;
+else if (!sameString(access, "user"))
+    errAbort("Unknown access %s", access);
 
 /* Now we got the file.  We'll go ahead and save rest of cdwFile record.  This
  * includes tags that may be long, so we make query in a dy. Node that the
@@ -390,14 +422,16 @@ dyStringFree(&dy);
 return ef->id;
 }
 
-int findFileGivenMd5AndSubmitDir(struct sqlConnection *conn, char *md5, int submitDirId)
+int findFileGivenMd5AndSubmitDir(struct sqlConnection *conn, char *md5, char *submitFileName,
+    int submitDirId)
 /* Given hexed md5 and a submitDir see if we have a matching file. */
 {
-char query[256];
+char query[2*PATH_LEN];
 sqlSafef(query, sizeof(query), 
     "select file.id from cdwSubmit sub,cdwFile file "
-    "where file.md5 = '%s' and file.submitId = sub.id and sub.submitDirId = %d"
-    , md5, submitDirId);
+    "where file.md5 = '%s' and file.submitId = sub.id and sub.submitDirId = %d "
+    "and file.submitFileName = '%s'"
+    , md5, submitDirId, submitFileName);
 return sqlQuickNum(conn, query);
 }
 
@@ -497,44 +531,6 @@ while ((c = *s++) != 0)
         errAbort("Character '%c' (binary %d) not allowed in fileName '%s'", c, (int)c, fileName);
 }
 
-void allGoodSymbolChars(char *symbol)
-/* Return TRUE if all chars are good for a basic symbol in a controlled vocab */
-{
-if (!sameString("n/a", symbol))
-    {
-    char c, *s = symbol;
-    while ((c = *s++) != 0)
-	if (!isalnum(c) && c != '_')
-	    errAbort("Character '%c' not allowed in symbol '%s'", c, symbol);
-    }
-}
-
-boolean isExperimentId(char *experiment)
-/* Return TRUE if it looks like an CIRM experiment ID */
-{
-return TRUE;
-}
-
-boolean isAllNum(char *s)
-/* Return TRUE if all characters are numeric (no leading - even) */
-{
-char c;
-while ((c = *s++) != 0)
-    if (!isdigit(c))
-        return FALSE;
-return TRUE;
-}
-
-boolean isAllHexLower(char *s)
-/* Return TRUE if all chars are valid lower case hexadecimal. */
-{
-char c;
-while ((c = *s++) != 0)
-    if (!isdigit(c) && !(c >= 'a' && c <= 'f'))
-        return FALSE;
-return TRUE;
-}
-         
 boolean isSupportedFormat(char *format)
 /* Return TRUE if this is one of our supported formats */
 {
@@ -546,7 +542,7 @@ static char *otherSupportedFormats[] = {"unknown", "fastq", "bam", "bed", "gtf",
     "bed_bedLogR", "bed_bedRrbs", "bed_bedMethyl", "bed_broadPeak", "bed_narrowPeak",
     "bedRnaElements", "openChromCombinedPeaks", "peptideMapping", "shortFrags", 
     "rcc", "idat", "fasta", "customTrack", "pdf", "vcf", "cram", "jpg", "text", "html",
-    "kallisto_abundance",
+    "kallisto_abundance", "expression_matrix",
     };
 static int otherSupportedFormatsCount = ArraySize(otherSupportedFormats);
 if (stringArrayIx(format, otherSupportedFormats, otherSupportedFormatsCount) >= 0)
@@ -556,15 +552,6 @@ if (stringArrayIx(format, otherSupportedFormats, otherSupportedFormatsCount) >= 
 if (startsWith("bed_", format))
     format += 4;
 return cdwIsSupportedBigBedFormat(format);
-}
-
-
-boolean isEmptyOrNa(char *s)
-/* Return TRUE if string is NULL, "", "n/a", or "N/A" */
-{
-if (isEmpty(s))
-    return TRUE;
-return sameWord(s, "n/a");
 }
 
 void prefetchChecks(char *format, char *fileName)
@@ -578,8 +565,9 @@ if (sameString(format, "fastq") || sameString(format, "vcf"))
 }
 
 void getSubmittedFile(struct sqlConnection *conn, char *format,
-    struct tagStorm *tagStorm, struct cdwFile *ef,  
-    char *submitDir, char *submitUrl, int submitId, struct cdwUser *user)
+    struct tagStorm *tagStorm, struct hash *metaHash, struct cdwFile *ef,  
+    char *submitDir, char *submitUrl, int submitId, struct cdwUser *user,
+    struct fieldedTable *table, struct fieldedRow *row, int metaIx)
 /* We know the submission, we know what the file is supposed to look like.  Fetch it.
  * If things go badly catch the error, attach it to the submission record, and then
  * keep throwing. */
@@ -595,9 +583,11 @@ if (errCatchStart(errCatch))
 	&hostId, &submitDirId);
 
     prefetchChecks(format, ef->submitFileName);
-    int fileId = cdwFileFetch(conn, ef, fd, submitUrl, submitId, submitDirId, hostId, user);
+    verbose(1, "copying %s\n", ef->submitFileName);
+    int fileId = cdwFileFetch(conn, ef, fd, submitUrl, submitId, submitDirId, hostId, user,
+	table, row, metaIx, metaHash);
     close(fd);
-    cdwAddQaJob(conn, fileId);
+    cdwAddQaJob(conn, fileId, submitId);
     tellSubscribers(conn, submitDir, ef->submitFileName, fileId);
     }
 errCatchEnd(errCatch);
@@ -670,7 +660,7 @@ sqlUpdate(conn, query);
 }
 
 int handleOldFileTags(struct sqlConnection *conn, 
-    struct hash *metaIdHash, struct submitFileRow *sfrList, boolean update)
+    struct hash *metaIdHash, struct submitFileRow *sfrList, boolean update, int submitId)
 /* Check metadata on files mentioned in manifest that by MD5 sum we already have in
  * warehouse.   We may want to update metadata on these. This returns the number
  * of files with tags updated. */
@@ -718,7 +708,7 @@ for (sfr = sfrList; sfr != NULL; sfr = sfr->next)
 	verbose(1, "updating tags for %s\n", newFile->submitFileName);
 	}
     if (updateMeta || updateTags)
-	cdwFileResetTags(conn, oldFile, newFile->tags, !noRevalidate);
+	cdwFileResetTags(conn, oldFile, newFile->tags, !noRevalidate, submitId);
     if (updateTags || updateName || updateMeta)
 	++updateCount;
     cgiDictionaryFree(&oldTags);
@@ -726,83 +716,6 @@ for (sfr = sfrList; sfr != NULL; sfr = sfr->next)
     }
 return updateCount;
 }
-
-#ifdef UNUSED
-void doValidatedEmail(struct cdwSubmit *submit, boolean isComplete)
-/* Send an email with info on all validated files */
-{
-struct sqlConnection *conn = cdwConnect();
-struct cdwUser *user = cdwUserFromId(conn, submit->userId);
-struct dyString *message = dyStringNew(0);
-/* Is this submission has no new file at all */
-if ((submit->oldFiles != 0) && (submit->newFiles == 0) &&
-    (submit->metaChangeCount == 0)  && isEmpty(submit->errorMessage)
-     && (submit->fileIdInTransit == 0))
-    {
-    dyStringPrintf(message, "Your submission from %s is completed, but validation was not performed for this submission since all files in validate.txt have been previously submitted and validated.\n", submit->url);
-    mailViaPipe(user->email, "CDW Validation Results", message->string, cdwDaemonEmail);
-    sqlDisconnect(&conn);
-    dyStringFree(&message);
-    return;
-    }
-
-if (isComplete)
-    dyStringPrintf(message, "Your submission from %s is completely validated\n", submit->url);
-else
-    dyStringPrintf(message, 
-	"Your submission hasn't validated after 24 hours, something is probably wrong\n"
-	"at %s\n", submit->url);
-dyStringPrintf(message, "\n#accession\tsubmitted_file_name\tnotes\n");
-char query[512];
-sqlSafef(query, sizeof(query),
-    "select licensePlate,submitFileName "
-    " from cdwFile left join cdwValidFile on cdwFile.id = cdwValidFile.fileId "
-    " where cdwFile.submitId = %u and cdwFile.id != %u"
-    , submit->id, submit->manifestFileId);
-struct sqlResult *sr = sqlGetResult(conn, query);
-char **row;
-
-while ((row = sqlNextRow(sr)) != NULL)
-    {
-    char *licensePlate = row[0];
-    char *submitFileName = row[1];
-    dyStringPrintf(message, "%s\t%s\t", naForNull(licensePlate), submitFileName);
-    if (licensePlate == NULL)
-        {
-	dyStringPrintf(message, "Not validating");
-	}
-    dyStringPrintf(message, "\n");
-    }
-sqlFreeResult(&sr);
-
-mailViaPipe(user->email, "CDW Validation Results", message->string, cdwDaemonEmail);
-sqlDisconnect(&conn);
-dyStringFree(&message);
-}
-#endif /* UNUSED */
-
-#ifdef UNUSED
-void waitForValidationAndSendEmail(struct cdwSubmit *submit, char *email)
-/* Poll database every 5 minute or so to see if finished. */
-{
-int maxSeconds = 3600*24;
-int secondsPer = 60*5;
-int seconds;
-for (seconds = 0; seconds < maxSeconds; seconds += secondsPer)
-    {
-    struct sqlConnection *conn = cdwConnect();
-    if (cdwSubmitIsValidated(submit, conn))
-         {
-	 doValidatedEmail(submit, TRUE);
-	 return;
-	 }
-    verbose(2, "waiting for validation\n");
-    sqlDisconnect(&conn);
-    sleep(secondsPer);	// Sleep for 5 more minutes
-    }
-doValidatedEmail(submit, FALSE);
-}
-#endif /* UNUSED */
 
 static void rCheckTagValid(struct tagStorm *tagStorm, struct tagStanza *list)
 /* Check tagStorm tags */
@@ -813,8 +726,11 @@ for (stanza = list; stanza != NULL; stanza = stanza->next)
     struct slPair *pair;
     for (pair = stanza->tagList; pair != NULL; pair = pair->next)
 	{
-	if (!cdwValidateTagVal(pair->name, pair->val))
-	    errAbort("Unknown tag '%s' in %s", pair->name, tagStorm->fileName);
+	cdwValidateTagName(pair->name);
+	if (justTest)	// ugly - will do this outside of test soon
+	    {
+	    cdwValidateTagVal(pair->name, pair->val);
+	    }
 	}
     rCheckTagValid(tagStorm, stanza->children);
     }
@@ -833,7 +749,8 @@ char *formats[] = {"bed", "bigBed", "bigWig", "fastq", "gtf",};
 return stringArrayIx(format, formats, ArraySize(formats)) >= 0;
 }
 
-void checkManifestAndMetadata( struct fieldedTable *table, int fileIx, int formatIx, int metaIx, int enrichedInIx,
+void checkManifestAndMetadata( struct fieldedTable *table, 
+    int fileIx, int formatIx, int metaIx, int enrichedInIx,
     struct tagStorm *tagStorm, struct hash *metaHash)
 /* Make sure that all file names are unique, all metadata tags are unique, and that
  * meta tags in table exist in tagStorm.  Some of the replace a file logic is here. */
@@ -867,6 +784,19 @@ for (row = table->rowList; row != NULL; row = row->next)
 	if (enrichedIn == NULL)
 	    errAbort("Genomics file %s missing enriched_in tag", file);
 	}
+
+    if (justTest)
+        {
+	static char *otherForcedFields[] = {"body_part", "data_set_id", "assay", "lab", 
+	    "ucsc_db"};
+	int i;
+	for (i=0; i<ArraySize(otherForcedFields); ++i)
+	    {
+	    char *field = otherForcedFields[i];
+	    if (metaManiFieldVal(field, table, row, metaIx, metaHash) == NULL)
+		errAbort("Missing %s field for %s", field, file);
+	    }
+	}
     }
 
 /* Check manifest.txt tags */
@@ -874,8 +804,7 @@ int i;
 for (i=0; i<table->fieldCount; ++i)
     {
     char *field = table->fields[i];
-    if (!cdwValidateTagName(field))
-	errAbort("Unknown field '%s' in %s", field, table->name);
+    cdwValidateTagName(field);
     }
 
 /* Check meta.txt tags */
@@ -898,7 +827,7 @@ int storeSubmissionFile(struct sqlConnection *conn,
 {
 /* Calculate md5sum and see if we have it already. */
 char *md5 = md5HexForFile(submitFileName);
-int oldFileId = findFileGivenMd5AndSubmitDir(conn, md5, submitDirId);
+int oldFileId = findFileGivenMd5AndSubmitDir(conn, md5, submitFileName, submitDirId);
 if (oldFileId != 0)
     {
     freeMem(md5);
@@ -986,7 +915,7 @@ cgiEncodeHash(hash, cgi);
 char *md5 = hmacMd5("", cgi->string);
 
 struct dyString *query = dyStringNew(0);
-dyStringPrintf(query, "select id from cdwMetaTags where md5='%s' and tags='%s'", 
+sqlDyStringPrintf(query, "select id from cdwMetaTags where md5='%s' and tags='%s'", 
     md5, cgi->string);
 int metaTagsId = sqlQuickNum(conn, query->string);
 
@@ -994,7 +923,7 @@ int metaTagsId = sqlQuickNum(conn, query->string);
 if (metaTagsId == 0)
     {
     dyStringClear(query);
-    dyStringAppend(query, "insert cdwMetaTags (tags,md5) values('");
+    sqlDyStringAppend(query, "insert cdwMetaTags (tags,md5) values('");
     dyStringAppend(query, cgi->string);
     dyStringPrintf(query, "', '%s')", md5);
     sqlUpdate(conn, query->string);
@@ -1038,19 +967,29 @@ char query[4*1024];
 char *submitDir = getCurrentDir();
 
 /* Get table with the required fields and calculate field positions */
-char *requiredFields[] = {"file", "format", "meta", };
+
+/* Look at the header line of the manifest file. If there is a data_set_id field use it as
+ * the linker for meta data. Otherwise use the meta field. */
+FILE *f = mustOpen(manifestFile,"r");
+char header[2048]; 
+mustGetLine(f, header, 2048); 
+// Look for data_set_id in the manifestFile, if it is there then override
+// the meta value for the rest of the submit pipeline
+char *requiredFields[] = {"file", "format", "meta",};  
+
 struct fieldedTable *table = fieldedTableFromTabFile(manifestFile, manifestFile,
     requiredFields, ArraySize(requiredFields));
 int fileIx = stringArrayIx("file", table->fields, table->fieldCount);
 int formatIx = stringArrayIx("format", table->fields, table->fieldCount);
-int metaIx = stringArrayIx("meta", table->fields, table->fieldCount);
+int metaIx = stringArrayIx("meta", table->fields, table->fieldCount); 
 int enrichedInIx = stringArrayIx("enriched_in", table->fields, table->fieldCount);
 
 verbose(1, "Got %d fields and %d rows in %s\n", 
     table->fieldCount, slCount(table->rowList), manifestFile);
 struct tagStorm *tagStorm = tagStormFromFile(metaFile);
-struct hash *metaHash = tagStormUniqueIndex(tagStorm, "meta");
+struct hash *metaHash = tagStormIndexExtended(tagStorm, "meta", TRUE, FALSE); 
 verbose(1, "Got %d items in metaHash\n", metaHash->elCount);
+
 struct sqlConnection *conn = cdwConnectReadWrite();
 struct cdwUser *user = cdwMustGetUserFromEmail(conn, email);
 checkManifestAndMetadata(table, fileIx, formatIx, metaIx, enrichedInIx,
@@ -1068,13 +1007,23 @@ verbose(2, "Parsed manifest and metadata into %d files\n", slCount(sfrList));
 /* Fake URL - system was built initially for remote files. */
 char submitUrl[PATH_LEN];
 safef(submitUrl, sizeof(submitUrl), "%s%s/%s", localPrefix, submitDir, manifestFile);
+if (startsWith("/", manifestFile))
+    errAbort("Please don't include full path to manifest file path.  This is no longer needed.");
 
 /* Figure out directory ID for submission */
 int hostId = cdwGetHost(conn, "localhost");
 int submitDirId = cdwGetSubmitDir(conn, hostId, submitDir);
 
+if (justTest)
+    return;
+
 /* Create a submission record */
 int submitId = makeNewEmptySubmitRecord(conn, submitUrl, user->id);
+
+/* Create a backup of the previous submission */
+char cmd[PATH_LEN]; 
+safef(cmd, sizeof(cmd), "cdwBackup %scdw/db.backups/cdwSubmit.%i", getenv("CIRM"), submitId -1);  
+mustSystem(cmd); 
 
 /* Put our manifest and metadata files */
 int manifestFileId= storeSubmissionFile(conn, manifestFile, submitId, submitDirId, user->id);
@@ -1130,7 +1079,8 @@ if (errCatchStart(errCatch))
 	struct cdwFile *file = sfr->file;
 
 	/* See if it is already in repository */
-	int oldFileId = findFileGivenMd5AndSubmitDir(conn, file->md5, submitDirId);
+	int oldFileId = findFileGivenMd5AndSubmitDir(conn, file->md5, file->submitFileName,
+	    submitDirId);
 	if (oldFileId != 0)
 	    {
 	    slAddHead(&oldList, sfr);
@@ -1159,7 +1109,7 @@ if (errCatchStart(errCatch))
 
     /* Deal with old files. This may throw an error.  We do it before downloading new
      * files since we want to fail fast if we are going to fail. */
-    int updateCount = handleOldFileTags(conn, metaIdHash, oldList, doUpdate);
+    int updateCount = handleOldFileTags(conn, metaIdHash, oldList, doUpdate, submitId);
     sqlSafef(query, sizeof(query), 
 	"update cdwSubmit set metaChangeCount=%d where id=%u",  updateCount, submitId);
     sqlUpdate(conn, query);
@@ -1169,7 +1119,8 @@ if (errCatchStart(errCatch))
 	{
 	struct cdwFile *bf = sfr->file;
 	char *format = sfr->fr->row[formatIx];
-	getSubmittedFile(conn, format, tagStorm, bf, submitDir, submitUrl, submitId, user);
+	getSubmittedFile(conn, format, tagStorm, metaHash, bf, 
+	    submitDir, submitUrl, submitId, user, table, sfr->fr, metaIx);
 
 	/* Update submit record with progress (getSubmittedFile might be
 	 * long and get interrupted) */
@@ -1209,6 +1160,7 @@ int main(int argc, char *argv[])
 optionInit(&argc, argv, options);
 doUpdate = optionExists("update");
 noRevalidate = optionExists("noRevalidate");
+justTest = optionExists("test");
 if (optionExists("md5"))
     {
     char *md5File = optionVal("md5", NULL);

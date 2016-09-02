@@ -136,6 +136,9 @@ struct track
     void (*freeItems)(struct track *tg);
     /* Free item list. */
 
+    struct hash *attrTable;
+    /* Persistent table to speed up lookup of attributes in secondary tables (optional). */
+
     Color (*itemColor)(struct track *tg, void *item, struct hvGfx *hvg);
     /* Get color of item (optional). */
 
@@ -699,6 +702,9 @@ Color darkerColor(struct hvGfx *hvg, Color color);
 Color somewhatDarkerColor(struct hvGfx *hvg, Color color);
 /* Get a somewhat lighter shade of a color - 1/3 of the way towards black. */
 
+Color slightlyDarkerColor(struct hvGfx *hvg, Color color);
+/* Get a slightly darker shade of a color - 1/4 of the way towards black. */
+
 Color lighterColor(struct hvGfx *hvg, Color color);
 /* Get lighter shade of a color - half way between this color and white */
 
@@ -772,8 +778,10 @@ void bedDrawSimple(struct track *tg, int seqStart, int seqEnd,
 typedef struct slList *(*ItemLoader)(char **row);
 
 void bedLoadItemByQuery(struct track *tg, char *table, char *query, ItemLoader loader);
-/* Generic tg->item loader. If query is NULL use generic
- hRangeQuery(). */
+/* Generic tg->item loader. If query is NULL use generic hRangeQuery(). */
+
+void bedLoadItemWhere(struct track *tg, char *table, char *extraWhere, ItemLoader loader);
+/* Generic tg->item loader, adding extra clause to hgRangeQuery. */
 
 void bedLoadItem(struct track *tg, char *table, ItemLoader loader);
 /* Generic tg->item loader. */
@@ -946,6 +954,9 @@ void halSnakeMethods(struct track *track, struct trackDb *tdb,
                                 int wordCount, char *words[]);
 /* Make track group for hal-based snake alignment. */
 #endif
+
+void longRangeMethods(struct track *track, struct trackDb *tdb);
+/* Make track group for long range connections . */
 
 void snakeMethods(struct track *track, struct trackDb *tdb,
                                 int wordCount, char *words[]);
@@ -1330,6 +1341,9 @@ boolean isCenterLabelConditionallySeen(struct track *track);
                 (isWithCenterLabels(track) && (theImgBox || isCenterLabelConditionallySeen(track)))
 // Center labels may be conditionally included
 
+Color maybeDarkerLabels(struct track *track, struct hvGfx *hvg, Color color);
+/* For tracks having light track display but needing a darker label */
+
 void affyTxnPhase2Methods(struct track *track);
 /* Methods for dealing with a composite transcriptome tracks. */
 
@@ -1592,6 +1606,9 @@ struct bbiFile *fetchBbiForTrack(struct track *track);
 void genericDrawNextItem(struct track *tg, void *item, struct hvGfx *hvg, int xOff, int y,
                             double scale, Color color, enum trackVisibility vis);
 /* Draw next item buttons and map boxes */
+
+struct spaceSaver *findSpaceSaver(struct track *tg, enum trackVisibility vis);
+/* Find SpaceSaver in list. Return spaceSaver found or NULL. */
 
 #endif /* HGTRACKS_H */
 

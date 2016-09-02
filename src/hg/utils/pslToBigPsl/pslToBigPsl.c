@@ -20,7 +20,6 @@ errAbort(
   "options:\n"
   "  -cds=file.cds\n"
   "  -fa=file.fasta\n"
-  "  -snakes\n"
   "NOTE: to build bigBed:\n"
   "   bedToBigBed -type=bed12+12 -tab -as=bigPsl.as file.bigPslInput chrom.sizes output.bb\n"
   );
@@ -32,7 +31,6 @@ boolean snakeMode = FALSE;
 static struct optionSpec options[] = {
    {"cds", OPTION_STRING},
    {"fa", OPTION_STRING},
-   {"snakes", OPTION_BOOLEAN},
    {NULL, 0},
 };
 
@@ -48,9 +46,16 @@ struct bigPsl bigPsl;
 if (psl->blockCount > MAX_BLOCKS)
     errAbort("psl has more than %d blocks, make MAX_BLOCKS bigger in source", MAX_BLOCKS);
 
+// make sure blocks are represented on reference's positive strand as required by BED format
+boolean didRc = FALSE;
+if (psl->strand[1] == '-')
+    {
+    didRc = TRUE;
+    pslRc(psl); 
+    }
 
 bigPsl.chrom = psl->tName;
-// what about tSize?
+bigPsl.chromSize = psl->tSize;
 bigPsl.match = psl->match;
 bigPsl.misMatch = psl->misMatch;
 bigPsl.repMatch = psl->repMatch;
@@ -66,8 +71,8 @@ bigPsl.name = psl->qName;
 bigPsl.score = 1000;
 bigPsl.strand[0] = psl->strand[0];
 bigPsl.strand[1] = 0;
-if (psl->strand[1])
-    bigPsl.oStrand[0] = psl->strand[1];
+if (didRc)
+    bigPsl.oStrand[0] = '-';
 else
     bigPsl.oStrand[0] = '+';
 bigPsl.oStrand[1] = 0;
@@ -77,11 +82,11 @@ bigPsl.blockSizes = (int *)blockSizes;
 bigPsl.chromStarts = (int *)blockStarts;
 bigPsl.oChromStarts = (int *)oBlockStarts;
 bigPsl.oSequence = "";
+bigPsl.oCDS = "";
 int ii;
 for(ii=0; ii < bigPsl.blockCount; ii++)
     {
     blockStarts[ii] = psl->tStarts[ii] - bigPsl.chromStart;
-    //oBlockStarts[ii] = psl->qStarts[ii] - bigPsl.oChromStart;
     oBlockStarts[ii] = psl->qStarts[ii] ;
     blockSizes[ii] = psl->blockSizes[ii];
     }
@@ -121,98 +126,15 @@ bigPslOutput(&bigPsl, fp, '\t', '\n');
 }
 
 
-struct snakeBlock
-{
-struct snakeBlock *next;
-unsigned tStart, qStart, size;
-char strand;
-unsigned qNumber;
-};
-
-struct listHead 
-{
-    char *combo;
-    struct snakeBlock *sbList;
-};
-
-struct hash *parsePsls(struct psl *psl)
-{
-struct hash *chromHash = newHash(10);
-struct listHead *listHead = NULL;
-char *lastCombo = "noCombo";
-
-for(; psl; psl = psl->next)
-    {
-    char buffer[1024];
-    safef(buffer, sizeof buffer, "%s-%s", psl->tName, psl->qName);
-    if (differentString(lastCombo, buffer))
-	{
-	lastCombo = cloneString(buffer);
-	listHead = hashFindVal(chromHash, lastCombo);
-	}
-    int ii;
-    for(ii=0; ii < psl->blockCount; ii++)
-	{
-	struct snakeBlock *sb;
-	AllocVar(sb);
-	sb->tStart = psl->tStarts[ii];
-	sb->qStart = psl->qStarts[ii];
-	sb->size = blockSizes[ii];
-	sb->strand = psl->strand[0];
-
-	if (sb->strand == '-')
-	    sb->qStart = psl->qSize - sb->qStart;
-
-	if (listHead == NULL)
-	    {
-	    AllocVar(listHead);
-	    listHead->sbList = sb;
-	    listHead->combo = lastCombo;
-	    hashAdd(chromHash, lastCombo, listHead);
-	    }
-	else
-	    slAddHead(&listHead->sbList, sb);
-	}
-    }
-return chromHash;
-}
-
-static int snakeBlockCmpTStart(const void *va, const void *vb)
-/* sort by start position on the query sequence */
-{
-const struct snakeBlock *a = *((struct snakeBlock **)va);
-const struct snakeBlock *b = *((struct snakeBlock **)vb);
-int diff = a->tStart - b->tStart;
-
-if (diff == 0)
-    {
-    diff = a->qStart - b->qStart;
-    }
-
-return diff;
-}
-
-static int snakeBlockCmpQStart(const void *va, const void *vb)
-/* sort by start position on the query sequence */
-{
-const struct snakeBlock *a = *((struct snakeBlock **)va);
-const struct snakeBlock *b = *((struct snakeBlock **)vb);
-int diff = a->qStart - b->qStart;
-
-if (diff == 0)
-    {
-    diff = a->tStart - b->tStart;
-    }
-
-return diff;
-}
-
 void pslToBigPsl(char *pslFile, char *bigPslOutput, char *fastaFile, char *cdsFile)
 /* pslToBigPsl - converts psl to bigPsl. */
 {
 struct psl *psl = pslLoadAll(pslFile);
 struct hash *fastHash = NULL;
 struct hash *cdsHash = NULL;
+
+if (pslIsProtein(psl))
+    errAbort("error: bigPsl does not support protein psls");
 
 if (fastaFile != NULL)
     {
@@ -229,11 +151,6 @@ if (cdsFile != NULL)
     char *row[2];
     while (lineFileRow(lf, row))
 	{
-	/*
-	struct genbankCds *cds;
-	AllocVar(cds);
-	genbankCdsParse(row[1], cds); 
-	*/
         hashAdd(cdsHash, row[0], cloneString(row[1]));
 	}
 	  
@@ -242,29 +159,10 @@ if (cdsFile != NULL)
 
 FILE *fp = mustOpen(bigPslOutput, "w");
 
-if (snakeMode)
+for(; psl ; psl = psl->next)
     {
-    struct hash *chromHash = parsePsls(psl);
-    struct hashCookie cook = hashFirst(chromHash);
-    struct hashEl *hel;
-
-    while((hel = hashNext(&cook)) != NULL)
-	{
-	struct listHead *head = hel->val;
-	slSort(&head->sbList,  snakeBlockCmpQStart);
-	struct snakeBlock *sb  = head->sbList;
-	unsigned ii = 0;
-
-	for(; sb; sb = sb->next)
-	    sb->qNumber = ii++;
-	slSort(&head->sbList,  snakeBlockCmpTStart);
-	}
+    outBigPsl(fp, psl, fastHash, cdsHash);
     }
-else
-    for(; psl ; psl = psl->next)
-	{
-	outBigPsl(fp, psl, fastHash, cdsHash);
-	}
 
 fclose(fp);
 }
@@ -277,16 +175,6 @@ if (argc != 3)
     usage();
 char *fastaFile = optionVal("fa", NULL);
 char *cdsFile = optionVal("cds", NULL);
-
-snakeMode = optionExists("snakes");
-
-if (snakeMode)
-    {
-    if (fastaFile != NULL)
-	errAbort("fasta specification doesn't work for snakes");
-    if (cdsFile != NULL)
-	errAbort("cds specification doesn't work for snakes");
-    }
 
 pslToBigPsl(argv[1], argv[2], fastaFile, cdsFile);
 return 0;

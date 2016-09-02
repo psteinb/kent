@@ -1,3 +1,4 @@
+kentSrc = ../../..
 include ../../../inc/common.mk
 
 mrnaToGene = ${DESTBINDIR}/mrnaToGene
@@ -22,7 +23,7 @@ frame: mkdirs
 
 # test -allCds
 allCds: mkdirs
-	${mrnaToGene} -genePredExt -allCds input/base.psl output/$@.gp
+	${mrnaToGene} -allCds input/base.psl output/$@.gp
 	${genePredCheck} -verbose=0 output/$@.gp
 	diff -u expected/$@.gp output/$@.gp
 

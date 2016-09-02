@@ -21,7 +21,7 @@ struct bigPsl
     unsigned chromEnd;	/* End position in chromosome */
     char *name;	/* Name or ID of item, ideally both human readable and unique */
     unsigned score;	/* Score (0-1000) */
-    char strand[2];	/* + or - for strand */
+    char strand[2];	/* + or - indicates whether the query aligns to the + or - strand on the reference */
     unsigned thickStart;	/* Start of where display should be thick (start codon) */
     unsigned thickEnd;	/* End of where display should be thick (stop codon) */
     unsigned reserved;	/* RGB value (use R,G,B string in input file) */
@@ -30,12 +30,12 @@ struct bigPsl
     int *chromStarts;	/* Start positions relative to chromStart */
     unsigned oChromStart;	/* Start position in other chromosome */
     unsigned oChromEnd;	/* End position in other chromosome */
-    char oStrand[2];	/* + or - for other strand */
+    char oStrand[2];	/* + or -, - implies doing a reverse complement on the psl on output */
     unsigned oChromSize;	/* Size of other chromosome. */
-    int *oChromStarts;	/* Start positions relative to oChromStart */
+    int *oChromStarts;	/* Start positions relative to oChromStart or from oChromStart+oChromSize depending on strand */
     char *oSequence;	/* Sequence on other chrom (or edit list, or empty) */
     char *oCDS;	/* CDS in NCBI format */
-    unsigned oBlock;	/* Block number on other sequence */
+    unsigned chromSize;	/* Size of target chromosome */
     unsigned match;	/* Number of bases matched. */
     unsigned misMatch;	/*  Number of bases that don't match  */
     unsigned repMatch;	/*  Number of bases that match but are part of repeats  */
@@ -81,8 +81,6 @@ void bigPslOutput(struct bigPsl *el, FILE *f, char sep, char lastSep);
 
 /* -------------------------------- End autoSql Generated Code -------------------------------- */
 
-struct psl  *pslFromBigPsl( char *chrom, struct bigBedInterval *bb, unsigned chromSize, char **seq, char **cds);
+struct psl  *pslFromBigPsl( char *chrom, struct bigBedInterval *bb,  char **seq, char **cds);
 /* build a psl from a bigPsl */
 #endif /* BIGPSL_H */
-
-

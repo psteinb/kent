@@ -465,6 +465,9 @@ spectrum on
 type netAlign rn3 chainRn3
 otherDb rn3
 
+track patSeq override
+url https://www.lens.org/lens/bio/patseqanalyzer#psa/mus_musculus/latest/chromosome/$s/${-$}?appInClaims=1
+
 searchTable cytoBand
 searchMethod exact
 searchType cytoBand
@@ -775,11 +778,6 @@ snpExceptionDesc snp142ExceptionDesc
 defaultGeneTracks knownGene
 maxWindowToDraw 10000000
 type bed 6 +
-chimpOrangMacOrthoTable snp142OrthoPt4Pa2Rm3
-chimpDb panTro3
-orangDb ponAbe2
-macaqueDb rheMac2
-hapmapPhase III
 codingAnnotations snp142CodingDbSnp,
 priority 1
 html snp142Common
@@ -797,11 +795,6 @@ defaultGeneTracks knownGene
 defaultMaxWeight 3
 maxWindowToDraw 10000000
 type bed 6 +
-chimpOrangMacOrthoTable snp142OrthoPt4Pa2Rm3
-chimpDb panTro3
-orangDb ponAbe2
-macaqueDb rheMac2
-hapmapPhase III
 codingAnnotations snp142CodingDbSnp,
 html snp142Mult
 
@@ -815,11 +808,6 @@ urlLabel dbSNP:
 defaultGeneTracks knownGene
 maxWindowToDraw 10000000
 type bed 6 +
-chimpOrangMacOrthoTable snp142OrthoPt4Pa2Rm3
-chimpDb panTro3
-orangDb ponAbe2
-macaqueDb rheMac2
-hapmapPhase III
 codingAnnotations snp142CodingDbSnp,
 html snp142
 

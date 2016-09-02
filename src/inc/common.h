@@ -988,6 +988,9 @@ void eraseTrailingSpaces(char *s);
 void eraseWhiteSpace(char *s);
 /* Remove white space from a string */
 
+void eraseNonDigits(char *s);
+/* Remove any chars leaving digits only */
+
 void eraseNonAlphaNum(char *s);
 /* Remove non-alphanumeric chars from string */
 
@@ -1416,6 +1419,9 @@ __attribute__((format(printf, 1, 2)))
 
 void makeDirs(char* path);
 /* make a directory, including parent directories */
+
+boolean isSymbolString(char *s);
+/* Return TRUE if s can be used as a symbol in the C language */
 
 boolean isNumericString(char *s);
 /* Return TRUE if string is numeric (integer or floating point) */

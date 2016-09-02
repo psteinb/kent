@@ -1,3 +1,4 @@
+kentSrc = ../../..
 # Make your private trackDb with 
 #	make update
 # Your private trackDb with additional options, for example:
@@ -68,6 +69,7 @@ DBS = \
 	chrPic1 chrPic2 \
 	ci1 ci2 ci3 cioSav2 \
 	cioSav1 \
+	colAng1 \
 	criGri1 \
 	danRer3 danRer4 danRer5 danRer6 danRer7 danRer10 \
 	dasNov1 dasNov2 dasNov3 \
@@ -93,15 +95,15 @@ DBS = \
 	felCat3 felCat4 felCat5  felCat8 \
 	fr1 fr2 fr3 \
 	gadMor1 \
-	galGal2 galGal3 galGal4 \
+	galGal2 galGal3 galGal4 galGal5 \
 	galVar1 \
 	gasAcu1 \
-	gorGor1 gorGor2 gorGor3 gorGor4 \
+	gorGor1 gorGor2 gorGor3 gorGor4 gorGor5 \
 	h1n1 \
 	haeCon1 haeCon2 \
 	hetBac1 \
 	hetGla1 hetGla2 \
-	hg16 hg17 hg18 hg19 hg38 hg19Haps hg19Patch2 hg19Patch5 hg19Patch9 hg19Patch10 \
+	hg16 hg17 hg18 hg19 hg38 hg19Haps hg19Patch2 hg19Patch5 hg19Patch9 hg19Patch10 hg38Patch7 \
 	latCha1 \
 	loaLoa1 \
 	loxAfr1 loxAfr2 loxAfr3 \
@@ -113,7 +115,7 @@ DBS = \
 	melHap1 \
 	melInc1 melInc2 \
 	micMur1 micMur2 \
-	mm6 mm7 mm8 mm9 mm10 mm10Patch1 mm10Strains1 \
+	mm6 mm7 mm8 mm9 mm10 mm10Patch1 mm10Strains1 mm10Patch4 \
 	monDom1 monDom4 monDom5 \
 	musFur1 \
 	myoLuc1 myoLuc2 \
@@ -124,6 +126,7 @@ DBS = \
 	nomLeu1 nomLeu2 nomLeu3 \
 	ochPri2 ochPri3 \
 	oncVol1 \
+	orcOrc1 \
 	oreNil1 oreNil2 \
 	ornAna1 ornAna2 \
 	oryCun1 oryCun2 \
@@ -131,9 +134,9 @@ DBS = \
 	otoGar1 otoGar3 tupBel1\
 	oviAri1 oviAri3 \
 	oxyTri2 \
-	panPan1 \
+	panPan1 panPan2 \
 	panRed1 \
-	panTro1 panTro2 panTro3 panTro4 \
+	panTro1 panTro2 panTro3 panTro4 panTro5 \
 	papHam1 papAnu2 \
 	petMar1 petMar2 \
 	plasFalc3D7V12 \
@@ -146,6 +149,7 @@ DBS = \
 	rheMac2 rheMac3 rheMac7 rheMac8 \
 	rhiRox1 \
 	rn3 rn4 rn5 rn6 \
+	rouAeg1 \
 	sacCer1 sacCer2 sacCer3 \
 	saiBol1 \
 	sarHar1 \

@@ -143,6 +143,8 @@
 
 #include "trackVersion.h"
 #include "genbank.h"
+#include "bedTabix.h"
+#include "knetUdc.h"
 
 #define CHROM_COLORS 26
 
@@ -166,11 +168,16 @@ Color darkGreenColor = 0;
 boolean exprBedColorsMade = FALSE; /* Have the shades of Green, Red, and Blue been allocated? */
 int maxRGBShade = EXPR_DATA_SHADES - 1;
 
+Color scafColor[SCAF_COLORS+1];
+/* declare colors for scaffold coloring, +1 for unused scaffold 0 color */
+
 Color chromColor[CHROM_COLORS+1];
 /* Declare colors for chromosome coloring, +1 for unused chrom 0 color */
 
 /* Have the 3 shades of 8 chromosome colors been allocated? */
 boolean chromosomeColorsMade = FALSE;
+/* have the 10 scaffold colors been allocated */
+static boolean scafColorsMade = FALSE;
 
 int maxItemsInFullTrack = 1000;  /* Maximum number of items displayed in full */
 int maxItemsToUseOverflowDefault = 10000; /* # of items to allow overflow mode*/
@@ -180,10 +187,10 @@ int maxItemsToUseOverflowDefault = 10000; /* # of items to allow overflow mode*/
 
 // multi-window variables global to hgTracks
 struct window *windows = NULL;  // list of windows in image
-struct window *currentWindow = NULL; 
+struct window *currentWindow = NULL;
 bool trackLoadingInProgress;  // flag to delay ss layout until all windows are ready.
-int fullInsideX;      // full-image insideX 
-int fullInsideWidth;  // full-image insideWidth 
+int fullInsideX;      // full-image insideX
+int fullInsideWidth;  // full-image insideWidth
 
 struct virtRegion *virtRegionList = NULL;     // list of regions in virtual chrom
 struct virtChromRegionPos *virtChrom = NULL;  // virtual chrom array of positions and regions
@@ -212,10 +219,10 @@ int demo2WindowSize = 200;
 int demo2StepSize = 200;
 
 // singleTrans (single transcript)
-char *singleTransId = "uc001uub.1"; 
+char *singleTransId = "uc001uub.1";
 
 // singleAltHaplos (single haplotype)
-char *singleAltHaploId = "chr6_cox_hap2"; 
+char *singleAltHaploId = "chr6_cox_hap2";
 
 char *virtModeType = "default";  /* virtual chrom mode type */
 char *lastVirtModeType = "default";
@@ -314,12 +321,22 @@ return hvGfxFindColorIx(hvg, rgbColor.r, rgbColor.g, rgbColor.b);
 }
 
 Color somewhatDarkerColor(struct hvGfx *hvg, Color color)
-/* Get a somewhat lighter shade of a color - 1/3 of the way towards black. */
+/* Get a somewhat darker shade of a color - 1/3 of the way towards black. */
 {
 struct rgbColor rgbColor =  hvGfxColorIxToRgb(hvg, color);
 rgbColor.r = (2*(int)rgbColor.r)/3;
 rgbColor.g = (2*(int)rgbColor.g)/3;
 rgbColor.b = (2*(int)rgbColor.b)/3;
+return hvGfxFindColorIx(hvg, rgbColor.r, rgbColor.g, rgbColor.b);
+}
+
+Color slightlyDarkerColor(struct hvGfx *hvg, Color color)
+/* Get a slightly darker shade of a color - 1/4 of the way towards black. */
+{
+struct rgbColor rgbColor =  hvGfxColorIxToRgb(hvg, color);
+rgbColor.r = (9*(int)rgbColor.r)/10;
+rgbColor.g = (9*(int)rgbColor.g)/10;
+rgbColor.b = (9*(int)rgbColor.b)/10;
 return hvGfxFindColorIx(hvg, rgbColor.r, rgbColor.g, rgbColor.b);
 }
 
@@ -371,7 +388,7 @@ if (doWiggle)
     }
 }
 
-struct sameItemNode 
+struct sameItemNode
 /* sameItem node */
     {
     struct sameItemNode *next; /* next node */
@@ -382,7 +399,7 @@ struct sameItemNode
     };
 
 
-static struct spaceSaver *findSpaceSaver(struct track *tg, enum trackVisibility vis)
+struct spaceSaver *findSpaceSaver(struct track *tg, enum trackVisibility vis)
 /* Find SpaceSaver in list. Return spaceSaver found or NULL. */
 {
 struct spaceSaver *ss = NULL;
@@ -422,7 +439,12 @@ if (trackLoadingInProgress) // we pack after all windows are loaded.
 if (tg->ss)
     {
     if (tg->ss->window != currentWindow)
-	errAbort("unexpected current window %lu, expected %lu", (unsigned long) currentWindow, (unsigned long) tg->ss->window);
+	{
+	// altGraphX creates its own specialized spaceSavers for full vis.
+	// and the routines (hgTracks/altGraphXTrack.c and hg/lib/altGraphX.c) do not set ss->window or ss->vis.
+	if (!sameString(tg->tdb->type,"altGraphX"))
+	    errAbort("unexpected current window %lu, expected %lu", (unsigned long) currentWindow, (unsigned long) tg->ss->window);
+	}
     struct spaceSaver *ss = findSpaceSaver(tg, vis);
     if (ss)
 	return ss->rowCount;
@@ -446,14 +468,14 @@ struct track *tgSave = tg;
 
 // find out which items are the same,
 // and belong on the same line with (probably one) label:
-struct hash *sameItem = newHash(10);  
+struct hash *sameItem = newHash(10);
 // TODO estimate this as log base 2 # items in all windows
 //struct hash *itemDone = newHash(10);  // TODO I do not need this yet in this version if no dupes.
 for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
     {
     // Have to init these here
     // save old spaceSaver until callback on another window later
-    struct spaceSaver *ssOld = tg->ss; 
+    struct spaceSaver *ssOld = tg->ss;
     tg->ss = spaceSaverNew(0, fullInsideWidth, maxCount);  // actual params do not matter, just using ss->nodeList.
     tg->ss->next = ssOld;
     char *chrom = w->chromName;
@@ -461,7 +483,7 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
 	{
 	int baseStart = tg->itemStart(tg, item);
 	int baseEnd = tg->itemEnd(tg, item);
-	if (baseStart < w->winEnd && baseEnd > w->winStart) 
+	if (baseStart < w->winEnd && baseEnd > w->winStart)
 	    { // it intersects the window
 	    char *mapItemName = tg->mapItemName(tg, item);
 	    char key[1024];
@@ -508,7 +530,7 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
     }
 
 // do spaceSaver layout
-struct spaceSaver *ss; 
+struct spaceSaver *ss;
 ss = spaceSaverNew(0, fullInsideWidth, maxCount);
 ss->vis = vis;
 for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
@@ -524,7 +546,7 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
 	// TODO match items from different windows by using item start end and name in hash?
 	int baseStart = tg->itemStart(tg, item);
 	int baseEnd = tg->itemEnd(tg, item);
-	if (baseStart < w->winEnd && baseEnd > w->winStart) 
+	if (baseStart < w->winEnd && baseEnd > w->winStart)
 	    { // it intersects the window
 
 	    char *mapItemName = tg->mapItemName(tg, item);
@@ -559,6 +581,7 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
 	    struct spaceRange *rangeList=NULL, *range;
 	    struct spaceNode *nodeList=NULL, *node;
             int rangeWidth = 0; // width in pixels of all ranges
+	    int leftLabelSize = 0;
 	    for(; sin; sin=sin->next)
 		{
 
@@ -587,8 +610,14 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
 		else
 		    start = round((double)(baseStart - w->winStart)*scale);
 		if (!tg->drawLabelInBox && !tg->drawName && withLabels && (!noLabel))
-		    start -= mgFontStringWidth(font,
+		    {
+		    leftLabelSize = mgFontStringWidth(font,
 					       tg->itemName(tg, item)) + extraWidth;
+		    if (start - leftLabelSize + winOffset < 0)
+			leftLabelSize = start + winOffset;
+		    start -= leftLabelSize;
+		    }
+
 		if (baseEnd >= w->winEnd)
 		    end = w->insideWidth;
 		else
@@ -599,10 +628,6 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
 		    if (end > w->insideWidth)
 			end = w->insideWidth;
 		    }
-    
-		if (start + winOffset < 0) 
-		    start = -winOffset;
-
 
 		AllocVar(range);
 		range->start = start + winOffset;
@@ -617,8 +642,9 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
 		slAddHead(&nodeList, node);
 
 		noLabel = TRUE; // turns off labels for all following windows - for now.
+
 		}
-    
+
 	    if (!foundWork)
 		continue;
 
@@ -630,6 +656,7 @@ for(w=windows,tg=tgSave; w; w=w->next,tg=tg->nextWindow)
             if (tg->nonPropPixelWidth)
                 {
                 int npWidth = tg->nonPropPixelWidth(tg, item);
+		npWidth += leftLabelSize;
                 if (npWidth > rangeWidth)
                     { // keep the first range but extend it
                     range = rangeList;
@@ -720,7 +747,13 @@ if (doWiggle)
     struct wigCartOptions *wigCart = tg->wigCartData;
     if (tg->wigCartData == NULL)
 	{
-	wigCart = wigCartOptionsNew(cart, tg->tdb, 0, NULL );
+        // fake the trackDb range for this auto-wiggle
+        int wordCount = 3;
+        char *words[3];
+        words[0] = "wig";
+        words[1] = "0";
+        words[2] = "127";
+	wigCart = wigCartOptionsNew(cart, tg->tdb, wordCount, words );
 	tg->wigCartData = (void *) wigCart;
 	}
     return wigTotalHeight(tg, vis);
@@ -1086,8 +1119,10 @@ if (x < xEnd)
             }
         else
             {
-            safef(link,sizeof(link),"%s&c=%s&o=%d&t=%d&g=%s&i=%s",
-                hgcNameAndSettings(), chromName, start, end, encodedTrack, encodedItem); // NOTE: chopped out winStart/winEnd
+	    // NOTE: chopped out winStart/winEnd
+	    // NOTE: Galt added winStart/winEnd back in for multi-region
+            safef(link,sizeof(link),"%s&c=%s&l=%d&r=%d&o=%d&t=%d&g=%s&i=%s",
+                hgcNameAndSettings(), chromName, winStart, winEnd, start, end, encodedTrack, encodedItem);
             }
         if (extra != NULL)
             safef(link+strlen(link),sizeof(link)-strlen(link),"&%s", extra);
@@ -1459,7 +1494,7 @@ boolean scaledBoxToPixelCoords(int chromStart, int chromEnd, double scale, int x
  * Returns FALSE if it does not intersect the window, or if it would have a negative width. */
 {
 if (chromEnd < chromStart) // Invalid coordinates
-    return FALSE;  // Ignore. 
+    return FALSE;  // Ignore.
 if (chromStart == chromEnd) // SNP insert position
     ++chromEnd; // set width to 1
 if (chromStart >= winEnd || winStart >= chromEnd)  // overlaps window?
@@ -1492,7 +1527,7 @@ if (scaledBoxToPixelCoords(chromStart, chromEnd, scale, xOff, &x1, &x2))
 void drawScaledBoxLabel(struct hvGfx *hvg,
      int chromStart, int chromEnd, double scale,
      int xOff, int y, int height, Color color, MgFont *font,  char *label)
-/* Draw a box scaled from chromosome to window coordinates and draw a label onto it. 
+/* Draw a box scaled from chromosome to window coordinates and draw a label onto it.
  * Lots of code copied from drawScaledBox */
 {
 int x1, x2, w;
@@ -1515,7 +1550,7 @@ if (charsInBox > 4)
     }
 }
 
-void filterItems(struct track *tg, boolean (*filter)(struct track *tg, void *item), 
+void filterItems(struct track *tg, boolean (*filter)(struct track *tg, void *item),
                 char *filterType)
 /* Filter out items from track->itemList. */
 {
@@ -1927,24 +1962,25 @@ winEnd = winEndCopy;
 return list;
 }
 
-boolean oregannoFilterType (struct oreganno *el)
+
+
+
+boolean oregannoFilterType (struct oreganno *el, struct hash *attrTable)
 /* filter of the type of region from the oregannoAttr table */
 {
 int cnt = 0;
-struct oregannoAttr *attr = NULL;
-char query[256];
-struct sqlConnection *conn = hAllocConn(database);
+struct oregannoAttr *attr = hashFindVal(attrTable, el->id);
+boolean tmpAttr = FALSE;
 
-sqlSafef(query, sizeof(query), "select * from oregannoAttr where id = '%s' and attribute = 'type'", el->id);
-attr = oregannoAttrLoadByQuery(conn, query);
-hFreeConn(&conn);
 if (attr == NULL)
     {
     AllocVar(attr);
     attr->attrVal = cloneString("NULL");
     attr->id = NULL; /* so free will work */
     attr->attribute = NULL;
+    tmpAttr = TRUE;
     }
+
 for (cnt = 0; cnt < oregannoTypeSize; cnt++)
     {
     if ((!cartVarExists(cart, oregannoTypeString[cnt])
@@ -1952,11 +1988,13 @@ for (cnt = 0; cnt < oregannoTypeSize; cnt++)
         && differentString(cartString(cart, oregannoTypeString[cnt]), "0")))
         && (cmpWordsWithEmbeddedNumbers(oregannoTypeDbValue[cnt], attr->attrVal))==0)
         {
-        oregannoAttrFree(&attr);
+        if (tmpAttr == TRUE)
+            oregannoAttrFree(&attr);
         return TRUE; /* include this type */
         }
     }
-oregannoAttrFree(&attr);
+if (tmpAttr == TRUE)
+    oregannoAttrFree(&attr);
 return FALSE;
 }
 
@@ -1968,13 +2006,14 @@ struct sqlConnection *conn = hAllocConn(database);
 struct sqlResult *sr;
 char **row;
 int rowOffset;
+tg->attrTable = oregannoLoadAttrHash(conn);
 
 sr = hRangeQuery(conn, tg->table, chromName, winStart, winEnd,
                  NULL, &rowOffset);
 while ((row = sqlNextRow(sr)) != NULL)
     {
     struct oreganno *el = oregannoLoad(row);
-    if (!oregannoFilterType(el))
+    if (!oregannoFilterType(el, tg->attrTable))
         oregannoFree(&el);
     else
         slAddHead(&list, el);
@@ -1984,6 +2023,19 @@ slReverse(&list);
 tg->items = list;
 hFreeConn(&conn);
 }
+
+struct bed* loadLongTabixAsBed (struct track *tg, char *chr, int start, int end)
+/* load bigBed for a range, as a bed list (for next item button). Just grab one item */
+{
+struct hash *settings = tg->tdb->settingsHash;
+char *bigDataUrl = hashFindVal(settings, "bigDataUrl");
+struct bedTabixFile *btf = bedTabixFileOpen(bigDataUrl, NULL, 0, 0);
+struct bed *bed  = bedTabixReadFirstBed(btf, chromName, start, end, bedLoad5);
+bedTabixFileClose(&btf);
+
+return bed;
+}
+
 
 struct bed* loadBigBedAsBed (struct track *tg, char *chr, int start, int end)
 /* load bigBed for a range, as a bed list (for next item button). Just grab one item */
@@ -2066,7 +2118,7 @@ struct convertRange *cr;
 
 // Special case speed optimization. (It still works without this).
 if (!virtMode)
-    { 
+    {
     for (cr=crList; cr; cr=cr->next)
 	{
 	if (cr->skipIt)
@@ -2126,7 +2178,7 @@ size = end - start;
 /* Now it's time to do the search. */
 if (end > start)
     // GALT TODO BIGNUM == 0x3fffffff which is about 1 billion?
-    while (sizeWanted > 0 && sizeWanted < BIGNUM)  
+    while (sizeWanted > 0 && sizeWanted < BIGNUM)
 	{
 
 	// include the original window so we can detect overlap with it.
@@ -2164,7 +2216,7 @@ if (end > start)
 		    { // clip exon to region
 
 		    //region overlaps?
-		    int s = max(w->winStart, cr->start); 
+		    int s = max(w->winStart, cr->start);
 		    int e = min(w->winEnd, cr->end);
 		    long vs = w->virtStart + (s - w->winStart);
 		    long ve = w->virtEnd - (w->winEnd - e);
@@ -2181,7 +2233,7 @@ if (end > start)
 			cr->vStart = vs;
 			cr->vEnd = ve;
 			}
-		    
+
 		    }
 		}
 	    }
@@ -2193,7 +2245,7 @@ if (end > start)
 	    {
 	    if (!cr->found)
 		vrFound = FALSE;
-	    }	    
+	    }
 	if (vrFound)
 	    break;
 
@@ -2204,7 +2256,7 @@ if (end > start)
 	    }
 	
 
-try_again:    
+try_again:
 	sizeWanted *= 2;
 	if (next)
 	    {
@@ -2245,16 +2297,16 @@ for (cr=crList; cr; cr=cr->next)
 	    // if dangling off the end, need to expand search to find full span
 	    if ((cr->vEnd == end) && (end < virtSeqBaseCount))
 		{
-		sizeWanted = saveSizeWanted; 
+		sizeWanted = saveSizeWanted;
 		goto try_again;
 		}
 	    }
 	else
 	    {
 	    // if dangling off the start, need to expand search to find full span
-	    if ((cr->vStart == start) && (start > 0)) 
+	    if ((cr->vStart == start) && (start > 0))
 		{
-		sizeWanted = saveSizeWanted; 
+		sizeWanted = saveSizeWanted;
 		goto try_again;
 		}
 	    }
@@ -2264,7 +2316,7 @@ for (cr=crList; cr; cr=cr->next)
 	    cr->vEnd = virtSeqBaseCount;
 	}
     else
-	{ 
+	{
 	// if none found, do we just return -1
 	cr->vStart = -1;
 	cr->vEnd = -1;
@@ -2311,6 +2363,7 @@ long newWinStart, newWinEnd;
 int numExons = 0;
 int exonIx = 0;
 struct slRef *exonList = NULL, *ref;
+boolean isExon = FALSE;
 if (startsWith("chain", tg->tdb->type) || startsWith("lrg", tg->tdb->track))
     {
     nextExonText = trackDbSettingClosestToHomeOrDefault(tg->tdb, "nextExonText", "Next Block");
@@ -2318,9 +2371,11 @@ if (startsWith("chain", tg->tdb->type) || startsWith("lrg", tg->tdb->track))
     }
 else
     {
-    nextExonText = trackDbSettingClosestToHomeOrDefault(tg->tdb, "nextExonText", "Next Exon Edge");
-    prevExonText = trackDbSettingClosestToHomeOrDefault(tg->tdb, "prevExonText", "Prev Exon Edge");
+    nextExonText = trackDbSettingClosestToHomeOrDefault(tg->tdb, "nextExonText", "Next Exon");
+    prevExonText = trackDbSettingClosestToHomeOrDefault(tg->tdb, "prevExonText", "Prev Exon");
     }
+if (sameString(nextExonText,"Next Exon"))
+    isExon = TRUE;
 while (exon != NULL)
 /* Make a stupid list of exons separate from what's given. */
 /* It seems like lf->components isn't necessarily sorted. */
@@ -2399,10 +2454,33 @@ for (ref = exonList, cr=crList->next, exonIx = 0; ref != NULL; ref = ref->next, 
 	if (xExonStart < virtWinEnd)
 	    {
 	    /* not an intron hanging over edge. */
-	    if ((xTallEnd != -1) && (xTallEnd > virtWinEnd) && (xTallEnd < xExonEnd) && (xTallEnd > xExonStart))
+	    if ((xTallStart != -1) && (xTallStart > virtWinEnd) && (xTallStart < xExonEnd) && (xTallStart > xExonStart))
+		{
+		linkedFeaturesMoveWinEnd(xTallStart, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
+		if (isExon)
+		    {
+		    nextExonText = "Coding Start of Exon";
+		    prevExonText = "Coding End of Exon";
+		    }
+		}
+	    else if ((xTallEnd != -1) && (xTallEnd > virtWinEnd) && (xTallEnd < xExonEnd) && (xTallEnd > xExonStart))
+		{
 		linkedFeaturesMoveWinEnd(xTallEnd, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
+		if (isExon)
+		    {
+		    nextExonText = "Coding End of Exon";
+		    prevExonText = "Coding Start of Exon";
+		    }
+		}
 	    else
+		{
 		linkedFeaturesMoveWinEnd(xExonEnd, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
+		if (isExon)
+		    {
+		    nextExonText = "End of Exon";
+		    prevExonText = "Start of Exon";
+		    }
+		}
 	    }
 	else if (bigExon)
 	    linkedFeaturesMoveWinStart(xExonStart, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
@@ -2422,10 +2500,33 @@ for (ref = exonList, cr=crList->next, exonIx = 0; ref != NULL; ref = ref->next, 
 	if (xExonEnd > virtWinStart)
 	    {
 	    /* not an intron hanging over the edge. */
-	    if ((xTallStart != -1) && (xTallStart < virtWinStart) && (xTallStart > xExonStart) && (xTallStart < xExonEnd))
+	    if ((xTallEnd != -1) && (xTallEnd < virtWinStart) && (xTallEnd > xExonStart) && (xTallEnd < xExonEnd))
+		{
+		linkedFeaturesMoveWinStart(xTallEnd, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
+		if (isExon)
+		    {
+		    nextExonText = "Coding Start of Exon";
+		    prevExonText = "Coding End of Exon";
+		    }
+		}
+	    else if ((xTallStart != -1) && (xTallStart < virtWinStart) && (xTallStart > xExonStart) && (xTallStart < xExonEnd))
+		{
 		linkedFeaturesMoveWinStart(xTallStart, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
+		if (isExon)
+		    {
+		    nextExonText = "Coding End of Exon";
+		    prevExonText = "Coding Start of Exon";
+		    }
+		}
 	    else
+		{
 		linkedFeaturesMoveWinStart(xExonStart, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
+		if (isExon)
+		    {
+		    nextExonText = "End of Exon";
+		    prevExonText = "Start of Exon";
+		    }
+		}
 	    }
 	else if (bigExon)
 	    linkedFeaturesMoveWinEnd(xExonEnd, bufferToEdge, newWinSize, &newWinStart, &newWinEnd);
@@ -2513,11 +2614,11 @@ for (ref = exonList; TRUE; )
 	int sx = round((sClp - winStart)*scale) + insideX;
 	int ex = round((eClp - winStart)*scale) + insideX;
 
-        // skip regions entirely outside available picture 
+        // skip regions entirely outside available picture
         // (accounts for space taken by exon arrows buttons)
 	if (!(sx > picEnd) || (ex < picStart))
 	    {
-	    // clip it to avail pic 
+	    // clip it to avail pic
 	    sx = (sx < picStart) ? picStart : sx;
     	    ex = (ex > picEnd)   ? picEnd   : ex;
 
@@ -2595,7 +2696,7 @@ while(TRUE)
 	w = w->next;
 	}
     boolean nearby = FALSE;
-    if (w  
+    if (w
 	&& sameString(w->chromName, mergedW->chromName)
        	&& (w->winStart >= mergedW->winEnd)
    	&& ((w->winStart - mergedW->winEnd) <= mergeLimit)
@@ -2621,7 +2722,7 @@ while(TRUE)
 return resultList;
 }
 
-struct virtRange 
+struct virtRange
     {
     struct virtRange *next;
     long vStart;
@@ -2688,7 +2789,7 @@ boolean firstTime = TRUE;
 /* Now it's time to do the search. */
 if (end > start)
     // GALT TODO BIGNUM == 0x3fffffff which is about 1 billion?
-    for ( ; sizeWanted > 0 && sizeWanted < BIGNUM; )  
+    for ( ; sizeWanted > 0 && sizeWanted < BIGNUM; )
 	{
 
 	// Expanding search window to start, end, size, sizeWanted
@@ -2722,6 +2823,8 @@ if (end > start)
 #ifndef GBROWSE
 	    if (sameWord(tg->table, WIKI_TRACK_TABLE))
 		items = wikiTrackGetBedRange(tg->table, mw->chromName, mw->winStart, mw->winEnd);
+	    else if (startsWith("longTabix", tg->tdb->type))
+		items = loadLongTabixAsBed(tg, mw->chromName, mw->winStart, mw->winEnd);
 	    else if (sameWord(tg->table, "gvPos"))
 		items = loadGvAsBed(tg, mw->chromName, mw->winStart, mw->winEnd);
 	    else if (sameWord(tg->table, "oreganno"))
@@ -2753,7 +2856,7 @@ if (end > start)
 		    // item and region overlap?
 		    if ((item->chromEnd > w->winStart) && (w->winEnd > item->chromStart)) // overlap
 			{ // clip item to region
-			int s = max(w->winStart, item->chromStart); 
+			int s = max(w->winStart, item->chromStart);
 			int e = min(w->winEnd, item->chromEnd);
 			long vs = w->virtStart + (s - w->winStart);
 			long ve = w->virtEnd - (w->winEnd - e);
@@ -2785,7 +2888,7 @@ if (end > start)
 		    }
 		bedFree(&item);
 		}
-	    
+
 
 	    }
 
@@ -2802,7 +2905,7 @@ if (end > start)
 	    //hel->val = NULL; // keep for reuse
 	    }
 	slReverse(&vrList);  // probably not needed.
-    
+
 	/* If we got something, or weren't able to search as big as we wanted to */
 	/* (in case we're at the end of the chrom).  */
 	if (vrList != NULL || (size < sizeWanted))
@@ -2827,7 +2930,7 @@ if (end > start)
 		}
 	    }
 
-try_again:    
+try_again:
 	sizeWanted *= 2;
 	if (next)
 	    {
@@ -2872,7 +2975,7 @@ if (vrList)
 	// if dangling off the end, need to expand search to find full span
         if ((vr->vEnd == end) && (end < virtSeqBaseCount))
 	    {
-	    sizeWanted = saveSizeWanted; 
+	    sizeWanted = saveSizeWanted;
 	    goto try_again;
 	    }
 	if (vr->vEnd + bufferToEdge - sizeWanted < virtWinEnd)
@@ -2900,9 +3003,9 @@ if (vrList)
 	slReverse(&vrList);
 	vr = vrList;  // first one is nearest
 	// if dangling off the start, need to expand search to find full span
-        if ((vr->vStart == start) && (start > 0)) 
+        if ((vr->vStart == start) && (start > 0))
 	    {
-	    sizeWanted = saveSizeWanted; 
+	    sizeWanted = saveSizeWanted;
 	    goto try_again;
 	    }
 	if (vr->vStart - bufferToEdge + sizeWanted > virtWinStart)
@@ -2933,7 +3036,7 @@ if (vrList)
 
     }
 
-// Because nextItem now gets called earlier (in tracksDisplay), 
+// Because nextItem now gets called earlier (in tracksDisplay),
 // before trackList gets duplicated in trackForm,
 // we do not want this track to have open handles and resources
 // be duplicated later for each window. Close resources as needed.
@@ -3214,6 +3317,25 @@ Color getChromBreakBlueColor()
 {
 return (winEnd-winStart > CHROM_BREAK_DARK_COLOR_ZOOM ?
             darkBlueColor : blueColor);
+}
+
+/*	See inc/chromColors.h for color defines	*/
+static void makeScaffoldShades(struct hvGfx *hvg)
+/* Allocate 10 colors for arbitrary scaffold/contig coloring */
+{
+    /*	color zero is for error conditions only	*/
+scafColor[0] = hvGfxFindColorIx(hvg, 0, 0, 0);
+scafColor[1] = hvGfxFindColorIx(hvg, SCAF1_R, SCAF1_G, SCAF1_B);
+scafColor[2] = hvGfxFindColorIx(hvg, SCAF2_R, SCAF2_G, SCAF2_B);
+scafColor[3] = hvGfxFindColorIx(hvg, SCAF3_R, SCAF3_G, SCAF3_B);
+scafColor[4] = hvGfxFindColorIx(hvg, SCAF4_R, SCAF4_G, SCAF4_B);
+scafColor[5] = hvGfxFindColorIx(hvg, SCAF5_R, SCAF5_G, SCAF5_B);
+scafColor[6] = hvGfxFindColorIx(hvg, SCAF6_R, SCAF6_G, SCAF6_B);
+scafColor[7] = hvGfxFindColorIx(hvg, SCAF7_R, SCAF7_G, SCAF7_B);
+scafColor[8] = hvGfxFindColorIx(hvg, SCAF8_R, SCAF8_G, SCAF8_B);
+scafColor[9] = hvGfxFindColorIx(hvg, SCAF9_R, SCAF9_G, SCAF9_B);
+scafColor[10] = hvGfxFindColorIx(hvg, SCAF10_R, SCAF10_G, SCAF10_B);
+scafColorsMade = TRUE;
 }
 
 /*	See inc/chromColors.h for color defines	*/
@@ -3608,10 +3730,10 @@ if ((tallStart == 0 && tallEnd == 0) && lf->start != 0 && !sameWord(tg->table, "
     tallEnd   = lf->end;
     }
 int ourStart = lf->start;
-if (ourStart < winStart) 
+if (ourStart < winStart)
     ourStart = winStart;
 int ourEnd = lf->end;
-if (ourEnd > winEnd) 
+if (ourEnd > winEnd)
     ourEnd = winEnd;
 x1 = round((double)((int)ourStart-winStart)*scale) + xOff;
 x2 = round((double)((int)ourEnd-winStart)*scale) + xOff;
@@ -3869,7 +3991,7 @@ boolean exonNumberMapsCompatible(struct track *tg, enum trackVisibility vis)
 /* Check to see if we draw exon and intron maps labeling their number. */
 {
 boolean exonNumbers = sameString(trackDbSettingOrDefault(tg->tdb, "exonNumbers", "on"), "on");
-return (withExonNumbers && exonNumbers && (vis==tvFull || vis==tvPack) && (winEnd - winStart < 400000) 
+return (withExonNumbers && exonNumbers && (vis==tvFull || vis==tvPack) && (winEnd - winStart < 400000)
  && (tg->nextPrevExon==linkedFeaturesNextPrevItem));
 }
 
@@ -3959,7 +4081,7 @@ if (vis == tvPack || (vis == tvFull && isTypeBedLike(tg)))
 	}
     // if not already mapped, pick up the label
     if (!(lButton && compat))
-	{ 
+	{
         tg->mapItem(tg, hvg, item, tg->itemName(tg, item), tg->mapItemName(tg, item),
 		s, e, textX, y, w, heightPer);
 	}
@@ -4083,12 +4205,12 @@ if (withLeftLabels && firstOverflow && currentWindow == windows) // first window
     {
     int overflowCount = 0;
     // Do for all windows
-    struct track *tgSave = tg; 
+    struct track *tgSave = tg;
     for(tg=tgSave; tg; tg=tg->nextWindow)
-	{		    
+	{
 	for (sn = tg->ss->nodeList; sn != NULL; sn = sn->next)
 	    // do not count items with label turned off as they are dupes anyways.
-	    if (sn->row >= overflowRow && !sn->noLabel) 
+	    if (sn->row >= overflowRow && !sn->noLabel)
 		overflowCount++;
 	}
     tg = tgSave;
@@ -4198,7 +4320,6 @@ if (withLabels)
         }
     else
         {
-
 	// shift clipping to allow drawing label to left of currentWindow
 	int pdfSlop=nameWidth/5;
         hvGfxUnclip(hvg);
@@ -4209,7 +4330,7 @@ if (withLabels)
             hvGfxTextRight(hvg, textX, y, nameWidth, tg->heightPer, MG_WHITE, font, name);
             }
         else
-            // usual case
+            // usual labeling
             hvGfxTextRight(hvg, textX, y, nameWidth, tg->heightPer, labelColor, font, name);
         hvGfxUnclip(hvg);
         hvGfxSetClip(hvg, insideX, yOff, insideWidth, tg->height);
@@ -4235,9 +4356,9 @@ if (!tg->mapsSelf)
     withIndividualLabels = TRUE; /* reset in case done with pgSnp */
 }
 
-static int normalizeCount(struct preDrawElement *el, double countFactor, 
+static int normalizeCount(struct preDrawElement *el, double countFactor,
     double minVal, double maxVal, double sumData, double sumSquares)
-/* Normalize statistics to be based on an integer number of valid bases. 
+/* Normalize statistics to be based on an integer number of valid bases.
  * Integer value is the smallest integer not less than countFactor. */
 {
 bits32 validCount = ceil(countFactor);
@@ -4267,7 +4388,7 @@ for (item = items; item; item = item->next)
     if (positiveRangeIntersection(start, end, winStart, winEnd) <= 0)
 	continue;
 
-    int x1 = max((int)start - (int)winStart, 0); 
+    int x1 = max((int)start - (int)winStart, 0);
     int x2 = min((int)end - (int)winStart, size);
 
     for(; x1 < x2; x1++)
@@ -4383,6 +4504,7 @@ unsigned *counts = countOverlaps(tg);
 countsToPixels(counts, pre);
 freez(&counts);
 
+tg->colorShades = shadesOfGray;
 hvGfxSetClip(hvg, insideX, yOff, insideWidth, tg->height);
 tg->mapsSelf = FALSE; // some magic to turn off the link out
 wigPreDrawPredraw(tg, seqStart, seqEnd, hvg, xOff, yOff, width, font, color, vis,
@@ -4443,8 +4565,8 @@ int sClp = (s < winStart) ? winStart : s;
 int eClp = (e > winEnd)   ? winEnd   : e;
 int x1 = round((sClp - winStart)*scale) + xOff;
 int x2 = round((eClp - winStart)*scale) + xOff;
-genericDrawNextItemStuff(tg, hvg, vis, item, scale, x2, x1, -1, y, tg->heightPer, color, 
-                            doButtons); 
+genericDrawNextItemStuff(tg, hvg, vis, item, scale, x2, x1, -1, y, tg->heightPer, color,
+                            doButtons);
 }
 
 static void genericDrawItemsFullDense(struct track *tg, int seqStart, int seqEnd,
@@ -4973,7 +5095,7 @@ for (i = 0; i < lfsbed->lfCount; i++)
     {
     AllocVar(lf);
     sqlSafefFrag(rest, sizeof rest, "qName = '%s'", lfsbed->lfNames[i]);
-    
+
     // use psl table from trackDb, if specified there
     char *pslTable = lfsbed->pslTable;
     if (tdbPslTable != NULL)
@@ -5593,8 +5715,7 @@ for(; lf; lf = lf->next)
     {
     struct genePred *gp = lf->original;
     gp->optFields |= genePredExonFramesFld | genePredCdsStatFld | genePredCdsStatFld;
-    safef(query, sizeof query, NOSQLINJ "select * from knownCds where name=\"%s\"",
-	gp->name);
+    sqlSafef(query, sizeof query, "select * from knownCds where name=\"%s\"", gp->name);
 
     struct sqlResult *sr = sqlMustGetResult(conn, query);
     char **row = NULL;
@@ -6337,9 +6458,32 @@ static char *decipherPhenotypeList(char *name)
 /* Return list of diseases associated with a DECIPHER entry */
 {
 char query[256];
-sqlSafef(query, sizeof(query),
+static char list[4096];
+struct sqlConnection *conn = hAllocConn(database);
+if (sqlFieldIndex(conn, "decipherRaw", "phenotypes") >= 0)
+    {
+    list[0] = '\0';
+    sqlSafef(query, sizeof(query),
+        "select phenotypes from decipherRaw where id='%s'", name);
+    struct sqlResult *sr = sqlMustGetResult(conn, query);
+    char **row = sqlNextRow(sr);
+    if ((row != NULL) && strlen(row[0]) >= 1)
+        {
+        char *prettyResult = replaceChars(row[0], "|", "; ");
+        safecpy(list, sizeof(list), prettyResult);
+        // freeMem(prettyResult);
+        }
+    sqlFreeResult(&sr);
+    }
+else
+    {
+    sqlSafef(query, sizeof(query),
         "select distinct phenotype from decipherRaw where id='%s' order by phenotype", name);
-return collapseRowsFromQuery(query, "; ", 20);
+    hFreeConn(&conn);
+    return collapseRowsFromQuery(query, "; ", 20);
+    }
+hFreeConn(&conn);
+return list;
 }
 
 void decipherLoad(struct track *tg)
@@ -6556,7 +6700,7 @@ struct hashEl *cacheEl = hashLookup(cache, acc);
 if (cacheEl == NULL)
     {
     char query[256];
-    sqlSafef(query, sizeof query, 
+    sqlSafef(query, sizeof query,
 	"select o.name from %s g,%s o where g.acc = '%s' and g.organism = o.id", gbCdnaInfoTable, organismTable, acc);
     char *org = sqlQuickString(conn, query);
     if ((org != NULL) && (org[0] == '\0'))
@@ -6825,7 +6969,7 @@ for (lf = tg->items; lf != NULL; lf = lf->next)
         char query[256];
         if  (isRefGene)
             {
-            sqlSafef(query, sizeof(query), "select cast(omimId as char) from refLink where mrnaAcc = '%s'", lf->name);
+            sqlSafef(query, sizeof(query), "select cast(omimId as char) from %s where mrnaAcc = '%s'", refLinkTable, lf->name);
             }
         else
             {
@@ -7565,10 +7709,10 @@ else if (scoreMin != 0 && scoreMax == 1000) // Changes gray level even when
     }
 }
 
-void bedLoadItemByQuery(struct track *tg, char *table,
-                        char *query, ItemLoader loader)
-/* Generic tg->item loader. If query is NULL use generic
- hRangeQuery(). */
+static void bedLoadItemByQueryWhere(struct track *tg, char *table, char *query,
+                                char *extraWhere, ItemLoader loader)
+/* Generic itg->item loader, adding extra clause to hgRangeQuery if query is NULL
+ * and extraWhere is not NULL */
 {
 struct sqlConnection *conn = hAllocConn(database);
 int rowOffset = 0;
@@ -7576,9 +7720,9 @@ struct sqlResult *sr = NULL;
 char **row = NULL;
 struct slList *itemList = NULL, *item = NULL;
 
-if(query == NULL)
+if (query == NULL)
     sr = hRangeQuery(conn, table, chromName,
-		     winStart, winEnd, NULL, &rowOffset);
+		     winStart, winEnd, extraWhere, &rowOffset);
 else
     sr = sqlGetResult(conn, query);
 
@@ -7591,6 +7735,18 @@ slSort(&itemList, bedCmp);
 sqlFreeResult(&sr);
 tg->items = itemList;
 hFreeConn(&conn);
+}
+
+void bedLoadItemWhere(struct track *tg, char *table, char *extraWhere, ItemLoader loader)
+/* Generic tg->item loader, adding extra clause to hgRangeQuery */
+{
+bedLoadItemByQueryWhere(tg, table, NULL, extraWhere, loader);
+}
+
+void bedLoadItemByQuery(struct track *tg, char *table, char *query, ItemLoader loader)
+/* Generic tg->item loader. If query is NULL use generic hRangeQuery(). */
+{
+bedLoadItemByQueryWhere(tg, table, query, NULL, loader);
 }
 
 void bedLoadItem(struct track *tg, char *table, ItemLoader loader)
@@ -8923,18 +9079,27 @@ for (i = 0;  prefixes[i] != NULL;  i++)
 	break;
 	}
     }
+/* perhaps a contig name of some other prefix */
+if (NULL == skipped && scaffoldPrefixes == prefixes)
+    {
+    skipped = cloneString(name);
+    chopSuffixAt(skipped, 'v');  /* remove the vNN version, usually v1 */
+    eraseNonDigits(skipped);  /* strip characters, leave digits only */
+    if (0 == strlen(skipped))  /* if none left, did not work */
+       skipped = NULL;
+    }
 return skipped;
 }
 
 Color getScaffoldColor(char *scaffoldNum, struct hvGfx *hvg)
 /* assign fake chrom color to scaffold/contig, based on number */
 {
-int chromNum = atoi(scaffoldNum) % CHROM_COLORS;
-if (!chromosomeColorsMade)
-    makeChromosomeShades(hvg);
-if (chromNum < 0 || chromNum > CHROM_COLORS)
-    chromNum = 0;
-return chromColor[chromNum];
+int scafNum = atoi(scaffoldNum) % SCAF_COLORS + 1;
+if (!scafColorsMade)
+    makeScaffoldShades(hvg);
+if (scafNum < 0 || scafNum > SCAF_COLORS)
+    scafNum = 0;
+return scafColor[scafNum];
 }
 
 Color getSeqColorDefault(char *seqName, struct hvGfx *hvg, Color defaultColor)
@@ -10524,7 +10689,7 @@ enum trackVisibility limitVisibility(struct track *tg)
 if (!tg->limitedVisSet)
     {
     tg->limitedVisSet = TRUE;  // Prevents recursive loop!
-    
+
     // optional setting to draw labels onto the feature boxes, not next to them
     tg->drawLabelInBox = cartOrTdbBoolean(cart, tg->tdb, "labelOnFeature" , FALSE);
     if (trackShouldUseAjaxRetrieval(tg))
@@ -10793,45 +10958,37 @@ return name;
 }
 
 void pgSnpTextRight(char *display, struct hvGfx *hvg, int x1, int y, int width, int height, Color color, MgFont *font, char *allele, int itemY, int lineHeight)
-/* put text anchored on right upper corner, doing separate colors if needed */
+/* Put text anchored on right upper corner, doing separate colors if needed. */
 {
+struct hvGfx *hvgWhich = hvg;    // There may be a separate image for sideLabel!
 int textX = x1 - width - 2;
 boolean snapLeft = (textX < fullInsideX);
-int clipYBak = 0, clipHeightBak = 0;
-struct hvGfx *hvgWhich = hvg;    // There may be a separate image for sideLabel!
 if (snapLeft)        /* Snap label to the left. */
     {
     if (hvgSide != NULL)
         hvgWhich = hvgSide;
-    hvGfxGetClip(hvgWhich, NULL, &clipYBak, NULL, &clipHeightBak);
-    hvGfxUnclip(hvgWhich);
-    hvGfxSetClip(hvgWhich, leftLabelX, itemY, fullInsideX - leftLabelX, lineHeight); // width was insideWidth
     textX = leftLabelX;
     width = leftLabelWidth-1;
     }
-
+int clipX, clipY, clipWidth, clipHeight;
+hvGfxGetClip(hvgWhich, &clipX, &clipY, &clipWidth, &clipHeight);
+hvGfxUnclip(hvgWhich);
+hvGfxSetClip(hvgWhich, textX, y, width, height);
 if (sameString(display, "freq"))
     {
-    Color allC = MG_BLACK;
+    color = MG_BLACK;
     if (startsWith("A", allele))
-        allC = MG_RED;
+        color = MG_RED;
     else if (startsWith("C", allele))
-        allC = MG_BLUE;
+        color = MG_BLUE;
     else if (startsWith("G", allele))
-        allC = darkGreenColor;
+        color = darkGreenColor;
     else if (startsWith("T", allele))
-        allC = MG_MAGENTA;
-    hvGfxTextRight(hvgWhich, textX, y, width, height, allC, font, allele);
+        color = MG_MAGENTA;
     }
-else
-    {
-    hvGfxTextRight(hvgWhich, textX, y, width, height, color, font, allele);
-    }
-if (snapLeft)
-    {
-    hvGfxUnclip(hvgWhich);  // TODO GALT shoulld this be fullInsideX and fullInsideWidth:?
-    hvGfxSetClip(hvgWhich, insideX, clipYBak, insideWidth, clipHeightBak);
-    }
+hvGfxTextRight(hvgWhich, textX, y, width, height, color, font, allele);
+hvGfxUnclip(hvgWhich);
+hvGfxSetClip(hvgWhich, clipX, clipY, clipWidth, clipHeight);
 }
 
 void pgSnpDrawAt(struct track *tg, void *item, struct hvGfx *hvg, int xOff, int y, double scale, MgFont *font, Color color, enum trackVisibility vis)
@@ -11054,7 +11211,7 @@ void pgSnpLeftLabels(struct track *tg, int seqStart, int seqEnd,
  * We don't want the default left labels when in full mode because they can overlap
  * with the item-drawing labels, but we do still need dense mode left labels. */
 {
-if (tg->visibility == tvDense)
+if (vis == tvDense)
     {
     if (isCenterLabelIncluded(tg))
 	yOff += mgFontLineHeight(font);
@@ -12023,17 +12180,14 @@ Color oregannoColor(struct track *tg, void *item, struct hvGfx *hvg)
 {
 struct oreganno *el = item;
 struct oregannoAttr *details = NULL;
-struct sqlConnection *conn = hAllocConn(database);
 char *id = NULL;
-char query[256];
 Color itemColor = MG_BLACK;
 if (el->id != NULL)
     id = el->id;
 else
     id = el->name;
 
-sqlSafef(query, sizeof(query), "select * from oregannoAttr where attribute = 'type' and id = '%s'", id);
-details = oregannoAttrLoadByQuery(conn, query);
+details = hashFindVal(tg->attrTable, id);
 /* ORegAnno colors 666600 (Dark Green), CCCC66 (Tan), CC0033 (Red),
                    CCFF99 (Background Green)                        */
 if (sameString(details->attrVal, "REGULATORY POLYMORPHISM"))
@@ -12053,8 +12207,6 @@ else if (sameString(details->attrVal, "Regulatory Haplotype"))
     itemColor = hvGfxFindColorIx(hvg, 213, 94, 0);  /* Vermillion */
 else if (sameString(details->attrVal, "miRNA Binding Site"))
     itemColor = hvGfxFindColorIx(hvg, 0, 158, 115);  /* bluish Green */
-oregannoAttrFreeList(&details);
-hFreeConn(&conn);
 return itemColor;
 }
 
@@ -12331,6 +12483,7 @@ tg->nextPrevItem = linkedFeaturesLabelNextPrevItem;
 void oregannoMethods (struct track *tg)
 /* load so can allow filtering on type */
 {
+tg->attrTable = NULL;
 tg->loadItems = loadOreganno;
 tg->itemColor = oregannoColor;
 tg->itemNameColor = oregannoColor;
@@ -13632,7 +13785,7 @@ if (sameWord(type, "bed"))
     if (trackDbSetting(track->tdb, GENEPRED_CLASS_TBL) !=NULL)
         track->itemColor = genePredItemClassColor;
 
-    // FIXME: as long as registerTrackHandler doesn't accept wildcards, 
+    // FIXME: as long as registerTrackHandler doesn't accept wildcards,
     // this probably needs to stay here (it's in the wrong function)
     if (startsWith("pubs", track->track) && stringIn("Marker", track->track))
         pubsMarkerMethods(track);
@@ -13648,6 +13801,24 @@ else if (sameWord(type, "bedLogR"))
     //track->bedSize = 10;
     }
     */
+else if (sameWord(type, "bedTabix"))
+    {
+    knetUdcInstall();
+    tdb->canPack = TRUE;
+    complexBedMethods(track, tdb, FALSE, wordCount, words);
+    if (trackShouldUseAjaxRetrieval(tg))
+        track->loadItems = dontLoadItems;
+    }
+else if (sameWord(type, "longTabix"))
+    {
+    char *words[2];
+    words[0] = type;
+    words[1] = "5";
+    complexBedMethods(track, tdb, FALSE, 2, words);
+    longRangeMethods(track, tdb);
+    if (trackShouldUseAjaxRetrieval(tg))
+        track->loadItems = dontLoadItems;
+    }
 else if (sameWord(type, "bigBed"))
     {
     bigBedMethods(track, tdb, wordCount, words);

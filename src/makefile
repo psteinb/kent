@@ -25,6 +25,7 @@ topLibs:
 	cd lib && ${MAKE}
 	cd jkOwnLib && ${MAKE}
 	cd parasol/lib && ${MAKE}
+	cd htslib && ${MAKE}
 
 hgLib:
 	@./hg/sqlEnvTest.sh
@@ -94,6 +95,7 @@ clean:
 	cd hg && ${MAKE} clean
 	cd hg && ${MAKE} clean_utils
 	cd jkOwnLib && ${MAKE} clean
+	cd htslib && ${MAKE} clean
 	cd utils && ${MAKE} clean
 	cd webBlat && ${MAKE} clean
 	cd isPcr && ${MAKE} clean

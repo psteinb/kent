@@ -321,7 +321,6 @@ webStartWrapperGatewayHeader(theCart, db, headerText, format, args, TRUE, TRUE,
 va_end(args);
 }
 
-
 void webEndSection()
 /* Close down a section */
 {
@@ -433,6 +432,36 @@ if(!webInTextMode)
     puts( "</BODY></HTML>");
     webPopErrHandlers();
     }
+}
+
+void webStartJWest(struct cart *cart, char *db, char *title)
+/* Start HTML with new banner design by jWest (with modifications). */
+{
+puts("Content-type:text/html\n");
+printf(
+#include "jWestBanner.h"
+       , title, title);
+webPushErrHandlersCartDb(cart, db);
+htmlWarnBoxSetup(stdout);
+
+// Add hotlinks bar
+char *navBar = menuBar(cart, db);
+if (navBar)
+    {
+    puts(navBar);
+    // Override nice-menu.css's menu background and fonts:
+    puts("<link rel=\"stylesheet\" href=\"../style/jWest.afterNiceMenu.css\">");
+    }
+webHeadAlreadyOutputed = TRUE;
+errAbortSetDoContentType(FALSE);
+}
+
+void webEndJWest()
+/* End HTML that was started with webStartJWest. */
+{
+googleAnalytics();
+puts("</body></html>");
+webPopErrHandlers();
 }
 
 static boolean gotWarnings = FALSE;
@@ -1122,6 +1151,8 @@ boolean image = !js
 if (!js && !style) // && !image) NOTE: This code has not been tested on images but should work.
     errAbort("webTimeStampedLinkToResource: unknown resource type for %s.\n", fileName);
 
+char *httpHost = hHttpHost();
+
 // Build and verify directory
 char *dirName = "";
 if (js)
@@ -1138,8 +1169,8 @@ else
     // tolerate missing docRoot (i.e. when running from command line)
     fullDirName = dyStringCreate("%s", dirName);
 if (!fileExists(dyStringContents(fullDirName)))
-    errAbort("webTimeStampedLinkToResource: dir: %s doesn't exist.\n",
-             dyStringContents(fullDirName));
+    errAbort("webTimeStampedLinkToResource: dir: %s doesn't exist. (host: %s)\n",
+             dyStringContents(fullDirName), httpHost);
 
 // build and verify real path to file
 struct dyString *realFileName = dyStringCreate("%s/%s", dyStringContents(fullDirName), fileName);

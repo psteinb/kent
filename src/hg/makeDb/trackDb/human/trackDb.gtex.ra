@@ -1,10 +1,20 @@
+include trackDb.gtexAwgAse.ra
+
 track gtexGene
 type bed 6 +
-shortLabel GTEx Gene Expr
-longLabel Gene Expression in 53 tissues from GTEx RNA-seq of 8555 samples from 570 donors
+shortLabel GTEx
+longLabel Gene Expression in 53 tissues from GTEx RNA-seq of 8555 samples (570 donors)
 html gtexGeneExpr
 group expression
-priority 10.15
+priority 10.13
+maxItems 200
+spectrum on
+
+searchTable gtexGene
+query select chrom, chromStart, chromEnd, geneId from %s where geneId like '%s%%'
+termRegex gtex:ENSG[0-9]+(\.[0-9]+)?
+termPrefix gtex:
+shortCircuit 1
 
 track gtexGeneV4
 release alpha
@@ -16,6 +26,7 @@ group expression
 priority 10.1
 
 track gtexSnp
+release alpha
 type bed 4
 shortLabel GTEx Variant
 longLabel Genetic variants imputed from genotyping of GTEx samples (209 donors)
@@ -24,6 +35,7 @@ html getxEqtlSnp
 priority 10.15
 
 track gtexEqtlSnp
+release alpha
 type bed 4
 shortLabel GTEx eQTL
 longLabel Genetic variants identified by GTEx as significantly affecting gene expression
@@ -40,6 +52,7 @@ priority 10.2
 type bed 6
 exonArrows off
 minGrayLevel 2
+darkerLabels on
 subGroup1 tissue Tissue \
 		adiposeSubcut=adiposeSubcut \
 		adiposeVisceral=adiposeVisceral \

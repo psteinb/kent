@@ -175,6 +175,7 @@ CREATE TABLE cdwSubmit (
     errorMessage longblob,	# If non-empty contains last error message. If empty submit is ok
     fileIdInTransit int unsigned default 0,	# cdwFile.id of file currently being transferred or zero
     metaChangeCount int unsigned default 0,	# Number of files where metadata changed by submission
+    wrangler longblob,	# The UNIX ID of the person who ran cdwSubmit.
               #Indices
     PRIMARY KEY(id),
     INDEX(url(32)),
@@ -261,6 +262,7 @@ CREATE TABLE cdwValidFile (
     pairedEnd varchar(255) default '',	# The paired_end tag from the manifest.  Values 1,2 or ''
     qaVersion tinyint default 0,	# Version of QA pipeline making status decisions
     uniqueMapRatio double default 0,	# Fraction of reads that map uniquely to genome for bams and fastqs
+    lane varchar(255) default '',	# What sequencing lane if any associated with this file.
               #Indices
     PRIMARY KEY(id),
     INDEX(licensePlate),
@@ -529,19 +531,7 @@ CREATE TABLE cdwJob (
     stderr longblob,	# The output to stderr of the run - may be nonempty even with success
     returnCode int default 0,	# The return code from system command - 0 for success
     pid int default 0,	# Process ID for running processes
-              #Indices
-    PRIMARY KEY(id)
-);
-
-#A submission job to be run asynchronously and not too many all at once.
-CREATE TABLE cdwSubmitJob (
-    id int unsigned auto_increment,	# Submit id
-    commandLine longblob,	# Command line of job
-    startTime bigint default 0,	# Start time in seconds since 1970
-    endTime bigint default 0,	# End time in seconds since 1970
-    stderr longblob,	# The output to stderr of the run - may be nonempty even with success
-    returnCode int default 0,	# The return code from system command - 0 for success
-    pid int default 0,	# Process ID for running processes
+    submitId int default 0,	# Associated submission ID if any
               #Indices
     PRIMARY KEY(id)
 );
@@ -556,4 +546,18 @@ CREATE TABLE cdwTrackViz (
     bigDataFile varchar(255) default '',	# Where big data file lives relative to cdwRootDir
               #Indices
     PRIMARY KEY(id)
+);
+
+#A dataset is a collection of files, usually associated with a paper
+CREATE TABLE cdwDataset (
+    id int unsigned auto_increment,	# Dataset ID
+    name varchar(255) default '',	# Short name of this dataset, one word, no spaces
+    label varchar(255) default '',	# short title of the dataset, a few words
+    description longblob,	# Description of dataset, can be a complete html paragraph.
+    pmid varchar(255) default '',	# Pubmed ID of abstract
+    pmcid varchar(255) default '',	# PubmedCentral ID of paper full text
+    metaDivTags varchar(255) default '',	# Comma separated list of fields used to make tree out of metadata
+              #Indices
+    PRIMARY KEY(id),
+    UNIQUE(name)
 );

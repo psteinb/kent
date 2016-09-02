@@ -43,6 +43,9 @@
 #include "memgfx.h"
 #include "trackHub.h"
 #include "gtexUi.h"
+#include "genbank.h"
+#include "htmlPage.h"
+#include "longRange.h"
 
 #define SMALLBUF 256
 #define MAX_SUBGROUP 9
@@ -277,23 +280,24 @@ printf("%s<A HREF='#a_meta_%s' onclick='return metadataShowHide(\"%s\",%s,true);
        "title='Show metadata details...'>%s<img src='../images/downBlue.png'/></A>",
        (embeddedInText?"&nbsp;":"<P>"),tdb->track,tdb->track, showLongLabel?"true":"false",
        (title?title:""));
-printf("<DIV id='div_%s_meta' style='display:none;'></div>",tdb->track);
+printf("<DIV id='div_%s_meta' style='display:none;'>%s</div>",tdb->track, metadataAsHtmlTable(db,tdb,showLongLabel,FALSE));
 return TRUE;
 }
 
 void extraUiLinks(char *db,struct trackDb *tdb)
-// Show downloads, schema and metadata links where appropriate
+// Show metadata, and downloads, schema links where appropriate
 {
+boolean hasMetadata = (!tdbIsComposite(tdb) && !trackHubDatabase(db)
+                  && metadataForTable(db, tdb, NULL) != NULL);
+if (hasMetadata)
+    printf("<b>Metadata:</b><br>%s\n", metadataAsHtmlTable(db, tdb, FALSE, FALSE));
+
 boolean schemaLink = (!tdbIsDownloadsOnly(tdb) && !trackHubDatabase(db)
                   && isCustomTrack(tdb->table) == FALSE)
                   && (hTableOrSplitExists(db, tdb->table));
-boolean metadataLink = (!tdbIsComposite(tdb) && !trackHubDatabase(db)
-                  && metadataForTable(db, tdb, NULL) != NULL);
 boolean downloadLink = (trackDbSetting(tdb, "wgEncode") != NULL && !tdbIsSuperTrack(tdb));
 int links = 0;
 if (schemaLink)
-    links++;
-if (metadataLink)
     links++;
 if (downloadLink)
     links++;
@@ -306,7 +310,7 @@ if (links > 1)
 if (schemaLink)
     {
     makeSchemaLink(db,tdb,(links > 1 ? "schema":"View table schema"));
-    if (downloadLink || metadataLink)
+    if (downloadLink)
         printf(", ");
     }
 if (downloadLink)
@@ -324,11 +328,7 @@ if (downloadLink)
 
     makeNamedDownloadsLink(targetDb, tdb, (links > 1 ? "downloads":"Downloads"));
     freez(&targetDb);
-    if (metadataLink)
-        printf(",");
     }
-if (metadataLink)
-    compositeMetadataToggle(db,tdb,"metadata", TRUE, TRUE);
 
 if (links > 1)
     printf("</td></tr></table>");
@@ -1865,16 +1865,16 @@ struct mrnaUiData *newMrnaUiData(char *track, boolean isXeno)
 {
 struct mrnaUiData *mud = newEmptyMrnaUiData(track);
 if (isXeno)
-    addMrnaFilter(mud, track, "organism", "org", "organism");
+    addMrnaFilter(mud, track, "organism", "org", organismTable);
 addMrnaFilter(mud, track, "accession", "acc", "acc");
-addMrnaFilter(mud, track, "author", "aut", "author");
-addMrnaFilter(mud, track, "library", "lib", "library");
-addMrnaFilter(mud, track, "tissue", "tis", "tissue");
-addMrnaFilter(mud, track, "cell", "cel", "cell");
-addMrnaFilter(mud, track, "keyword", "key", "keyword");
-addMrnaFilter(mud, track, "gene", "gen", "geneName");
-addMrnaFilter(mud, track, "product", "pro", "productName");
-addMrnaFilter(mud, track, "description", "des", "description");
+addMrnaFilter(mud, track, "author", "aut", authorTable);
+addMrnaFilter(mud, track, "library", "lib", libraryTable);
+addMrnaFilter(mud, track, "tissue", "tis", tissueTable);
+addMrnaFilter(mud, track, "cell", "cel", cellTable);
+addMrnaFilter(mud, track, "keyword", "key", keywordTable);
+addMrnaFilter(mud, track, "gene", "gen", geneNameTable);
+addMrnaFilter(mud, track, "product", "pro", productNameTable);
+addMrnaFilter(mud, track, "description", "des", descriptionTable);
 return mud;
 }
 
@@ -1918,11 +1918,11 @@ for (trackEl = trackList; trackEl != NULL; trackEl = trackEl->next)
     struct trackDb *tdb = trackEl->val;
     char *dupe = cloneString(tdb->type);
     char *type = firstWordInLine(dupe);
-    if ((sameString(type, "genePred")) && (!sameString(tdb->table, "tigrGeneIndex") && !tdbIsComposite(tdb)))
+    if ((sameString(type, "genePred")) && (!sameString(tdb->table, "tigrGeneIndex") && !tdbIsComposite(tdb) && !tdbIsCompositeView(tdb)))
 	{
 	AllocVar(name);
 	name->name = tdb->track;
-	name->label = tdb->shortLabel;
+	name->label = tdb->longLabel;
 	slAddHead(&nameList, name);
 	}
     freez(&dupe);
@@ -3984,11 +3984,11 @@ switch(cType)
                         break;
     case cfgBedFilt:    bedFiltCfgUi(cart,tdb,prefix,title, boxed);
                         break;
-#ifdef USE_BAM
     case cfgBam:        bamCfgUi(cart, tdb, prefix, title, boxed);
                         break;
-#endif
     case cfgVcf:        vcfCfgUi(cart, tdb, prefix, title, boxed);
+                        break;
+    case cfgLong:       longRangeCfgUi(cart, tdb, prefix, title, boxed);
                         break;
     case cfgSnake:      snakeCfgUi(cart, tdb, prefix, title, boxed);
                         break;
@@ -4822,18 +4822,30 @@ if (boxed)
 void wigOption(struct cart *cart, char *name, char *title, struct trackDb *tdb)
 /* let the user choose to see the track in wiggle mode */
 {
-char *canDoCoverage = cfgOptionEnvDefault("HGDB_CAN_DO_COVERAGE",
-                CanDoCoverageConfVariable, "off");
-if (differentString(canDoCoverage, "on"))
-    return;
-
-printf("<BR><B>Display data as a density graph:</B> ");
-char varName[64];
+printf("<BR><BR><B>Display data as a density graph:</B> ");
+char varName[1024];
 safef(varName, sizeof(varName), "%s.doWiggle", name);
-boolean option = cartUsualBoolean(cart, varName, FALSE);
+boolean parentLevel = isNameAtParentLevel(tdb,varName);
+boolean option = cartUsualBooleanClosestToHome(cart, tdb, parentLevel,"doWiggle", FALSE);
+
 cgiMakeCheckBox(varName, option);
 printf("<BR>\n");
+char *style = option ? "display:block" : "display:none";
+printf("<DIV ID=\"densGraphOptions\" STYLE=\"%s\">\n", style);
+
+// we need to fool the wiggle dialog into defaulting to autoscale and maximum
+char *origType = tdb->type;
+tdb->type = "bedGraph";
+if (hashFindVal(tdb->settingsHash, AUTOSCALE) == NULL)
+    hashAdd(tdb->settingsHash, AUTOSCALE, "on");
+if (hashFindVal(tdb->settingsHash, WINDOWINGFUNCTION) == NULL)
+    hashAdd(tdb->settingsHash, WINDOWINGFUNCTION, wiggleWindowingEnumToString( wiggleWindowingMax));
 wigCfgUi(cart,tdb,name,title,TRUE);
+tdb->type = origType;
+printf("</DIV>\n\n");
+printf("<script>\n");
+printf("   $(\"input[name='%s']\").click( function() { $('#densGraphOptions').toggle();} );\n", varName);
+printf("</script>\n\n");
 }
 
 void wiggleScaleDropDownJavascript(char *name)
@@ -5381,7 +5393,7 @@ if (setting)
                                                                   &minVal,  &maxVal);
         safef(varName, sizeof(varName), "%s.%s%s", name, scoreName, _MIN);
         safef(altLabel, sizeof(altLabel), "%s%s", (filterByRange ? "Minimum " : ""),
-              htmlEncodeText(htmlTextStripTags(label),FALSE));
+              htmlEncode(htmlTextStripTags(label)));
         cgiMakeDoubleVarWithLimits(varName,minVal, altLabel, 0,minLimit, maxLimit);
         if (filterByRange)
             {
@@ -6173,6 +6185,9 @@ int i;
 char *species[MAX_SP_SIZE];
 char option[MAX_SP_SIZE];
 
+*list = NULL;
+*groupCt = 0;
+
 /* determine species and groups for pairwise -- create checkboxes */
 if (speciesOrder == NULL && speciesGroup == NULL && speciesUseFile == NULL)
     {
@@ -6559,7 +6574,6 @@ if (trackDbSetting(tdb, CONS_WIGGLE) != NULL)
 cfgEndBox(boxed);
 }
 
-#ifdef USE_BAM
 static char *grayLabels[] =
     { "alignment quality",
       "base qualities",
@@ -6675,7 +6689,6 @@ if (!boxed && fileExists(hHelpFile("hgBamTrackHelp")))
 
 cfgEndBox(boxed);
 }
-#endif//def USE_BAM
 
 void lrgCfgUi(struct cart *cart, struct trackDb *tdb, char *name, char *title, boolean boxed)
 /* LRG: Locus Reference Genomic sequences mapped to assembly. */
@@ -8084,23 +8097,35 @@ char * setting = trackDbSetting(tdb, "pennantIcon");
 if (setting != NULL)
     {
     setting = cloneString(setting);
-    char *icon = htmlEncodeText(nextWord(&setting),FALSE);
+    char *icon = htmlEncode(nextWord(&setting));
+    char buffer[4096];
+    char *src = NULL;
+    
+    if (startsWith("http://", icon) || startsWith("ftp://", icon) ||
+        startsWith("https://", icon))
+        src = icon;
+    else
+        {
+        safef(buffer, sizeof buffer, "../images/%s", icon);
+        src = buffer;
+        }
+
     char *url = NULL;
     if (setting != NULL)
 	url = nextWord(&setting);
     char *hint = NULL;
     if (setting != NULL)
-	hint = htmlEncodeText(stripEnclosingDoubleQuotes(setting),FALSE);
+	hint = htmlEncode(stripEnclosingDoubleQuotes(setting));
 
     if (!isEmpty(url))
         {
 	if (isEmpty(hint))
 	    printf("<P><a href='%s' TARGET=ucscHelp><img height='16' width='16' "
-		   "src='../images/%s'></a>",url,icon);
+		   "src='%s'></a>",url,src);
 	else
 	    {
 	    printf("<P><a title='%s' href='%s' TARGET=ucscHelp><img height='16' width='16' "
-		   "src='../images/%s'></a>",hint,url,icon);
+		   "src='%s'></a>",hint,url,src);
 
 	    // Special case for liftOver from hg17 or hg18, but this should probably be generalized.
 	    if (sameString(icon,"18.jpg") && startsWithWord("lifted",hint))
@@ -8115,7 +8140,7 @@ if (setting != NULL)
 	    }
 	}
     else
-        printf("<BR><img height='16' width='16' src='../images/%s'>\n",icon);
+        printf("<BR><img height='16' width='16' src='%s'>\n",src);
     return TRUE;
     }
 return FALSE;
@@ -8129,20 +8154,31 @@ char *setting = trackDbSetting(tdb, "pennantIcon");
 if (setting != NULL)
     {
     setting = cloneString(setting);
-    char *icon = htmlEncodeText(nextWord(&setting),FALSE);
+    char buffer[4096];
+    char *src = NULL;
+    char *icon = htmlEncode(nextWord(&setting));
+    if (startsWith("http://", icon) || startsWith("ftp://", icon) ||
+        startsWith("https://", icon))
+        src = icon;
+    else
+        {
+        safef(buffer, sizeof buffer, "../images/%s", icon);
+        src = buffer;
+        }
+
     if (setting)
         {
         char *url = nextWord(&setting);
         if (setting)
             {
-            char *hint = htmlEncodeText(stripEnclosingDoubleQuotes(setting),FALSE);
+            char *hint = htmlEncode(stripEnclosingDoubleQuotes(setting));
             hPrintf("<a title='%s' href='%s' TARGET=ucscHelp><img height='16' width='16' "
-                    "src='../images/%s'></a>\n",hint,url,icon);
+                    "src='%s'></a>\n",hint,url,src);
             freeMem(hint);
             }
         else
             hPrintf("<a href='%s' TARGET=ucscHelp><img height='16' width='16' "
-                    "src='../images/%s'></a>\n",url,icon);
+                    "src='%s'></a>\n",url,src);
         }
     else
         hPrintf("<img height='16' width='16' src='%s'>\n",icon);
@@ -8380,6 +8416,8 @@ if (tdbIsBigBed(tdb))
 // TODO: standardize to a wig as
 //else if (tdbIsBigWig(tdb))
 //    asObj = asObjFrombigBed(conn,tdb);
+else if (tdbIsLongTabix(tdb))
+    asObj = longTabixAsObj();
 else if (tdbIsBam(tdb))
     asObj = bamAsObj();
 else if (tdbIsVcf(tdb))
@@ -8460,15 +8498,15 @@ for (i=0; i<subCount; ++i)
 return s;
 }
 
-char *replaceInUrl(char* url, char *idInUrl, struct cart* cart, char *db, char* seqName, int winStart, \
+char *replaceInUrl(char *url, char *idInUrl, struct cart* cart, char *db, char *seqName, int winStart, \
     int winEnd, char *track, boolean encode) 
 /* replace $$ in url with idInUrl. Supports many other wildchards 
- * XX Do we have readable docs for these parameters somewhere? */
+ * XX Do we have readable docs for these parameters somewhere?
+ * Look at http://genome.ucsc.edu/goldenpath/help/trackDb/trackDbHub.html */
 {
 struct dyString *uUrl = NULL;
 struct dyString *eUrl = NULL;
 char startString[64], endString[64];
-char begItem[64], endItem[64];
 char *ins[13], *outs[13];
 char *eItem = (encode ? cgiEncode(idInUrl) : cloneString(idInUrl));
 
@@ -8532,14 +8570,12 @@ if (stringIn(":", idInUrl)) {
 // URL may now contain item boundaries
 ins[9] = "${";
 ins[10] = "$}";
-if (cartOptionalString(cart, "l") && cartOptionalString(cart, "r"))
+if (cartOptionalString(cart, "o") && cartOptionalString(cart, "t"))
     {
-    int itemBeg = cartIntExp(cart, "l"); // Should strip any unexpected commas
-    int itemEnd = cartIntExp(cart, "r");
-    safef(begItem, sizeof begItem, "%d", itemBeg);
-    safef(endItem, sizeof endItem, "%d", itemEnd);
-    outs[9] = begItem;
-    outs[10] = endItem;
+    char *itemBeg = cartString(cart, "o"); // unexpected commas?
+    char *itemEnd = cartString(cart, "t");
+    outs[9] = itemBeg;
+    outs[10] = itemEnd;
     }
 else // should never be but I am unwilling to bet the farm
     {

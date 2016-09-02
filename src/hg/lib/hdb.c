@@ -472,33 +472,51 @@ hDisconnectCentral(&centralConn);
 return db;
 }
 
-char *hDbForTaxon(struct sqlConnection *conn, int taxon)
-/* Get database associated with NCBI taxon number if any. */
+static char *firstExistingDbFromQuery(struct sqlConnection *conn, char *query)
+/* Perform query; result is a list of database names.  Clone and return the first database
+ * that exists, or NULL if the query has no results or none of the databases exist. */
 {
 char *db = NULL;
-char *binomial = NULL;
-char query[256];
+struct slName *sl, *list = sqlQuickList(conn, query);
+for (sl = list;  sl != NULL;  sl = sl->next)
+    {
+    if (sqlDatabaseExists(sl->name))
+        db = cloneString(sl->name);
+    break;
+    }
+slFreeList(&list);
+return db;
+}
 
-/* Figure out scientific name. */
+char *hDbForTaxon(int taxon)
+/* Get default database associated with NCBI taxon number, or NULL if not found. */
+{
+char *db = NULL;
 if (taxon != 0)
     {
-    sqlSafef(query, sizeof(query),
-	"select binomial from uniProt.taxon where id=%d", taxon);
-    binomial = sqlQuickString(conn, query);
-    }
-/* Get default database for that organism. */
-if (binomial != NULL)
-    {
     struct sqlConnection *centralConn = hConnectCentral();
+    char query[512];
+    // First try defaultDb.  Watch out for taxIds with multiple genomes (and hence multiple
+    // defaultDb matches).  For example, 9606 (human) has patch databases, each with a different
+    // genome.  Favor the "real" genome using orderKey and make sure databases are active in dbDb.
     sqlSafef(query, sizeof(query),
-        "select f.name from %s d,%s f "
-	"where d.scientificName='%s' "
-	"and d.name not like 'zoo%%' "
-	"and d.name = f.name ", dbDbTable(), defaultDbTable(), binomial);
-    db = sqlQuickString(centralConn, query);
+             "select d.name from %s d, %s f "
+             "where d.taxId = %d and d.name = f.name "
+             "and active = 1 order by orderKey",
+             dbDbTable(), defaultDbTable(), taxon);
+    db = firstExistingDbFromQuery(centralConn, query);
+    // Rarely, we have one genome (like Baboon) that actually encompasses different species
+    // and taxons (P. anubis and P. hamadryas).  defaultDb only has one (P. anubis), so the
+    // query comes up empty for the other.  If so, try again using orderKey instead of defaultDb:
+    if (isEmpty(db))
+        {
+        sqlSafef(query, sizeof(query),
+                 "select name from %s where taxId = %d and active = 1 order by orderKey limit 1",
+                 dbDbTable(), taxon);
+        db = firstExistingDbFromQuery(centralConn, query);
+        }
     hDisconnectCentral(&centralConn);
     }
-freeMem(binomial);
 return db;
 }
 
@@ -771,6 +789,20 @@ static void tableListHashAdd(struct hash *dbTblHash, char *profile, char *db)
  * cache it to save a lot of querying if we will check existence of
  * lots of tables. */
 {
+if (trackHubDatabase(db))
+    {
+    struct trackHub *hub = hubConnectGetHubForDb(db);
+    if (hub != NULL)
+        {
+        struct trackHubGenome *hubGenome = trackHubFindGenome(hub, db);
+        struct trackDb *tdbList = trackHubTracksForGenome(hub, hubGenome), *tdb;
+        for (tdb = tdbList;  tdb != NULL;  tdb = tdb->next)
+            {
+            hashAdd(dbTblHash, tdb->table, slNameNew(tdb->table));
+            }
+        }
+    return;
+    }
 struct sqlConnection *conn = hAllocConnProfile(profile, db);
 struct slName *allTables =  sqlListTables(conn);
 
@@ -2482,6 +2514,15 @@ char *hFreezeDateOpt(char *database)
 return hDbDbOptionalField(database, "description");
 }
 
+int hTaxId(char *database)
+/* Return taxId (NCBI Taxonomy ID) associated with database. */
+{
+char *taxIdStr = hDbDbOptionalField(database, "taxId");
+if (isNotEmpty(taxIdStr))
+    return atoi(taxIdStr);
+return 0;
+}
+
 int hOrganismID(char *database)
 /* Get organism ID from relational organism table */
 /* Return 0 if not found. */
@@ -2490,8 +2531,8 @@ char query[256];
 struct sqlConnection *conn = hAllocConn(database);
 int ret;
 
-sqlSafef(query, sizeof(query), "select id from organism where name = '%s'",
-				    hScientificName(database));
+sqlSafef(query, sizeof(query), "select id from %s where name = '%s'",
+				    organismTable, hScientificName(database));
 ret = sqlQuickNum(conn, query);
 hFreeConn(&conn);
 return ret;
@@ -3215,7 +3256,8 @@ char *httpHost = getenv("HTTP_HOST");
 
 if (httpHost == NULL && !gethostname(host, sizeof(host)))
     // make sure this works when CGIs are run from the command line.
-    httpHost = host;
+    // small mem leak is acceptable when run from command line
+    httpHost = cloneString(host);
 
 return httpHost;
 }
@@ -3262,7 +3304,7 @@ boolean hIsPreviewHost()
 {
 if (cfgOption("test.preview"))
     return TRUE;
-return hHostHasPrefix("genome-preview");
+return hHostHasPrefix("genome-preview") || hHostHasPrefix("hgwalpha");
 }
 
 char *hBrowserName()
@@ -4395,20 +4437,14 @@ struct slPair *pairList = NULL;
 if (isHubTrack(genome))
     {
     char *clade = trackHubAssemblyClade(genome);
-    struct dbDb *hubDbDbList = trackHubGetDbDbs(clade), *dbDb;
-    for (dbDb = hubDbDbList;  dbDb != NULL;  dbDb = dbDb->next)
-	{
-	char *db = dbDb->name;
-	if (isEmpty(db))
-	    db = dbDb->genome;
-	slAddHead(&pairList, slPairNew(db, cloneString(db)));
-	}
-    slReverse(&pairList);
+    struct dbDb *hubDbDbList = trackHubGetDbDbs(clade);
+    pairList = trackHubDbDbToValueLabel(hubDbDbList);
     }
 else
     {
     struct dyString *dy = sqlDyStringCreate("select name,description from %s "
-					    "where genome = '%s' order by orderKey", dbDbTable(), genome);
+					    "where genome = '%s' and active "
+                                            "order by orderKey", dbDbTable(), genome);
     struct sqlConnection *conn = hConnectCentral();
     pairList = sqlQuickPairList(conn, dy->string);
     hDisconnectCentral(&conn);

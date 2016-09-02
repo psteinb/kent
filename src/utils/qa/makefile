@@ -1,3 +1,4 @@
+kentSrc = ../..
 include ../../inc/common.mk
 # ${SCRIPTS} is ${HOME}/bin/scripts (defined in kent/src/inc/common.mk)
 # to install in /cluster/bin/scripts/, run (in this directory):
@@ -12,7 +13,7 @@ install:
 	cp -p --remove-destination backupCentral.csh       ${SCRIPTS}
 	cp -p --remove-destination bamToBedGraph.csh       ${SCRIPTS}
 	cp -p --remove-destination bamToBigWig.csh         ${SCRIPTS}
-	cp -p --remove-destination bigPush.csh             ${SCRIPTS}
+	cp -p --remove-destination bigPush.sh              ${SCRIPTS}
 	cp -p --remove-destination blatPing.csh            ${SCRIPTS}
 	cp -p --remove-destination browserUsage.csh        ${SCRIPTS}
 	cp -p --remove-destination catchBot.csh            ${SCRIPTS}

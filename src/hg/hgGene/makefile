@@ -1,3 +1,4 @@
+kentSrc = ../..
 include ../../inc/common.mk
 
 L += $(MYSQLLIBS) -lm
@@ -7,7 +8,7 @@ MYLIBS =  $(MYLIBDIR)/jkhgap.a $(MYLIBDIR)/jkweb.a
 A = hgGene
 
 O = hgGene.o alleles.o altSplice.o ctd.o dnaBindMotif.o domains.o gad.o malaCards.o\
-    flyBaseInfo.o go.o info.o links.o microarray.o \
+    flyBaseInfo.o gtex.o go.o info.o links.o microarray.o \
     method.o localization.o mrnaDescriptions.o otherOrgs.o\
     pathways.o pseudoGene.o rgdInfo.o rnaStructure.o sequence.o swissProtComments.o \
     synonym.o wikiTrack.o geneReviews.o

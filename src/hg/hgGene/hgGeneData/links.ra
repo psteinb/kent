@@ -72,8 +72,8 @@ priority 10
 
 name entrezGene
 shortLabel Entrez Gene
-tables kgXref refLink
-idSql select refLink.locusLinkId from kgXref,refLink where kgID = '%s' and kgXref.refseq = refLink.mrnaAcc
+tables kgXref hgFixed.refLink
+idSql select hgFixed.refLink.locusLinkId from kgXref,hgFixed.refLink where kgID = '%s' and kgXref.refseq = hgFixed.refLink.mrnaAcc
 url http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?db=gene&cmd=Retrieve&dopt=Graphics&list_uids=%s
 priority 10
 
@@ -166,9 +166,9 @@ priority 10
 
 name wikipedia
 shortLabel Wikipedia
-tables knownToLocusLink
-idSql select value from knownToLocusLink where name = '%s';
-url http://api.genewikiplus.org/biogps-plugins/wp/%s
+tables knownToWikipedia
+idSql select value from knownToWikipedia where name = '%s';
+url https://en.wikipedia.org/wiki/%s
 priority 11
 
 name biogps

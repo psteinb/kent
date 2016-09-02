@@ -111,7 +111,7 @@ static struct hash* dbToProfile = NULL;           // db to sqlProfile
 // forward declarations to keep the git diffs clean
 static struct sqlResult *sqlUseOrStore(struct sqlConnection *sc,
 	char *query, ResGetter *getter, boolean abort);
-static void sqlConnectIfUnconnected(struct sqlConnection *sc, bool abort);
+static boolean sqlConnectIfUnconnected(struct sqlConnection *sc, bool abort);
 bool sqlConnMustUseFailover(struct sqlConnection *sc);
 
 static char *envOverride(char *envName, char *defaultVal)
@@ -868,13 +868,22 @@ else
     }
 }
 
-static bool sqlTableCacheTableExists(struct sqlConnection *conn, char* table)
+static bool sqlTableCacheTableExists(struct sqlConnection *conn, char *maybeTable)
 /* check if table exists in table name cache */
 // (see redmine 3780 for some historical background on this caching)
 {
 char query[1024];
 char *tableListTable = cfgVal("showTableCache");
-sqlSafef(query, sizeof(query), "SELECT count(*) FROM %s WHERE tableName='%s'", tableListTable, table);
+char table[2048];
+safecpy(table, sizeof table, maybeTable);
+char *dot = strchr(table, '.');
+if (dot)
+    {
+    *dot = 0;
+    sqlSafef(query, sizeof(query), "SELECT count(*) FROM %s.%s WHERE tableName='%s'", table, tableListTable, dot+1);
+    }
+else
+    sqlSafef(query, sizeof(query), "SELECT count(*) FROM %s WHERE tableName='%s'", tableListTable, table);
 return (sqlQuickNum(conn, query)!=0);
 }
 
@@ -1277,16 +1286,22 @@ struct sqlConnection *sqlMayConnect(char *database)
 return sqlConnProfile(sqlProfileMustGet(NULL, database), database, FALSE);
 }
 
-static void sqlConnectIfUnconnected(struct sqlConnection *sc, bool abort)
-/* Take a yet unconnected sqlConnection object and connect it to the sql server. */
+static boolean sqlConnectIfUnconnected(struct sqlConnection *sc, bool abort)
+/* Take a yet unconnected sqlConnection object and connect it to the sql server. 
+ * returns TRUE on success, FALSE otherwise. 
+ * This allows us to have mysql connection objects with a server name, port,
+ * database etc, but no actual mysql connection setup yet. The connection is
+ * only done when a query comes in. This saves a lot of time, as the failover
+ * connection object is just tracking the database changes on the main
+ * connection, and connects only when really necessary.  */
 {
 if (sc->conn!=NULL)
-    return;
+    return TRUE;
 char *profName = NULL;
 if (sc->profile)
     profName = sc->profile->name;
 struct sqlProfile *sp = sqlProfileMustGet(profName, sc->db);
-sqlConnRemoteFillIn(sc, sp, sc->db, abort, FALSE);
+return (sqlConnRemoteFillIn(sc, sp, sc->db, abort, FALSE) != NULL);
 }
 
 struct sqlConnection *sqlConnect(char *database)
@@ -1355,7 +1370,7 @@ noWarnAbort();
 }
 
 struct sqlConnection *sqlFailoverConn(struct sqlConnection *sc)
-/* returns the failover connection of a connection or NULL.
+/* Returns the failover connection of a connection or NULL.
  * (Needed because the sqlConnection is not in the .h file) */
 {
 return sc->failoverConn;
@@ -1377,6 +1392,12 @@ if ((sc->failoverConn != NULL) && differentStringNullOk(sc->db, sc->conn->db))
 return FALSE;
 }
 
+char *sqlHostInfo(struct sqlConnection *sc)
+/* Returns the mysql host info for the connection, must be connected. */
+{
+return (char *) mysql_get_host_info(sc->conn);
+}
+
 static struct sqlResult *sqlUseOrStore(struct sqlConnection *sc,
 	char *query, ResGetter *getter, boolean abort)
 /* Returns NULL if result was empty and getter==mysql_use_result.
@@ -1390,6 +1411,7 @@ static struct sqlResult *sqlUseOrStore(struct sqlConnection *sc,
  */
 {
 struct sqlResult *res = NULL;
+struct sqlConnection *scMain = sc;
 long deltaTime;
 boolean fixedMultipleNOSQLINJ = FALSE;
 
@@ -1432,8 +1454,12 @@ if (mysqlError != 0 && sc->failoverConn && sameWord(sqlGetDatabase(sc), sqlGetDa
             scConnProfile(sc->failoverConn), query);
 
     sc = sc->failoverConn;
-    sqlConnectIfUnconnected(sc, TRUE);
-    mysqlError = mysql_real_query(sc->conn, query, strlen(query));
+    if (sqlConnectIfUnconnected(sc, FALSE))
+        mysqlError = mysql_real_query(sc->conn, query, strlen(query));
+    else
+        // This database does not exist on the (slow-db) failover mysql server
+        // It makes more sense to the show the error message we got from our main db
+        sc = scMain;
     }
 
 if (mysqlError != 0)
@@ -1907,14 +1933,14 @@ if (((options & SQL_TAB_FILE_ON_SERVER) && !sqlIsRemote(conn)) | sqlNeverLocal)
         {
         if (getcwd(tabPath, sizeof(tabPath)) == NULL)
 	    errAbort("sqlLoadTableFile: getcwd failed");
-        strcat(tabPath, "/");
+        safecat(tabPath, sizeof(tabPath), "/");
         }
-    strcat(tabPath, path);
+    safecat(tabPath, sizeof(tabPath), path);
     localOpt = "";
     }
 else
     {
-    strcpy(tabPath, path);
+    safecpy(tabPath, sizeof(tabPath), path);
     localOpt = "LOCAL";
     }
 
@@ -2157,7 +2183,7 @@ if ((sr = sqlGetResult(sc, query)) == NULL)
 row = sqlNextRow(sr);
 if (row != NULL && row[0] != NULL)
     {
-    strncpy(buf, row[0], bufSize);
+    safecpy(buf, bufSize, row[0]);
     ret = buf;
     }
 sqlFreeResult(&sr);
@@ -2524,8 +2550,7 @@ sc->db = cloneString(database);
 
 if (mustConnect)
     {
-    sqlConnectIfUnconnected(sc, FALSE);
-    if (sc->conn==NULL)
+    if (!sqlConnectIfUnconnected(sc, FALSE))
         {
         monitorPrint(sc, "SQL_SET_DB_FAILED", "%s", database);
         return -1;

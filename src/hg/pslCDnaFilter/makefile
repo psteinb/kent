@@ -1,8 +1,9 @@
+kentSrc = ../..
 include ../../inc/common.mk
 
 L += ${MYSQLLIBS} -lm
 MYLIBDIR = ../../lib/${MACHTYPE}
-MYLIBS =  ${MYLIBDIR}/jkweb.a ${MYLIBDIR}/jkhgap.a
+MYLIBS =  ${MYLIBDIR}/jkhgap.a ${MYLIBDIR}/jkweb.a
 
 .SECONDARY:
 

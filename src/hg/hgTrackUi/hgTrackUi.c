@@ -682,7 +682,7 @@ switch (colorSourceCart)
                                      snp132BitfieldArraySize);
                 break;
     case snp125ColorSourceAlleleFreq:
-                printf("<P>Items are be colored by allele frequency on a red-blue spectrum, "
+                printf("<P>Items are colored by allele frequency on a red-blue spectrum, "
                        "with red representing rare alleles and blue representing common alleles. "
                        "Items with no allele frequency data are colored black.</P>");
                 break;
@@ -3018,10 +3018,6 @@ else if (sameString(track, "lrg"))
     lrgCfgUi(cart, tdb, tdb->track, NULL, boxed);
 else if (sameString(track, "lrgTranscriptAli"))
     lrgTranscriptAliCfgUi(cart, tdb, tdb->track, NULL, boxed);
-else if (startsWith("gtexGene", track))
-    {
-    gtexGeneUi(cart, tdb, tdb->track, NULL, boxed);
-    }
 else if (tdb->type != NULL)
     {   // NOTE for developers: please avoid special cases and use cfgTypeFromTdb//cfgByCfgType()
         //  When you do, then multi-view cfg and subtrack cfg will work.
@@ -3029,6 +3025,8 @@ else if (tdb->type != NULL)
     if (cType != cfgNone)
         {
         cfgByCfgType(cType,database, cart, tdb,tdb->track, NULL, boxed);
+        if (startsWith("gtexGene", track))
+            gtexGeneUi(cart, tdb, tdb->track, NULL, TRUE);
 #ifdef USE_HAL
 	if (cType == cfgSnake)
 	    cfgHalSnake(tdb, tdb->track);
@@ -3240,6 +3238,8 @@ else if (sameString(tdb->track, WIKI_TRACK_TABLE))
 else if (sameString(tdb->type, "halSnake"))
     tdb->canPack = TRUE;
 else if (sameString(tdb->type, "bigPsl"))
+    tdb->canPack = TRUE;
+else if (sameString(tdb->type, "bigChain"))
     tdb->canPack = TRUE;
 
 // Don't bother with vis controls for downloadsOnly

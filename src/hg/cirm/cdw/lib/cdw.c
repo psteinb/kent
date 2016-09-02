@@ -1885,7 +1885,7 @@ fputc(lastSep,f);
 }
 
 
-char *cdwSubmitCommaSepFieldNames = "id,url,startUploadTime,endUploadTime,userId,manifestFileId,metaFileId,submitDirId,fileCount,oldFiles,newFiles,byteCount,oldBytes,newBytes,errorMessage,fileIdInTransit,metaChangeCount";
+char *cdwSubmitCommaSepFieldNames = "id,url,startUploadTime,endUploadTime,userId,manifestFileId,metaFileId,submitDirId,fileCount,oldFiles,newFiles,byteCount,oldBytes,newBytes,errorMessage,fileIdInTransit,metaChangeCount,wrangler";
 
 void cdwSubmitStaticLoad(char **row, struct cdwSubmit *ret)
 /* Load a row from cdwSubmit table into ret.  The contents of ret will
@@ -1909,6 +1909,7 @@ ret->newBytes = sqlLongLong(row[13]);
 ret->errorMessage = row[14];
 ret->fileIdInTransit = sqlUnsigned(row[15]);
 ret->metaChangeCount = sqlUnsigned(row[16]);
+ret->wrangler = row[17];
 }
 
 struct cdwSubmit *cdwSubmitLoadByQuery(struct sqlConnection *conn, char *query)
@@ -1941,8 +1942,8 @@ void cdwSubmitSaveToDb(struct sqlConnection *conn, struct cdwSubmit *el, char *t
  * inserted as NULL. This function automatically escapes quoted strings for mysql. */
 {
 struct dyString *update = newDyString(updateSize);
-sqlDyStringPrintf(update, "insert into %s values ( %u,'%s',%lld,%lld,%u,%u,%u,%u,%u,%u,%u,%lld,%lld,%lld,'%s',%u,%u)", 
-	tableName,  el->id,  el->url,  el->startUploadTime,  el->endUploadTime,  el->userId,  el->manifestFileId,  el->metaFileId,  el->submitDirId,  el->fileCount,  el->oldFiles,  el->newFiles,  el->byteCount,  el->oldBytes,  el->newBytes,  el->errorMessage,  el->fileIdInTransit,  el->metaChangeCount);
+sqlDyStringPrintf(update, "insert into %s values ( %u,'%s',%lld,%lld,%u,%u,%u,%u,%u,%u,%u,%lld,%lld,%lld,'%s',%u,%u,'%s')", 
+	tableName,  el->id,  el->url,  el->startUploadTime,  el->endUploadTime,  el->userId,  el->manifestFileId,  el->metaFileId,  el->submitDirId,  el->fileCount,  el->oldFiles,  el->newFiles,  el->byteCount,  el->oldBytes,  el->newBytes,  el->errorMessage,  el->fileIdInTransit,  el->metaChangeCount,  el->wrangler);
 sqlUpdate(conn, update->string);
 freeDyString(&update);
 }
@@ -1971,6 +1972,7 @@ ret->newBytes = sqlLongLong(row[13]);
 ret->errorMessage = cloneString(row[14]);
 ret->fileIdInTransit = sqlUnsigned(row[15]);
 ret->metaChangeCount = sqlUnsigned(row[16]);
+ret->wrangler = cloneString(row[17]);
 return ret;
 }
 
@@ -1980,7 +1982,7 @@ struct cdwSubmit *cdwSubmitLoadAll(char *fileName)
 {
 struct cdwSubmit *list = NULL, *el;
 struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[17];
+char *row[18];
 
 while (lineFileRow(lf, row))
     {
@@ -1998,7 +2000,7 @@ struct cdwSubmit *cdwSubmitLoadAllByChar(char *fileName, char chopper)
 {
 struct cdwSubmit *list = NULL, *el;
 struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[17];
+char *row[18];
 
 while (lineFileNextCharRow(lf, chopper, row, ArraySize(row)))
     {
@@ -2036,6 +2038,7 @@ ret->newBytes = sqlLongLongComma(&s);
 ret->errorMessage = sqlStringComma(&s);
 ret->fileIdInTransit = sqlUnsignedComma(&s);
 ret->metaChangeCount = sqlUnsignedComma(&s);
+ret->wrangler = sqlStringComma(&s);
 *pS = s;
 return ret;
 }
@@ -2049,6 +2052,7 @@ struct cdwSubmit *el;
 if ((el = *pEl) == NULL) return;
 freeMem(el->url);
 freeMem(el->errorMessage);
+freeMem(el->wrangler);
 freez(pEl);
 }
 
@@ -2105,6 +2109,10 @@ fputc(sep,f);
 fprintf(f, "%u", el->fileIdInTransit);
 fputc(sep,f);
 fprintf(f, "%u", el->metaChangeCount);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->wrangler);
+if (sep == ',') fputc('"',f);
 fputc(lastSep,f);
 }
 
@@ -2826,7 +2834,7 @@ fputc(lastSep,f);
 }
 
 
-char *cdwValidFileCommaSepFieldNames = "id,licensePlate,fileId,format,outputType,experiment,replicate,enrichedIn,ucscDb,itemCount,basesInItems,sampleCount,basesInSample,sampleBed,mapRatio,sampleCoverage,depth,singleQaStatus,replicateQaStatus,part,pairedEnd,qaVersion,uniqueMapRatio";
+char *cdwValidFileCommaSepFieldNames = "id,licensePlate,fileId,format,outputType,experiment,replicate,enrichedIn,ucscDb,itemCount,basesInItems,sampleCount,basesInSample,sampleBed,mapRatio,sampleCoverage,depth,singleQaStatus,replicateQaStatus,part,pairedEnd,qaVersion,uniqueMapRatio,lane";
 
 void cdwValidFileStaticLoad(char **row, struct cdwValidFile *ret)
 /* Load a row from cdwValidFile table into ret.  The contents of ret will
@@ -2856,6 +2864,7 @@ ret->part = row[19];
 ret->pairedEnd = row[20];
 ret->qaVersion = sqlSigned(row[21]);
 ret->uniqueMapRatio = sqlDouble(row[22]);
+ret->lane = row[23];
 }
 
 struct cdwValidFile *cdwValidFileLoadByQuery(struct sqlConnection *conn, char *query)
@@ -2888,8 +2897,8 @@ void cdwValidFileSaveToDb(struct sqlConnection *conn, struct cdwValidFile *el, c
  * inserted as NULL. This function automatically escapes quoted strings for mysql. */
 {
 struct dyString *update = newDyString(updateSize);
-sqlDyStringPrintf(update, "insert into %s values ( %u,'%s',%u,'%s','%s','%s','%s','%s','%s',%lld,%lld,%lld,%lld,'%s',%g,%g,%g,%d,%d,'%s','%s',%d,%g)", 
-	tableName,  el->id,  el->licensePlate,  el->fileId,  el->format,  el->outputType,  el->experiment,  el->replicate,  el->enrichedIn,  el->ucscDb,  el->itemCount,  el->basesInItems,  el->sampleCount,  el->basesInSample,  el->sampleBed,  el->mapRatio,  el->sampleCoverage,  el->depth,  el->singleQaStatus,  el->replicateQaStatus,  el->part,  el->pairedEnd,  el->qaVersion,  el->uniqueMapRatio);
+sqlDyStringPrintf(update, "insert into %s values ( %u,'%s',%u,'%s','%s','%s','%s','%s','%s',%lld,%lld,%lld,%lld,'%s',%g,%g,%g,%d,%d,'%s','%s',%d,%g,'%s')", 
+	tableName,  el->id,  el->licensePlate,  el->fileId,  el->format,  el->outputType,  el->experiment,  el->replicate,  el->enrichedIn,  el->ucscDb,  el->itemCount,  el->basesInItems,  el->sampleCount,  el->basesInSample,  el->sampleBed,  el->mapRatio,  el->sampleCoverage,  el->depth,  el->singleQaStatus,  el->replicateQaStatus,  el->part,  el->pairedEnd,  el->qaVersion,  el->uniqueMapRatio,  el->lane);
 sqlUpdate(conn, update->string);
 freeDyString(&update);
 }
@@ -2924,6 +2933,7 @@ ret->part = cloneString(row[19]);
 ret->pairedEnd = cloneString(row[20]);
 ret->qaVersion = sqlSigned(row[21]);
 ret->uniqueMapRatio = sqlDouble(row[22]);
+ret->lane = cloneString(row[23]);
 return ret;
 }
 
@@ -2933,7 +2943,7 @@ struct cdwValidFile *cdwValidFileLoadAll(char *fileName)
 {
 struct cdwValidFile *list = NULL, *el;
 struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[23];
+char *row[24];
 
 while (lineFileRow(lf, row))
     {
@@ -2951,7 +2961,7 @@ struct cdwValidFile *cdwValidFileLoadAllByChar(char *fileName, char chopper)
 {
 struct cdwValidFile *list = NULL, *el;
 struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[23];
+char *row[24];
 
 while (lineFileNextCharRow(lf, chopper, row, ArraySize(row)))
     {
@@ -2995,6 +3005,7 @@ ret->part = sqlStringComma(&s);
 ret->pairedEnd = sqlStringComma(&s);
 ret->qaVersion = sqlSignedComma(&s);
 ret->uniqueMapRatio = sqlDoubleComma(&s);
+ret->lane = sqlStringComma(&s);
 *pS = s;
 return ret;
 }
@@ -3015,6 +3026,7 @@ freeMem(el->ucscDb);
 freeMem(el->sampleBed);
 freeMem(el->part);
 freeMem(el->pairedEnd);
+freeMem(el->lane);
 freez(pEl);
 }
 
@@ -3099,6 +3111,10 @@ fputc(sep,f);
 fprintf(f, "%d", el->qaVersion);
 fputc(sep,f);
 fprintf(f, "%g", el->uniqueMapRatio);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->lane);
+if (sep == ',') fputc('"',f);
 fputc(lastSep,f);
 }
 
@@ -5842,7 +5858,7 @@ fputc(lastSep,f);
 }
 
 
-char *cdwJobCommaSepFieldNames = "id,commandLine,startTime,endTime,stderr,returnCode,pid";
+char *cdwJobCommaSepFieldNames = "id,commandLine,startTime,endTime,stderr,returnCode,pid,submitId";
 
 void cdwJobStaticLoad(char **row, struct cdwJob *ret)
 /* Load a row from cdwJob table into ret.  The contents of ret will
@@ -5856,6 +5872,7 @@ ret->endTime = sqlLongLong(row[3]);
 ret->stderr = row[4];
 ret->returnCode = sqlSigned(row[5]);
 ret->pid = sqlSigned(row[6]);
+ret->submitId = sqlSigned(row[7]);
 }
 
 struct cdwJob *cdwJobLoadByQuery(struct sqlConnection *conn, char *query)
@@ -5888,8 +5905,8 @@ void cdwJobSaveToDb(struct sqlConnection *conn, struct cdwJob *el, char *tableNa
  * inserted as NULL. This function automatically escapes quoted strings for mysql. */
 {
 struct dyString *update = newDyString(updateSize);
-sqlDyStringPrintf(update, "insert into %s values ( %u,'%s',%lld,%lld,'%s',%d,%d)", 
-	tableName,  el->id,  el->commandLine,  el->startTime,  el->endTime,  el->stderr,  el->returnCode,  el->pid);
+sqlDyStringPrintf(update, "insert into %s values ( %u,'%s',%lld,%lld,'%s',%d,%d,%d)", 
+	tableName,  el->id,  el->commandLine,  el->startTime,  el->endTime,  el->stderr,  el->returnCode,  el->pid,  el->submitId);
 sqlUpdate(conn, update->string);
 freeDyString(&update);
 }
@@ -5908,6 +5925,7 @@ ret->endTime = sqlLongLong(row[3]);
 ret->stderr = cloneString(row[4]);
 ret->returnCode = sqlSigned(row[5]);
 ret->pid = sqlSigned(row[6]);
+ret->submitId = sqlSigned(row[7]);
 return ret;
 }
 
@@ -5917,7 +5935,7 @@ struct cdwJob *cdwJobLoadAll(char *fileName)
 {
 struct cdwJob *list = NULL, *el;
 struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[7];
+char *row[8];
 
 while (lineFileRow(lf, row))
     {
@@ -5935,7 +5953,7 @@ struct cdwJob *cdwJobLoadAllByChar(char *fileName, char chopper)
 {
 struct cdwJob *list = NULL, *el;
 struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[7];
+char *row[8];
 
 while (lineFileNextCharRow(lf, chopper, row, ArraySize(row)))
     {
@@ -5963,6 +5981,7 @@ ret->endTime = sqlLongLongComma(&s);
 ret->stderr = sqlStringComma(&s);
 ret->returnCode = sqlSignedComma(&s);
 ret->pid = sqlSignedComma(&s);
+ret->submitId = sqlSignedComma(&s);
 *pS = s;
 return ret;
 }
@@ -6012,180 +6031,8 @@ fputc(sep,f);
 fprintf(f, "%d", el->returnCode);
 fputc(sep,f);
 fprintf(f, "%d", el->pid);
-fputc(lastSep,f);
-}
-
-
-char *cdwSubmitJobCommaSepFieldNames = "id,commandLine,startTime,endTime,stderr,returnCode,pid";
-
-void cdwSubmitJobStaticLoad(char **row, struct cdwSubmitJob *ret)
-/* Load a row from cdwSubmitJob table into ret.  The contents of ret will
- * be replaced at the next call to this function. */
-{
-
-ret->id = sqlUnsigned(row[0]);
-ret->commandLine = row[1];
-ret->startTime = sqlLongLong(row[2]);
-ret->endTime = sqlLongLong(row[3]);
-ret->stderr = row[4];
-ret->returnCode = sqlSigned(row[5]);
-ret->pid = sqlSigned(row[6]);
-}
-
-struct cdwSubmitJob *cdwSubmitJobLoadByQuery(struct sqlConnection *conn, char *query)
-/* Load all cdwSubmitJob from table that satisfy the query given.  
- * Where query is of the form 'select * from example where something=something'
- * or 'select example.* from example, anotherTable where example.something = 
- * anotherTable.something'.
- * Dispose of this with cdwSubmitJobFreeList(). */
-{
-struct cdwSubmitJob *list = NULL, *el;
-struct sqlResult *sr;
-char **row;
-
-sr = sqlGetResult(conn, query);
-while ((row = sqlNextRow(sr)) != NULL)
-    {
-    el = cdwSubmitJobLoad(row);
-    slAddHead(&list, el);
-    }
-slReverse(&list);
-sqlFreeResult(&sr);
-return list;
-}
-
-void cdwSubmitJobSaveToDb(struct sqlConnection *conn, struct cdwSubmitJob *el, char *tableName, int updateSize)
-/* Save cdwSubmitJob as a row to the table specified by tableName. 
- * As blob fields may be arbitrary size updateSize specifies the approx size
- * of a string that would contain the entire query. Arrays of native types are
- * converted to comma separated strings and loaded as such, User defined types are
- * inserted as NULL. This function automatically escapes quoted strings for mysql. */
-{
-struct dyString *update = newDyString(updateSize);
-sqlDyStringPrintf(update, "insert into %s values ( %u,'%s',%lld,%lld,'%s',%d,%d)", 
-	tableName,  el->id,  el->commandLine,  el->startTime,  el->endTime,  el->stderr,  el->returnCode,  el->pid);
-sqlUpdate(conn, update->string);
-freeDyString(&update);
-}
-
-struct cdwSubmitJob *cdwSubmitJobLoad(char **row)
-/* Load a cdwSubmitJob from row fetched with select * from cdwSubmitJob
- * from database.  Dispose of this with cdwSubmitJobFree(). */
-{
-struct cdwSubmitJob *ret;
-
-AllocVar(ret);
-ret->id = sqlUnsigned(row[0]);
-ret->commandLine = cloneString(row[1]);
-ret->startTime = sqlLongLong(row[2]);
-ret->endTime = sqlLongLong(row[3]);
-ret->stderr = cloneString(row[4]);
-ret->returnCode = sqlSigned(row[5]);
-ret->pid = sqlSigned(row[6]);
-return ret;
-}
-
-struct cdwSubmitJob *cdwSubmitJobLoadAll(char *fileName) 
-/* Load all cdwSubmitJob from a whitespace-separated file.
- * Dispose of this with cdwSubmitJobFreeList(). */
-{
-struct cdwSubmitJob *list = NULL, *el;
-struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[7];
-
-while (lineFileRow(lf, row))
-    {
-    el = cdwSubmitJobLoad(row);
-    slAddHead(&list, el);
-    }
-lineFileClose(&lf);
-slReverse(&list);
-return list;
-}
-
-struct cdwSubmitJob *cdwSubmitJobLoadAllByChar(char *fileName, char chopper) 
-/* Load all cdwSubmitJob from a chopper separated file.
- * Dispose of this with cdwSubmitJobFreeList(). */
-{
-struct cdwSubmitJob *list = NULL, *el;
-struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *row[7];
-
-while (lineFileNextCharRow(lf, chopper, row, ArraySize(row)))
-    {
-    el = cdwSubmitJobLoad(row);
-    slAddHead(&list, el);
-    }
-lineFileClose(&lf);
-slReverse(&list);
-return list;
-}
-
-struct cdwSubmitJob *cdwSubmitJobCommaIn(char **pS, struct cdwSubmitJob *ret)
-/* Create a cdwSubmitJob out of a comma separated string. 
- * This will fill in ret if non-null, otherwise will
- * return a new cdwSubmitJob */
-{
-char *s = *pS;
-
-if (ret == NULL)
-    AllocVar(ret);
-ret->id = sqlUnsignedComma(&s);
-ret->commandLine = sqlStringComma(&s);
-ret->startTime = sqlLongLongComma(&s);
-ret->endTime = sqlLongLongComma(&s);
-ret->stderr = sqlStringComma(&s);
-ret->returnCode = sqlSignedComma(&s);
-ret->pid = sqlSignedComma(&s);
-*pS = s;
-return ret;
-}
-
-void cdwSubmitJobFree(struct cdwSubmitJob **pEl)
-/* Free a single dynamically allocated cdwSubmitJob such as created
- * with cdwSubmitJobLoad(). */
-{
-struct cdwSubmitJob *el;
-
-if ((el = *pEl) == NULL) return;
-freeMem(el->commandLine);
-freeMem(el->stderr);
-freez(pEl);
-}
-
-void cdwSubmitJobFreeList(struct cdwSubmitJob **pList)
-/* Free a list of dynamically allocated cdwSubmitJob's */
-{
-struct cdwSubmitJob *el, *next;
-
-for (el = *pList; el != NULL; el = next)
-    {
-    next = el->next;
-    cdwSubmitJobFree(&el);
-    }
-*pList = NULL;
-}
-
-void cdwSubmitJobOutput(struct cdwSubmitJob *el, FILE *f, char sep, char lastSep) 
-/* Print out cdwSubmitJob.  Separate fields with sep. Follow last field with lastSep. */
-{
-fprintf(f, "%u", el->id);
 fputc(sep,f);
-if (sep == ',') fputc('"',f);
-fprintf(f, "%s", el->commandLine);
-if (sep == ',') fputc('"',f);
-fputc(sep,f);
-fprintf(f, "%lld", el->startTime);
-fputc(sep,f);
-fprintf(f, "%lld", el->endTime);
-fputc(sep,f);
-if (sep == ',') fputc('"',f);
-fprintf(f, "%s", el->stderr);
-if (sep == ',') fputc('"',f);
-fputc(sep,f);
-fprintf(f, "%d", el->returnCode);
-fputc(sep,f);
-fprintf(f, "%d", el->pid);
+fprintf(f, "%d", el->submitId);
 fputc(lastSep,f);
 }
 
@@ -6360,6 +6207,192 @@ if (sep == ',') fputc('"',f);
 fputc(sep,f);
 if (sep == ',') fputc('"',f);
 fprintf(f, "%s", el->bigDataFile);
+if (sep == ',') fputc('"',f);
+fputc(lastSep,f);
+}
+
+
+char *cdwDatasetCommaSepFieldNames = "id,name,label,description,pmid,pmcid,metaDivTags";
+
+void cdwDatasetStaticLoad(char **row, struct cdwDataset *ret)
+/* Load a row from cdwDataset table into ret.  The contents of ret will
+ * be replaced at the next call to this function. */
+{
+
+ret->id = sqlUnsigned(row[0]);
+ret->name = row[1];
+ret->label = row[2];
+ret->description = row[3];
+ret->pmid = row[4];
+ret->pmcid = row[5];
+ret->metaDivTags = row[6];
+}
+
+struct cdwDataset *cdwDatasetLoadByQuery(struct sqlConnection *conn, char *query)
+/* Load all cdwDataset from table that satisfy the query given.  
+ * Where query is of the form 'select * from example where something=something'
+ * or 'select example.* from example, anotherTable where example.something = 
+ * anotherTable.something'.
+ * Dispose of this with cdwDatasetFreeList(). */
+{
+struct cdwDataset *list = NULL, *el;
+struct sqlResult *sr;
+char **row;
+
+sr = sqlGetResult(conn, query);
+while ((row = sqlNextRow(sr)) != NULL)
+    {
+    el = cdwDatasetLoad(row);
+    slAddHead(&list, el);
+    }
+slReverse(&list);
+sqlFreeResult(&sr);
+return list;
+}
+
+void cdwDatasetSaveToDb(struct sqlConnection *conn, struct cdwDataset *el, char *tableName, int updateSize)
+/* Save cdwDataset as a row to the table specified by tableName. 
+ * As blob fields may be arbitrary size updateSize specifies the approx size
+ * of a string that would contain the entire query. Arrays of native types are
+ * converted to comma separated strings and loaded as such, User defined types are
+ * inserted as NULL. This function automatically escapes quoted strings for mysql. */
+{
+struct dyString *update = newDyString(updateSize);
+sqlDyStringPrintf(update, "insert into %s values ( %u,'%s','%s','%s','%s','%s','%s')", 
+	tableName,  el->id,  el->name,  el->label,  el->description,  el->pmid,  el->pmcid,  el->metaDivTags);
+sqlUpdate(conn, update->string);
+freeDyString(&update);
+}
+
+struct cdwDataset *cdwDatasetLoad(char **row)
+/* Load a cdwDataset from row fetched with select * from cdwDataset
+ * from database.  Dispose of this with cdwDatasetFree(). */
+{
+struct cdwDataset *ret;
+
+AllocVar(ret);
+ret->id = sqlUnsigned(row[0]);
+ret->name = cloneString(row[1]);
+ret->label = cloneString(row[2]);
+ret->description = cloneString(row[3]);
+ret->pmid = cloneString(row[4]);
+ret->pmcid = cloneString(row[5]);
+ret->metaDivTags = cloneString(row[6]);
+return ret;
+}
+
+struct cdwDataset *cdwDatasetLoadAll(char *fileName) 
+/* Load all cdwDataset from a whitespace-separated file.
+ * Dispose of this with cdwDatasetFreeList(). */
+{
+struct cdwDataset *list = NULL, *el;
+struct lineFile *lf = lineFileOpen(fileName, TRUE);
+char *row[7];
+
+while (lineFileRow(lf, row))
+    {
+    el = cdwDatasetLoad(row);
+    slAddHead(&list, el);
+    }
+lineFileClose(&lf);
+slReverse(&list);
+return list;
+}
+
+struct cdwDataset *cdwDatasetLoadAllByChar(char *fileName, char chopper) 
+/* Load all cdwDataset from a chopper separated file.
+ * Dispose of this with cdwDatasetFreeList(). */
+{
+struct cdwDataset *list = NULL, *el;
+struct lineFile *lf = lineFileOpen(fileName, TRUE);
+char *row[7];
+
+while (lineFileNextCharRow(lf, chopper, row, ArraySize(row)))
+    {
+    el = cdwDatasetLoad(row);
+    slAddHead(&list, el);
+    }
+lineFileClose(&lf);
+slReverse(&list);
+return list;
+}
+
+struct cdwDataset *cdwDatasetCommaIn(char **pS, struct cdwDataset *ret)
+/* Create a cdwDataset out of a comma separated string. 
+ * This will fill in ret if non-null, otherwise will
+ * return a new cdwDataset */
+{
+char *s = *pS;
+
+if (ret == NULL)
+    AllocVar(ret);
+ret->id = sqlUnsignedComma(&s);
+ret->name = sqlStringComma(&s);
+ret->label = sqlStringComma(&s);
+ret->description = sqlStringComma(&s);
+ret->pmid = sqlStringComma(&s);
+ret->pmcid = sqlStringComma(&s);
+ret->metaDivTags = sqlStringComma(&s);
+*pS = s;
+return ret;
+}
+
+void cdwDatasetFree(struct cdwDataset **pEl)
+/* Free a single dynamically allocated cdwDataset such as created
+ * with cdwDatasetLoad(). */
+{
+struct cdwDataset *el;
+
+if ((el = *pEl) == NULL) return;
+freeMem(el->name);
+freeMem(el->label);
+freeMem(el->description);
+freeMem(el->pmid);
+freeMem(el->pmcid);
+freeMem(el->metaDivTags);
+freez(pEl);
+}
+
+void cdwDatasetFreeList(struct cdwDataset **pList)
+/* Free a list of dynamically allocated cdwDataset's */
+{
+struct cdwDataset *el, *next;
+
+for (el = *pList; el != NULL; el = next)
+    {
+    next = el->next;
+    cdwDatasetFree(&el);
+    }
+*pList = NULL;
+}
+
+void cdwDatasetOutput(struct cdwDataset *el, FILE *f, char sep, char lastSep) 
+/* Print out cdwDataset.  Separate fields with sep. Follow last field with lastSep. */
+{
+fprintf(f, "%u", el->id);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->name);
+if (sep == ',') fputc('"',f);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->label);
+if (sep == ',') fputc('"',f);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->description);
+if (sep == ',') fputc('"',f);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->pmid);
+if (sep == ',') fputc('"',f);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->pmcid);
+if (sep == ',') fputc('"',f);
+fputc(sep,f);
+if (sep == ',') fputc('"',f);
+fprintf(f, "%s", el->metaDivTags);
 if (sep == ',') fputc('"',f);
 fputc(lastSep,f);
 }

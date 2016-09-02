@@ -141,7 +141,8 @@ table cdwSubmit
     lstring errorMessage; "If non-empty contains last error message. If empty submit is ok"
     uint fileIdInTransit; "cdwFile.id of file currently being transferred or zero"
     uint metaChangeCount; "Number of files where metadata changed by submission"
-    )
+    lstring wrangler; "The UNIX ID of the person who ran cdwSubmit." 
+	)
 
 table cdwSubscriber
 "Subscribers can have programs that are called at various points during data submission"
@@ -217,6 +218,7 @@ table cdwValidFile
     string pairedEnd; "The paired_end tag from the manifest.  Values 1,2 or ''"
     byte qaVersion; "Version of QA pipeline making status decisions"
     double uniqueMapRatio; "Fraction of reads that map uniquely to genome for bams and fastqs"
+    string lane;	"What sequencing lane if any associated with this file."
     )
 
 table cdwFastqFile
@@ -447,18 +449,7 @@ table cdwJob
     lstring stderr; "The output to stderr of the run - may be nonempty even with success"
     int returnCode; "The return code from system command - 0 for success"
     int pid;	"Process ID for running processes"
-    )
-
-table cdwSubmitJob
-"A submission job to be run asynchronously and not too many all at once."
-    (
-    uint id primary auto;    "Submit id"
-    lstring commandLine; "Command line of job"
-    bigInt startTime; "Start time in seconds since 1970"
-    bigInt endTime; "End time in seconds since 1970"
-    lstring stderr; "The output to stderr of the run - may be nonempty even with success"
-    int returnCode; "The return code from system command - 0 for success"
-    int pid;	"Process ID for running processes"
+    int submitId;  "Associated submission ID if any"
     )
 
 table cdwTrackViz
@@ -472,3 +463,14 @@ table cdwTrackViz
     string bigDataFile; "Where big data file lives relative to cdwRootDir"
     )
 
+table cdwDataset
+"A dataset is a collection of files, usually associated with a paper"
+    (
+    uint id primary auto; "Dataset ID"
+    string name unique;  "Short name of this dataset, one word, no spaces"
+    string label;  "short title of the dataset, a few words"
+    lstring description;  "Description of dataset, can be a complete html paragraph."
+    string pmid;  "Pubmed ID of abstract"
+    string pmcid;  "PubmedCentral ID of paper full text"
+    string metaDivTags; "Comma separated list of fields used to make tree out of metadata"
+    )

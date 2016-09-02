@@ -50,4 +50,32 @@
 /* Tissue filter */
 #define GTEX_TISSUE_SELECT      "tissues"
 
+/* Gene filter */
+#define GTEX_CODING_GENE_FILTER                 "codingOnly"
+#define GTEX_CODING_GENE_FILTER_DEFAULT         FALSE
+
+/* Hide exons */
+#define GTEX_SHOW_EXONS         "showExons"
+#define GTEX_SHOW_EXONS_DEFAULT FALSE
+
+/* Suppress whiteout behind graph (to show highlight and blue lines) */
+#define GTEX_NO_WHITEOUT         "noWhiteout"
+#define GTEX_NO_WHITEOUT_DEFAULT        FALSE
+
+/* Item name is gene symbol, accession, or both */
+#define GTEX_LABEL                "label"
+#define GTEX_LABEL_SYMBOL         "name"
+#define GTEX_LABEL_ACCESSION      "accession"
+#define GTEX_LABEL_BOTH           "both"
+#define GTEX_LABEL_DEFAULT  GTEX_LABEL_SYMBOL
+
+void gtexPortalLink(char *geneId);
+/* print URL to GTEX portal gene expression page using Ensembl Gene Id*/
+
+boolean gtexGeneBoxplot(char *geneId, char *geneName, char *version, 
+                                boolean doLogTransform, struct tempName *pngTn);
+/* Create a png temp file with boxplot of GTEx expression values for this gene. 
+ * GeneId is the Ensembl gene ID.  GeneName is the HUGO name, used for graph title;
+ * If NULL, label with the Ensembl gene ID */
+
 #endif /* GTEXUI_H */

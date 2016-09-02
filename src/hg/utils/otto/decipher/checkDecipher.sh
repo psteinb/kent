@@ -1,5 +1,5 @@
 #!/bin/sh -e
-
+set -eEu -o pipefail
 #	Do not modify this script, modify the source tree copy:
 #	src/utils/decipher/checkDecipher.sh
 #	This script is used via a cron job and kept in $HOME/bin/scripts/
@@ -21,7 +21,7 @@ fi
 cd "${WORKDIR}"
 
 #ftppass=`cat ftp.pwd`
-gpgpass=`cat gpg.pwd`
+#gpgpass=`cat gpg.pwd`
 
 perl login.perl > /dev/null 2>&1
 
@@ -36,7 +36,7 @@ then
     cd $today
 
     # unpack the gpg encrypted file
-    gpg --batch --passphrase "${gpgpass}"  ${FN}
+    gpg --batch --passphrase-file "../gpg.pwd" ${FN}
 
     # build the new DECIPHER track tables
     ../buildDecipher `basename $FN .gpg`

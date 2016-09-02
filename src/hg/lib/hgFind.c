@@ -23,6 +23,7 @@
 #include "cart.h"
 #include "hgFind.h"
 #include "hgFindSpec.h"
+#include "hgHgvs.h"
 #include "snp.h"
 #include "refLink.h"
 #include "kgAlias.h"
@@ -753,7 +754,7 @@ char *path = makeIndexPath(db);
 trix = trixOpen(path);
 tolowers(lowered);
 keyCount = chopLine(lowered, keyWords);
-tsrList = trixSearch(trix, keyCount, keyWords, TRUE);
+tsrList = trixSearch(trix, keyCount, keyWords, tsmExpand);
 if (tsrList != NULL)
     {
     struct hgPosTable *table = addKnownGeneTable(db, hgp);
@@ -948,28 +949,72 @@ if (posCount != 1)
 hgp->posCount = posCount;
 }
 
+INLINE boolean setStartEndFromQuery(struct sqlConnection *conn, char *query,
+                                    int *retStart, int *retEnd)
+/* Run query (which must have start and end as first two output columns)
+ * and collect min start and max end from resulting rows.  Return FALSE if no rows. */
+{
+boolean foundIt = FALSE;
+int minStart = BIGNUM;
+int maxEnd = 0;
+struct sqlResult *sr = sqlGetResult(conn, query);
+char **row;
+while ((row = sqlNextRow(sr)) != NULL)
+    {
+    int start = sqlUnsigned(row[0]);
+    int end = sqlUnsigned(row[1]);
+    if (start < minStart)
+        minStart = start;
+    if (end > maxEnd)
+        maxEnd = end;
+    foundIt = TRUE;
+    }
+sqlFreeResult(&sr);
+if (foundIt)
+    {
+    if (retStart != NULL)
+        *retStart = minStart;
+    if (retEnd != NULL)
+        *retEnd = maxEnd;
+    }
+return foundIt;
+}
+
+
 static boolean hgFindChromBand(char *db, char *chrom, char *band, int *retStart, int *retEnd)
 /* Return start/end of band in chromosome. */
 {
 struct sqlConnection *conn = hAllocConn(db);
-struct sqlResult *sr = NULL;
-char **row;
 struct dyString *query = sqlDyStringCreate("select chromStart, chromEnd from cytoBand "
                                            "where chrom = '%s' and name = '%s'",
                                            chrom, band);
-sr = sqlGetResult(conn, query->string);
-if ((row = sqlNextRow(sr)) != NULL)
+boolean foundIt = setStartEndFromQuery(conn, query->string, retStart, retEnd);
+if (! foundIt)
     {
-    if (retStart)
-        *retStart = sqlUnsigned(row[0]);
-    if (retEnd)
-        *retEnd = sqlUnsigned(row[1]);
-    return TRUE;
+    // No exact match -- if band has a '.', chop at the '.' in case we only have more coarse data.
+    // Otherwise try prefix search.
+    dyStringClear(query);
+    int len = strlen(band);
+    char truncBand[len+1];
+    safecpy(truncBand, sizeof(truncBand), band);
+    char *dot = strchr(truncBand, '.');
+    if (dot)
+        {
+        *dot = 0;
+        sqlDyStringPrintf(query, "select chromStart, chromEnd from cytoBand "
+                       "where chrom = '%s' and name = '%s'",
+                       chrom, truncBand);
+        }
+    else
+        {
+        sqlDyStringPrintf(query, "select chromStart, chromEnd from cytoBand "
+                       "where chrom = '%s' and name like '%s%%'", chrom, band);
+        }
+    foundIt = setStartEndFromQuery(conn, query->string, retStart, retEnd);
     }
-sqlFreeResult(&sr);
 hFreeConn(&conn);
 dyStringFree(&query);
-return FALSE;
+return foundIt;
 }
 
 boolean hgParseCytoBandName(char *db, char *spec, char **retChromName, char **retBandName)
@@ -1345,8 +1390,18 @@ char *hfsSetting = hgFindSpecSetting(hfs, "grepIndex");
 if (grepIndexRoot != NULL && hfsSetting != NULL)
     {
     char buf[1024];
+    char *dot;
+    // check to see if table name has database in it
+    if ((dot = strchr(table, '.')) != NULL)
+        {
+        *dot = 0;
+        db = table;
+        table = dot + 1;
+        }
     safef(buf, sizeof(buf), "%s/%s/%s.%s",
 	  grepIndexRoot, db, table, suffix);
+    if (dot)
+        *dot = '.';
     if (fileExists(buf))
 	return cloneString(buf);
     }
@@ -1395,6 +1450,17 @@ if (!isTooCommon(table, key))
 return idList;
 }
 
+static char *skipDb(char *tableName)
+/* retun a pointer past the datbase part of the table name (if any) */
+{
+char *dot = tableName;
+
+if ((dot = strchr(tableName, '.')) == NULL)
+    return tableName;
+
+return dot + 1;
+}
+
 static boolean gotAllGenbankGrepIndexFiles(char *db, struct hgFindSpec *hfs,
 					   char *tables[], int tableCount)
 /* Return TRUE if all tables have a readable genbank index file. */
@@ -1433,7 +1499,7 @@ for (i = 0;
      * in one step in SQL just because it somehow is much
      * faster this way (like 100x faster) when using mySQL. */
     field = tables[i];
-    if (!hTableExists(db, field))
+    if (!sqlTableExists(conn, field))
 	continue;
     if ((grepIndexFile = getGenbankGrepIndex(db, hfs, field, "idName")) != NULL)
 	idList = genbankGrepQuery(grepIndexFile, field, key);
@@ -1446,7 +1512,7 @@ for (i = 0;
         /* don't check srcDb to exclude refseq for compat with older tables */
 	sqlSafef(query, sizeof(query),
 	      "select acc, organism from %s where %s = '%s' "
-	      " and type = 'mRNA'", gbCdnaInfoTable, field, idEl->name);
+	      " and type = 'mRNA'", gbCdnaInfoTable, skipDb(field), idEl->name);
         // limit results to avoid CGI timeouts (#11626).
         if (limitResults != EXHAUSTIVE_SEARCH_REQUIRED)
             sqlSafefAppend(query, sizeof(query), " limit %d", limitResults);
@@ -1551,19 +1617,9 @@ for (el = *pAccList; el != NULL; el = el->next)
     acc = el->name;
 
     /* check if item matches xeno criterion */
-    if (hTableExists(db, "gbStatus"))
-	{
-	sqlSafef(query, sizeof(query),
-          "select (orgCat = 'native' && srcDb != 'RefSeq') from gbStatus where acc = '%s'", acc); /* redmine #3301 */
-	if (isXeno == sqlQuickNum(conn, query))
-	    continue;
-	}
-    else
-	{
-	int itemOrganismID = hashIntVal(accOrgHash, acc);
-	if (isXeno == (itemOrganismID == organismID))
-	    continue;
-	}
+    int itemOrganismID = hashIntVal(accOrgHash, acc);
+    if (isXeno == (itemOrganismID == organismID))
+        continue;
 
     /* check if item matches alignment criterion */
     if (aligns != (mrnaTableExists && mrnaAligns(conn, mrnaTable, acc)))
@@ -1657,9 +1713,9 @@ static boolean findMrnaKeys(char *db, struct hgFindSpec *hfs,
 /* Find mRNA that has keyword in one of its fields. */
 {
 int alignCount;
-static char *tables[] = {
-	"productName", "geneName",
-	"author", "tissue", "cell", "description", "development", 
+char *tables[] = {
+	productNameTable, geneNameTable,
+	authorTable, tissueTable, cellTable, descriptionTable, developmentTable, 
 	};
 struct hash *allKeysHash = NULL;
 struct slName *allKeysList = NULL;
@@ -2458,7 +2514,7 @@ for (i = 0;  i < termCount;  i++)
     if (hgp == NULL || hgp->posCount == 0)
 	{
 	hgPositionsFree(&hgp);
-	warn("Sorry, couldn't locate %s in genome database\n", htmlEncode(terms[i]));
+	warn("Sorry, couldn't locate %s in genome database\n", terms[i]);
 	if (multiTerm)
 	    hUserAbort("%s not uniquely determined -- "
 		     "can't do multi-position search.", terms[i]);
@@ -2811,8 +2867,11 @@ if (strlen(term)<2 && !
 if (isNotEmpty(hfs->termRegex) && ! regexMatchNoCase(term, hfs->termRegex))
     return(FALSE);
 
-if (! hTableOrSplitExists(db, hfs->searchTable))
-    return(FALSE);
+if (!(sameString(hfs->searchType, "mrnaKeyword") || sameString(hfs->searchType, "mrnaAcc") ))
+    {
+    if (! hTableOrSplitExists(db, hfs->searchTable))
+        return(FALSE);
+    }
 
 if (isNotEmpty(hfs->searchType) && searchSpecial(db, hfs, term, limitResults, hgp, relativeFlag,
 						 relStart, relEnd, &found))
@@ -2994,6 +3053,64 @@ if (foundIt)
 return foundIt;
 }
 
+static int getDotVersion(char *acc)
+/* If acc ends with a .version, return the version, else 0. */
+{
+char *p = strchr(acc, '.');
+if (p)
+    return atoi(p+1);
+return 0;
+}
+
+static boolean matchesHgvs(char *db, char *term, struct hgPositions *hgp)
+/* Return TRUE if the search term looks like a variant encoded using the HGVS nomenclature */
+/* See http://varnomen.hgvs.org/ */
+{
+boolean foundIt = FALSE;
+struct hgvsVariant *hgvs = hgvsParseTerm(term);
+if (hgvs == NULL)
+    hgvs = hgvsParsePseudoHgvs(db, term);
+if (hgvs)
+    {
+    char *foundAcc = NULL, *diffRefAllele = NULL;
+    int foundVersion = 0;
+    boolean coordsOk = hgvsValidate(db, hgvs, &foundAcc, &foundVersion, &diffRefAllele);
+    if (foundAcc == NULL)
+        warn("Can't find accession for HGVS term '%s'", term);
+    else
+        {
+        int hgvsVersion = getDotVersion(hgvs->seqAcc);
+        char foundAccWithV[strlen(foundAcc)+20];
+        if (foundVersion)
+            safef(foundAccWithV, sizeof(foundAccWithV), "%s.%d", foundAcc, foundVersion);
+        else
+            safecpy(foundAccWithV, sizeof(foundAccWithV), foundAcc);
+        if (hgvsVersion && hgvsVersion != foundVersion)
+            warn("HGVS term '%s' is based on %s but UCSC has version %s",
+                 term, hgvs->seqAcc, foundAccWithV);
+        if (! coordsOk)
+            warn("HGVS term '%s' has coordinates outside the bounds of %s", term, foundAccWithV);
+        else if (diffRefAllele != NULL)
+            warn ("HGVS term '%s' reference value '%s' does not match %s value '%s'",
+                  term, hgvs->refAllele, foundAccWithV, diffRefAllele);
+        if (coordsOk)
+            {
+            char *pslTable = NULL;
+            struct psl *mapping = hgvsMapToGenome(db, hgvs, &pslTable);
+            if (mapping)
+                {
+                int padding = 5;
+                char *trackTable = startsWith("lrg", pslTable) ? "lrgTranscriptAli" : "refGene";
+                singlePos(hgp, "HGVS", NULL, trackTable, term, "",
+                          mapping->tName, mapping->tStart-padding, mapping->tEnd+padding);
+                foundIt = TRUE;
+                }
+            }
+        }
+    }
+return foundIt;
+}
+
 struct hgPositions *hgPositionsFind(char *db, char *term, char *extraCgi,
 	char *hgAppNameIn, struct cart *cart, boolean multiTerm)
 /* Return table of positions that match term or NULL if none such. */
@@ -3095,7 +3212,7 @@ if (hgOfficialChromName(db, term) != NULL) // this mangles the term
     singlePos(hgp, "Chromosome Range", NULL, "chromInfo", originalTerm,
 	      "", chrom, start, end);
     }
-else
+else if (!matchesHgvs(db, term, hgp))
     {
     struct hgFindSpec *shortList = NULL, *longList = NULL;
     struct hgFindSpec *hfs;

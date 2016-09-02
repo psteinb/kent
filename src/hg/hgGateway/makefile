@@ -1,3 +1,4 @@
+kentSrc = ../..
 include ../../inc/common.mk
 
 HG_WARN=-Wall
@@ -12,6 +13,16 @@ O = $A.o
 
 include ../../inc/cgi_build_rules.mk
 
-compile: $O 
-	${CC} $O ${MYLIBS} ${L} 
+hgGateway.html.h: hgGateway.html
+	sed -e 's/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$$/\\n"/;' hgGateway.html > hgGateway.html.h
+
+${A}.c: hgGateway.html.h
+
+${A}.o: ${A}.c hgGateway.html.h
+
+clean::
+	rm -f hgGateway.html.h
+
+compile:: $O
+	${CC} $O ${MYLIBS} ${L}
 	mv ${AOUT} $A${EXE}

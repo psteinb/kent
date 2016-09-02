@@ -1,3 +1,4 @@
+kentSrc = ../..
 include ../../inc/localEnvironment.mk
 include ../../inc/common.mk
 XINC = -I$(MYSQLINC)
@@ -7,7 +8,7 @@ O = acemblyClass.o adjacency.o affyAllExonProbe.o affyAtlas.o affy10KDetails.o a
     altGraphX.o ancientRref.o \
     annoFormatVep.o annoGratorGpVar.o annoGrateWigDb.o \
     annoStreamDb.o annoStreamDbFactorSource.o annoStreamWig.o \
-    api.o atomDb.o  axtInfo.o \
+    api.o atomDb.o autoUpgrade.o axtInfo.o \
     axtLib.o bactigPos.o hgBam.o baseMaskCommon.o bdgpExprLink.o bdgpGeneInfo.o \
     bed.o bed5FloatScore.o bed5Pval.o bed6FloatScore.o  bed8Attrs.o bed12Source.o \
     bed12wSeq.o bedCart.o bgiGeneInfo.o bgiGeneSnp.o bgiSnp.o bigBedFind.o \
@@ -58,14 +59,14 @@ O = acemblyClass.o adjacency.o affyAllExonProbe.o affyAtlas.o affy10KDetails.o a
     genomicSuperDups.o geoMirror.o ggCluster.o ggDbIo.o ggDump.o ggGraph.o ggMrnaAli.o \
     ggTypes.o glDbRep.o goa.o goaPart.o googleAnalytics.o gpFx.o \
     growthCondition.o grp.o \
-    gtexInfo.o gtexDonor.o gtexGeneBed.o gtexSample.o gtexSampleData.o \
-    gtexTissue.o gtexTissueData.o gtexTissueMedian.o gtexTranscript.o gtexUi.o \
+    gtexAse.o gtexBoxplot.o gtexInfo.o gtexDonor.o gtexGeneBed.o gtexSample.o gtexSampleData.o \
+    gtexTissue.o gtexTissueData.o gtexTissueMedian.o gtexUi.o \
     gwasCatalog.o hAnno.o haplotypes.o \
     hapmapAllelesOrtho.o hapmapAllelesSummary.o hapmapPhaseIIISummary.o \
     hapmapSnps.o hapmapSnpsCombined.o \
     hashJoin.o hCommon.o \
     hCytoBand.o hdb.o hgColors.o hgConfig.o hgExp.o hgFind.o \
-    hgFindSpec.o hgFindSpecCustom.o \
+    hgFindSpec.o hgFindSpecCustom.o hgHgvs.o \
     hgGene.o hgMaf.o hgRelate.o hgSeq.o hgdpGeo.o hPrint.o hVarSubst.o hvGfx.o \
     HInv.o hubConnect.o hui.o humanParalog.o \
     imageClone.o isochores.o ispyTables.o itemAttr.o itemConf.o itemDetailsHtml.o jalview.o \
@@ -73,7 +74,7 @@ O = acemblyClass.o adjacency.o affyAllExonProbe.o affyAtlas.o affy10KDetails.o a
     jgiGene.o joinMixer.o \
     kgAlias.o kgColor.o kgProtAlias.o kgXref.o knownInfo.o knownMore.o knownToSuper.o \
     lav.o ld.o ld2.o lfs.o liftOver.o liftOverChain.o liftUp.o \
-    llaInfo.o lrg.o lsSnpPdb.o lsSnpPdbChimera.o mafFrames.o mafGene.o mafSummary.o \
+    llaInfo.o longRange.o lrg.o lsSnpPdb.o lsSnpPdbChimera.o mafFrames.o mafGene.o mafSummary.o \
     makeItemsItem.o mammalPsg.o mapSts.o \
     mcnBreakpoints.o mdb.o metaChromGraph.o microarray.o \
     minChromSize.o minGeneInfo.o mrnaMisMatch.o \
@@ -91,7 +92,7 @@ O = acemblyClass.o adjacency.o affyAllExonProbe.o affyAtlas.o affy10KDetails.o a
     roughAli.o transMapStuff.o transMapInfo.o transMapGene.o transMapSrc.o \
     sage.o sageCounts.o sageExp.o samAlignment.o sample.o \
     sanger22extra.o sangerGene.o sangerGeneToWBGeneID.o  sargassoSeaXra.o \
-    scopDes.o scoredRef.o search.o sgdAbundance.o \
+    scopDes.o scoredRef.o search.o sessionThumbnail.o sgdAbundance.o \
     sgdClone.o sgdDescription.o sgdOther.o simpleNucDiff.o simpleRepeat.o snakeUi.o \
     snp.o snp125.o snp125CodingCoordless.o snp132Ext.o snpExceptions.o snpFasta.o snpMap.o snpTmp.o \
     snpUi.o snp125Exceptions.o snp125Ui.o softPromoter.o softberryHom.o soTerm.o \
@@ -127,8 +128,14 @@ endif
 ../../lib/$(MACHTYPE)/jkhgap.a: $(O)
 	ar rcus ../../lib/$(MACHTYPE)/jkhgap.a $(O)
 
+jWestBanner.h: jWestBanner.html
+	sed -e 's/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$$/\\n"/;' jWestBanner.html > jWestBanner.h
+
+web.c: jWestBanner.h
+
 clean:
 	rm -f $(O);
+	rm -f jWestBanner.h
 	rm -f ../../lib/$(MACHTYPE)/jkhgap.a;
 
 ctags:

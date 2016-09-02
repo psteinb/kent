@@ -12,7 +12,8 @@ if ($argc != 2) {
 my $lastNN = shift;
 my $branchNN = shift;
 
-my $buildMeisterEmail = $ENV{'BUILDMEISTEREMAIL'} . ' ann@soe.ucsc.edu';
+my $buildMeisterEmail = $ENV{'BUILDMEISTEREMAIL'} . ',ann@soe.ucsc.edu,brianlee@soe.ucsc.edu';
+my $returnEmail = ' brianlee@soe.ucsc.edu';
 
 my @victims;
 my %victimEmail;
@@ -36,7 +37,7 @@ while (my $line = <FH>) {
 close (FH);
 
 my $victimList = join(' ', sort @victims);
-open (FH, "|mail -r $buildMeisterEmail -s 'Code summaries for v$branchNN are expected from....' $buildMeisterEmail") or die "can not run mail command";
+open (FH, "|mail -r $returnEmail -s 'Code summaries for v$branchNN are expected from....' $buildMeisterEmail") or die "can not run mail command";
 printf FH "%s\n", $victimList;
 close (FH);
 foreach my $victim (sort keys %victimEmail) {
@@ -52,9 +53,9 @@ foreach my $victim (sort keys %victimEmail) {
        printf STDERR "# sending email to $toAddr\n";
        open (SH, "| /usr/sbin/sendmail -t -oi") or die "can not run sendmail";
        printf SH "To: %s\n", $toAddr;
-       printf SH "From: \"Ann Zweig\" <ann\@soe.ucsc.edu>\n";
+       printf SH "From: \"Brian Lee\" <brianlee\@soe.ucsc.edu>\n";
        printf SH "Subject: Code summaries are due for %s\n", $victim;
-       printf SH "Cc: \"Ann Zweig\" <ann\@soe.ucsc.edu>\n";
+       printf SH "Cc: \"Brian Lee\" <brianlee\@soe.ucsc.edu>\n";
        printf SH "\n";
        print SH `./summaryEmail.sh $victim`;
   }

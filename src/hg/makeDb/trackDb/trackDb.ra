@@ -442,10 +442,8 @@ visibility hide
 type bigBed 12 +
 itemRgb on
 compositeTrack on
-release alpha
 linkIdInName on
 mouseOverField mouseOver
-url https://www.lens.org/lens/bio/patseqanalyzer#psa/homo_sapiens/latest/chromosome/$s/$[-$]?appInClaims=1
 urlLabel Open Lens PatSeq Analyzer with this chromosomal range
 skipFields mouseOver,fprint
 sepFields claimGrantSeqIds
@@ -453,22 +451,20 @@ exonNumbers off
 urls intDocIds="http://www.lens.org/lens/patent/$$" claimGrantSeqIds="http://www.lens.org/lens/patent/$$" claimSeqIds="http://www.lens.org/lens/patent/$$" grantSeqIds="http://www.lens.org/lens/patent/$$" appSeqIds="http://www.lens.org/lens/patent/$$"
 
         track patNonBulk
-        shortLabel Patent Lens Non-bulk patents
-        longLabel Non-bulk patents
+        shortLabel Non-bulk patents
+        longLabel Patent Lens Non-bulk patents
         parent patSeq
         type bigBed 12 +
         visibility dense
         priority 1
-        release alpha
 
         track patBulk
-        shortLabel Patent Lens Bulk patents
-        longLabel Bulk patents
+        shortLabel Bulk patents
+        longLabel Patent Lens Bulk patents
         parent patSeq
         type bigBed 12 +
         visibility hide
         priority 2
-        release alpha
 
 track transMap
 superTrack on
@@ -1250,6 +1246,63 @@ useScore 1
 exonArrows on
 type bed 6 .
 
+track snp148Common
+shortLabel Common SNPs(148)
+longLabel Simple Nucleotide Polymorphisms (dbSNP 148) Found in >= 1% of Samples
+group varRep
+visibility dense
+url http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?type=rs&rs=$$
+urlLabel dbSNP:
+snpSeq snp148Seq
+snpExceptionDesc snp148ExceptionDesc
+defaultGeneTracks knownGene
+maxWindowToDraw 10000000
+type bed 6 +
+trackHandler snp125
+codingAnnotations snp148CodingDbSnp,
+
+track snp148Flagged
+shortLabel Flagged SNPs(148)
+longLabel Simple Nucleotide Polymorphisms (dbSNP 148) Flagged by dbSNP as Clinically Assoc
+group varRep
+visibility hide
+url http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?type=rs&rs=$$
+urlLabel dbSNP: 
+snpSeq snp148Seq
+snpExceptionDesc snp148ExceptionDesc
+defaultGeneTracks knownGene
+type bed 6 +
+trackHandler snp125
+codingAnnotations snp148CodingDbSnp,
+
+track snp148Mult
+shortLabel Mult. SNPs(148)
+longLabel Simple Nucleotide Polymorphisms (dbSNP 148) That Map to Multiple Genomic Loci
+group varRep
+visibility hide
+url http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?type=rs&rs=$$
+urlLabel dbSNP:
+snpSeq snp148Seq
+snpExceptionDesc snp148ExceptionDesc
+defaultGeneTracks knownGene
+defaultMaxWeight 3
+maxWindowToDraw 10000000
+type bed 6 +
+trackHandler snp125
+codingAnnotations snp148CodingDbSnp,
+
+track snp148
+shortLabel All SNPs(148)
+longLabel Simple Nucleotide Polymorphisms (dbSNP 148)
+group varRep
+visibility hide
+url http://www.ncbi.nlm.nih.gov/SNP/snp_ref.cgi?type=rs&rs=$$
+urlLabel dbSNP:
+defaultGeneTracks knownGene
+maxWindowToDraw 10000000
+type bed 6 +
+trackHandler snp125
+codingAnnotations snp148CodingDbSnp,
 
 track snp139Common
 shortLabel Common SNPs(139)
@@ -2354,6 +2407,38 @@ termRegex rs[0-9]+
 searchPriority 12.9878
 padding 250
 
+searchTable snp148Common
+searchMethod exact
+searchType bed
+semiShortCircuit 1
+termRegex rs[0-9]+
+searchPriority 12.9843
+padding 250
+
+searchTable snp148Flagged
+searchMethod exact
+searchType bed
+semiShortCircuit 1
+termRegex rs[0-9]+
+searchPriority 12.9844
+padding 250
+
+searchTable snp148Mult
+searchMethod exact
+searchType bed
+semiShortCircuit 1
+termRegex rs[0-9]+
+searchPriority 12.9845
+padding 250
+
+searchTable snp148
+searchMethod exact
+searchType bed
+semiShortCircuit 1
+termRegex rs[0-9]+
+searchPriority 12.952
+padding 250
+
 searchTable ensGene
 searchType genePred
 shortCircuit 1
@@ -2892,6 +2977,21 @@ url http://www.ncbi.nlm.nih.gov/nuccore/$$
 urlLabel INSDC link:
 type bed 4
 
+track ucscToRefSeq
+shortLabel RefSeq Acc
+longLabel RefSeq Accession
+group map
+visibility hide
+url http://www.ncbi.nlm.nih.gov/nuccore/$$
+urlLabel RefSeq accession:
+type bed 4
+
+searchTable ucscToRefSeq
+shortCircuit 1
+termRegex ^[A-Za-z0-9_]+(\.[0-9]+)?
+query select chrom,chromStart,chromEnd,name from %s where name like '%s%%'
+searchPriority 20
+
 track spMut
 shortLabel UniProt Variants
 longLabel UniProt/SwissProt Amino Acid Substitutions
@@ -2935,6 +3035,38 @@ compositeTrack on
         urls uniProtId="http://www.uniprot.org/uniprot/$$#section_features" pmids="http://www.ncbi.nlm.nih.gov/pubmed/$$"
         mouseOverField comments
         noScoreFilter on
+
+track crispr
+shortLabel CRISPR targets
+longLabel CRISPR/Cas9 Sp. Pyog. target sites
+group genes
+visibility hide
+type bed 4
+dragAndDrop subTracks
+compositeTrack on
+release alpha
+
+    track crisprRanges
+    shortLabel CRISPR regions
+    longLabel Genome regions processed to find CRISPR/Cas9 target sites (exons +/- 200bp)
+    visibility dense
+    priority 1
+    color 110,110,110
+    type bed 3
+    release alpha
+    parent crispr
+
+    track crisprTargets
+    shortLabel CRISPR/Cas9 Targets
+    longLabel CRISPR/Cas9 -NGG Targets
+    priority 2
+    visibility dense
+    type bigBed 9 +
+    itemRgb on
+    release alpha
+    parent crispr
+    mouseOverField _mouseOver
+    skipFields _mouseOver,_crisprScanColor,_specColor
 
 track ncbiRefOverlap
 shortLabel NCBI Overlaps
@@ -3028,48 +3160,52 @@ allButtonPair on
 
 	track ncbiRefSeq
         release alpha
-        parent ncbiRefGenesView on
-        shortLabel All RefSeq
+        parent ncbiRefGenesView off
+        shortLabel NCBI RefSeq
         subGroups view=aGenes
-        longLabel All RefSeq annotations from NCBI
+        longLabel NCBI RefSeq annotations, all subsets
         html refGene.new
+        idXref ncbiRefSeqLink mrnaAcc name
         priority 1
-
-        track refGene
-        release alpha
-	parent ncbiRefGenesView off
-        shortLabel UCSC RefSeq
-        longLabel RefSeq UCSC alignments
-        subGroups view=aGenes
-        color 12,12,120
-        type genePred refPep refMrna
-        idXref refLink mrnaAcc name
-        html refGene.new
-        priority 2
 
 	track ncbiRefSeqCurated
         release alpha
 	parent ncbiRefGenesView off
-	shortLabel RefSeq Curated
+	shortLabel NCBI Curated
         subGroups view=aGenes
-	longLabel RefSeq Curated (NM_* and NR_*)
-        priority 3
+	longLabel NCBI RefSeq curated subset (NM_*, NR_*, and YP_*)
+        idXref ncbiRefSeqLink mrnaAcc name
+        priority 2
 
 	track ncbiRefSeqPredicted
         release alpha
 	parent ncbiRefGenesView off
-	shortLabel RefSeq Predicted
+	shortLabel NCBI Predicted
         subGroups view=aGenes
-	longLabel RefSeq Predicted (XM_* and XR_*)
-        priority 4
+	longLabel NCBI RefSeq predicted subset (XM_* and XR_*)
+        idXref ncbiRefSeqLink mrnaAcc name
+        priority 3
 
 	track ncbiRefSeqOther
         release alpha
 	parent ncbiRefGenesView off
-	shortLabel RefSeq Other
+	shortLabel NCBI Other
         subGroups view=aGenes
-	longLabel RefSeq other genes, not (NM_* or NR_* or XM_* or XR_*)
-        priority 5
+	longLabel NCBI RefSeq other genes subset, not (NM_*, NR_*, XM_*, XR_*, or YP_*)
+        idXref ncbiRefSeqLink mrnaAcc name
+        priority 4
+
+        track refGene
+        release alpha
+	parent ncbiRefGenesView on
+        shortLabel UCSC Alignments
+        longLabel UCSC alignments of RefSeq mRNAs (NM_* and NR_*)
+        subGroups view=aGenes
+        color 12,12,120
+        type genePred refPep refMrna
+        idXref hgFixed.refLink mrnaAcc name
+        html refGene.new
+        priority 7
 
     track ncbiRefAlignView
     release alpha
@@ -3083,10 +3219,11 @@ allButtonPair on
 
 	track ncbiRefSeqPsl
         release alpha
+        priority 5
 	parent ncbiRefAlignView off
-	shortLabel mRNA Alignments
+	shortLabel NCBI Alignments
         subGroups view=zAlign
-	longLabel mRNA Alignments for RefSeq gene predictions from NCBI
+	longLabel NCBI Alignments of RefSeq mRNAs
         type psl
         indelDoubleInsert on
         indelQueryInsert on
@@ -3098,13 +3235,43 @@ allButtonPair on
         pslSequence no
         baseColorUseSequence extFile seqNcbiRefSeq extNcbiRefSeq
         baseColorUseCds table ncbiRefSeqCds
+        idXref ncbiRefSeqLink mrnaAcc name
 
-searchName refSeqComposite
+	track refSeqAli
+        release alpha
+        priority 6
+	parent ncbiRefAlignView off
+	shortLabel UCSC Alignments
+        subGroups view=zAlign
+	longLabel UCSC Alignments of RefSeq mRNAs
+        type psl
+        indelDoubleInsert on
+        indelQueryInsert on
+        showDiffBasesAllScales .
+        showDiffBasesMaxZoom 10000.0
+        showCdsMaxZoom 10000.0
+        showCdsAllScales .
+        baseColorDefault diffCodons
+        pslSequence no
+        baseColorUseCds table gbCdnaInfo
+        baseColorUseSequence extFile seq gbSeq
+        idXref hgFixed.refLink mrnaAcc name
+
+searchName refSeqCompositeAccession
 searchTable ncbiRefSeq
 searchType genePred
-shortCircuit 1
+semiShortCircuit 1
 searchMethod fuzzy
-termRegex [35A-Za-z][.0-9A-Za-z-]+
+termRegex ([NX][MR]|YP)_[0-9]+(\.[0-9]+)
+dontCheck ..[^_].*
+searchPriority 50
+
+searchName refSeqCompositeName
+searchTable ncbiRefSeq
+searchType genePred
+searchMethod fuzzy
+termRegex ..[^_].*
+dontCheck ([NX][MR]|YP)_[0-9]+(\.[0-9]+)
 searchPriority 50
 
 searchName refSeqName2
@@ -3118,7 +3285,7 @@ searchTable ncbiRefSeq
 searchType genePred
 searchMethod prefix
 searchDescription ncbiRefSeq protAcc search alias
-shortCircuit 1
+semiShortCircuit 1
 xrefTable ncbiRefSeqLink
 xrefQuery select id,protAcc from %s where protAcc like '%s%%'
 termRegex [NZY]P_[0-9]+(\.[0-9]+)?
@@ -3128,7 +3295,7 @@ searchTable ncbiRefSeq
 searchType genePred
 searchMethod prefix
 searchDescription ncbiRefSeq mrnaAcc search alias
-shortCircuit 1
+semiShortCircuit 1
 xrefTable ncbiRefSeqLink
 xrefQuery select id,mrnaAcc from %s where mrnaAcc like '%s%%'
 termRegex [NX][MR]_[0-9]+(\.[0-9]+)?

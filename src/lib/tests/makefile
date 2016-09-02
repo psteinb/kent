@@ -1,3 +1,4 @@
+kentSrc = ../..
 include ../../inc/common.mk
 
 ifeq (${USE_TABIX},1)
@@ -12,13 +13,16 @@ BIN_DIR = bin/${MACHTYPE}
 
 test: errCatchTest htmlPageTest htmlExpandUrlTest pipelineTests dyStringTest \
     mimeTests base64Tests quotedPTests safeTest hashTest fetchUrlTest gff3Test \
-    ${TABIX_TESTS} hacTreeTest
+    ${TABIX_TESTS} hacTreeTest testSumDoubles
 	rm -r output fetchUrlTest
 	@echo tested all
 
 
 mkdirs:
 	${MKDIR} output ${BIN_DIR}
+
+testSumDoubles: testSumDoubles.o ${MYLIBS}
+	${CC} ${COPT} -o ./testSumDoubles testSumDoubles.o ${MYLIBS} ${L}
 
 errCatchTest: errCatchTest.o ${MYLIBS} mkdirs
 	${CC} ${COPT} -o ${BIN_DIR}/errCatchTest errCatchTest.o ${MYLIBS} ${L}

@@ -67,6 +67,7 @@ configureByPopup *
 container *
 controlledVocabulary *
 coriellUrlBase bed
+darkerLabels *
 dataUrl customTracks
 dataVersion *
 dateSubmitted bedGraph bed
@@ -176,11 +177,12 @@ hgGene genePred
 hgsid bed genePred
 highlightBy genePred
 highlightColor genePred
+hoverMetadata wig bigWig
 html *
 htmlFile customTracks
 htmlUrl customTracks
 idInUrlSql altGraphX genePred chain factorSource bed
-idXref genePred
+idXref genePred psl
 iframeUrl *
 iframeOptions *
 indelDoubleInsert psl bam bigBed bigPsl

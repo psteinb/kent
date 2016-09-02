@@ -101,7 +101,10 @@ void addIntro()
 {
 puts(" Data must be formatted in\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bigBed.html'>bigBed</A>,\n"
+" <A TARGET=_BLANK HREF='../goldenPath/help/bigChain.html'>bigChain</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bigGenePred.html'>bigGenePred</A>,\n"
+" <A TARGET=_BLANK HREF='../goldenPath/help/bigMaf.html'>bigMaf</A>,\n"
+" <A TARGET=_BLANK HREF='../goldenPath/help/bigPsl.html'>bigPsl</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bigWig.html'>bigWig</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bam.html'>BAM</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/vcf.html'>VCF</A>,\n"
@@ -109,6 +112,7 @@ puts(" Data must be formatted in\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format1.7'>BED detail</A>,\n"
 " <A TARGET=_BLANK HREF='../goldenPath/help/bedgraph.html'>bedGraph</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format13'>broadPeak</A>,\n"
+" <A TARGET=_BLANK HREF='../goldenPath/help/cram.html'>CRAM</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format3'>GFF</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format4'>GTF</A>,\n"
 " <A TARGET=_BLANK HREF='../FAQ/FAQformat.html#format5'>MAF</A>,\n"
@@ -207,7 +211,7 @@ addIntro();
 puts("<P>");
 
 /* row for error message */
-if (err)
+if (isNotEmpty(err))
     printf("<P><B>&nbsp;&nbsp;&nbsp;&nbsp;<span style='color:RED; font-style:italic;'>"
            "Error</span>&nbsp;%s</B><P>", err);
 
@@ -1115,7 +1119,7 @@ long thisTime = clock1000();
 
 cart = theCart;
 measureTiming = isNotEmpty(cartOptionalString(cart, "measureTiming"));
-initialDb = cloneString(cartString(cart, "db"));
+initialDb = cloneString(cartUsualString(cart, "db", ""));
 getDbAndGenome(cart, &database, &organism, oldVars);
 
 customFactoryEnableExtraChecking(TRUE);
@@ -1334,12 +1338,10 @@ else
 	long lastTime = clock1000();
 	loadTime = lastTime - thisTime;
 	}
-    if (!initialDb || ctList || cartVarExists(cart, hgCtDoDelete))
+    if (ctList || cartVarExists(cart, hgCtDoDelete))
         doManageCustom(warn);
-    else if (ctParseError)
-	doAddCustom(warn);
     else
-        doAddCustom(NULL);
+	doAddCustom(warn);
     }
 cartRemovePrefix(cart, hgCt);
 cartRemove(cart, CT_CUSTOM_TEXT_VAR);

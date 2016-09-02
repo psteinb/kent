@@ -9,8 +9,7 @@
 #include "options.h"
 #include "cheapcgi.h"
 #include "jksql.h"
-#include "genePred.h"
-#include "rangeTree.h"
+#include "portable.h"
 
 void usage()
 {
@@ -18,82 +17,87 @@ errAbort("freen - test some hairbrained thing.\n"
          "usage:  freen input\n");
 }
 
-double tenk[100000];
-double zeros[100000];
-long longs[100000];
-float floats[100000];
+static char *cdwPrefix = "cdw";
+static struct optionSpec options[] = {
+   {"prod", OPTION_BOOLEAN},
+};
 
-double squareFloats(float *a, int count)
-/* Square all numbers in an array */
+void getDbNameForWeb(char *httpHost, char *prefix, char *buf, int bufSize)
+/* Parse out -user from hgwdev-user.this.that or cirm-01-user */
 {
-float acc = 0;
-int i;
-for (i=0; i<count; ++i)
-    {
-    float x = a[i];
-    acc += x*x;
-    }
-return acc;
+// Figure out starts and end of user name within string.
+int prefixLen = strlen(prefix);
+char *userStart = httpHost + prefixLen;
+char *userEnd = strchr(userStart, '.');
+if (userEnd == NULL)
+     userEnd = userStart + strlen(userStart);  // Point to end of string if no . after user
+
+
+// Copy start to end into a new string and zero terminate it
+int userSize = userEnd - userStart;
+char user[userSize+1];
+memcpy(user, userStart, userSize);
+user[userSize] = 0;
+
+// Construct database name
+safef(buf, bufSize, "%s_%s", cdwPrefix, user);
 }
 
-double squareArray(double *a, int count)
-/* Square all numbers in an array */
+char *cdwGetDbName(char *buf, int bufSize)
+/* Return the database name to use depending on whether we are in sandbox or not. 
+ * buf and bufSize should be big enough to hold the result,  say 128 chars or so. */
 {
-double acc = 0;
-int i;
-for (i=0; i<count; ++i)
+char *httpHost = getenv("HTTP_HOST");
+if (httpHost == NULL)  // Command line
     {
-    double x = a[i];
-    acc += x*x;
+    if (optionExists("prod"))
+        safef(buf, bufSize, "%s", cdwPrefix);
+    else
+	{
+	char *user = getenv("USER");
+	assert(user != NULL);
+	safef(buf, bufSize, "%s_%s", cdwPrefix, user);
+	}
     }
-return acc;
+else
+    {
+    char *devPrefix = "hgwdev-";
+    char *prodPrefix = "cirm-01-";
+    if (startsWith(devPrefix, httpHost)) 
+        {
+	getDbNameForWeb(httpHost, devPrefix, buf, bufSize);
+	}
+    else if (startsWith(prodPrefix, httpHost))
+        {
+	getDbNameForWeb(httpHost, prodPrefix, buf, bufSize);
+	}
+    else
+        {
+	safef(buf, sizeof(buf), "%s", cdwPrefix);
+	}
+    }
+return buf;
 }
 
-long squareLongArray(long *a, int count)
-/* Square all numbers in an array */
-{
-long acc = 0;
-int i;
-for (i=0; i<count; ++i)
-    {
-    long x = a[i];
-    acc += x*x;
-    }
-return acc;
-}
-
-void freen(char *chrom)
+void freen(char *fileName)
 /* Test something */
 {
-int i;
-for (i=0; i<ArraySize(zeros); ++i)
-    {
-    longs[i] = i + 123456;
-    tenk[i] = i + 123456.789;
-    zeros[i] = 0;
-    floats[i] = 1234 + i*0.001;
-    }
-
-int outer = 1000;
-uglyTime(0);
-for (i=0; i<outer; ++i)
-    squareArray(tenk, ArraySize(tenk));
-uglyTime("Real numbers");
-for (i=0; i<outer; ++i)
-    squareArray(zeros, ArraySize(zeros));
-uglyTime("Zeroes");
-for (i=0; i<outer; ++i)
-    squareLongArray(longs, ArraySize(longs));
-uglyTime("Long integers (64 bit)");
-for (i=0; i<outer; ++i)
-    squareFloats(floats, ArraySize(floats));
-uglyTime("single precision float");
+char buf[128];
+printf("As command line %s\n", cdwGetDbName(buf, sizeof(buf)));
+setenv("HTTP_HOST", "hgwdev-kent.cse.ucsc.edu", TRUE);
+printf("As web in sandbox %s\n", cdwGetDbName(buf, sizeof(buf)));
+setenv("HTTP_HOST", "hgwdev.cse.ucsc.edu", TRUE);
+printf("As web in alpha site %s\n", cdwGetDbName(buf, sizeof(buf)));
+setenv("HTTP_HOST", "cirm-01", TRUE);
+printf("As web in production site %s\n", cdwGetDbName(buf, sizeof(buf)));
+setenv("HTTP_HOST", "cirm-01-ceisenhart", TRUE);
+printf("As web in Chris's production sandbox %s\n", cdwGetDbName(buf, sizeof(buf)));
 }
 
 int main(int argc, char *argv[])
 /* Process command line. */
 {
-// optionInit(&argc, argv, options);
+optionInit(&argc, argv, options);
 if (argc != 2)
     usage();
 freen(argv[1]);

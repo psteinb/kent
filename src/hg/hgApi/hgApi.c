@@ -21,6 +21,7 @@ metaDb: return list of values for metaDb parameter
 hgt_mdbVal: return metaDb value control - see code for details
 
 tableMetadata: returns an html table with metadata for track parameter
+**** DEPRECATED:  Not currently used in GB
 
 codonToPos: returns genomic position for given codon; parameters: codon, table and name (which is gene name).
 
@@ -31,6 +32,7 @@ codonToPos: returns genomic position for given exon; parameters: exon, table and
 #include "hdb.h"
 #include "mdb.h"
 #include "cheapcgi.h"
+#include "htmshell.h"
 #include "hPrint.h"
 #include "dystring.h"
 #include "hui.h"
@@ -45,8 +47,8 @@ struct dyString *output = newDyString(10000);
 
 setUdcCacheDir();
 cgiSpoof(&argc, argv);
-pushWarnHandler(apiWarnAbortHandler);
-pushAbortHandler(apiWarnAbortHandler);
+pushWarnHandler(htmlVaBadRequestAbort);
+pushAbortHandler(htmlVaBadRequestAbort);
 
 char *database = cgiString("db");
 char *cmd = cgiString("cmd");

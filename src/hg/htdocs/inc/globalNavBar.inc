@@ -23,23 +23,24 @@
 
 <li class="menuparent" id="tools2"><a href="../cgi-bin/hgTracks">Genome Browser</a>
 	<ul style="display: none; visibility: hidden;">
-	<li class="first"><a href="../cgi-bin/hgTracks?hgTracksConfigPage=configure">Configure</a></li>
-	<li><a href="../cgi-bin/cartReset">Reset All User Settings</a></li>
+	<li class="first"><a id="configureMenuLink" href="../cgi-bin/hgTracks?hgTracksConfigPage=configure">Configure</a></li>
+	<li><a id="trackSearchMenuLink" href="../cgi-bin/hgTracks?hgt_tSearch=track+search">Track Search</a></li>
+	<li><a id="cartResetMenuLink" href="../cgi-bin/cartReset">Reset All User Settings</a></li>
         </ul>
 </li>
 
 
 <li class="menuparent" id="tools3"><span>Tools</span>
 	<ul style="display: none; visibility: hidden;">
-	<li class="first"><a href="../cgi-bin/hgBlat?command=start">Blat</a></li>
-	<li><a href="../cgi-bin/hgTables">Table Browser</a></li>
-	<li><a href="../cgi-bin/hgVai">Variant Annotation Integrator</a></li>
-	<li><a href="../cgi-bin/hgIntegrator">Data Integrator</a></li>
-	<li><a href="../cgi-bin/hgNear">Gene Sorter</a></li>
-	<li><a href="../cgi-bin/hgGenome">Genome Graphs</a></li>
-	<li><a href="../cgi-bin/hgPcr">In-Silico PCR</a></li>
-	<li><a href="../cgi-bin/hgLiftOver">LiftOver</a></li>
-	<li><a href="../cgi-bin/hgVisiGene">VisiGene</a></li>
+	<li class="first"><a id="blatMenuLink" href="../cgi-bin/hgBlat?command=start">Blat</a></li>
+	<li><a id="tableBrowserMenuLink" href="../cgi-bin/hgTables">Table Browser</a></li>
+	<li><a id="vaiMenuLink" href="../cgi-bin/hgVai">Variant Annotation Integrator</a></li>
+	<li><a id="diMenuLink" href="../cgi-bin/hgIntegrator">Data Integrator</a></li>
+	<li><a id="gsMenuLink" href="../cgi-bin/hgNear">Gene Sorter</a></li>
+	<li><a id="ggMenuLink" href="../cgi-bin/hgGenome">Genome Graphs</a></li>
+	<li><a id="ispMenuLink" href="../cgi-bin/hgPcr">In-Silico PCR</a></li>
+	<li><a id="liftOverMenuLink" href="../cgi-bin/hgLiftOver">LiftOver</a></li>
+	<li><a id="visiGeneMenuLink" href="../cgi-bin/hgVisiGene">VisiGene</a></li>
 	<li class="last"><a href="../util.html">Other Utilities</a></li>
 	</ul>
 </li>
@@ -55,7 +56,7 @@
 	<ul style="display: none; visibility: hidden;">
 	<li class="first"><a href="http://hgdownload.soe.ucsc.edu/downloads.html">Genome Data</a></li>
 	<li><a href="http://hgdownload.soe.ucsc.edu/downloads.html#source_downloads">Source Code</a></li>
-  <li><a class="noPostLink" href="https://genome-store.ucsc.edu">Genome Browser Store</a></li>
+  <li><a href="https://genome-store.ucsc.edu">Genome Browser Store</a></li>
 	<li><a href="http://hgdownload.soe.ucsc.edu/downloads.html#utilities_downloads">Utilities</a></li>
 	<li class="last"><a href="../goldenPath/help/ftp.html">FTP</a></li>
 	<li class="last"><a href="../goldenPath/help/mysql.html">MySQL Access</a></li>
@@ -63,9 +64,10 @@
 </li>
 <li class="menuparent" id="myData"><span>My Data</span>
 	<ul style="display: none; visibility: hidden;">
-	<li><a href="../cgi-bin/hgSession?hgS_doMainPage=1">Sessions</a></li>
-	<li><a href="../cgi-bin/hgHubConnect">Track Hubs</a></li>
-	<li class="last"><a href="../cgi-bin/hgCustom">Custom Tracks</a></li>
+	<li><a id="sessionsMenuLink" href="../cgi-bin/hgSession?hgS_doMainPage=1">My Sessions</a></li>
+	<li><a id="publicSessionsMenuLink" href="../cgi-bin/hgPublicSessions">Public Sessions</a></li>
+	<li><a id="trackHubsMenuLink" href="../cgi-bin/hgHubConnect">Track Hubs</a></li>
+	<li class="last"><a id="customTracksMenuLink" href="../cgi-bin/hgCustom">Custom Tracks</a></li>
 	</ul>
 </li>
 

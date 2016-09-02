@@ -9,6 +9,8 @@
 #include "genbank.h"
 #include "dystring.h"
 #include "hgConfig.h"
+#include "hdb.h"
+#include "trackHub.h"
 
 char *refSeqSummaryTable = "refSeqSummary";
 char *refSeqStatusTable = "refSeqStatus";
@@ -36,7 +38,7 @@ char *imageCloneTable = "imageClone";
 char *gbMiscDiffTable = "gbMiscDiff";
 
 #define MYBUFSIZE 2048
-inline char *addDatabase(char *database, char *buffer, char *table)
+static inline char *addDatabase(char *database, char *buffer, char *table)
 {
 safef(buffer, MYBUFSIZE, "%s.%s",database,table);
 return cloneString(buffer);
@@ -50,9 +52,22 @@ static boolean inited = FALSE;
 if (inited)
     return;
 
-char *genbankDb = cfgOptionEnvDefault("GENBANKDB", "genbankDb",
-    database);
+if (trackHubDatabase(database))   // don't remap the names on assembly hubs
+    return;
+
+char *genbankDb = cfgOptionEnv("GENBANKDB", "genbankDb");
 char buffer[MYBUFSIZE];
+
+if (genbankDb == NULL)
+    {
+    // if there's no genbankDb specified, check to see if hgFixed has the table, else use the database
+    struct sqlConnection *conn = hAllocConn(database);
+    if (sqlTableExists(conn, "hgFixed.gbCdnaInfo"))
+        genbankDb = "hgFixed";
+    else 
+        genbankDb = database;
+    hFreeConn(&conn);
+    }
 
 refSeqStatusTable = addDatabase(genbankDb, buffer, "refSeqStatus");
 refSeqSummaryTable = addDatabase(genbankDb, buffer, "refSeqSummary");

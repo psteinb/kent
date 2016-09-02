@@ -1593,8 +1593,15 @@ rm -r run.*/out
 ### get the full knownToLocusLinkTable
 # hgsql -Ne 'select value from knownToLocusLink' hg19 | sort -u >> knToLocusLink
 ###   query Wikipedia for each to if there is an article
-# for i in $(cat knToLocusLink); do lynx -dump "http://api.genewikiplus.org/biogps-plugins/wp/"$i | grep -m 1 "no results" >trash ; echo $? $i | grep "1 "| awk '{print $2}'>> workingLinks; done
+# for i in $(cat knToLocusLink); do lynx -dump "http://genewiki.sulab.org/map/wiki/"$i | grep -m 1 "no results" >trash ; echo $? $i | grep "1 "| awk '{print $2}'>> workingLinks; done
 ###   pull out all isoforms that have permitted LocusLinkIds
 # for i in $(cat workingLinks); do hgsql -Ne 'select * from knownToLocusLink where value like "'$i'"' hg19 >> knownToWikipediaNew; done
 ###   then load the table as knownToWikipedia using the knowToLocusLink INDICES.
 
+## braney's knownToWikipedia logic
+# maybe rescrape wikipedia following instructions in doc/wikipediaScrape.txt
+mkdir $dir/wikipedia
+cd $dir/wikipedia
+hgsql hg19 -e "select geneSymbol,name from knownGene g, kgXref x where g.name=x.kgId " | sort > hg19.symbolToId.txt
+join -t $'\t'   /hive/groups/browser/wikipediaScrape/symbolToPage.txt hg19.symbolToId.txt | tawk '{print $3,$2}' | sort | uniq > hg19.idToPage.txt
+hgLoadSqlTab hg19 knownToWikipedia $HOME/kent/src/hg/lib/knownTo.sql hg19.idToPage.txt

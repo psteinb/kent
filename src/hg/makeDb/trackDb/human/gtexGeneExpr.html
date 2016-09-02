@@ -13,10 +13,15 @@ This release is based on data from 8555 tissue samples obtained from 570 adult p
 In Full and Pack display modes, expression for each gene is represented by a colored bargraph,
 where the height of each bar represents the median expression level across all samples for a 
 tissue, and the bar color indicates the tissue.
-<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img border='1' src="../images/gtexGeneTcap.png"><br>
+Tissue colors were assigned to conform to the GTEx Consortium publication conventions.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<img border='1' src="../images/gtex/gtexGeneTcap.png"><br>
 The bargraph display has the same width and tissue order for all genes.
 Mouse hover over a bar will show the tissue and median expression level.
-Tissue colors were assigned to conform to the GTEx Consortium publication conventions.</p>
+The Squish display mode draws a rectangle for each gene, colored to indicate the tissue
+with highest expression level if it contributes more than 10% to the overall expression
+(and colored black if no tissue predominates).
+In Dense mode, the darkness of the grayscale rectangle displayed for the gene reflects the total
+median expression level across all tissues.</p>
 <p>
 The GTEx transcript model used to quantify expression level is displayed below the graph,
 colored to indicate the transcript class 
@@ -25,13 +30,12 @@ colored to indicate the transcript class
 <span style='color: #FF33FF'>pseudogene</span>, 
 <span style='color: #FE0000'>problem</span>), 
 following GENCODE conventions.
+</p>
 <P>
-The track configuration page provides a filter to limit the tissues displayed, choice of
-raw or log transformed expression level display, and an option to segment the samples 
-by gender and display a difference graph.
-</P>
 Click-through on a graph displays a boxplot of expression level quartiles with outliers, 
 per tissue, along with a link to the corresponding gene page on the GTEX Portal.</P>
+The track configuration page provides controls to limit the genes and tissues displayed,
+and to select raw or log transformed expression level display.</P>
 
 <H2>Methods</H2>
 Tissue samples were obtained using the GTEx standard operating procedures for informed consent
@@ -72,12 +76,11 @@ The tissue types collected were chosen based on their clinical significance, log
 feasibility and their relevance to the scientific goal of the project and the 
 research community. 
 Postmortem samples were collected from non-diseased donors with ages ranging from 20 to 79. 34.4% of donors were female and 65.6% male. 
-</P>
-<table><tr>
-<td><img width='90%' border=1 src='/images/gtex/gtexSampleRin.V4.png'></td><td><img width='95%' border=1 src='/images/gtex/gtexSampleAge.V4.png'></td>
-</tr></table>
+<div> <img border=1 src='/images/gtex/gtexSampleRin.V6.png'></div>
+<p></p>
+<div><img border=1 src='/images/gtex/gtexSampleAge.V6.png'></div></p>
 <p>
-Extensive summary plots of GTEx sample characteristics are available at the 
+Additional summary plots of GTEx sample characteristics are available at the 
 <a target="_blank" href="http://gtexportal.org/home/tissueSummaryPage">
 GTEx Portal Tissue Summary</a> page.</p>
 

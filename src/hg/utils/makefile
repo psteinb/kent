@@ -30,6 +30,7 @@ UTILS_APPLIST = \
 	gapToLift \
 	genePredFilter \
 	genePredToBigGenePred \
+	genePredToProt \
 	gff3ToGenePred \
 	gff3ToPsl \
 	gtfToGenePred \
@@ -42,6 +43,7 @@ UTILS_APPLIST = \
 	pslToBigPsl \
 	pslMap \
 	tdbQuery \
+	transMapPslToGenePred \
 	twoBitMask
 
 SCRIPT_FILES = \
@@ -65,12 +67,15 @@ DIRS = ${buildRefresh} \
 
 TEST_DIRS = \
 	genePredFilter \
+	genePredToProt \
 	gff3ToGenePred \
 	gff3ToPsl \
 	gtfToGenePred \
 	overlapSelect \
 	pslMap \
-	refSeqGet
+	pslToBigPsl \
+	refSeqGet \
+	transMapPslToGenePred
 
 APPS = $(DIRS) $(UTILS_APPLIST)
 
