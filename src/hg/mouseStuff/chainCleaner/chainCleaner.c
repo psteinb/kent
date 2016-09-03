@@ -1333,17 +1333,6 @@ boolean testAndRemoveSuspect(struct breakInfo *breakP, struct breakInfo *upstrea
          breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, 
          (int)subChainSuspectLocalScore, ratioL, ratioR, 
          breakP->suspectStart, breakP->suspectEnd, (IsPair ? "0,100,255" : "0,0,153"));
-<<<<<<< HEAD
-/*      fprintf(suspectsRemovedOutBedFile, "%s\t%d\t%d\tbreakingID_%d_score_%d_brokenID_%d_score_%d_suspectGlobalScore_%d_suspectLocalScore_%d_brokenChainGlobalScore_%d_brokenChainLocalScore_%d_LbrokenChainGlobalScore_%d_LbrokenChainLocalScore_%d_RbrokenChainGlobalScore_%d_RbrokenChainLocalScore_%d_subChainSuspectBases_%d_LgapSize_%d_RgapSize_%d\t1000\t+\t%d\%d\t%s\n", 
-         breakP->chrom, breakP->suspectStart, breakP->suspectEnd, 
-         breakP->parentChainId, (int)breakingChainScore, breakP->chainId, (int)brokenChainScore, (int)subChainSuspect->score, (int)subChainSuspectLocalScore, 
-         (int)subChainfill->score, (int)subChainfillLocalScore, 
-         (int)subChainLfill->score, (int)subChainLfillLocalScore, (int)subChainRfill->score, (int)subChainRfillLocalScore,
-         subChainSuspectBases, (breakP->LgapEnd - breakP->LgapStart), (breakP->RgapEnd - breakP->RgapStart),
-         breakP->suspectStart, breakP->suspectEnd, (IsPair ? "0,100,255" : "0,0,153"));
-*/
-=======
->>>>>>> 0f17f7b3cc35b9340a0177507e415992b86e5843
 
       /* remove suspect blocks from the chain */
       chainRemoveBlocks(breakingChain, breakP->suspectStart, breakP->suspectEnd);
