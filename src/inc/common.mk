@@ -72,7 +72,7 @@ ifeq (${USE_SSL},1)
     ifeq (${FULLWARN},hgwdev)
        L+=/usr/lib64/libssl.a /usr/lib64/libcrypto.a -lkrb5
     else
-       L+=-lssl -lcrypto
+       L+=-lssl -lcrypto -lz
     endif
     HG_DEFS+=-DUSE_SSL
 endif
