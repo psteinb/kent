@@ -940,7 +940,7 @@ static struct dnaSeq *maybeGetSeqUpper(struct linkedFeatures *lf,
 struct dnaSeq *mrnaSeq = NULL;
 char *name = getItemDataName(tg, lf->name);
 char *seqSource = trackDbSetting(tg->tdb, BASE_COLOR_USE_SEQUENCE);
-if (sameString(tableName,"refGene"))
+if (sameString(tableName,"refGene") || sameString(tableName,"refSeqAli"))
     mrnaSeq = hGenBankGetMrna(database, name, "refMrna");
 else if (sameString(seqSource, "ss"))
     mrnaSeq = maybeGetUserSeq(name);
@@ -1826,6 +1826,13 @@ void baseColorInitTrack(struct hvGfx *hvg, struct track *tg)
  * tg is linkedFeatures or linkedFeaturesSeries (currently the only
  * two supported track types -- bed, psl etc. are subclasses of these). */
 {
+enum baseColorDrawOpt drawOpt = baseColorGetDrawOpt(tg);
+boolean indelShowDoubleInsert, indelShowQueryInsert, indelShowPolyA;
+indelEnabled(cart, (tg ? tg->tdb : NULL), basesPerPixel,
+	     &indelShowDoubleInsert, &indelShowQueryInsert, &indelShowPolyA);
+if (drawOpt <= baseColorDrawOff && !(indelShowQueryInsert || indelShowPolyA))
+    return;
+
 setGc();
 if (initedTrack == NULL || differentString(tg->track, initedTrack))
     {

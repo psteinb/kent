@@ -1116,8 +1116,8 @@ genePredToFakePsl mm10 knownGene knownGene.psl cdsOut.tab
 sort cdsOut.tab | sed 's/\.\./   /' > sortCdsOut.tab
 sort ucscPfam.tab> sortPfam.tab
 awk '{print $10, $11}' knownGene.psl > gene.sizes
-join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 + 3 * $4, $2 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
-pslMap domainToGene.psl knownGene.psl stdout | sort | uniq | pslToBed stdin domainToGenome.bed
+join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 -1 + 3 * $4, $2 - 1 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
+pslMap domainToGene.psl knownGene.psl stdout | pslToBed stdin stdout | bedOrBlocks -useName stdin domainToGenome.bed 
 hgLoadBed $tempDb ucscGenePfam domainToGenome.bed
 
 
@@ -1331,4 +1331,12 @@ gzip run.*/all.tab
 # move this exit statement to the end of the section to be done next
 exit $status # BRACKET
 
+
+# make knownGene.bb
+set genomes = /hive/data/genomes
+set dir = $genomes/mm9/bed/ucsc.12
+cd $dir
+makeBigKnown mm9
+rm -f /gbdb/mm9/knownGene.bb
+ln -s `pwd`/mm9.knownGene.bb /gbdb/mm9/knownGene.bb
 

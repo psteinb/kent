@@ -82,15 +82,18 @@ set yeastFa = $genomes/$yeastDb/bed/sgdAnnotations/blastTab/sacCer3.sgd.faa
 
 # Other files needed
 
-mkdir /hive/data/outside/bioCyc/160330
-cd /hive/data/outside/bioCyc/160330
+# NOTE: Adjust the download file and directory names as appropriate for your
+# assembly.  Had to rebuild this later (Aug 24, 2016) because I used human
+# data the first time.
+mkdir /hive/data/outside/bioCyc/160824
+cd /hive/data/outside/bioCyc/160824
 mkdir download
 cd download
-wget --timestamping --no-directories --recursive --user=biocyc-flatfiles --password=data-20541 "http://brg.ai.sri.com/ecocyc/dist/flatfiles-52983746/human.tar.gz"
-tar xzvf human.tar.gz
+wget --timestamping --no-directories --recursive --user=biocyc-flatfiles --password=data-20541 "http://brg.ai.sri.com/ecocyc/dist/flatfiles-52983746/mouse.tar.gz"
+tar xzvf mouse.tar.gz
 
-set bioCycPathways = /hive/data/outside/bioCyc/160330/19.5/data/pathways.col
-set bioCycGenes = /hive/data/outside/bioCyc/160330/19.5/data/genes.col
+set bioCycPathways = /hive/data/outside/bioCyc/160824/download/1.7.1/data/pathways.col
+set bioCycGenes = /hive/data/outside/bioCyc/160824/download/1.7.1/data/genes.col
 
 # Get the blocks in this genome that are syntenic to the $xdb genome
 cd $dir
@@ -484,7 +487,7 @@ faSplit sequence txWalk.fa 200 txFaSplit/
 # wc $testingDir/txWalk.intersect.bed
 #
 
-# Fetch human protein set and table that describes if curated or not.
+# Fetch mouse protein set and table that describes if curated or not.
 # Takes about a minute
 hgsql -N $spDb -e \
   "select p.acc, p.val from protein p, accToTaxon x where x.taxon=$taxon and p.acc=x.acc" \
@@ -1358,8 +1361,8 @@ genePredToFakePsl mm10 knownGene knownGene.psl cdsOut.tab
 sort cdsOut.tab | sed 's/\.\./   /' > sortCdsOut.tab
 sort ucscPfam.tab> sortPfam.tab
 awk '{print $10, $11}' knownGene.psl > gene.sizes
-join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 + 3 * $4, $2 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
-pslMap domainToGene.psl knownGene.psl stdout | sort | uniq | pslToBed stdin domainToGenome.bed 
+join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 - 1 + 3 * $4, $2 - 1 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
+pslMap domainToGene.psl knownGene.psl stdout | pslToBed stdin stdout | bedOrBlocks -useName stdin domainToGenome.bed 
 hgLoadBed $tempDb ucscGenePfam domainToGenome.bed
 
 # Do BioCyc Pathways build
@@ -1550,3 +1553,11 @@ rm -r run.*/out
 # Last step in setting up isPCR: after the new UCSC Genes with the new Known Gene isPcr
 # is released, take down the old isPcr gfServer  
 #
+
+# make bigKnownGene.bb
+set genomes = /hive/data/genomes
+set dir = $genomes/mm10/bed/ucsc.16.1
+cd $dir
+makeBigKnown mm10
+rm -f /gbdb/mm10/knownGene.bb
+ln -s `pwd`/mm10.knownGene.bb /gbdb/mm10/knownGene.bb

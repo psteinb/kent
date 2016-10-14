@@ -212,7 +212,6 @@ char *cdwAllowedTags[] = {
     "average_insert_size",
     "biomaterial_provider",
     "biosample_date",
-    "body_part",
     "cell_count",
     "cell_culture_type",
     "cell_enrichment",
@@ -259,6 +258,7 @@ char *cdwAllowedTags[] = {
     "replicate",
     "rin",
     "rna_spike_in",
+    "sample_label",
     "seq_library",
     "seq_library_prep",
     "seq_library_prep",
@@ -373,6 +373,7 @@ char *assay[] =
 "methyl-ChIP-seq",
 "narrow-ChIP-seq",
 "RIP-seq",
+"RRBS",
 "short-RNA-seq",
 "WGBS",
 "WGS",
@@ -385,13 +386,14 @@ char *control[] =
 };
 char *disease[] =
 {
+"acute promyelocytic leukemia",
+"chronic myelogenous leukemia (CML)",
 "DCM",
 "HCM",
 "LQT",
+"prostate cancer",
 "TNM stage IIA, grade 3, ductal carcinoma",
-"chronic myelogenous leukemia (CML)",
 "LQT",
-"acute promyelocytic leukemia",
 };
 char *enriched_in[] =
 {

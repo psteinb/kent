@@ -32,6 +32,7 @@ baseQualRange bam
 bedFilter bed
 bedNameLabel bed
 bigDataUrl customTracks bigBed bigWig bam vcfTabix bigPsl
+bigGeneDataUrl genePred
 blastRef psl bigPsl
 boxedCfg *
 browserLines customTracks
@@ -75,7 +76,9 @@ dateUnrestricted bed
 db *
 dbProfile *
 dbTrackType customTracks
+detailsTabUrls bigBed bigGenePred bigPsl
 defaultGeneTracks bed
+defaultMaf wigMaf
 defaultMaxWeight bed
 defaultLinkedTables genePred
 dimensionAchecked *
@@ -342,6 +345,7 @@ scoreFilterLimits broadPeak narrowPeak bed interaction bedlogR peptideMapping bi
 scoreFilterMax bed bedlogR peptideMapping bigBed
 scoreMax bed bedlogR interaction peptideMapping narrowPeak bigBed
 scoreMin broadPeak narrowPeak bed bedlogR interaction peptideMapping bigBed
+scoreLabel bed bigBed bigPsl bigGenePred
 searchIndex bigBed
 searchTrix bigBed
 selectSubject psl bigPsl
@@ -374,6 +378,7 @@ sourceTable factorSource bed
 spanList *
 speciesCodonDefault wigMafProt wigMaf
 speciesDefaultOff wigMaf
+speciesDefaultOn wigMaf
 speciesGroups wigMafProt wigMaf
 speciesOrder bed maf wigMaf
 speciesTarget wigMaf

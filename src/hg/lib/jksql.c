@@ -916,7 +916,8 @@ return list;
 }
 
 static struct slName *sqlListTablesForConn(struct sqlConnection *conn, char *likeExpr)
-/* run SHOW TABLES on connection and return a slName list */
+/* run SHOW TABLES on connection and return a slName list.  LIKE expression
+ * can be NULL or string e.g. "LIKE 'snp%'" */
 {
 char query[256];
 if (likeExpr == NULL)
@@ -2112,7 +2113,7 @@ return count;
 
 int sqlFieldColumn(struct sqlResult *sr, char *colName)
 /* get the column number of the specified field in the result, or
- * -1 if the result doesn't contailed the field.*/
+ * -1 if the result doesn't contain the field.*/
 {
 int numFields = mysql_num_fields(sr->result);
 int i;
@@ -3948,7 +3949,6 @@ else
 
 freeMem(newFormat);
 va_end(orig_args);
-va_end(args);
 
 return sz;
 

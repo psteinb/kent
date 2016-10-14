@@ -35,6 +35,8 @@ if (bbi == NULL)
     if (track->parallelLoading) // do not use mysql during parallel fetch
 	{
 	fileName = cloneString(trackDbSetting(track->tdb, "bigDataUrl"));
+        if (fileName == NULL)
+            fileName = cloneString(trackDbSetting(track->tdb, "bigGeneDataUrl"));
 	}
     else 
 	{
@@ -54,8 +56,8 @@ if (bbi == NULL)
 return bbi;
 }
 
-struct bigBedInterval *bigBedSelectRange(struct track *track,
-	char *chrom, int start, int end, struct lm *lm)
+struct bigBedInterval *bigBedSelectRangeExt(struct track *track,
+	char *chrom, int start, int end, struct lm *lm, int maxItems)
 /* Return list of intervals in range. */
 {
 struct bigBedInterval *result = NULL;
@@ -64,7 +66,6 @@ struct errCatch *errCatch = errCatchNew();
 if (errCatchStart(errCatch))
     {
     struct bbiFile *bbi = fetchBbiForTrack(track);
-    int maxItems = min(BIGBEDMAXIMUMITEMS, maximumTrackItems(track)); // do not allow it to exceed BIGBEDMAXIMUMITEMS for bigBed
     result = bigBedIntervalQuery(bbi, chrom, start, end, maxItems + 1, lm);
     if (slCount(result) > maxItems)
 	{
@@ -121,15 +122,15 @@ return field;
 }
 
 
-void bigBedAddLinkedFeaturesFrom(struct track *track,
+void bigBedAddLinkedFeaturesFromExt(struct track *track,
 	char *chrom, int start, int end, int scoreMin, int scoreMax, boolean useItemRgb,
-	int fieldCount, struct linkedFeatures **pLfList)
+	int fieldCount, struct linkedFeatures **pLfList, int maxItems)
 /* Read in items in chrom:start-end from bigBed file named in track->bbiFileName, convert
  * them to linkedFeatures, and add to head of list. */
 {
 struct lm *lm = lmInit(0);
 struct trackDb *tdb = track->tdb;
-struct bigBedInterval *bb, *bbList = bigBedSelectRange(track, chrom, start, end, lm);
+struct bigBedInterval *bb, *bbList = bigBedSelectRangeExt(track, chrom, start, end, lm, maxItems);
 char *bedRow[32];
 char startBuf[16], endBuf[16];
 char *scoreFilter = cartOrTdbString(cart, track->tdb, "scoreFilter", NULL);
@@ -167,8 +168,12 @@ for (bb = bbList; bb != NULL; bb = bb->next)
 	    scoreMin, scoreMax, useItemRgb);
 	}
 
-    if (sameString(track->tdb->type, "bigGenePred"))
-	lf->original = genePredFromBigGenePred(chromName, bb); 
+    if (sameString(track->tdb->type, "bigGenePred") || startsWith("genePred", track->tdb->type))
+        {
+        struct genePred  *gp = lf->original = genePredFromBigGenePred(chromName, bb); 
+        lf->extra = gp->name2;
+        lf->isBigGenePred = TRUE;
+        }
 
     char* mouseOver = restField(bb, mouseOverIdx);
     lf->mouseOver   = mouseOver; // leaks some memory, cloneString handles NULL ifself 

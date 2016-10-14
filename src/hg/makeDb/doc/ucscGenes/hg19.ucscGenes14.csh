@@ -1308,8 +1308,8 @@ genePredToFakePsl hg19 knownGene knownGene.psl cdsOut.tab
 sort cdsOut.tab | sed 's/\.\./   /' > sortCdsOut.tab
 sort ucscPfam.tab> sortPfam.tab
 awk '{print $10, $11}' knownGene.psl > gene.sizes
-join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 + 3 * $4, $2 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
-pslMap domainToGene.psl knownGene.psl stdout | sort | uniq | pslToBed stdin domainToGenome.bed 
+join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 - 1 + 3 * $4, $2 - 1 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
+pslMap domainToGene.psl knownGene.psl stdout | pslToBed stdin stdout | bedOrBlocks -useName stdin domainToGenome.bed 
 hgLoadBed $tempDb ucscGenePfam domainToGenome.bed
 
 # Do scop run. Takes about 6 hours
@@ -1605,3 +1605,11 @@ cd $dir/wikipedia
 hgsql hg19 -e "select geneSymbol,name from knownGene g, kgXref x where g.name=x.kgId " | sort > hg19.symbolToId.txt
 join -t $'\t'   /hive/groups/browser/wikipediaScrape/symbolToPage.txt hg19.symbolToId.txt | tawk '{print $3,$2}' | sort | uniq > hg19.idToPage.txt
 hgLoadSqlTab hg19 knownToWikipedia $HOME/kent/src/hg/lib/knownTo.sql hg19.idToPage.txt
+
+# make bigKnownGene.bb
+set genomes = /hive/data/genomes
+set dir = $genomes/hg19/bed/ucsc.14.3
+cd $dir
+makeBigKnown hg19
+rm -f /gbdb/hg19/knownGene.bb
+ln -s `pwd`/hg19.knownGene.bb /gbdb/hg19/knownGene.bb

@@ -898,8 +898,8 @@ genePredToFakePsl hg18 knownGene knownGene.psl cdsOut.tab
 sort cdsOut.tab | sed 's/\.\./   /' > sortCdsOut.tab
 sort ../ucscPfam.tab> sortPfam.tab
 awk '{print $10, $11}' knownGene.psl > gene.sizes
-join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 + 3 * $4, $2 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
-pslMap domainToGene.psl knownGene.psl stdout | sort | uniq | pslToBed stdin domainToGenome.bed
+join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 - 1 + 3 * $4, $2 - 1 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
+pslMap domainToGene.psl knownGene.psl stdout | pslToBed stdin stdout | bedOrBlocks -useName stdin domainToGenome.bed 
 hgLoadBed $tempDb ucscGenePfam domainToGenome.bed
 
 
@@ -1114,3 +1114,9 @@ ln -s $dir/index/knownGene.ixx /gbdb/$db/knownGene.ixx
     cp -Rfp knownGeneList/$db/* /usr/local/apache/htdocs/knownGeneList/$db
 
 #
+# make bigKnownGene.bb
+set dir = /cluster/data/hg18/bed/ucsc.11
+cd $dir
+makeBigKnown hg18
+rm -f /gbdb/hg18/knownGene.bb
+ln -s `pwd`/hg18.knownGene.bb /gbdb/hg18/knownGene.bb

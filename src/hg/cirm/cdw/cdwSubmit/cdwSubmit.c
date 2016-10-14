@@ -787,7 +787,7 @@ for (row = table->rowList; row != NULL; row = row->next)
 
     if (justTest)
         {
-	static char *otherForcedFields[] = {"body_part", "data_set_id", "assay", "lab", 
+	static char *otherForcedFields[] = {"sample_label", "data_set_id", "assay", "lab", 
 	    "ucsc_db"};
 	int i;
 	for (i=0; i<ArraySize(otherForcedFields); ++i)
@@ -1021,7 +1021,8 @@ if (justTest)
 int submitId = makeNewEmptySubmitRecord(conn, submitUrl, user->id);
 
 /* Create a backup of the previous submission */
-char cmd[PATH_LEN]; 
+char cmd[PATH_LEN];
+if (getenv("CIRM") == NULL) errAbort("Please set up your CIRM environment variable."); 
 safef(cmd, sizeof(cmd), "cdwBackup %scdw/db.backups/cdwSubmit.%i", getenv("CIRM"), submitId -1);  
 mustSystem(cmd); 
 

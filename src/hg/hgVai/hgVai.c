@@ -1142,6 +1142,8 @@ cartMakeCheckBox(cart, "hgva_include_splice", TRUE);
 printf("splice site or splice region<BR>\n");
 cartMakeCheckBox(cart, "hgva_include_nonCodingExon", TRUE);
 printf("exon of non-coding gene<BR>\n");
+cartMakeCheckBox(cart, "hgva_include_noVariation", TRUE);
+printf("\"variants\" for which no alternate allele has been observed<BR>\n");
 struct slRef *regTrackRefList = findRegulatoryTracks();
 if (regTrackRefList != NULL)
     {
@@ -1384,6 +1386,7 @@ aggvFuncFilter.cdsNonSyn = cartUsualBoolean(cart, "hgva_include_cdsNonSyn", TRUE
 aggvFuncFilter.intron = cartUsualBoolean(cart, "hgva_include_intron", TRUE);
 aggvFuncFilter.splice = cartUsualBoolean(cart, "hgva_include_splice", TRUE);
 aggvFuncFilter.nonCodingExon = cartUsualBoolean(cart, "hgva_include_nonCodingExon", TRUE);
+aggvFuncFilter.noVariation = cartUsualBoolean(cart, "hgva_include_noVariation", TRUE);
 annoGratorGpVarSetFuncFilter(gpVarGrator, &aggvFuncFilter);
 }
 
@@ -1845,7 +1848,7 @@ static void addGpFromRow(struct genePred **pGpList, struct annoRow *row,
 /* If row is coding and we need a coding gp, add it to pGpList and update pNeedCoding;
  * likewise for noncoding. */
 {
-struct genePred *gp = isBig ? genePredFromBigGenePredRow(row->data) : genePredLoad(row->data);
+struct genePred *gp = isBig ? (struct genePred *)genePredFromBigGenePredRow(row->data) : genePredLoad(row->data);
 if (gp->cdsStart != gp->cdsEnd && *pNeedCoding)
     {
     slAddHead(pGpList, gp);
@@ -2629,7 +2632,7 @@ struct hash *gratorsByName = hashNew(8);
 
 struct annoGrator *snpGrator = NULL;
 char *snpDesc = NULL;
-if (cartUsualBoolean(cart, "hgva_rsId", FALSE))
+if (cartUsualBoolean(cart, "hgva_rsId", TRUE))
     snpGrator = gratorForSnpBed4(gratorsByName, "", assembly, chrom, agoNoConstraint, &snpDesc);
 
 // Now construct gratorList in the order in which annoFormatVep wants to see them,

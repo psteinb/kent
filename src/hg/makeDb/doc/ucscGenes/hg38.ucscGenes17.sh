@@ -544,7 +544,7 @@ genePredToFakePsl hg38 knownGene knownGene.psl cdsOut.tab
 sort cdsOut.tab | sed 's/\.\./   /' > sortCdsOut.tab
 sort ucscPfam.tab> sortPfam.tab
 awk '{print $10, $11}' knownGene.psl > gene.sizes
-join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 + 3 * $4, $2 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
+join sortCdsOut.tab sortPfam.tab |  awk '{print $1, $2 - 1 + 3 * $4, $2 - 1 + 3 * $5, $6}' | bedToPsl gene.sizes stdin domainToGene.psl
 pslMap domainToGene.psl knownGene.psl stdout | pslToBed stdin stdout | bedOrBlocks -useName stdin domainToGenome.bed 
 hgLoadBed $tempDb ucscGenePfam domainToGenome.bed
 
@@ -915,3 +915,10 @@ $join ensTransUcsc.tab ensTransProt.tab | awk '{if (NF==3)print $3, $2}' | sort 
 $join ensProtToUc.tab ensToTreefam.tab | sort -u | awk 'BEGIN {OFS="\t"} {print $2,$3}' | sort -u > knownToTreefam.tab
 $hgLoadSqlTab $tempDb knownToTreefam $kent/src/hg/lib/knownTo.sql knownToTreefam.tab
 #end section not done
+
+# make bigKnownGene.bb
+export dir=/cluster/data/hg38/bed/ucsc.17.1
+cd $dir
+makeBigKnown hg38
+rm -f /gbdb/hg38/knownGene.bb
+ln -s `pwd`/hg38.knownGene.bb /gbdb/hg38/knownGene.bb
