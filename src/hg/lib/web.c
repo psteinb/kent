@@ -210,12 +210,6 @@ if (withHtmlHeader)
     puts(commonCssStyles());
     }
 
-puts(
-    "<A NAME=\"TOP\"></A>" "\n"
-    "" "\n"
-    "<TABLE BORDER=0 CELLPADDING=0 CELLSPACING=0 WIDTH=\"100%\">" "\n");
-=======
-
 /* Put up the hot links bar. */
 
 char *menuStr = menuBar(theCart, db);
