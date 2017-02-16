@@ -40,12 +40,18 @@ static char *nextVars[] = {hgtaNextIntersectGroup, hgtaNextIntersectTrack,
  * libified, probably in cart.h. */
 void removeCartVars(struct cart *cart, char **vars, int varCount);
 
+boolean hasBigDataUrl(char *db, char *table)
+{
+struct trackDb *tdb = hashFindVal(fullTableToTdbHash, table);
+return (tdb && isNotEmpty(trackDbSetting(tdb, "bigDataUrl")));
+}
+
 boolean canIntersect(char *db, char *table)
 /* Return true if table exists and is positional. */
 {
 if (isCustomTrack(table) && ctLookupName(table) != NULL)
     return TRUE;
-if (! hTableOrSplitExists(db, table))
+if (! hTableOrSplitExists(db, table) && ! hasBigDataUrl(db, table))
     return FALSE;
 if (isLongTabixTable(table))
     return TRUE;
@@ -96,18 +102,10 @@ char *op = cartUsualString(cart, hgtaIntersectOp, "any");
 return (sameString(op, "and") || sameString(op, "or"));
 }
 
-static char *onChangeEnd(struct dyString **pDy)
-/* Finish up javascript onChange command. */
-{
-dyStringAppend(*pDy, "document.hiddenForm.submit();\"");
-return dyStringCannibalize(pDy);
-}
-
 static struct dyString *onChangeStart()
 /* Start up a javascript onChange command */
 {
 struct dyString *dy = dyStringNew(1024);
-dyStringAppend(dy, "onChange=\"");
 jsDropDownCarryOver(dy, hgtaNextIntersectGroup);
 jsDropDownCarryOver(dy, hgtaNextIntersectTrack);
 jsDropDownCarryOver(dy, hgtaNextIntersectTable);
@@ -118,6 +116,13 @@ if (!isBigWigTable(curTable))
     jsTrackedVarCarryOver(dy, hgtaNextInvertTable, "invertTable");
 jsTrackedVarCarryOver(dy, hgtaNextInvertTable2, "invertTable2");
 return dy;
+}
+
+static char *onChangeEnd(struct dyString **pDy)
+/* Finish up javascript onChange command. */
+{
+dyStringAppend(*pDy, "document.hiddenForm.submit();");
+return dyStringCannibalize(pDy);
 }
 
 static char *onChangeEither()
@@ -141,8 +146,8 @@ struct trackDb *showGroupTrackRow(char *groupVar, char *groupScript,
 struct trackDb *track;
 struct grp *selGroup;
 hPrintf("<TR><TD>");
-selGroup = showGroupField(groupVar, groupScript, conn, FALSE);
-track = showTrackField(selGroup, trackVar, trackScript, TRUE);
+selGroup = showGroupField(groupVar, "change", groupScript, conn, FALSE);
+track = showTrackField(selGroup, trackVar, "change", trackScript, TRUE);
 hPrintf("</TD></TR>\n");
 return track;
 }
@@ -263,10 +268,13 @@ else
     {
     /*	keep javaScript onClick happy	*/
     jsTrackingVar("op", op);
-    hPrintf("<SCRIPT>\n");
-    hPrintf("var invertTable=0;\n");
-    hPrintf("var invertTable2=0;\n");
-    hPrintf("</SCRIPT>\n");
+    
+    jsInline
+	(
+	"var invertTable=0;\n"
+	"var invertTable2=0;\n"
+    	);
+
     hPrintf("(data track %s is not composed of gene records.  Specialized intersection operations are not available.)<P>\n", name);
     }
 

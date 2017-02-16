@@ -145,6 +145,7 @@
 #include "genbank.h"
 #include "bedTabix.h"
 #include "knetUdc.h"
+#include "trackHub.h"
 
 #define CHROM_COLORS 26
 
@@ -3727,7 +3728,7 @@ else if (drawOpt > baseColorDrawOff)
     if (startsWith("genePred", tg->tdb->type) || startsWith("bigGenePred", tg->tdb->type))
 	gp = (struct genePred *)(lf->original);
     if (gp && gp->cdsStart != gp->cdsEnd)
-        lf->codons = baseColorCodonsFromGenePred(lf, gp, (drawOpt != baseColorDrawDiffCodons), cartUsualBooleanClosestToHome(cart, tg->tdb, FALSE, CODON_NUMBERING_SUFFIX, FALSE));
+        lf->codons = baseColorCodonsFromGenePred(lf, gp, (drawOpt != baseColorDrawDiffCodons), cartUsualBooleanClosestToHome(cart, tg->tdb, FALSE, CODON_NUMBERING_SUFFIX, TRUE));
     }
 if (psl && drawOpt == baseColorDrawCds && !zoomedToCdsColorLevel)
     baseColorSetCdsBounds(lf, psl, tg);
@@ -4658,6 +4659,8 @@ void genericDrawItems(struct track *tg, int seqStart, int seqEnd,
 /* Draw generic item list.  Features must be fixed height
  * and tg->drawItemAt has to be filled in. */
 {
+withIndividualLabels = TRUE;  // set this back to default just in case someone left it false (I'm looking at you pgSnp)
+
 if (tg->mapItem == NULL)
     tg->mapItem = genericMapItem;
 if (vis != tvDense && baseColorCanDraw(tg))
@@ -6140,6 +6143,7 @@ if (hTableExists(database, "kgXref"))
         kgE->name = dyStringCannibalize(&name);
         kgE->hgg_prot = lf->extra;
         lf->extra = kgE;
+        lf->label = kgE->name;
 	}
     }
 hFreeConn(&conn);
@@ -6757,32 +6761,6 @@ tg->drawItemAt  = rgdQtlDrawAt;
 tg->drawName    = TRUE;
 }
 
-char *orgShortName(char *org)
-/* Get the short name for an organism.  Returns NULL if org is NULL.
- * WARNING: static return */
-{
-static int maxOrgSize = 7;
-static char orgNameBuf[128];
-if (org == NULL)
-    return NULL;
-strncpy(orgNameBuf, org, sizeof(orgNameBuf)-1);
-orgNameBuf[sizeof(orgNameBuf)-1] = '\0';
-char *shortOrg = firstWordInLine(orgNameBuf);
-if (strlen(shortOrg) > maxOrgSize)
-    shortOrg[maxOrgSize] = '\0';
-return shortOrg;
-}
-
-char *orgShortForDb(char *db)
-/* look up the short organism scientific name given an organism db.
- * WARNING: static return */
-{
-char *org = hScientificName(db);
-char *shortOrg = orgShortName(org);
-freeMem(org);
-return shortOrg;
-}
-
 char *getOrganism(struct sqlConnection *conn, char *acc)
 /* lookup the organism for an mrna, or NULL if not found */
 {
@@ -6811,7 +6789,7 @@ char *getOrganismShort(struct sqlConnection *conn, char *acc)
  * only return the genus, and only the first seven letters of that.
  * WARNING: static return */
 {
-return orgShortName(getOrganism(conn, acc));
+return hOrgShortName(getOrganism(conn, acc));
 }
 
 char *getGeneName(struct sqlConnection *conn, char *acc)
@@ -13956,6 +13934,8 @@ else if (sameWord(type, "bigGenePred"))
     wordCount++;
     words[1] = "12";
     bigBedMethods(track, tdb, wordCount, words);
+    track->itemColor   = bigGenePredColor;
+    track->itemNameColor = bigGenePredColor;
     if (trackShouldUseAjaxRetrieval(track))
         track->loadItems = dontLoadItems;
     }
@@ -14444,6 +14424,8 @@ static TrackHandler lookupTrackHandler(struct trackDb *tdb)
 if (handlerHash == NULL)
     return NULL;
 TrackHandler handler = hashFindVal(handlerHash, tdb->table);
+if (handler == NULL && sameString(trackHubSkipHubName(tdb->table), "cytoBandIdeo"))
+    handler = hashFindVal(handlerHash, "cytoBandIdeo");
 // if nothing found, try the "trackHandler" statement
 if (handler == NULL)
     {
@@ -14629,7 +14611,7 @@ registerTrackHandler("refGene", refGeneMethods);
 registerTrackHandler("ncbiRefSeq", ncbiRefSeqMethods);
 registerTrackHandler("ncbiRefSeqCurated", ncbiRefSeqMethods);
 registerTrackHandler("ncbiRefSeqPredicted", ncbiRefSeqMethods);
-registerTrackHandler("ncbiRefSeqOther", ncbiRefSeqMethods);
+// registerTrackHandler("ncbiRefSeqOther", ncbiRefSeqMethods); has become bed12
 registerTrackHandler("rgdGene2", rgdGene2Methods);
 registerTrackHandler("blastMm6", blastMethods);
 registerTrackHandler("blastDm1FB", blastMethods);

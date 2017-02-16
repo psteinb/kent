@@ -1153,6 +1153,20 @@ if (spec != NULL)
     }
 }
 
+void twoBitOutMaskBeds(struct twoBitFile *tbf, char *seqName, FILE *outF)
+/* output a series of bed3's that enumerate the number of masked bases in a sequence*/
+{
+struct twoBit *header = readTwoBitSeqHeader(tbf, seqName);
+
+int ii;
+for (ii = 0; ii < header->maskBlockCount; ++ii)
+    {
+    fprintf(outF, "%s\t%d\t%d\n", seqName, header->maskStarts[ii], header->maskStarts[ii] + header->maskSizes[ii]);
+    }
+
+twoBitFree(&header);
+}
+
 void twoBitOutNBeds(struct twoBitFile *tbf, char *seqName, FILE *outF)
 /* output a series of bed3's that enumerate the number of N's in a sequence*/
 {
@@ -1254,4 +1268,19 @@ boolean twoBitIsSequence(struct twoBitFile *tbf, char *chromName)
 /* Return TRUE if chromName is in 2bit file. */
 {
 return (hashFindVal(tbf->hash, chromName) != NULL);
+}
+
+struct hash *twoBitChromHash(char *fileName)
+/* Build a hash of chrom names with their sizes. */
+{
+struct twoBitFile *tbf = twoBitOpen(fileName);
+struct twoBitIndex *index;
+struct hash *hash = hashNew(digitsBaseTwo(tbf->seqCount));
+for (index = tbf->indexList; index != NULL; index = index->next)
+    {
+    hashAddInt(hash, index->name, twoBitSeqSize(tbf, index->name));
+    }
+
+twoBitClose(&tbf);
+return hash;
 }

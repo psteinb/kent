@@ -87,6 +87,14 @@ function tprint (tbl, indent)
   end
 end
 
+-- remove all special chars from the string and remove all html tags
+function simplifyId(idStr)
+    idStr=idStr:gsub("%b<>", "")
+    idStr = string.lower(string.gsub(idStr, "%s+", "-"))
+    idStr = string.lower(string.gsub(idStr, "[^a-zA-z-]", ""))
+    return idStr
+end
+
 -- This function is called once for the whole document. Parameters:
 -- body is a string, metadata is a table, variables is a table.
 -- This gives you a fragment.  You could use the metadata table to
@@ -119,8 +127,8 @@ function Doc(body, metadata, variables)
   add("<p><b>Table of Contents:</b></p>")
   add("<ul>")
   for i, h in ipairs(headers) do
-    idStr = string.lower(string.gsub(h, "%s+", "-"))
-    add("<li><a class='toc' href='#" .. idStr .. "'>" .. h .. "</a></li>")
+    idStr = simplifyId(h)
+    add("<li><b><a class='toc' href='#" .. idStr .. "'>" .. h .. "</a></b></li>")
   end
   add("</ul>")
   add("</div>")
@@ -272,7 +280,7 @@ function Header(lev, s, attr)
 
   if lev == 1 then
 
-    idStr = string.lower(string.gsub(s, "%s+", "-"))
+    idStr = simplifyId(s)
 
     if headerOpen then
       table.insert(lines, "</div></div>")

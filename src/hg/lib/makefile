@@ -12,7 +12,7 @@ O = acemblyClass.o adjacency.o affyAllExonProbe.o affyAtlas.o affy10KDetails.o a
     axtLib.o bactigPos.o hgBam.o baseMaskCommon.o bdgpExprLink.o bdgpGeneInfo.o \
     bed.o bed5FloatScore.o bed5Pval.o bed6FloatScore.o  bed8Attrs.o bed12Source.o \
     bed12wSeq.o bedCart.o bgiGeneInfo.o bgiGeneSnp.o bgiSnp.o bigBedFind.o \
-    bigGenePred.o bigPsl.o bioImage.o \
+    bigGenePred.o bigPsl.o bigTransMap.o bioImage.o \
     blastTab.o blastzNet.o blatServers.o borf.o borkPseudoHom.o botDelay.o\
     cart.o cartDb.o cartJson.o cartTrackDb.o cdsEvidence.o cdsOrtho.o cdsPick.o cdsSpec.o \
     ccdsInfo.o ccdsNotes.o ccdsGeneMap.o celeraCoverage.o \
@@ -101,7 +101,7 @@ O = acemblyClass.o adjacency.o affyAllExonProbe.o affyAtlas.o affy10KDetails.o a
     stsMap.o stsMapMouse.o stsMapMouseNew.o stsMapRat.o stsMarker.o suggest.o \
     switchDbTss.o synMap.o synteny100000.o syntenyBerk.o syntenySanger.o \
     sqlProg.o tfbsCons.o tfbsConsSites.o tablesTables.o \
-    tableDescriptions.o tableStatus.o targetDb.o tfbsConsMap.o \
+    tableDescriptions.o tableStatus.o targetDb.o tfbsConsMap.o tagRepo.o \
     taxonDivision.o taxonGeneticCode.o taxonName.o taxonNode.o taxonXref.o \
     tigrCmrGene.o tigrOperon.o tilingPath.o traceInfo.o trackDb.o \
     trackDbCustom.o trackHub.o trackLayout.o trackTable.o trackVersion.o trashDir.o \
@@ -128,14 +128,17 @@ endif
 ../../lib/$(MACHTYPE)/jkhgap.a: $(O)
 	ar rcus ../../lib/$(MACHTYPE)/jkhgap.a $(O)
 
+jWestHeader.h: jWestHeader.html
+	sed -e 's/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$$/\\n"/;' jWestHeader.html > jWestHeader.h
+
 jWestBanner.h: jWestBanner.html
 	sed -e 's/\\/\\\\/g; s/"/\\"/g; s/^/"/; s/$$/\\n"/;' jWestBanner.html > jWestBanner.h
 
-web.c: jWestBanner.h
+web.o: jWestHeader.h jWestBanner.h
 
 clean:
 	rm -f $(O);
-	rm -f jWestBanner.h
+	rm -f jWestHeader.h jWestBanner.h
 	rm -f ../../lib/$(MACHTYPE)/jkhgap.a;
 
 ctags:

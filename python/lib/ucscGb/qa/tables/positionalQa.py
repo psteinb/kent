@@ -1,4 +1,3 @@
-import subprocess
 import re
 import math
 
@@ -104,9 +103,9 @@ class PositionalQa(TableQa):
             self.reporter.beginStep(self.db, self.table, "positionalTblCheck")
             command = ["positionalTblCheck", self.db, self.table]
             self.reporter.writeCommand(command)
-            p = subprocess.Popen(command, stdout=self.reporter.fh, stderr=self.reporter.fh)
-            p.wait()
-            if p.returncode:
+            commandOut, commandErr, commandReturnCode = qaUtils.runCommandNoAbort(command)
+            self.reporter.fh.write(commandErr)
+            if commandReturnCode:
                 self.recordError()
             else:
                 self.recordPass()
@@ -117,9 +116,9 @@ class PositionalQa(TableQa):
         self.reporter.beginStep(self.db, self.table, "checkTableCoords")
         command = ["checkTableCoords", self.db, self.table]
         self.reporter.writeCommand(command)
-        p = subprocess.Popen(command, stdout=self.reporter.fh, stderr=self.reporter.fh)
-        p.wait()
-        if p.returncode:
+        commandOut, commandErr, commandReturnCode = qaUtils.runCommandNoAbort(command)
+        self.reporter.fh.write(commandErr)
+        if commandReturnCode:
             self.recordError()
         else:
             self.recordPass()
@@ -240,19 +239,19 @@ class PositionalQa(TableQa):
         self.reporter.endStep()
 
     def __featureBits(self):
-        """Adds featureBits output (both regular and overlap w/ gap) to sumRow.
-        Also records commands and results in reporter"""
-        fbCommand = ["featureBits", "-countGaps", self.db, self.table]
-        fbOut, fbErr = qaUtils.runCommand(fbCommand)
-        # normal featureBits output actually goes to stderr
-        self.reporter.writeLine(' '.join(fbCommand))
-        self.reporter.writeLine(str(fbErr))
-        self.sumRow.setFeatureBits(fbErr.rstrip("in intersection\n"))
-        fbGapCommand = ["featureBits", "-countGaps", self.db, self.table, "gap"]
-        fbGapOut, fbGapErr = qaUtils.runCommand(fbGapCommand)
-        self.reporter.writeLine(' '.join(fbGapCommand))
-        self.reporter.writeLine(str(fbGapErr))
-        self.sumRow.setFeatureBitsGaps(fbGapErr.rstrip("in intersection\n"))
+        """Uses runBits.csh script to find featureBits coverage and overlap with gap.
+        Adds output to sumRow and records commands and results in reporter."""
+        rbCommand = ["runBits.csh", self.db, self.table, "checkUnbridged"]
+        self.reporter.writeCommand(rbCommand)
+        rbOut = qaUtils.runCommandMergedOutErr(rbCommand)
+        self.reporter.writeLine(str(rbOut))
+        # extract featureBits + featureBits gap results from rubBits output
+        matches = re.findall('[0-9].*[\%\)]', rbOut)
+        # Set fb and fbGap results tp proper variables, are used in creating the summary file
+        fbOut = matches[0]
+        fbGapOut = matches[1]
+        self.sumRow.setFeatureBits(fbOut)
+        self.sumRow.setFeatureBitsGaps(fbGapOut)
 
     def validate(self):
         """Adds positional-table-specific checks to basic table checks."""

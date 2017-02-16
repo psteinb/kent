@@ -1347,7 +1347,6 @@ if (isEmpty(position))
 cartSetString(cart, hgvaRange, position);
 position = cloneString(position);
 
-setUdcCacheDir();
 int timeout = cartUsualInt(cart, "udcTimeout", 300);
 if (udcCacheTimeout() < timeout)
     udcSetCacheTimeout(timeout);
@@ -1608,8 +1607,9 @@ else if (sameString("vcfTabix", tdb->type))
     {
     struct sqlConnection *conn = hAllocConn(db);
     char *fileOrUrl = bbiNameFromSettingOrTableChrom(tdb, conn, table, chrom);
+    char *indexUrl = trackDbSetting(tdb, "bigDataIndex");
     hFreeConn(&conn);
-    streamer = annoStreamVcfNew(fileOrUrl, TRUE, assembly, maxOutRows);
+    streamer = annoStreamVcfNew(fileOrUrl, indexUrl, TRUE, assembly, maxOutRows);
     }
 else
     {

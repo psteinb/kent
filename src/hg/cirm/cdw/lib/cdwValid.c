@@ -136,6 +136,15 @@ if (!fileStartsWithOneOfPair(path, "\xff\xd8\xff\xe0", "\xff\xd8\xff\xe1"))
     errAbort("%s is not a valid .jpeg file", fileNameOnly(path));
 }
 
+void cdwValidatePng(char *path)
+/* Check png file is really png */
+{
+// Signature from http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
+static unsigned char pngSig[] = {137, 80, 78, 71, 13, 10, 26, 10, 0};  
+if (!fileStartsWith(path, (char*)pngSig))
+    errAbort("%s is not a valid .png file", fileNameOnly(path));
+}
+
 void cdwValidateBamIndex(char *path)
 /* Check .bam.bai really is index. */
 {
@@ -204,57 +213,101 @@ return bedType;
 
 char *cdwAllowedTags[] = {
     "access",
-    "age",
-    "age_unit",
-    "antibody",
+    "analyte",
+    "analyte_detector",
+    "analyte_reporter_fluorochrome",
     "assay",
+    "assay_method",
+    "assay_platform",
     "assay_seq",
     "average_insert_size",
-    "biomaterial_provider",
+    "biosample_ancestry_population",
+    "biosample_cell_type",
+    "biosample_characterization_protocol_id",
+    "biosample_collectors_email",
+    "biosample_collectors_institution",
+    "biosample_collector_name",
     "biosample_date",
+    "biosample_disease_stage",
+    "biosample_id",
+    "biosample_isolation_protocol_id",
+    "biosample_repository",
+    "biosample_repository_sample_id",
+    "biosample_source_age_unit",
+    "biosample_source_age_value",
+    "biosample_source_gender",
+    "biosample_source_health_status",
+    "biosample_source_id",
+    "biosample_source_life_stage",
+    "biosample_tissue_type",
     "cell_count",
     "cell_culture_type",
     "cell_enrichment",
     "cell_line",
     "cell_pair",
-    "cell_type",
+    "cellular_reprogramming_method",
+    "cellular_reprogramming_protocol_id",
+    "cellular_reprogramming_reagents",
+    "characteristic_being_measured",
     "chrom",
     "consent",
-    "control",
+    "control_association",
+    "control_type",
+    "data_processing_description",
+    "data_processing_method_algorithm",
+    "data_processing_protocol_id",
+    "data_processing_software",
+    "data_processor_institution",
+    "data_processor_name",
     "data_set_id",
     "differentiation",
-    "disease",
-    "disease_stage",
+    "direct_reprogrammed_cell_culture_id",
+    "direct_reprogramming_method",
+    "direct_reprogramming_protocol_id",
+    "direct_reprogramming_reagents",
     "dna_concentration",
-    "donor",
     "enriched_in",
     "experiment",
     "file",
     "file_part",
     "fluidics_chip",
     "format",
+    "genetic_tranformation_protocol_id",
+    "genetic_transformation_method",
+    "genetic_transformation_reagents",
+    "genetic_transformed_cell_culture_id",
     "geo_sample",
     "geo_series",
-    "inputs",
+    "immunoprecipitated_material_id",
+    "immunoprecipitation_method",
+    "immunoprecipitation_protocol_id",
+    "immunoprecipitation_reagents",
+    "immunoprecipitation_target",
+    "induced_pluripotent_cell_culture_id",
+    "input_data",
+    "input_material",
     "ips",
+    "ips_origin_cell",
     "karyotype",
     "keywords",
     "lab",
     "lane",
-    "life_stage",
     "md5",
     "meta",
     "multiplex_barcode",
     "ncbi_bio_project",
     "ncbi_bio_sample",
-    "organ",
+    "organ_anatomical_name",
     "output",
+    "output_data",
     "paired_end",
     "passage_number",
     "pcr_cycles",
     "pipeline",
     "pmid",
+    "protocol_id",
     "ratio_260_280",
+    "reference_data",
     "replicate",
     "rin",
     "rna_spike_in",
@@ -263,10 +316,11 @@ char *cdwAllowedTags[] = {
     "seq_library_prep",
     "seq_library_prep",
     "seq_sample",
-    "sequencer",
-    "sex",
     "sorting",
+    "sorting_protocol",
+    "subcellular_localization",
     "species",
+    "species_source_common_name",
     "sra_run",
     "sra_sample",
     "sra_study",
@@ -275,7 +329,6 @@ char *cdwAllowedTags[] = {
     "submitter",
     "t",
     "t_unit",
-    "target_epitope",
     "target_gene",
     "title",
     "treatment",
@@ -378,16 +431,18 @@ char *assay[] =
 "WGBS",
 "WGS",
 };
-char *control[] =
+char *control_type[] =
 {
 "untreated",
 "input",
 "mock IP",
 };
-char *disease[] =
+char *biosample_source_health_status[] =
 {
 "acute promyelocytic leukemia",
+"amyotrophic lateral sclerosis",
 "chronic myelogenous leukemia (CML)",
+"glioblastoma",
 "DCM",
 "HCM",
 "LQT",
@@ -408,7 +463,12 @@ char *enriched_in[] =
 "utr3",
 "utr5",
 };
-char *formats[] =
+char *fluidics_chip[] =
+{
+"Fluidigm C1 5-10 um IFC",
+"Fluidigm C1",
+};
+char *format[] =
 {
 "bam",
 "bam.bai",
@@ -423,12 +483,13 @@ char *formats[] =
 "idat",
 "jpg",
 "pdf",
+"png",
 "rcc",
 "text",
 "vcf",
 "unknown",
 };
-char *sequencer[] =
+char *assay_platform[] =
 {
 "Illumina HiSeq",
 "Illumina HiSeq 2000",
@@ -465,7 +526,18 @@ char *strain[] =
 "Sftpc-Cre-ER-T2A-rtta -/- teto-GFP-H2B +/-",
 "Aqp5-Cre-ER +/- mtmg-tdTomato -/-",
 };
-char *target_epitope[] =
+char *subcellular_localization[] =
+{
+"cytoplasm",
+"monosome",
+"polysome",
+"light polysome",
+"heavy polysome",
+"membrane",
+"insoluble",
+"nucleus",
+};
+char *immunoprecipitation_target[] =
 {
 "H3K4Me1",
 "H3K4Me3",
@@ -477,14 +549,19 @@ char *target_epitope[] =
 
 struct hash *hash = hashNew(0);
 hashAdd(hash, "assay", makeStringHash(assay, ArraySize(assay)));
-hashAdd(hash, "control", makeStringHash(control, ArraySize(control)));
-hashAdd(hash, "disease", makeStringHash(disease, ArraySize(disease)));
+hashAdd(hash, "control_type", makeStringHash(control_type, ArraySize(control_type)));
+hashAdd(hash, "biosample_source_health_status", 
+    makeStringHash(biosample_source_health_status, ArraySize(biosample_source_health_status)));
 hashAdd(hash, "enriched_in", makeStringHash(enriched_in, ArraySize(enriched_in)));
-hashAdd(hash, "formats", makeStringHash(formats, ArraySize(formats)));
-hashAdd(hash, "sequencer", makeStringHash(sequencer, ArraySize(sequencer)));
+hashAdd(hash, "format", makeStringHash(format, ArraySize(format)));
+hashAdd(hash, "fluidics_chip", makeStringHash(fluidics_chip, ArraySize(fluidics_chip)));
+hashAdd(hash, "assay_platform", makeStringHash(assay_platform, ArraySize(assay_platform)));
 hashAdd(hash, "species", makeStringHash(species, ArraySize(species)));
 hashAdd(hash, "strain", makeStringHash(strain, ArraySize(strain)));
-hashAdd(hash, "target_epitope", makeStringHash(target_epitope, ArraySize(target_epitope)));
+hashAdd(hash, "subcellular_localization", 
+    makeStringHash(subcellular_localization, ArraySize(subcellular_localization)));
+hashAdd(hash, "immunoprecipitation_target", 
+    makeStringHash(immunoprecipitation_target, ArraySize(immunoprecipitation_target)));
 return hash;
 }
 
@@ -524,6 +601,7 @@ if (list == NULL)
 	"idat	An Illumina IDAT file",
 	"jpg JPEG image format",
 	"pdf Postscripts common document format",
+	"png PNG image format",
 	"rcc A Nanostring RCC file",
 	"text	Unicode 8-bit formatted text file",
 	"vcf Variant call format",

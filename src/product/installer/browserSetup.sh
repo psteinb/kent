@@ -81,6 +81,9 @@ MYSQLDBURL=http://hgwdev.soe.ucsc.edu/~max/gbInstall/mysql56Data.tgz
 # mysql/apache startup script URL, currently only for OSX
 STARTSCRIPTURL=https://raw.githubusercontent.com/maximilianh/browserInstall/master/browserStartup.sh
 
+# the -t option allows to download only the genome databases, not hgFixed/proteome/go/uniProt
+# by default, this is off, so we download hgFixed and Co. 
+ONLYGENOMES=0
 # ---- END GLOBAL DEFAULT SETTINGS ----
 
 # ---- DEFAULT CONFIG FILES ------------------
@@ -206,8 +209,9 @@ slow-db.password=password
 # mysql table to do table field name checks instead of DESCRIBE
 showTableCache=tableList
 
-# deactivate the hgMirror CGI on this machine
-allowHgMirror=0
+# only used for debugging right now, make it obvious that this
+# mirror has been installed by the installation script
+isGbic=on
 
 # direct links to Encode PDF files back to the UCSC site
 # so the mirror does not need a copy of them
@@ -335,13 +339,19 @@ command is one of:
   minimal    - download only a minimal set of tables. Missing tables are
                downloaded on-the-fly from UCSC.
   mirror     - download a full assembly (also see the -t option below).
-               No data is downloaded on-the-fly from UCSC.
+               After completion, no data is downloaded on-the-fly from UCSC.
   update     - update the genome browser software and data, updates
                all tables of an assembly, like "mirror"
   cgiUpdate  - update only the genome browser software, not the data. Not 
                recommended, see documentation.
   clean      - remove temporary files of the genome browser older than one 
                day, but do not delete any uploaded custom tracks
+  addTools   - copy the UCSC User Tools, e.g. blat, featureBits, overlapSelect,
+               bedToBigBed, pslCDnaFilter, twoBitToFa, gff3ToGenePred, 
+               bedSort, ... to /usr/local/bin
+               This has to be run after the browser has been installed, other-
+               wise these packages may be missing: libpng zlib libmysqlclient
+               
 
 parameters for 'minimal', 'mirror' and 'update':
   <assemblyList>     - download Mysql + /gbdb files for a space-separated
@@ -366,7 +376,7 @@ All options have to precede the command.
 options:
   -a   - use alternative download server at SDSC
   -b   - batch mode, do not prompt for key presses
-  -t   - only download track selection, requires a value.
+  -t   - For the "mirror" command: Track selection, requires a value.
          This option is only useful for Human/Mouse assemblies.
          Download only certain tracks, possible values:
          noEncode = do not download any tables with the wgEncode prefix, 
@@ -829,7 +839,10 @@ function installDebian ()
 
     echo2 Installing ghostscript and imagemagick
     waitKey
-    apt-get --assume-yes install ghostscript imagemagick
+    # ghostscript for PDF export
+    # imagemagick for the session gallery
+    # r-base-core for the gtex tracks
+    apt-get --no-install-recommends --assume-yes install ghostscript imagemagick wget rsync r-base-core
 
     if [ ! -f $APACHECONF ]; then
         echo2
@@ -876,6 +889,14 @@ function installDebian ()
         # do not prompt in apt-get, will set an empty mysql root password
         export DEBIAN_FRONTEND=noninteractive
         apt-get --assume-yes install mysql-server
+        # make sure that missing values do not trigger errors, #18368
+        if [ -f /etc/mysql/mysql.conf.d/mysqld.cnf ]; then
+            # Ubuntu 16
+            sed -i '/^.mysqld.$/a sql_mode=' /etc/mysql/mysql.conf.d/mysqld.cnf
+        else
+            # Ubuntu 14
+            sed -i '/^.mysqld.$/a sql_mode=' /etc/mysql/my.cnf
+        fi
         # flag so script will set mysql root password later to a random value
         SET_MYSQL_ROOT=1
     fi
@@ -1154,7 +1175,7 @@ function mysqlDbSetup ()
     # by default hgGateway needs an empty hg19 database, will crash otherwise
     # $MYSQL -e 'CREATE DATABASE IF NOT EXISTS hg19'
     # mm9 needs an empty hg18 database
-    # $MYSQL -e 'CREATE DATABASE IF NOT EXISTS hg18'
+    $MYSQL -e 'CREATE DATABASE IF NOT EXISTS hg18'
     
     $MYSQL -e "FLUSH PRIVILEGES;"
 }
@@ -1285,7 +1306,7 @@ function installBrowser ()
     if [ "$OS" == "OSX" ]; then
             $RSYNC --delete -azP --exclude=training --exclude=ENCODE --exclude=encode --exclude=rosenbloom.pdf --exclude=pubs*.pdf --exclude=*.{bb,bam,bai,bw,gz,2bit} --exclude=goldenpath $HGDOWNLOAD::htdocs/ $HTDOCDIR/
     else
-            $RSYNC -avzP $HGDOWNLOAD::htdocs/ $HTDOCDIR/
+            $RSYNC -avzP --exclude ENCODE/**.pdf $HGDOWNLOAD::htdocs/ $HTDOCDIR/
     fi
     
     # assign all files just downloaded to a valid user. 
@@ -1313,6 +1334,7 @@ function installBrowser ()
 function downloadGenomes
 {
     DBS=$*
+    GENBANKTBLS=""
     if [ "$DBS" == "" ] ; then
         echo2 Argument error: the '"download"' command requires at least one assembly name, like hg19 or mm10.
         exit 1
@@ -1323,8 +1345,18 @@ function downloadGenomes
     echo2
     echo2 Determining download file size... please wait...
 
-    if [ "ONLYGENOMES" == "0" ]; then
-        MYSQLDBS="$DBS proteome uniProt go hgFixed"
+    if [ "$ONLYGENOMES" == "0" ]; then
+        if [[ "$DBS" =~ hg|mm|rn3|rn4|sacCer|dm3|danRer3|ce6 ]]; then
+            echo2 Downloading $DBS plus hgFixed proteome go hgFixed
+            MYSQLDBS="$DBS proteome uniProt go hgFixed"
+        else
+            echo2 Downloading $DBS plus GenBank tables
+            MYSQLDBS="$DBS"
+            GENBANKTBLS="author cell description development gbCdnaInfo gbExtFile gbLoaded \
+                         gbMiscDiff gbSeq gbWarn geneName imageClone keyword library \
+                         mrnaClone organism productName refLink refSeqStatus \
+                         refSeqSummary sex source tissue"
+        fi
     else
         MYSQLDBS="$DBS"
     fi
@@ -1335,6 +1367,12 @@ function downloadGenomes
     for db in $MYSQLDBS; do
         rsync -avn $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/ $RSYNCOPTS | grep ^'total size' | cut -d' ' -f4 | tr -d ', ' 
     done | awk '{ sum += $1 } END { print "| Required space in '$MYSQLDIR':", sum/1000000000, "GB" }'
+    
+    if [ ! -z "$GENBANKTBLS" ]; then
+        for tbl in $GENBANKTBLS; do
+            rsync -avn $HGDOWNLOAD::mysql/hgFixed/${tbl}.* $MYSQLDIR/hgFixed/ $RSYNCOPTS | grep ^'total size' | cut -d' ' -f4 | tr -d ', '
+        done | awk '{ sum += $1 } END { print "| Required space in '$MYSQLDIR'/hgFixed:", sum/1000000000, "GB" }'
+    fi
 
     for db in $DBS; do
         rsync -avn $HGDOWNLOAD::gbdb/$db/ $GBDBDIR/$db/ $RSYNCOPTS | grep ^'total size' | cut -d' ' -f4 | tr -d ','
@@ -1370,6 +1408,14 @@ function downloadGenomes
        $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/ 
        chown -R $MYSQLUSER:$MYSQLUSER $MYSQLDIR/$db
     done
+
+    if [ ! -z "$GENBANKTBLS" ]; then
+        echo2 Downloading hgFixed tables
+        for tbl in $GENBANKTBLS; do
+            $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/${tbl}.* $MYSQLDIR/hgFixed/
+        done
+        chown -R $MYSQLUSER:$MYSQLUSER $MYSQLDIR/hgFixed
+    fi
 
     echo2 Downloading hgFixed.refLink, required for all RefSeq tracks
     $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/refLink.* $MYSQLDIR/hgFixed/ 
@@ -1550,6 +1596,15 @@ function updateBrowser {
 
    echo2 update finished
 }
+
+function addTools {
+   rsync -avP hgdownload.cse.ucsc.edu::genome/admin/exe/linux.x86_64/ /usr/local/bin/
+   echo2 The UCSC User Tools were copied to /usr/local/bin
+   echo2 Please note that most of the tools require an .hg.conf file in the users
+   echo2 home directory. A very minimal .hg.conf file can be found here:
+   echo2 "http://genome-source.cse.ucsc.edu/gitweb/?p=kent.git;a=blob;f=src/product/minimal.hg.conf"
+}
+
 # ------------ end of utility functions ----------------
 
 # -- START OF SCRIPT  --- MAIN ---
@@ -1623,6 +1678,7 @@ while getopts ":baut:hof" opt; do
          echo Please install a browser first, then switch the data loading mode.
       fi
 
+      goOnline
       echo $APACHEDIR/cgi-bin/hg.conf was modified. 
       echo On-the-fly mode activated: data is loaded from UCSC when not present locally.
       echo Use the parameter -o to switch to offline mode.
@@ -1723,6 +1779,9 @@ elif [ "${1:-}" == "update" ]; then
 
 elif [ "${1:-}" == "clean" ]; then
     cleanTrash
+
+elif [ "${1:-}" == "addTools" ]; then
+    addTools
 
 else
    echo Unknown command: $1

@@ -991,7 +991,19 @@ struct vcfFile *vcfTabixFileMayOpen(char *fileOrUrl, char *chrom, int start, int
  * there are maxErr+1 errors.  A maxErr less than zero does not stop
  * and reports all errors. Set maxErr to VCF_IGNORE_ERRS for silence */
 {
-struct lineFile *lf = lineFileTabixMayOpen(fileOrUrl, TRUE);
+return vcfTabixFileAndIndexMayOpen(fileOrUrl, NULL, chrom, start, end, maxErr, maxRecords);
+}
+
+struct vcfFile *vcfTabixFileAndIndexMayOpen(char *fileOrUrl, char *tbiFileOrUrl, char *chrom, int start, int end,
+				    int maxErr, int maxRecords)
+/* Open a VCF file that has been compressed and indexed by tabix and
+ * parse VCF header, or return NULL if unable. tbiFileOrUrl can be NULL.
+ * If chrom is non-NULL, seek to the position range and parse all lines in
+ * range into vcff->records.  If maxErr >= zero, then continue to parse until
+ * there are maxErr+1 errors.  A maxErr less than zero does not stop
+ * and reports all errors. Set maxErr to VCF_IGNORE_ERRS for silence */
+{
+struct lineFile *lf = lineFileTabixAndIndexMayOpen(fileOrUrl, tbiFileOrUrl, TRUE);
 if (lf == NULL)
     return NULL;
 struct vcfFile *vcff = vcfFileHeaderFromLineFile(lf, maxErr);
@@ -1174,6 +1186,67 @@ else
     gt->hapIxB = atoi(sep+1);
 }
 
+static void parseSgtAsGt(struct vcfRecord *rec, struct vcfGenotype *gt)
+/* Parse SGT to normal and tumor genotypes */
+{
+const struct vcfInfoElement *sgtEl = vcfRecordFindInfo(rec, "SGT");
+if (sgtEl)
+    {
+    char *val = sgtEl->values[0].datString;
+    // set hapIxA and hapIxB where 0 = ref, 1 = alt
+    if (startsWith("ref->", val))
+        {
+        //indel, use 0/0 for normal and 0/1 for tumor
+        if (sameString(gt->id, "NORMAL"))
+            gt->hapIxA = gt->hapIxB = 0;
+        else if (sameString(gt->id, "TUMOR"))
+            {
+            gt->hapIxA = 0;
+            gt->hapIxB = 1;
+            }
+        }
+    else
+        {
+        if (sameString(gt->id, "NORMAL"))
+            {
+            char str[2];
+            safef(str, sizeof(str), "%c", val[0]);
+            if (sameString(rec->alleles[0], str))
+                gt->hapIxA = 0;
+            else if (sameString(rec->alleles[1], str))
+                gt->hapIxA = 1;
+            else
+                gt->hapIxA = -1;
+            safef(str, sizeof(str), "%c", val[1]);
+            if (sameString(rec->alleles[1], str))
+                gt->hapIxB = 1;
+            else if (sameString(rec->alleles[0], str))
+                gt->hapIxB = 0;
+            else
+                gt->hapIxB = -1;
+            }
+        else if (sameString(gt->id, "TUMOR"))
+            {
+            char str[2];
+            safef(str, sizeof(str), "%c", val[4]);
+            if (sameString(rec->alleles[0], str))
+                gt->hapIxA = 0;
+            else if (sameString(rec->alleles[1], str))
+                gt->hapIxA = 1;
+            else
+                gt->hapIxA = -1;
+            safef(str, sizeof(str), "%c", val[5]);
+            if (sameString(rec->alleles[1], str))
+                gt->hapIxB = 1;
+            else if (sameString(rec->alleles[0], str))
+                gt->hapIxB = 0;
+            else
+                gt->hapIxB = -1;
+            }
+        }
+    }
+}
+
 static void parsePlAsGt(char *pl, struct vcfGenotype *gt)
 /* Parse PL value, which is usually a list of 3 numbers, one of which is 0 (the selected haplotype),
  * into gt fields. */
@@ -1296,6 +1369,12 @@ for (i = 0;  i < vcff->genotypeCount;  i++)
 		       "VCF_MAX_INFO may need to be increased in vcf.c!",
 		       gt->id, VCF_MAX_INFO);
 	}
+    if (!foundGT)   //try SGT
+        {
+        parseSgtAsGt(record, gt);
+        if (gt->hapIxA != -1)
+            foundGT = TRUE;
+        }
     if (i == 0 && !foundGT)
         vcfFileErr(vcff,
                    "Genotype FORMAT column includes neither GT nor PL; unable to parse genotypes.");
@@ -1314,6 +1393,16 @@ vcfParseGenotypes(record);
 int ix = stringArrayIx(sampleId, vcff->genotypeIds, vcff->genotypeCount);
 if (ix >= 0)
     return &(record->genotypes[ix]);
+return NULL;
+}
+
+const struct vcfInfoElement *vcfGenotypeFindInfo(const struct vcfGenotype *gt, char *key)
+/* Find the genotype infoElement for key, or return NULL. */
+{
+int i;
+for (i = 0;  i < gt->infoCount;  i++)
+    if (sameString(key, gt->infoElements[i].key))
+        return &gt->infoElements[i];
 return NULL;
 }
 

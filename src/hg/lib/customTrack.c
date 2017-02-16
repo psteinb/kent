@@ -681,6 +681,8 @@ if (endsWith(fileName, ".bam") || endsWith(fileName, ".cram"))
     return cloneString("bam");
 if (endsWith(fileName, ".vcf.gz"))
     return cloneString("vcfTabix");
+if (endsWith(fileName, ".vcf"))
+    return cloneString("vcf");
 return NULL;
 }
 
@@ -692,7 +694,8 @@ cgiDecode(fileName, fileNameDecoded, strlen(fileName));
 
 boolean result;
 char *type = customTrackTypeFromBigFile(fileNameDecoded);
-result = (type!=NULL);
+// exclude plain VCF (as opposed to vcfTabix) from bigData treatment
+result = (type != NULL && differentString(type, "vcf"));
 
 freeMem(type);
 freeMem(fileNameDecoded);

@@ -202,6 +202,9 @@ struct twoBitSpec *twoBitSpecNewFile(char *twoBitFile, char *specFile);
 void twoBitSpecFree(struct twoBitSpec **specPtr);
 /* free a twoBitSpec object */
 
+void twoBitOutMaskBeds(struct twoBitFile *tbf, char *seqName, FILE *outF);
+/* output a series of bed3's that enumerate the number of masked bases in a sequence*/
+
 void twoBitOutNBeds(struct twoBitFile *tbf, char *seqName, FILE *outF);
 /* output a series of bed3's that enumerate the number of N's in a sequence*/
 
@@ -213,4 +216,7 @@ long long twoBitTotalSizeNoN(struct twoBitFile *tbf);
 
 boolean twoBitIsSequence(struct twoBitFile *tbf, char *chromName);
 /* Return TRUE if chromName is in 2bit file. */
+
+struct hash *twoBitChromHash(char *fileName);
+/* Build a hash of chrom names with their sizes. */
 #endif /* TWOBIT_H */

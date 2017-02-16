@@ -490,6 +490,7 @@ var genomePos = {
         return false;
     },
 
+
     convertedVirtCoords : {chromStart : -1, chromEnd : -1},
 
     handleConvertChromPosToVirtCoords: function (response, status)
@@ -3099,8 +3100,10 @@ function showExtToolDialog() {
             if ((maxSize===0) || (winSize < maxSize))
                 {
                 var url = "hgTracks?hgsid="+getHgsid()+"&hgt.redirectTool="+toolId;
-                var onclick = "$('#extToolDialog').dialog('close');";
-                htmlLines.push("<li><a onclick="+'"'+onclick+'"'+"id='extToolLink' target='_BLANK' href='"+url+"'>"+shortLabel+"</a>: <small>"+longLabel+"</small></li>");
+                //var onclick = "$('#extToolDialog').dialog('close');";
+                //htmlLines.push("<li><a onclick="+'"'+onclick+'"'+"id='extToolLink' target='_BLANK' href='"+url+"'>"+shortLabel+"</a>: <small>"+longLabel+"</small></li>");
+		// onclick js code moved to jsInline
+                htmlLines.push("<li><a class='extToolLink2' target='_BLANK' href='"+url+"'>"+shortLabel+"</a>: <small>"+longLabel+"</small></li>");
                 }
             else
                 {
@@ -3116,6 +3119,9 @@ function showExtToolDialog() {
             title = hgTracks.nonVirtPosition;
         title += " on another website";
         $("body").append("<div id='extToolDialog' title='"+title+"'><p>" + content + "</p>");
+
+	// GALT 
+	$('a.extToolLink2').click(function(){$('#extToolDialog').dialog('close');});
 
         // copied from the hgTrackUi function below
         var popMaxHeight = ($(window).height() - 40);
@@ -3188,7 +3194,7 @@ var popUpHgt = {
     },
 
     uiDialogOk: function (popObj)
-    {   // When hgTracks Cfg popup closes with ok, then update cart and refresh parts of page
+    {   // When popup closes with ok
 
     },
 
@@ -3200,12 +3206,19 @@ var popUpHgt = {
         response = response.replace(/<a /ig, "<a target='_blank' ");
 
         var cleanHtml = response;
+        cleanHtml = stripCspHeader(cleanHtml,false); // DEBUG msg with true
         cleanHtml = stripJsFiles(cleanHtml,false);   // DEBUG msg with true
         cleanHtml = stripCssFiles(cleanHtml,false);  // DEBUG msg with true
-        cleanHtml = stripJsEmbedded(cleanHtml,false);// DEBUG msg with true
+        //cleanHtml = stripJsEmbedded(cleanHtml,false);// DEBUG msg with true // Obsolete by CSP2?
+        var nonceJs = {};
+        cleanHtml = stripCSPAndNonceJs(cleanHtml, false, nonceJs); // DEBUG msg with true
+
         cleanHtml = stripMainMenu(cleanHtml,false);  // DEBUG msg with true
 
         $('#hgTracksDialog').html("<div id='pop' style='font-size:.9em;'>"+ cleanHtml +"</div>");
+
+        appendNonceJsToPage(nonceJs);
+
 
         // Strategy for popups with js:
         // - jsFiles and CSS should not be included in html.  Here they are shluped out.
@@ -3288,8 +3301,9 @@ function showHotkeyHelp() {
 // A function to add an entry for the keyboard help dialog box to the menubar 
 // and add text that indicates the shortcuts to many static menubar items as suggested by good old IBM CUA/SAA
 function addKeyboardHelpEntries() {
-    var html = '<li><a title="List all possible keyboard shortcuts" href="javascript:showHotkeyHelp()">Keyboard Shortcuts</a><span class="shortcut">?</span></li>';
+    var html = '<li><a id="keybShorts" title="List all possible keyboard shortcuts" href="#">Keyboard Shortcuts</a><span class="shortcut">?</span></li>';
     $('#help .last').before(html);
+    $("#keybShorts").onclick = function(){showHotKeyHelp(); return false;};
 
     html = '<span class="shortcut">s s</span>';
     $('#sessionsMenuLink').after(html);
@@ -3337,6 +3351,19 @@ function gotoGetDnaPage() {
         window.location.href = url;
     }
     return false;
+}
+
+// A function for the keyboard shortcuts "zoom to x bp"
+function zoomTo(zoomSize) {
+    var flankSize = Math.floor(zoomSize/2);
+    var pos = parsePosition(genomePos.get());
+    var mid = pos.start+(Math.floor((pos.end-pos.start)/2));
+    var newStart = Math.max(mid - flankSize, 0);
+    var newEnd = mid + flankSize - 1;
+    var newPos = genomePos.setByCoordinates(pos.chrom, newStart, newEnd);
+    if (hgTracks.virtualSingleChrom && (newPos.search("virt:")===0))
+        newPos = genomePos.disguisePosition(newPosition); // DISGUISE?
+    imageV2.navigateInPlace("position="+newPos, null, true);
 }
 
   //////////////////////////////////
@@ -3458,10 +3485,16 @@ var popUp = {
         response = response.replace(/<a /ig, "<a target='_blank' ");
 
         var cleanHtml = response;
-        cleanHtml = stripJsFiles(cleanHtml,true);   // DEBUG msg with true
-        cleanHtml = stripCssFiles(cleanHtml,true);  // DEBUG msg with true
-        cleanHtml = stripJsEmbedded(cleanHtml,true);// DEBUG msg with true
+        cleanHtml = stripJsFiles(cleanHtml,false);   // DEBUG msg with true
+        cleanHtml = stripCssFiles(cleanHtml,false);  // DEBUG msg with true
+        //cleanHtml = stripJsEmbedded(cleanHtml,false);// DEBUG msg with true // OBSOLETE BY CSP2?
+	var nonceJs = {};
+	cleanHtml = stripCSPAndNonceJs(cleanHtml, false, nonceJs); // DEBUG msg with true
+
+	//alert(cleanHtml);  // DEBUG REMOVE
         $('#hgTrackUiDialog').html("<div id='pop' style='font-size:.9em;'>"+ cleanHtml +"</div>");
+
+	appendNonceJsToPage(nonceJs);
 
         // Strategy for popups with js:
         // - jsFiles and CSS should not be included in html.  Here they are shluped out.
@@ -3558,14 +3591,13 @@ var popUp = {
             $('#hgTrackUiDialog').dialog('option' , 'title' ,
                                hgTracks.trackDb[popUp.trackName].shortLabel+" Track Description");
             $('#hgTrackUiDialog').dialog('open');
-            var buttOk = $('button.ui-state-default');
-            if ($(buttOk).length === 1)
-                $(buttOk).focus();
         } else {
             $('#hgTrackUiDialog').dialog('option' , 'title' ,
                                   hgTracks.trackDb[popUp.trackName].shortLabel+" Track Settings");
             $('#hgTrackUiDialog').dialog('open');
         }
+        var buttOk = $('button.ui-state-default');
+        $(buttOk).focus();
     }
 };
 
@@ -4284,6 +4316,12 @@ var imageV2 = {
         // This ensures that the 'go' and 'refresh' button will do so unless the chrom changes.
         $("input[value='go'],input[value='refresh']").click(function () {
             var newPos = genomePos.get().replace(/,/g,'');
+            if (newPos.length > 2000) {
+               alert("Sorry, you cannot paste identifiers or sequences with more than 2000 characters into this box.");
+               $('input[name="hgt.positionInput"]').val("");
+               return false;
+            }
+
             var newDbPos = hgTracks.lastDbPos;
             if ( ! imageV2.manyTracks() ) {
                 var newChrom = newPos.split(':')[0];
@@ -4303,6 +4341,16 @@ var imageV2 = {
                 return false;
             }
 
+            // redirect to hgBlat if the input looks like a DNA sequence
+            // minimum length=19 so we do not accidentally redirect to hgBlat for a gene identifier 
+            // like ATG5
+            var dnaRe = new RegExp("^(>[^\n\r ]+[\n\r ]+)?(\\s*[actgnACTGN \n\r]{19,}\\s*)$");
+            if (dnaRe.test(newPos)) {
+                var blatUrl = "hgBlat?type=BLAT%27s+guess&userSeq="+newPos;
+                window.location.href = blatUrl;
+                return false;
+            }
+                
             return true;
         });
         // Have vis box changes update cart through ajax.  This helps keep page/cart in sync.

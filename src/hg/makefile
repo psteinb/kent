@@ -12,13 +12,13 @@ BROWSER_BINS=cartReset das hgBlat makeDb/hgCgiData hgConvert hgHubConnect \
 	encode/hgEncodeDataVersions \
 	encode/hgEncodeVocab encode/hgEncodeApi \
 	phyloPng hgCustom hgPal hgFileUi hgFileSearch\
-	makeDb/hgCgiData js htdocs/style hgMirror hgBeacon
+	makeDb/hgCgiData js htdocs/style hgMirror hgBeacon hgGtexTrackSettings
 
 ifdef LOWELAB
     BROWSER_BINS += $(HOME)/lowelab/src/browser/tooltip $(HOME)/lowelab/src/browser/chooseorg
 endif
 
-BROWSER_LOADERS = makeDb/hgLoadBed makeDb/hgLoadWiggle makeDb/hgLoadMaf
+BROWSER_LOADERS = makeDb/hgLoadBed makeDb/hgLoadWiggle makeDb/hgLoadMaf utils/pslToBigPsl
 
 ifneq ($(findstring $(shell hostname),hgwdev hgwbeta),)
     ENCODE_FILES = encode3/encodeDataWarehouse

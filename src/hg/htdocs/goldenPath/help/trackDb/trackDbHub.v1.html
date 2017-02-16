@@ -123,7 +123,7 @@ in the sections below.</I>
                                                                 Item or region tracks</LI>
         <LI><A HREF="#bigWig_-_Signal_Graphing_Track_Settings">bigWig</A>:
                                                                 Signal graphing tracks</LI>
-        <LI><A HREF="#bam">bam</A>: Compressed Sequence Alignment/Map tracks</LI>
+        <LI><A HREF="#bam">bam/cram</A>: Compressed Sequence Alignment/Map tracks</LI>
         <LI><A HREF="#vcfTabix">vcfTabix</A>: Variant Call Format</LI>
     </UL></LI>
     <LI><A HREF="#groupingTracks">Grouping tracks into sets and hierarchies</A>
@@ -199,6 +199,11 @@ in the sections below.</I>
     </TD></TR>
     <TR VALIGN=TOP><TD class="chromosomes"><A name="chromosomes"></A><IMG class='toggle detail'>
         <div class="format"><code class="level-full">chromosomes &lt;chr1,chr2,...&gt;</code></div>
+    </TD></TR>
+    <TR VALIGN=TOP><TD class="darkerLabels"><A name="darkerLabels"></A><IMG class='toggle detail'>
+        <div class="format">
+                <code class="level-new">darkerLabels on</code><BR>
+        </div>
     </TD></TR>
     <TR VALIGN=TOP><TD class="dataVersion"><A name="dataVersion"></A><IMG class='toggle detail'>
         <div class="format"><code class="level-full">dataVersion &lt;str&gt;</code></div>
@@ -456,12 +461,15 @@ are described below along with settings specific to their types.</P>
 <TABLE class="settingsTable" id="bam_-_Compressed_Alignment_Track_Settings">
 <THEAD><TR><TD><DIV ID="bam_intro" class="intro"></DIV></TD></TR></THEAD>
     <TR VALIGN=TOP><TH><IMG class='toggle oneSection'>
-        &nbsp;bam - Compressed Sequence Alignment track settings</TH></TR>
+        &nbsp;bam/cram - Compressed Sequence Alignment track settings</TH></TR>
     <TR VALIGN=TOP><TD class="bam"><IMG class='toggle detail'>
         <div class="format"><code>type bam</code></div>
     </TD></TR>
     <TR VALIGN=TOP><TD class="bigDataUrl"><IMG class='toggle detail'>
         <div class="format"><code class="level-required">bigDataUrl &lt;url/relativePath&gt;</code></div>
+    </TD></TR>
+    <TR VALIGN=TOP><TD class="bigDataIndex"><IMG class='toggle detail'>
+        <div class="format"><code class="level-full">bigDataIndex &lt;url/relativePath&gt;</code></div>
     </TD></TR>
     <TR class="related1st" VALIGN=TOP><TD class="bamColorMode">
         <A name="bamColorMode"></A><IMG class='toggle detail setD'>
@@ -539,6 +547,9 @@ are described below along with settings specific to their types.</P>
     </TD></TR>
     <TR VALIGN=TOP><TD class="bigDataUrl"><IMG class='toggle detail'>
         <div class="format"><code class="level-required">bigDataUrl &lt;url/relativePath&gt;</code></div>
+    </TD></TR>
+    <TR VALIGN=TOP><TD class="bigDataIndex"><IMG class='toggle detail'>
+        <div class="format"><code class="level-full">bigDataIndex &lt;url/relativePath&gt;</code></div>
     </TD></TR>
 
     <TR class="related1st" VALIGN=TOP><TD class="hapClusterEnabled"><A NAME="hapClusterEnabled"><IMG class='toggle detail setF'>

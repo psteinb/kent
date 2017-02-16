@@ -1645,7 +1645,7 @@ if (as)
 	    {
 	    if (asTypesIsInt(type))
 		{
-		count = lineFileAllIntsArray(lf, row, i, NULL, 10240,
+		count = lineFileAllIntsArray(lf, row, i, NULL, countSeparatedItems(row[i], ','),
 		    !asTypesIsUnsigned(type), asTypesIntSize(type), asTypesIntSizeDescription(type), FALSE);
 		if (asCol->fixedSize > 0)
 		    {

@@ -58,6 +58,7 @@ static struct optionSpec options[] = {
    {"checkSettings", OPTION_BOOLEAN},
    {"test", OPTION_BOOLEAN},
    {"udcDir", OPTION_STRING},
+   {"specHost", OPTION_STRING},
    {"cacheTime", OPTION_INT},
    {NULL, 0},
 };
@@ -455,6 +456,12 @@ if (relativeUrl != NULL)
     {
     char *type = trackDbRequiredSetting(tdb, "type");
     char *bigDataUrl = trackHubRelativeUrl(genome->trackDbFile, relativeUrl);
+
+    char *bigDataIndex = NULL;
+    char *relIdxUrl = trackDbSetting(tdb, "bigDataIndex");
+    if (relIdxUrl != NULL)
+        bigDataIndex = trackHubRelativeUrl(genome->trackDbFile, relIdxUrl);
+
     verbose(2, "checking %s.%s type %s at %s\n", genome->name, tdb->track, type, bigDataUrl);
     if (startsWithWord("bigWig", type))
         {
@@ -462,13 +469,13 @@ if (relativeUrl != NULL)
         struct bbiFile *bbi = bigWigFileOpen(bigDataUrl);
         bbiFileClose(&bbi);
         }
-    else if (startsWithWord("bigBed", type) || startsWithWord("bigGenePred", type)  || startsWithWord("bigPsl", type))
+    else if (startsWithWord("bigBed", type) || startsWithWord("bigGenePred", type)  || startsWithWord("bigPsl", type)|| startsWithWord("bigChain", type)|| startsWithWord("bigMaf", type))
         {
         /* Just open and close to verify file exists and is correct type. */
         struct bbiFile *bbi = bigBedFileOpen(bigDataUrl);
         char *typeString = cloneString(type);
         nextWord(&typeString);
-        if (typeString != NULL)
+        if (startsWithWord("bigBed", type) && (typeString != NULL))
             {
             unsigned numFields = sqlUnsigned(nextWord(&typeString));
             if (numFields > bbi->fieldCount)
@@ -479,7 +486,7 @@ if (relativeUrl != NULL)
     else if (startsWithWord("vcfTabix", type))
         {
         /* Just open and close to verify file exists and is correct type. */
-        struct vcfFile *vcf = vcfTabixFileMayOpen(bigDataUrl, NULL, 0, 0, 1, 1);
+        struct vcfFile *vcf = vcfTabixFileAndIndexMayOpen(bigDataUrl, bigDataIndex, NULL, 0, 0, 1, 1);
         if (vcf == NULL)
             // Warnings already indicated whether the tabix file is missing etc.
             errAbort("Couldn't open %s and/or its tabix index (.tbi) file.  "
@@ -489,7 +496,7 @@ if (relativeUrl != NULL)
         }
     else if (startsWithWord("bam", type))
         {
-        bamFileAndIndexMustExist(bigDataUrl);
+        bamFileAndIndexMustExist(bigDataUrl, bigDataIndex);
         }
 #ifdef USE_HAL
     else if (startsWithWord("halSnake", type))
@@ -675,6 +682,8 @@ struct trackHubCheckOptions *checkOptions = NULL;
 AllocVar(checkOptions);
 
 checkOptions->specHost = (optionExists("test") ? "genome-test.cse.ucsc.edu" : "genome.ucsc.edu");
+checkOptions->specHost = optionVal("specHost", checkOptions->specHost);
+
 checkOptions->checkFiles = !optionExists("noTracks");
 checkOptions->checkSettings = optionExists("checkSettings");
 

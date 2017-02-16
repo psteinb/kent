@@ -174,8 +174,10 @@ for (region = regionList; region != NULL && (maxOut > 0); region = region->next)
     {
     struct lm *lm = lmInit(0);
     char *fileName = bamFileName(table, conn, region->chrom);
-    struct samAlignment *sam, *samList = bamFetchSamAlignmentPlus(fileName, region->chrom,
-    	region->start, region->end, lm, refUrl, cacheDir );
+    char *baiUrl = bigDataIndexFromCtOrHub(table, conn);
+
+    struct samAlignment *sam, *samList = bamAndIndexFetchSamAlignmentPlus(fileName, baiUrl, region->chrom,
+    	region->start, region->end, lm, refUrl, cacheDir);
     char *row[SAMALIGNMENT_NUM_COLS];
     char numBuf[BAM_NUM_BUF_SIZE];
     for (sam = samList; sam != NULL && (maxOut > 0); sam = sam->next)
@@ -200,7 +202,7 @@ for (region = regionList; region != NULL && (maxOut > 0); region = region->next)
     }
 
 if (maxOut == 0)
-    warn("Reached output limit of %d data values, please make region smaller,\n\tor set a higher output line limit with the filter settings.", bigFileMaxOutput());
+    errAbort("Reached output limit of %d data values, please make region smaller,\n\tor set a higher output line limit with the filter settings.", bigFileMaxOutput());
 /* Clean up and exit. */
 hashFree(&fieldHash);
 freeMem(fieldArray);
@@ -254,7 +256,8 @@ struct lm *lm = lmInit(0);
 struct trackDb *tdb = findTdbForTable(database, curTrack, curTable, ctLookupName);
 char *cacheDir =  cfgOption("cramRef");
 char *refUrl = trackDbSetting(tdb, "refUrl");
-struct samAlignment *sam, *samList = bamFetchSamAlignmentPlus(fileName, region->chrom,
+char *indexUrl = trackDbSetting(tdb, "bigDataIndex");
+struct samAlignment *sam, *samList = bamAndIndexFetchSamAlignmentPlus(fileName, indexUrl, region->chrom,
     	region->start, region->end, lm, refUrl, cacheDir);
 char *row[SAMALIGNMENT_NUM_COLS];
 char numBuf[BAM_NUM_BUF_SIZE];
@@ -302,9 +305,8 @@ for (region = regionList; region != NULL; region = region->next)
     freeMem(fileName);
     if (maxOut <= 0)
 	{
-	warn("Reached output limit of %d data values, please make region smaller,\n"
+	errAbort("Reached output limit of %d data values, please make region smaller,\n"
 	     "\tor set a higher output line limit with the filter settings.", bigFileMaxOutput());
-	break;
 	}
     }
 slReverse(&bedList);
@@ -316,6 +318,7 @@ struct slName *randomBamIds(char *table, struct sqlConnection *conn, int count)
 {
 /* Read 10000 items from bam file,  or if they ask for a big list, then 4x what they ask for. */
 char *fileName = bamFileName(table, conn, NULL);
+
 samfile_t *fh = bamOpen(fileName, NULL);
 struct lm *lm = lmInit(0);
 int orderedCount = count * 4;

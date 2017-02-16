@@ -236,7 +236,6 @@ if (imageCount > 0)
 "    <DIV"
 "    ID='perspClip'"
 "    STYLE='position:absolute;left:-1000px;top:-1000px;z-index:2;visibility:visible;overflow:hidden!important;'"
-"         onmouseover='this.style.left=\"-1000px\";' "
 "    >"
 "    <DIV"
 "    ID='perspective'"
@@ -247,6 +246,7 @@ if (imageCount > 0)
 "    </DIV>"
 "    </DIV>"
     );
+    jsOnEventById("mouseover", "perspClip", "this.style.left=\"-1000px\";");
     printf("<TABLE>\n");
     printf("<TR><TD><B>");
     printf("%d images match<BR>\n", imageCount);
@@ -325,11 +325,9 @@ int w = 0, h = 0;
 htmlSetBgColor(0xE0E0E0);
 htmStart(stdout, "do image");
 
-puts(
-"<script type=\"text/JavaScript\">"
-"document.getElementsByTagName('html')[0].style.height=\"100%\";"
-"document.getElementsByTagName('body')[0].style.height=\"100%\";"
-"</script>"
+jsInline(
+"document.getElementsByTagName('html')[0].style.height=\"100%\";\n"
+"document.getElementsByTagName('body')[0].style.height=\"100%\";\n"
 );
 
 if (!visiGeneImageSize(conn, imageId, &w, &h))
@@ -426,15 +424,15 @@ printf("</TD>");
 printf("<TD>");
 printf("Zoom: ");
 printf(
-"<INPUT TYPE=SUBMIT NAME=\"hgp_zmOut\" VALUE=\" out \""
-" onclick=\"parent.image.bigImg.zoomer('out');return false;\"> "
-"<INPUT TYPE=SUBMIT NAME=\"hgp_zmIn\" VALUE=\" in \""
-" onclick=\"parent.image.bigImg.zoomer('in');return false;\"> "
-"<INPUT TYPE=SUBMIT NAME=\"hgp_zmFull\" VALUE=\" full \""
-" onclick=\"parent.image.bigImg.zoomer('full');return false;\"> "
-"<INPUT TYPE=SUBMIT NAME=\"hgp_zmFit\" VALUE=\" fit \""
-" onclick=\"parent.image.bigImg.zoomer('fit');return false;\"> "
+"<INPUT TYPE=SUBMIT NAME='hgp_zmOut'  id='hgp_zmOut'  VALUE=' out ' > "
+"<INPUT TYPE=SUBMIT NAME='hgp_zmIn'   id='hgp_zmIn'   VALUE=' in '  > "
+"<INPUT TYPE=SUBMIT NAME='hgp_zmFull' id='hgp_zmFull' VALUE=' full '> "
+"<INPUT TYPE=SUBMIT NAME='hgp_zmFit'  id='hgp_zmFit'  VALUE=' fit ' > "
 "\n");
+jsOnEventById("click","hgp_zmOut" ,"parent.image.bigImg.zoomer('out'); return false;");
+jsOnEventById("click","hgp_zmIn"  ,"parent.image.bigImg.zoomer('in');  return false;");
+jsOnEventById("click","hgp_zmFull","parent.image.bigImg.zoomer('full');return false;");
+jsOnEventById("click","hgp_zmFit" ,"parent.image.bigImg.zoomer('fit'); return false;");
 printf("</TD>");
 
 printf("<TD ALIGN=Right>");
@@ -588,11 +586,11 @@ puts(
 "TARGET=_blank>Jackson Lab Gene Expression Database</A> (GXD) at MGI \n"
 "<LI>Transcription factors in mouse embryos from the \n"
 "Mahoney Center for Neuro-Oncology \n"
-"<LI>Mouse head and brain <em>in situ</em> images from NCBI's  \n"
-"<A HREF=\"http://www.ncbi.nlm.nih.gov/projects/gensat/\" TARGET=_blank>Gene \n"
+"<LI>Mouse head and brain <em>in situ</em> images from the  \n"
+"<A HREF=\"http://www.gensat.org/index.html\" TARGET=_blank>Gene \n"
 "Expression Nervous System Atlas</A> (GENSAT) database \n"
 "<LI><em>Xenopus laevis</em> <em>in situ</em> images from the \n"
-"<A HREF=\"http://www.nibb.ac.jp/en/index.php\" TARGET=_blank>National \n"
+"<A HREF=\"http://xenopus.nibb.ac.jp\" TARGET=_blank>National \n"
 "Institute for Basic Biology</A> (NIBB) XDB project \n"
 "</UL> \n"
 "<H3>Image Navigation</H3>\n"
@@ -677,9 +675,9 @@ printf("</CENTER>");
 puts(
 "<P>Good search terms include gene symbols, authors, years, body parts,\n"
 "organisms, GenBank and UniProt accessions, Known Gene descriptive terms,\n"
-"<A HREF=\"http://genex.hgu.mrc.ac.uk/Atlas/intro.html\" \n"
+"<A HREF=\"http://www.emouseatlas.org\" \n"
 "TARGET=_blank>Theiler</A> stages for mice, and \n"
-"<A HREF=\"http://www.xenbase.org/atlas/NF/NF-all.html\" \n"
+"<A HREF=\"http://www.xenbase.org/anatomy/alldev.do\" \n"
 "TARGET=_blank>Nieuwkoop/Faber</A> stages for frogs. The wildcard characters\n"
 "* and ? work with gene symbols; otherwise the full word must match.</P>\n"
 "<P> \n"
@@ -890,7 +888,6 @@ int main(int argc, char *argv[])
 long enteredMainTime = clock1000();
 uglyTime(NULL);
 cgiSpoof(&argc, argv);
-setUdcCacheDir();
 oldCart = hashNew(0);
 if (cgiVarExists(hgpDoDownload))  /* use cgiVars -- do not commit to any cart method yet */
     {

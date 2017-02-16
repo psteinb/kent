@@ -617,7 +617,7 @@ if (first)
     }
 if (haveGbCdnaInfo)
     {
-    char query[256], buf[256], *cdsStr;
+    char query[4096], buf[4096], *cdsStr;
     sqlSafef(query, sizeof query, "select c.name from %s g,%s c where (acc = '%s') and (g.cds = c.id)", gbCdnaInfoTable, cdsTable, acc);
     cdsStr = sqlQuickQuery(conn, query, buf, sizeof(buf));
     if (cdsStr != NULL)
@@ -716,7 +716,10 @@ else
      */
     struct genbankCds cds;
     if (startsWith("bigPsl", tg->tdb->type))
-	genbankCdsParse(lf->cds, &cds);
+        {
+        if (lf->cds)
+            genbankCdsParse(lf->cds, &cds);
+        }
     else
 	getPslCds(psl, tg, &cds);
 

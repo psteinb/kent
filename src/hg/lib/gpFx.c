@@ -881,8 +881,10 @@ if (varStart < pred->txEnd && varEnd > pred->txStart)
 	int vieEnd = (2 * txc.endExonIx) + (txc.endInExon ? 0 : 1);
 	if (vieEnd < vieStart)
 	    {
-	    // Insertion at exon boundary (or bug)
-	    if (vieEnd != vieStart-1 || varStart != varEnd || txc.startInExon == txc.endInExon)
+	    // vieEnd == vieStart-1 ==> insertion at exon/intron boundary
+            // vieEnd == vieStart-2 ==> insertion at exon-exon boundary (i.e. ref has deletion!)
+	    if ((vieEnd != vieStart-1 && vieEnd != vieStart-2) ||
+                varStart != varEnd)
 		errAbort("gpFxCheckTranscript: expecting insertion in pred=%s "
 			 "but varStart=%d, varEnd=%d, vieStart=%d, vieEnd=%d, "
 			 "starts in %son, ends in %son",
@@ -987,7 +989,7 @@ for(; variant; variant = variant->next)
 	errAbort("gpFxPredEffect needs either 1 variant, or only 1 allele in all variants");
 }
 
-static struct gpFx *gpFxNoVariation(struct variant *variant, struct lm *lm)
+struct gpFx *gpFxNoVariation(struct variant *variant, struct lm *lm)
 /* Return a gpFx with SO term no_sequence_alteration, for VCF rows that aren't really variants. */
 {
 char *seq = NULL;

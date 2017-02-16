@@ -6,8 +6,13 @@ all:
 	cd jsonToTagStorm && ${MAKE}
 	cd tagStormInfo && ${MAKE}
 	cd tagStormJoinTab && ${MAKE}
+	cd tagStormToHtml && ${MAKE}
 	cd tagStormToJson && ${MAKE}
 	cd tagStormDeleteTags && ${MAKE}
+	cd tagStormRenameTags && ${MAKE}
+	cd tagStormToTab && ${MAKE}
+	cd tagStormToSql && ${MAKE}
+	cd tagStormCheck && ${MAKE}
 
 alpha: all
 
@@ -20,6 +25,10 @@ compile:
 	cd tagStormJoinTab && ${MAKE} compile
 	cd tagStormToJson && ${MAKE} compile
 	cd tagStormDeleteTags && ${MAKE} compile
+	cd tagStormRenameTags && ${MAKE} compile
+	cd tagStormToTab && ${MAKE} compile
+	cd tagStormToSql && ${MAKE} compile
+	cd tagStormCheck && ${MAKE} compile
 
 test:
 	cd tagStormHoist && ${MAKE} test
@@ -30,6 +39,10 @@ test:
 	cd tagStormJoinTab && ${MAKE} test
 	cd tagStormToJson && ${MAKE} test
 	cd tagStormDeleteTags && ${MAKE} test
+	cd tagStormRenameTags && ${MAKE} test
+	cd tagStormToTab && ${MAKE} test
+	cd tagStormToSql && ${MAKE} test
+	cd tagStormCheck && ${MAKE} test
 
 
 clean::
@@ -40,3 +53,7 @@ clean::
 	cd tagStormJoinTab && ${MAKE} clean
 	cd tagStormToJson && ${MAKE} clean
 	cd tagStormDeleteTags && ${MAKE} clean
+	cd tagStormRenameTags && ${MAKE} clean
+	cd tagStormToTab && ${MAKE} clean
+	cd tagStormToSql && ${MAKE} clean
+	cd tagStormCheck && ${MAKE} clean

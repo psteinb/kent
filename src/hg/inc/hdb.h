@@ -43,7 +43,7 @@ struct chromInfo;
 #define HDB_MAX_SEQS_FOR_SPLIT 100
 
 /* Statically-allocated string lengths (max supported len incl. final \0): */
-#define HDB_MAX_CHROM_STRING 32
+#define HDB_MAX_CHROM_STRING 255
 #define HDB_MAX_BAND_STRING 64
 #define HDB_MAX_FIELD_STRING 32
 #define HDB_MAX_TABLE_STRING 128
@@ -97,10 +97,6 @@ struct slName *hTrackTablesOfType(struct sqlConnection *conn, char *type);
 
 char *hPdbFromGdb(char *genomeDb);
 /* return the name of the proteome database given the genome database name */
-
-boolean hArchiveDbExists(char *database);
-/* Function to check if this is a valid db name in the dbDbArch table
-   of archived databases. */
 
 boolean hDbExists(char *database);
 /* Function to check if this is a valid db name */
@@ -443,27 +439,14 @@ struct dbDb *hDbDbListMaybeCheck(boolean doCheck);
  * The list includes the name, description, and where to
  * find the nib-formatted DNA files. Free this with dbDbFree. */
 
-struct dbDb *hArchiveDbDbList(void);
-/* Return list of databases in archive central dbDb.
- * Free this with dbDbFree. */
-
 struct hash *hDbDbHash();
 /* The hashed-up version of the entire dbDb table, keyed on the db */
-/* this is likely better to use than hArchiveOrganism if it's likely to be */
-/* repeatedly called */
-
-struct hash *hDbDbAndArchiveHash();
-/* hDbDbHash() plus the dbDb rows from the archive table */
 
 int hDbDbCmpOrderKey(const void *va, const void *vb);
 /* Compare to sort based on order key */
 
 char *hDbDbNibPath(char *database);
 /* return nibPath from dbDb for database */
-
-struct sqlConnection *hMaybeConnectArchiveCentral(void);
-/* Connect to central database for archives.
- * Free this up with hDisconnectCentralArchive(). */
 
 char *hHttpHost();
 /* return http host from apache or hostname if run from command line  */
@@ -482,6 +465,9 @@ boolean hIsBetaHost(void);
 
 boolean hIsBrowserbox();
 /* Return TRUE if this is the browserbox virtual machine */
+
+boolean hIsGbic();
+/* Return TRUE if this mirror has been installed by the installation script */
 
 boolean hIsPreviewHost(void);
 /* Return TRUE if this is running on preview web-server.  The preview
@@ -734,19 +720,6 @@ struct dbDb *hGetLiftOverToDatabases(char *fromDb);
  * to convert from the fromDb assembly.
  * Dispose of this with dbDbFreeList. */
 
-struct dbDb *hGetAxtInfoDbs(char *db);
-/* Get list of db's where we have axt files listed in axtInfo .
- * The db's with the same organism as organism go last.
- * Dispose of this with dbDbFreeList. */
-
-struct axtInfo *hGetAxtAlignments(char *db, char *otherDb);
-/* Get list of alignments where we have axt files listed in axtInfo .
- * Dispose of this with axtInfoFreeList. */
-
-struct axtInfo *hGetAxtAlignmentsChrom(char *db, char *otherDb, char *chrom);
-/* Get list of alignments where we have axt files listed in axtInfo for a specified chromosome .
- * Dispose of this with axtInfoFreeList. */
-
 struct dbDb *hGetBlatIndexedDatabases(void);
 /* Get list of databases for which there is a BLAT index.
  * Dispose of this with dbDbFreeList. */
@@ -768,11 +741,6 @@ char *hOrganism(char *database);
 /* Return organism associated with database.   Use freeMem on
  * return value when done. */
 
-char *hArchiveOrganism(char *database);
-/* Return organism associated with database.   Use freeMem on
- * return value when done. This one checks the normal central
- * DB first, then the archive dbDb. */
-
 int hOrganismID(char *database);
 /* Get organism ID from relational organism table */
 /* Return 0 if not found. */
@@ -781,6 +749,15 @@ char *hScientificName(char *database);
 /* Return scientific name for organism represented by this database */
 /* Return NULL if unknown database */
 /* NOTE: must free returned string after use */
+
+char *hOrgShortName(char *org);
+/* Get the short name for an organism.  Returns NULL if org is NULL.
+ * WARNING: static return */
+
+char *hOrgShortForDb(char *db);
+/* look up the short organism scientific name given an organism db.
+ * WARNING: static return */
+
 
 char *hHtmlPath(char *database);
 /* Return /gbdb path name to html description for this database */
@@ -796,9 +773,6 @@ char *hFreezeDateOpt(char *database);
 
 int hTaxId(char *database);
 /* Return taxId (NCBI Taxonomy ID) associated with database. */
-
-char *hGenomeOrArchive(char *database);
-/* Return genome name associated from the regular or the archive database. */
 
 char *hGenome(char *database);
 /* Return genome associated with database.   Use freeMem on

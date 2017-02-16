@@ -90,11 +90,11 @@ boolean varOn(char *var);
 void printMainHelp();
 /* Put up main page help info. */
 
-struct grp *showGroupField(char *groupVar, char *groupScript,
+struct grp *showGroupField(char *groupVar, char *event, char *groupScript,
     struct sqlConnection *conn, boolean allTablesOk);
 /* Show group control. Returns selected group. */
 
-struct trackDb *showTrackField(struct grp *selGroup, char *trackVar, char *trackScript,
+struct trackDb *showTrackField(struct grp *selGroup, char *trackVar, char *event, char *trackScript,
                                boolean disableNoGenome);
 /* Show track control. Returns selected track. */
 
@@ -739,6 +739,10 @@ boolean isBigWigTable(char *table);
 
 char *bigFileNameFromCtOrHub(char *table, struct sqlConnection *conn);
 /* If table is a custom track or hub track, return the bigDataUrl setting;
+ * otherwise return NULL.  Do a freeMem on returned string when done. */
+
+char *bigDataIndexFromCtOrHub(char *table, struct sqlConnection *conn);
+/* If table is a custom track or hub track, return the bigDataIndex setting;
  * otherwise return NULL.  Do a freeMem on returned string when done. */
 
 char *bigWigFileName(char *table, struct sqlConnection *conn);

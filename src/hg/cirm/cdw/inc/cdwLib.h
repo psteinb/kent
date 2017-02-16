@@ -23,6 +23,8 @@
 #include "cdw.h"
 #endif
 
+#include "cart.h"
+
 #define cdwRandomString "175d5bc99f7bb7312812c47d236791879BAEXzusIsdklnw86d73<*#$*(#)!DSFOUIHLjksdf"
 
 extern char *cdwDatabase;   /* Name of database we connect to. */
@@ -480,6 +482,9 @@ boolean cdwRqlStatementMatch(struct rqlStatement *rql, struct tagStanza *stanza,
 struct slRef *tagStanzasMatchingQuery(struct tagStorm *tags, char *query);
 /* Return list of references to stanzas that match RQL query */
 
+void cdwPrintMatchingStanzas(char *rqlQuery, int limit, struct tagStorm *tags, char *format);
+/* Show stanzas that match query */
+
 struct cgiParsedVars *cdwMetaVarsList(struct sqlConnection *conn, struct cdwFile *ef);
 /* Return list of cgiParsedVars dictionaries for metadata for file.  Free this up 
  * with cgiParsedVarsFreeList() */
@@ -487,5 +492,14 @@ struct cgiParsedVars *cdwMetaVarsList(struct sqlConnection *conn, struct cdwFile
 void cdwReallyRemoveFile(struct sqlConnection *conn, long long fileId, boolean really);
 /* Remove all records of file from database and from Unix file system if 
  * the really flag is set.  Otherwise just print some info on the file. */
+
+char *cdwLocalMenuBar(struct cart *cart, boolean makeAbsolute);
+/* Return menu bar string. Optionally make links in menubar to point to absolute URLs, not relative. */
+
+char *fileExtFromFormat(char *format);
+/* return file extension given the cdwFile format as defined in cdwValid.c. Result has to be freed */
+
+void printMatchingStanzas(char *rqlQuery, int limit, struct tagStorm *tags, char *format);
+/* Show stanzas that match query */
 
 #endif /* CDWLIB_H */

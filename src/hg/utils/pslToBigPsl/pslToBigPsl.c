@@ -1,4 +1,4 @@
-/* pslToBigPsl - converts genePred or genePredExt to bigGenePred. */
+/* pslToBigPsl - converts psl to bigPsl. */
 #include "common.h"
 #include "linefile.h"
 #include "hash.h"
@@ -21,7 +21,7 @@ errAbort(
   "  -cds=file.cds\n"
   "  -fa=file.fasta\n"
   "NOTE: to build bigBed:\n"
-  "   bedToBigBed -type=bed12+12 -tab -as=bigPsl.as file.bigPslInput chrom.sizes output.bb\n"
+  "   bedToBigBed -type=bed12+13 -tab -as=bigPsl.as file.bigPslInput chrom.sizes output.bb\n"
   );
 }
 
@@ -84,19 +84,25 @@ bigPsl.oChromStarts = (int *)oBlockStarts;
 bigPsl.oSequence = "";
 bigPsl.oCDS = "";
 int ii;
+boolean isProt = pslIsProtein(psl);
+int mult = pslIsProtein(psl) ? 3 : 1;
 for(ii=0; ii < bigPsl.blockCount; ii++)
     {
     blockStarts[ii] = psl->tStarts[ii] - bigPsl.chromStart;
     oBlockStarts[ii] = psl->qStarts[ii] ;
-    blockSizes[ii] = psl->blockSizes[ii];
+    blockSizes[ii] = psl->blockSizes[ii] * mult;
     }
     
+bigPsl.seqType = PSL_SEQTYPE_EMPTY;
 if (fastaHash)
     {
     struct dnaSeq *seq = hashFindVal(fastaHash, psl->qName);
 
     if (seq != NULL)
+        {
 	bigPsl.oSequence = seq->dna;
+        bigPsl.seqType = isProt ? PSL_SEQTYPE_PROTEIN : PSL_SEQTYPE_NUCLEOTIDE;
+        }
     else
 	{
 	warn("Cannot find sequence for %s. Dropping", psl->qName);
@@ -133,12 +139,9 @@ struct psl *psl = pslLoadAll(pslFile);
 struct hash *fastHash = NULL;
 struct hash *cdsHash = NULL;
 
-if (pslIsProtein(psl))
-    errAbort("error: bigPsl does not support protein psls");
-
 if (fastaFile != NULL)
     {
-    struct dnaSeq  *seqs = faReadAllDna(fastaFile);
+    struct dnaSeq  *seqs = pslIsProtein(psl) ?faReadAllPep(fastaFile) : faReadAllDna(fastaFile); 
     fastHash = newHash(10);
     for(; seqs; seqs = seqs->next)
 	hashAdd(fastHash, seqs->name, seqs);

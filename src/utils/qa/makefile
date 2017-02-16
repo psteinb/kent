@@ -87,6 +87,7 @@ install:
 	cp -p --remove-destination getMatrixLines.csh      ${SCRIPTS}
 	cp -p --remove-destination getMonthLastYear.csh    ${SCRIPTS}
 	cp -p --remove-destination getOrderKey.csh         ${SCRIPTS}
+	cp -p --remove-destination getPubHubContact.sh     ${SCRIPTS}
 	cp -p --remove-destination getRRdatabases.csh      ${SCRIPTS}
 	cp -p --remove-destination getRRdumpfile.csh       ${SCRIPTS}
 	cp -p --remove-destination getRRtableStatus.csh    ${SCRIPTS}
@@ -127,6 +128,7 @@ install:
 	cp -p --remove-destination runBits.csh             ${SCRIPTS}
 	cp -p --remove-destination runCheckHgFindSpec      ${SCRIPTS}
 	cp -p --remove-destination runJoiner.csh           ${SCRIPTS}
+	cp -p --remove-destination runQaAutoTrack.sh       ${SCRIPTS}
 	cp -p --remove-destination sessionStats.csh        ${SCRIPTS}
 	cp -p --remove-destination showLastGit.csh         ${SCRIPTS}
 	cp -p --remove-destination showProcesslist.csh     ${SCRIPTS}

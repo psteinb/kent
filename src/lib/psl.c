@@ -1086,6 +1086,7 @@ void pslRc(struct psl *psl)
 unsigned tSize = psl->tSize, qSize = psl->qSize;
 unsigned blockCount = psl->blockCount, i;
 unsigned *tStarts = psl->tStarts, *qStarts = psl->qStarts, *blockSizes = psl->blockSizes;
+int mult = pslIsProtein(psl) ? 3 : 1;
 
 /* swap strand, forcing target to have an explict strand */
 psl->strand[0] = (psl->strand[0] != '-') ? '-' : '+';
@@ -1094,7 +1095,7 @@ psl->strand[2] = 0;
 
 for (i=0; i<blockCount; ++i)
     {
-    tStarts[i] = tSize - (tStarts[i] + blockSizes[i]);
+    tStarts[i] = tSize - (tStarts[i] + mult * blockSizes[i]);
     qStarts[i] = qSize - (qStarts[i] + blockSizes[i]);
     }
 reverseUnsigned(tStarts, blockCount);
@@ -2055,4 +2056,64 @@ for (iBlk = 0; iBlk < psl->blockCount; iBlk++)
     pslCp->blockCount++;
     }
 return pslCp;
+}
+
+int cmpChrom(char *a, char *b)
+/* Compare two chromosomes. */
+{
+return cmpStringsWithEmbeddedNumbers(a, b);
+}
+
+
+int pslCmpTargetScore(const void *va, const void *vb)
+/* Compare to sort based on target then score. */
+{
+const struct psl *a = *((struct psl **)va);
+const struct psl *b = *((struct psl **)vb);
+int diff = cmpChrom(a->tName, b->tName);
+if (diff == 0)
+    diff = pslScore(b) - pslScore(a);
+return diff;
+}
+
+int pslCmpTargetStart(const void *va, const void *vb)
+/* Compare to sort based on target start. */
+{
+const struct psl *a = *((struct psl **)va);
+const struct psl *b = *((struct psl **)vb);
+int diff = cmpChrom(a->tName, b->tName);
+if (diff == 0)
+    diff = a->tStart - b->tStart;
+return diff;
+}
+
+char *pslSortList[] = {"query,score", "query,start", "chrom,score", "chrom,start", "score"};
+
+void pslSortListByVar(struct psl **pslList, char *sort)
+/* Sort a list of psls using the method definied in the sort string. */
+{
+if (sameString(sort, "query,start"))
+    {
+    slSort(pslList, pslCmpQuery);
+    }
+else if (sameString(sort, "query,score"))
+    {
+    slSort(pslList, pslCmpQueryScore);
+    }
+else if (sameString(sort, "score"))
+    {
+    slSort(pslList, pslCmpScore);
+    }
+else if (sameString(sort, "chrom,start"))
+    {
+    slSort(pslList, pslCmpTargetStart);
+    }
+else if (sameString(sort, "chrom,score"))
+    {
+    slSort(pslList, pslCmpTargetScore);
+    }
+else
+    {
+    slSort(pslList, pslCmpQueryScore);
+    }
 }

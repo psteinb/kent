@@ -252,7 +252,7 @@ if (!cdb)
 	{
 	if (cartDbUseSessionKey())
 	    {
-	    sessionKey = cartDbMakeRandomKey(128+33); // at least 128 bits of protection, 33 for the world population size.
+	    sessionKey = makeRandomKey(128+33); // at least 128 bits of protection, 33 for the world population size.
 	    }
 	sqlDyStringPrintf(query, ",'%s'", sessionKey);
 	}
@@ -714,6 +714,7 @@ if (cfgOptionBooleanDefault("showEarlyErrors", FALSE))
 
 if (cfgOptionBooleanDefault("suppressVeryEarlyErrors", FALSE))
     htmlSuppressErrors();
+setUdcCacheDir();
 
 struct cart *cart;
 struct sqlConnection *conn = cartDefaultConnector();
@@ -749,7 +750,6 @@ if (! (cgiScriptName() && endsWith(cgiScriptName(), "hgSession")))
     {
     if (cartVarExists(cart, hgsDoOtherUser))
 	{
-	setUdcCacheDir();
 	char *otherUser = cartString(cart, hgsOtherUserName);
 	char *sessionName = cartString(cart, hgsOtherUserSessionName);
 	struct sqlConnection *conn2 = hConnectCentral();
@@ -761,7 +761,6 @@ if (! (cgiScriptName() && endsWith(cgiScriptName(), "hgSession")))
 	}
     else if (cartVarExists(cart, hgsDoLoadUrl))
 	{
-	setUdcCacheDir();
 	char *url = cartString(cart, hgsLoadUrlName);
 	struct lineFile *lf = netLineFileOpen(url);
 	cartLoadSettings(lf, cart, oldVars, hgsDoLoadUrl);
@@ -1173,6 +1172,22 @@ while (hel != NULL)
 return slnList;
 }
 
+struct hash *cartHashList(struct cart *cart, char *var)
+/* Return hash with multiple values for the same var or NULL if not found. */
+{
+struct hashEl *hel = hashLookup(cart->hash, var);
+struct hash *valHash = hashNew(0);
+while (hel != NULL)
+    {
+    if (hel->val != NULL)
+	{
+        hashAdd(valHash, hel->val, NULL);
+	}
+    hel = hashLookupNext(hel);
+    }
+return valHash;
+}
+
 void cartAddString(struct cart *cart, char *var, char *val)
 /* Add string valued cart variable (if called multiple times on same var,
  * will create a list -- retrieve with cartOptionalSlNameList. */
@@ -1365,8 +1380,8 @@ if (asTable)
     int width=(strlen(val)+1)*8;
     if (width<100)
         width = 100;
-    cgiMakeTextVarWithExtraHtml(hel->name, val, width,
-                                "onchange='setCartVar(this.name,this.value);'");
+    cgiMakeTextVarWithJs(hel->name, val, width,
+                                "change", "setCartVar(this.name,this.value);");
     printf("</TD></TR>\n");
     }
 else
@@ -1572,6 +1587,13 @@ if (geoMirrorEnabled())
         printf("Set-Cookie: redirect=%s; path=/; domain=%s; expires=%s\r\n", redirect, cgiServerName(), cookieDate());
         }
     }
+/* Validate login cookies if login is enabled */
+if (loginSystemEnabled())
+    {
+    struct slName *newCookies = loginValidateCookies(cart), *sl;
+    for (sl = newCookies;  sl != NULL;  sl = sl->next)
+        printf("Set-Cookie: %s\r\n", sl->name);
+    }
 }
 
 struct cart *cartForSession(char *cookieName, char **exclude,
@@ -1596,9 +1618,12 @@ struct cart *cartAndCookieWithHtml(char *cookieName, char **exclude,
  * and optionally content-type part HTTP preamble to web page.  Don't
  * write any HTML though. */
 {
+// Note: early abort works fine but early warn does not
 htmlPushEarlyHandlers();
 struct cart *cart = cartForSession(cookieName, exclude, oldVars);
 popWarnHandler();
+popAbortHandler();
+
 cartWriteCookie(cart, cookieName);
 if (doContentType)
     {
@@ -1628,11 +1653,13 @@ static void cartErrorCatcher(void (*doMiddle)(struct cart *cart),
                              struct cart *cart)
 /* Wrap error catcher around call to do middle. */
 {
-int status = setjmp(htmlRecover);
 pushAbortHandler(htmlAbort);
 hDumpStackPushAbortHandler();
+int status = setjmp(htmlRecover);
 if (status == 0)
+    {
     doMiddle(cart);
+    }
 hDumpStackPopAbortHandler();
 popAbortHandler();
 }
@@ -1643,7 +1670,7 @@ void cartEarlyWarningHandler(char *format, va_list args)
 static boolean initted = FALSE;
 va_list argscp;
 va_copy(argscp, args);
-if (!initted)
+if (!initted && !cgiOptionalString("ajax"))
     {
     htmStart(stdout, "Early Error");
     initted = TRUE;

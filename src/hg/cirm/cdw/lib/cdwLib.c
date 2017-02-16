@@ -34,6 +34,8 @@
 #include "intValTree.h"
 #include "tagStorm.h"
 #include "cdwLib.h"
+#include "trashDir.h"
+#include "wikiLink.h"
 
 
 /* System globals - just a few ... for now.  Please seriously not too many more. */
@@ -1525,11 +1527,14 @@ else
     /* The revalidation case relies on cdwMakeValidFile to update the cdwValidFile table.
      * Here we must do it ourselves. */
     struct cdwValidFile *vf = cdwValidFileFromFileId(conn, ef->id);
-    struct cgiParsedVars *tags = cdwMetaVarsList(conn, ef);
-    cdwValidFileFieldsFromTags(vf, tags);
-    cdwValidFileUpdateDb(conn, vf, vf->id);
-    cgiParsedVarsFreeList(&tags);
-    cdwValidFileFree(&vf);
+    if (vf != NULL)
+	{
+	struct cgiParsedVars *tags = cdwMetaVarsList(conn, ef);
+	cdwValidFileFieldsFromTags(vf, tags);
+	cdwValidFileUpdateDb(conn, vf, vf->id);
+	cgiParsedVarsFreeList(&tags);
+	cdwValidFileFree(&vf);
+	}
     }
 }
 
@@ -2190,3 +2195,251 @@ if (metaCgi != NULL)
 return tagsList;
 }
 
+static int gMatchCount = 0;
+static boolean gDoSelect = FALSE;
+static boolean gFirst = TRUE; 
+
+static void rMatchesToRa(struct tagStorm *tags, struct tagStanza *list, 
+    struct rqlStatement *rql, struct lm *lm)
+/* Recursively traverse stanzas on list outputting matching stanzas as ra. */
+{
+struct tagStanza *stanza;
+for (stanza = list; stanza != NULL; stanza = stanza->next)
+    {
+    if (rql->limit < 0 || rql->limit > gMatchCount)
+	{
+	if (stanza->children)
+	    rMatchesToRa(tags, stanza->children, rql, lm);
+	else    /* Just apply query to leaves */
+	    {
+	    if (cdwRqlStatementMatch(rql, stanza, lm))
+		{
+		++gMatchCount;
+		if (gDoSelect)
+		    {
+		    struct slName *field;
+		    for (field = rql->fieldList; field != NULL; field = field->next)
+			{
+			char *val = tagFindVal(stanza, field->name);
+			if (val != NULL)
+			    printf("%s\t%s\n", field->name, val);
+			}
+		    printf("\n");
+		    }
+		}
+	    }
+	}
+    }
+}
+
+static void printQuotedTsv(char *val)
+/* Print out tab separated value inside of double quotes. Escape any existing quotes with quotes. */
+{
+putchar('"');
+char c;
+while ((c = *val++) != 0)
+    {
+    if (c == '"')
+        putchar(c);
+    putchar(c);
+    }
+putchar('"');
+}
+
+static void rMatchesToCsv(struct tagStorm *tags, struct tagStanza *list, 
+    struct rqlStatement *rql, struct lm *lm)
+/* Recursively traverse stanzas on list outputting matching stanzas as 
+ * a comma separated values file. */
+{
+struct tagStanza *stanza;
+for (stanza = list; stanza != NULL; stanza = stanza->next)
+    {
+    if (rql->limit < 0 || rql->limit > gMatchCount)  // We are inside the acceptable limit
+	{
+	if (stanza->children) // Recurse till we have just leaves. 
+	    rMatchesToCsv(tags, stanza->children, rql, lm);
+	else    /* Just apply query to leaves */
+	    {
+	    if (cdwRqlStatementMatch(rql, stanza, lm))
+		{
+		++gMatchCount;
+		if (gDoSelect)
+		    {
+		    struct slName *field;
+		    if (gFirst)// For the first stanza print out a header line. 
+			{
+			char *sep = "";
+			gFirst = FALSE;
+			for (field = rql->fieldList; field != NULL; field = field->next)
+			    {
+			    printf("%s%s", sep, field->name); 
+			    sep = ",";
+			    }
+			printf("\n"); 
+			}
+		    char *sep = "";
+		    for (field = rql->fieldList; field != NULL; field = field->next)
+			{
+			fputs(sep, stdout);
+			sep = ",";
+			char *val = emptyForNull(tagFindVal(stanza, field->name));
+			// Check for embedded comma or existing quotes
+			if (strchr(val, ',') == NULL && strchr(val, '"') == NULL)
+			    fputs(val, stdout);
+			else
+			    {
+			    printQuotedTsv(val);
+			    }
+			}
+		    printf("\n");
+		    }
+		}
+	    }
+	}
+    }
+}
+
+static void rMatchesToTsv(struct tagStorm *tags, struct tagStanza *list, 
+    struct rqlStatement *rql, struct lm *lm)
+/* Recursively traverse stanzas on list outputting matching stanzas as a tab separated values file. */
+{
+struct tagStanza *stanza;
+for (stanza = list; stanza != NULL; stanza = stanza->next)
+    {
+    if (rql->limit < 0 || rql->limit > gMatchCount)  // We are inside the acceptable limit
+	{
+	if (stanza->children) // Recurse till we have just leaves. 
+	    rMatchesToTsv(tags, stanza->children, rql, lm);
+	else    /* Just apply query to leaves */
+	    {
+	    if (cdwRqlStatementMatch(rql, stanza, lm))
+		{
+		++gMatchCount;
+		if (gDoSelect)
+		    {
+		    struct slName *field;
+		    if (gFirst)// For the first stanza print out a header line. 
+			{
+			gFirst = FALSE;
+			printf("#"); 
+			char *sep = "";
+			for (field = rql->fieldList; field != NULL; field = field->next)
+			    {
+			    printf("%s%s", sep, field->name); 
+			    sep = "\t";
+			    }
+			printf("\n"); 
+			}
+		    char *sep = "";
+		    for (field = rql->fieldList; field != NULL; field = field->next)
+			{
+			char *val = naForNull(tagFindVal(stanza, field->name));
+			printf("%s%s", sep, val);
+			sep = "\t";
+			}
+		    printf("\n");
+		    }
+		}
+	    }
+	}
+    }
+}
+
+void cdwPrintMatchingStanzas(char *rqlQuery, int limit, struct tagStorm *tags, char *format)
+/* Show stanzas that match query */
+{
+struct dyString *dy = dyStringCreate("%s", rqlQuery);
+int maxLimit = 10000;
+if (limit > maxLimit)
+    limit = maxLimit;
+struct rqlStatement *rql = rqlStatementParseString(dy->string);
+
+/* Get list of all tag types in tree and use it to expand wildcards in the query
+ * field list. */
+struct slName *allFieldList = tagStormFieldList(tags);
+slSort(&allFieldList, slNameCmpCase);
+rql->fieldList = wildExpandList(allFieldList, rql->fieldList, TRUE);
+/* Traverse tag tree outputting when rql statement matches in select case, just
+ * updateing count in count case. */
+gDoSelect = sameWord(rql->command, "select");
+if (gDoSelect)
+    rql->limit = limit;
+struct lm *lm = lmInit(0);
+if (sameString(format, "ra"))
+    rMatchesToRa(tags, tags->forest, rql, lm);
+else if (sameString(format, "tsv"))
+    rMatchesToTsv(tags, tags->forest, rql, lm); 
+else if (sameString(format, "csv"))
+    rMatchesToCsv(tags, tags->forest, rql, lm);
+if (sameWord(rql->command, "count"))
+    printf("%d\n", gMatchCount);
+}
+
+static struct dyString *getLoginBits(struct cart *cart)
+/* Get a little HTML fragment that has login/logout bit of menu */
+{
+/* Construct URL to return back to this page */
+char *command = cartUsualString(cart, "cdwCommand", "home");
+char *sidString = cartSidUrlString(cart);
+char returnUrl[PATH_LEN*2];
+safef(returnUrl, sizeof(returnUrl), "http%s://%s/cgi-bin/cdwWebBrowse?cdwCommand=%s&%s",
+    cgiAppendSForHttps(), cgiServerNamePort(), command, sidString );
+char *encodedReturn = cgiEncode(returnUrl);
+
+/* Write a little html into loginBits */
+struct dyString *loginBits = dyStringNew(0);
+dyStringAppend(loginBits, "<li id=\"query\"><a href=\"");
+char *userName = wikiLinkUserName();
+if (userName == NULL)
+    {
+    dyStringPrintf(loginBits, "../cgi-bin/hgLogin?hgLogin.do.displayLoginPage=1&returnto=%s&%s",
+	    encodedReturn, sidString);
+    dyStringPrintf(loginBits, "\">Login</a></li>");
+    }
+else
+    {
+    dyStringPrintf(loginBits, "../cgi-bin/hgLogin?hgLogin.do.displayLogout=1&returnto=%s&%s",
+	    encodedReturn, sidString);
+    dyStringPrintf(loginBits, "\">Logout %s</a></li>", userName);
+    }
+
+/* Clean up and go home */
+freez(&encodedReturn);
+return loginBits;
+}
+
+char *cdwLocalMenuBar(struct cart *cart, boolean makeAbsolute)
+/* Return menu bar string. Optionally make links in menubar to point to absolute URLs, not relative. */
+{
+struct dyString *loginBits = getLoginBits(cart);
+
+// menu bar html is in a stringified .h file
+struct dyString *dy = dyStringNew(4*1024);
+dyStringPrintf(dy, 
+#include "cdwNavBar.h"
+       , loginBits->string);
+
+
+char *menubarStr = menuBarAddUiVars(dy->string, "/cgi-bin/cdw", cartSidUrlString(cart));
+if (!makeAbsolute)
+    return menubarStr;
+
+char *menubarStr2 = replaceChars(menubarStr, "../", "/");
+freez(&menubarStr);
+return menubarStr2;
+}
+
+char *fileExtFromFormat(char *format)
+/* return file extension given the cdwFile format as defined in cdwValid.c. Result has to be freed */
+{
+if (sameWord(format, "vcf"))
+    return cloneString(".vcf.gz");
+if (sameWord(format, "fasta"))
+    return cloneString(".fa.gz");
+if (sameWord(format, "fastq"))
+    return cloneString(".fastq.gz");
+if (sameWord(format, "unknown"))
+    return cloneString("");
+
+return catTwoStrings(".", format);
+}

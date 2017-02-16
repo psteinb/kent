@@ -17,6 +17,9 @@ but drupal.js required for nicemenus.js to work */
 
 var Drupal = Drupal || { 'settings': {}, 'behaviors': {}, 'themes': {}, 'locale': {} };
 
+// moved from globalNavBar.inc to here
+jQuery.extend(Drupal.settings, { "basePath": "/", "nice_menus_options": { "delay": 800, "speed": 1 }, "thickbox": { "close": "Close", "next": "Next \x3e", "prev": "\x3c Prev", "esc_key": "or Esc Key", "next_close": "Next / Close on last", "image_count": "Image !current of !total" }, "custom_search": { "form_target": "_self", "solr": 0 } });
+
 /**
  * Set the variable that indicates if JavaScript behaviors should be applied
  */
@@ -205,7 +208,7 @@ Drupal.parseJson = function (data) {
   if ((data.substring(0, 1) != '{') && (data.substring(0, 1) != '[')) {
     return { status: 0, data: data.length ? data : Drupal.t('Unspecified error') };
   }
-  return eval('(' + data + ');');
+  return JSON.parse(data);
 };
 
 /**
@@ -311,8 +314,48 @@ Drupal.theme.prototype = {
   }
 };
 
+/* ********************** */
+/* This code adds the object browser to jQuery */
+/* It allows using newer Jquery versions with our old version of bgiframe. */
+/* copied from http://stackoverflow.com/questions/14798403/typeerror-browser-is-undefined */
+/* Max 2016: It seems that bgiframe is only needed for MSIE6 support, so it is possible we could remove 
+ * bgiframe (and this code) entirely, but bgiframe is used even in our own code, so I'm waiting with this */
 
+if (typeof jQuery.browser == 'undefined') {
+    var matched, browser;
 
+    jQuery.uaMatch = function( ua ) {
+        ua = ua.toLowerCase();
+
+        var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+            /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+            /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+            /(msie) ([\w.]+)/.exec( ua ) ||
+            ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
+            [];
+
+        return {
+            browser: match[ 1 ] || "",
+            version: match[ 2 ] || "0"
+        };
+    };
+
+    matched = jQuery.uaMatch( navigator.userAgent );
+    browser = {};
+    if ( matched.browser ) {
+        browser[ matched.browser ] = true;
+        browser.version = matched.version;
+    }
+
+    // Chrome is Webkit, but Webkit is also Safari.
+    if ( browser.chrome ) {
+        browser.webkit = true;
+    } else if ( browser.webkit ) {
+        browser.safari = true;
+    }
+    jQuery.browser = browser;
+    /* END OF BROWSER OBJECT */
+}
 
 /* bgiframe v2.1
  * Copyright (c) 2006 Brandon Aaron (http://brandonaaron.net)
@@ -462,9 +505,6 @@ Drupal.theme.prototype = {
 	});
 
 })(jQuery);
-
-
-
 
 
 

@@ -112,7 +112,7 @@ char* restField(struct bigBedInterval *bb, int fieldIdx)
 if (fieldIdx==0) // we don't return the first(=name) field of bigBed
     return NULL;
 char *rest = cloneString(bb->rest);
-char *restFields[256];
+char *restFields[1024];
 int restCount = chopTabs(rest, restFields);
 char *field = NULL;
 if (fieldIdx < restCount)
@@ -121,6 +121,28 @@ freeMem(rest);
 return field;
 }
 
+
+char *makeLabel(struct track *track,  struct bigBedInterval *bb)
+// Build a label for a bigBedTrack from the requested label fields.
+{
+char *labelSeparator = stripEnclosingDoubleQuotes(trackDbSettingClosestToHome(track->tdb, "labelSeparator"));
+if (labelSeparator == NULL)
+    labelSeparator = "/";
+char *restFields[256];
+chopTabs(cloneString(bb->rest), restFields);
+struct dyString *dy = newDyString(128);
+boolean firstTime = TRUE;
+struct slInt *labelInt = track->labelColumns;
+for(; labelInt; labelInt = labelInt->next)
+    {
+    if (!firstTime)
+        dyStringAppend(dy, labelSeparator);
+
+    dyStringPrintf(dy, "%s", restFields[labelInt->val - 3]);
+    firstTime = FALSE;
+    }
+return dyStringCannibalize(&dy);
+}
 
 void bigBedAddLinkedFeaturesFromExt(struct track *track,
 	char *chrom, int start, int end, int scoreMin, int scoreMax, boolean useItemRgb,
@@ -131,8 +153,6 @@ void bigBedAddLinkedFeaturesFromExt(struct track *track,
 struct lm *lm = lmInit(0);
 struct trackDb *tdb = track->tdb;
 struct bigBedInterval *bb, *bbList = bigBedSelectRangeExt(track, chrom, start, end, lm, maxItems);
-char *bedRow[32];
-char startBuf[16], endBuf[16];
 char *scoreFilter = cartOrTdbString(cart, track->tdb, "scoreFilter", NULL);
 char *mouseOverField = cartOrTdbString(cart, track->tdb, "mouseOverField", NULL);
 int minScore = 0;
@@ -140,34 +160,47 @@ if (scoreFilter)
     minScore = atoi(scoreFilter);
 
 struct bbiFile *bbi = fetchBbiForTrack(track);
+int seqTypeField =  0;
+if (sameString(track->tdb->type, "bigPsl"))
+    {
+    seqTypeField =  bbExtraFieldIndex(bbi, "seqType");
+    }
+
 int mouseOverIdx = bbExtraFieldIndex(bbi, mouseOverField);
+
+bbiFileClose(&bbi);
+track->bbiFile = NULL;
 
 for (bb = bbList; bb != NULL; bb = bb->next)
     {
-    bigBedIntervalToRow(bb, chromName, startBuf, endBuf, bedRow, ArraySize(bedRow));
     struct linkedFeatures *lf;
     if (sameString(track->tdb->type, "bigPsl"))
 	{
 	char *seq, *cds;
-	struct psl *psl = pslFromBigPsl(chromName, bb,  &seq, &cds); 
-	int sizeMul = 1;  // we're assuming not protein at the moment
+	struct psl *psl = pslFromBigPsl(chromName, bb, seqTypeField,  &seq, &cds); 
+	int sizeMul =  pslIsProtein(psl) ? 3 : 1;
 	boolean isXeno = 0;  // just affects grayIx
 	boolean nameGetsPos = FALSE; // we want the name to stay the name
 
 	lf = lfFromPslx(psl, sizeMul, isXeno, nameGetsPos, track);
 	lf->original = psl;
-	if (lf->orientation == -1)
+	if ((seq != NULL) && (lf->orientation == -1))
 	    reverseComplement(seq, strlen(seq));
 	lf->extra = seq;
 	lf->cds = cds;
 	}
     else
 	{
+        char startBuf[16], endBuf[16];
+        char *bedRow[32];
+
+        bigBedIntervalToRow(bb, chromName, startBuf, endBuf, bedRow, ArraySize(bedRow));
 	struct bed *bed = bedLoadN(bedRow, fieldCount);
 	lf = bedMungToLinkedFeatures(&bed, tdb, fieldCount,
 	    scoreMin, scoreMax, useItemRgb);
 	}
 
+    lf->label = makeLabel(track,  bb);
     if (sameString(track->tdb->type, "bigGenePred") || startsWith("genePred", track->tdb->type))
         {
         struct genePred  *gp = lf->original = genePredFromBigGenePred(chromName, bb); 
@@ -182,6 +215,9 @@ for (bb = bbList; bb != NULL; bb = bb->next)
 	slAddHead(pLfList, lf);
     }
 lmCleanup(&lm);
+
+if (!trackDbSettingClosestToHomeOn(track->tdb, "linkIdInName"))
+    track->itemName = bigLfItemName;
 }
 
 
@@ -235,6 +271,22 @@ if (summary)
 	}
     }
 freez(&tg->summary);
+}
+
+char *bigBedItemName(struct track *tg, void *item)
+// return label for simple beds
+{
+struct bed *bed = (struct bed *)item;
+
+return bed->label;
+}
+
+char *bigLfItemName(struct track *tg, void *item)
+// return label for linked features
+{
+struct linkedFeatures *lf = (struct linkedFeatures *)item;
+
+return lf->label;
 }
 
 void bigBedMethods(struct track *track, struct trackDb *tdb, 

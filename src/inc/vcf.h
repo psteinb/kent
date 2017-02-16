@@ -199,6 +199,15 @@ struct vcfFile *vcfFileMayOpen(char *fileOrUrl, char *chrom, int start, int end,
  * there are maxErr+1 errors.  A maxErr less than zero does not stop
  * and reports all errors. Set maxErr to VCF_IGNORE_ERRS for silence. */
 
+struct vcfFile *vcfTabixFileAndIndexMayOpen(char *fileOrUrl, char *tbiFileOrUrl, char *chrom, int start, int end,
+				    int maxErr, int maxRecords);
+/* Open a VCF file that has been compressed and indexed by tabix and
+ * parse VCF header, or return NULL if unable. tbiFileOrUrl can be NULL.
+ * If chrom is non-NULL, seek to the position range and parse all lines in
+ * range into vcff->records.  If maxErr >= zero, then continue to parse until
+ * there are maxErr+1 errors.  A maxErr less than zero does not stop
+ * and reports all errors. Set maxErr to VCF_IGNORE_ERRS for silence */
+
 struct vcfFile *vcfTabixFileMayOpen(char *fileOrUrl, char *chrom, int start, int end,
 				    int maxErr, int maxRecords);
 /* Open a VCF file that has been compressed and indexed by tabix and
@@ -280,6 +289,9 @@ const struct vcfGenotype *vcfRecordFindGenotype(struct vcfRecord *record, char *
 struct vcfInfoDef *vcfInfoDefForGtKey(struct vcfFile *vcff, const char *key);
 /* Look up the type of genotype FORMAT component key, in the definitions from the header,
  * and failing that, from the keys reserved in the spec. */
+
+const struct vcfInfoElement *vcfGenotypeFindInfo(const struct vcfGenotype *gt, char *key);
+/* Find the genotype infoElement for key, or return NULL. */
 
 char *vcfFilePooledStr(struct vcfFile *vcff, char *str);
 /* Allocate memory for a string from vcff's shared string pool. */

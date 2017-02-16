@@ -24,6 +24,7 @@
 #include "botDelay.h"
 #include "trashDir.h"
 #include "trackHub.h"
+#include "hgConfig.h"
 
 
 struct cart *cart;	/* The user's ui state. */
@@ -43,7 +44,6 @@ struct serverTable
    };
 
 char *typeList[] = {"BLAT's guess", "DNA", "protein", "translated RNA", "translated DNA"};
-char *sortList[] = {"query,score", "query,start", "chrom,score", "chrom,start", "score"};
 char *outputList[] = {"hyperlink", "psl", "psl no header"};
 
 #ifdef LOWELAB
@@ -214,35 +214,7 @@ while ((c = *s++) != 0)
 return TRUE;
 }
 
-int cmpChrom(char *a, char *b)
-/* Compare two chromosomes. */
-{
-return cmpStringsWithEmbeddedNumbers(a, b);
-}
 
-
-
-int pslCmpTargetScore(const void *va, const void *vb)
-/* Compare to sort based on target then score. */
-{
-const struct psl *a = *((struct psl **)va);
-const struct psl *b = *((struct psl **)vb);
-int diff = cmpChrom(a->tName, b->tName);
-if (diff == 0)
-    diff = pslScore(b) - pslScore(a);
-return diff;
-}
-
-int pslCmpTargetStart(const void *va, const void *vb)
-/* Compare to sort based on target start. */
-{
-const struct psl *a = *((struct psl **)va);
-const struct psl *b = *((struct psl **)vb);
-int diff = cmpChrom(a->tName, b->tName);
-if (diff == 0)
-    diff = a->tStart - b->tStart;
-return diff;
-}
 
 void printLuckyRedirect(char *browserUrl, struct psl *psl, char *database, char *pslName, 
 			char *faName, char *uiState, char *unhideTrack)
@@ -256,17 +228,25 @@ safef(url, sizeof(url), "%s?position=%s:%d-%d&db=%s&ss=%s+%s&%s%s",
 /* Odd it appears that we've already printed the Content-Typ:text/html line
    but I can't figure out where... */
 htmStart(stdout, "Redirecting"); 
-printf("<script>location.replace('%s');</script>", url);
-printf("<noscript>No javascript support:<br>Click <a href='%s'>here</a> for browser.</noscript>", url);
+char javascript[1024];
+safef(javascript, sizeof javascript,
+    "location.replace('%s');\n", url);
+jsInline(javascript);
+printf("<noscript>No javascript support:<br>Click <a href='%s'>here</a> for browser.</noscript>\n", url);
 htmlEnd();
 
 }
 
-void showAliPlaces(char *pslName, char *faName, char *database, 
-		   enum gfType qType, enum gfType tType, 
-		   char *organism, boolean feelingLucky)
+
+/* forward declaration to reduce churn */
+static void getCustomName(char *database, struct cart *cart, struct psl *psl, char **pName, char **pDescription);
+
+void showAliPlaces(char *pslName, char *faName, char *customText, char *database, 
+           enum gfType qType, enum gfType tType, 
+           char *organism, boolean feelingLucky)
 /* Show all the places that align. */
 {
+boolean useBigPsl = cfgOptionBooleanDefault("useBlatBigPsl", FALSE);
 struct lineFile *lf = pslFileOpen(pslName);
 struct psl *pslList = NULL, *psl;
 char *browserUrl = hgTracksName();
@@ -274,7 +254,7 @@ char *hgcUrl = hgcName();
 char uiState[64];
 char *vis;
 char unhideTrack[64];
-char *sort = cartUsualString(cart, "sort", sortList[0]);
+char *sort = cartUsualString(cart, "sort", pslSortList[0]);
 char *output = cartUsualString(cart, "output", outputList[0]);
 boolean pslOut = startsWith("psl", output);
 boolean isStraightNuc = (qType == gftRna || qType == gftDna);
@@ -302,30 +282,8 @@ if (pslList == NULL)
     return;
     }
 
-if (sameString(sort, "query,start"))
-    {
-    slSort(&pslList, pslCmpQuery);
-    }
-else if (sameString(sort, "query,score"))
-    {
-    slSort(&pslList, pslCmpQueryScore);
-    }
-else if (sameString(sort, "score"))
-    {
-    slSort(&pslList, pslCmpScore);
-    }
-else if (sameString(sort, "chrom,start"))
-    {
-    slSort(&pslList, pslCmpTargetStart);
-    }
-else if (sameString(sort, "chrom,score"))
-    {
-    slSort(&pslList, pslCmpTargetScore);
-    }
-else
-    {
-    slSort(&pslList, pslCmpQueryScore);
-    }
+pslSortListByVar(&pslList, sort);
+
 if(feelingLucky)
     {
     /* If we found something jump browser to there. */
@@ -336,7 +294,7 @@ if(feelingLucky)
     else 
 	{
 	cartWebStart(cart, database, "%s BLAT Results", trackHubSkipHubName(organism));
-	showAliPlaces(pslName, faName, database, qType, tType, organism, FALSE);
+	showAliPlaces(pslName, faName, customText, database, qType, tType, organism, FALSE);
 	cartWebEnd();
 	}
     }
@@ -356,22 +314,45 @@ else
     if (posStr != NULL)
         printf("<P>Go back to <A HREF=\"%s\">%s</A> on the Genome Browser.</P>\n", browserUrl, posStr);
 
+    if (useBigPsl)
+        {
+        char *trackName = NULL;
+        char *trackDescription = NULL;
+        getCustomName(database, cart, pslList, &trackName, &trackDescription);
+        psl = pslList;
+        printf("<A HREF=\"%s?o=%d&t=%d&trackName=%s&trackDescription=%s&g=buildBigPsl&i=%s+%s+%s&c=%s&l=%d&r=%d&db=%s&%s\">",       
+                hgcUrl, psl->tStart, psl->tEnd,cgiEncode(trackName), cgiEncode(trackDescription), pslName, cgiEncode(faName), psl->qName,  psl->tName,    
+                psl->tStart, psl->tEnd, database, uiState);
+
+        //printf( 
+        //"<FORM ACTION=\"../cgi-bin/hgc\" METHOD=\"GET\" NAME=\"mainForm\">\n");
+        printf("<P>Build a custom track with these results.  Track will be called %s </A>", trackDescription);
+        //printf("Description: %s\n", trackDescription);
+        //printf("<INPUT TYPE=SUBMIT NAME=Submit VALUE=\"Do It\">\n");
+        //printf("</FORM>");
+        }
+
     printf("<DIV STYLE=\"display:block; float:left\"><TT><PRE>");
     printf("   ACTIONS      QUERY           SCORE START  END QSIZE IDENTITY CHRO STRAND  START    END      SPAN\n");
     printf("---------------------------------------------------------------------------------------------------\n");
     for (psl = pslList; psl != NULL; psl = psl->next)
 	{
-/*	MH: we print the URLs without uiState, which is something like hgsid=2639733_bb8eZdRGuRoiq3CpE7WFG12QKi3D   
-   --> the reason is each hgsid can only have one current_locus --> opening several results in tabs and zooming clobbers the current_locus value
-*/
-/*
-	printf("<A HREF=\"%s?position=%s:%d-%d&db=%s&ss=%s+%s&%s%s\">",
-	    browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
-	    pslName, faName, uiState, unhideTrack);
-*/
-	printf("<A HREF=\"%s?position=%s:%d-%d&db=%s&ss=%s+%s&%s\">",
-	    browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
-	    pslName, faName, unhideTrack);
+        if (customText)
+            printf("<A HREF=\"%s?position=%s:%d-%d&db=%s&hgt.customText=%s&%s%s\">",
+                browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
+                customText, uiState, unhideTrack);
+        else
+            /*	MH: we print the URLs without uiState, which is something like hgsid=2639733_bb8eZdRGuRoiq3CpE7WFG12QKi3D   
+               --> the reason is each hgsid can only have one current_locus --> opening several results in tabs and zooming clobbers the current_locus value
+            */
+            /*
+            printf("<A HREF=\"%s?position=%s:%d-%d&db=%s&ss=%s+%s&%s%s\">",
+                browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
+                pslName, faName, uiState, unhideTrack);
+            */
+            printf("<A HREF=\"%s?position=%s:%d-%d&db=%s&ss=%s+%s&%s\">",
+                browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
+                pslName, faName, unhideTrack);
 	printf("browser</A> ");
 /* MH same here */
 /*
@@ -505,7 +486,85 @@ for (seq = seqList; seq != NULL; seq = seq->next)
     subChar(seq->dna, 'u', 't');
 }
 
-void blatSeq(char *userSeq, char *organism)
+static struct slName *namesInPsl(struct psl *psl)
+/* Find all the unique names in a list of psls. */
+{
+struct hash *hash = newHash(3);
+struct slName *nameList = NULL;
+struct slName *name;
+for(; psl; psl = psl->next)
+    {
+    if (hashLookup(hash, psl->qName) == NULL)
+        {
+        name = slNameNew(psl->qName);
+        slAddHead(&nameList, name);
+        hashStore(hash, psl->qName);
+        }
+    }
+slReverse(&nameList);
+return nameList;
+}
+
+static char *makeNameUnique(char *name, char *database, struct cart *cart)
+/* Make sure track name will create a unique custom track. */
+{
+struct slName *browserLines = NULL;
+struct customTrack *ctList = customTracksParseCart(database, cart, &browserLines, NULL);
+struct customTrack *ct;
+int count = 0;
+char buffer[4096];
+safef(buffer, sizeof buffer, "%s", name);
+
+for(;;count++)
+    {
+    char *customName = customTrackTableFromLabel(buffer);
+    for (ct=ctList;
+         ct != NULL;
+         ct=ct->next) 
+        {
+        if (startsWith(customName, ct->tdb->track))
+            // Found a track with this name.
+            break;
+        }
+
+    if (ct == NULL)
+        break;
+
+    safef(buffer, sizeof buffer, "%s (%d)", name, count + 1);
+    }
+
+return cloneString(buffer);
+}
+
+static void getCustomName(char *database, struct cart *cart, struct psl *psl, char **pName, char **pDescription)
+// Find a track name that isn't currently a custom track. Also fill in description.
+{
+struct slName *names = namesInPsl(psl);
+char shortName[4096];
+char description[4096];
+
+unsigned count = slCount(names);
+if (count == 1)
+    {
+    safef(shortName, sizeof shortName, "blat %s", names->name);
+    safef(description, sizeof description, "blat on %s",  names->name);
+    }
+else if (count == 2)
+    {
+    safef(shortName, sizeof shortName, "blat %s+%d", names->name, count - 1);
+    safef(description, sizeof description, "blat on %d queries (%s, %s)", count, names->name, names->next->name);
+    }
+else
+    {
+    safef(shortName, sizeof shortName, "blat %s+%d", names->name, count - 1);
+    safef(description, sizeof description, "blat on %d queries (%s, %s, ...)", count, names->name, names->next->name);
+    }
+
+*pName = makeNameUnique(shortName, database, cart);
+*pDescription = cloneString(description);
+}
+
+void blatSeq(char *userSeq, char *organism, char *database)
 /* Blat sequence user pasted in. */
 {
 FILE *f;
@@ -706,8 +765,9 @@ for (seq = seqList; seq != NULL; seq = seq->next)
     gfOutputQuery(gvo, f);
     }
 carefulClose(&f);
-showAliPlaces(pslTn.forCgi, faTn.forCgi, serve->db, qType, tType, 
-	      organism, feelingLucky);
+
+showAliPlaces(pslTn.forCgi, faTn.forCgi, NULL, serve->db, qType, tType, 
+              organism, feelingLucky);
 if(!feelingLucky)
     cartWebEnd();
 gfFileCacheFree(&tFileCache);
@@ -721,9 +781,9 @@ void askForSeq(char *organism, char *db)
 findServer(db, FALSE);
 
 /* JavaScript to update form when org changes */
-char *onChangeText = "onchange=\""
+char *onChangeText = ""
     "document.mainForm.changeInfo.value='orgChange';"
-    "document.mainForm.submit();\"";
+    "document.mainForm.submit();";
 
 char *userSeq = NULL;
 
@@ -742,7 +802,7 @@ printf("<TD ALIGN=CENTER>Output type:</TD>");
 printf("<TD ALIGN=CENTER>&nbsp</TD>");
 printf("</TR>\n<TR>\n");
 printf("<TD ALIGN=CENTER>\n");
-printBlatGenomeListHtml(db, onChangeText);
+printBlatGenomeListHtml(db, "change", onChangeText);
 printf("</TD>\n");
 printf("<TD ALIGN=CENTER>\n");
 printBlatAssemblyListHtml(db);
@@ -751,7 +811,7 @@ printf("<TD ALIGN=CENTER>\n");
 cgiMakeDropList("type", typeList, ArraySize(typeList), NULL);
 printf("</TD>\n");
 printf("<TD ALIGN=CENTER>\n");
-cgiMakeDropList("sort", sortList, ArraySize(sortList), cartOptionalString(cart, "sort"));
+cgiMakeDropList("sort", pslSortList, ArraySize(pslSortList), cartOptionalString(cart, "sort"));
 printf("</TD>\n");
 printf("<TD ALIGN=CENTER>\n");
 cgiMakeDropList("output", outputList, ArraySize(outputList), cartOptionalString(cart, "output"));
@@ -880,7 +940,7 @@ if (isEmpty(userSeq) || orgChange)
     }
 else 
     {
-    blatSeq(skipLeadingSpaces(userSeq), organism);
+    blatSeq(skipLeadingSpaces(userSeq), organism, db);
     }
 }
 
@@ -894,8 +954,6 @@ int main(int argc, char *argv[])
 long enteredMainTime = clock1000();
 oldVars = hashNew(10);
 cgiSpoof(&argc, argv);
-
-setUdcCacheDir();
 
 /* org has precedence over db when changeInfo='orgChange' */
 

@@ -36,7 +36,7 @@ static char *database = NULL;
 
 /* Javascript to support New Assembly pulldown when New Genome changes. */
 /* Copies selected values to a hidden form */
-char *onChangeToOrg = "onchange=\"document.mainForm.submit();\"";
+char *onChangeToOrg = "document.mainForm.submit();";
 
 static struct dbDb *matchingDb(struct dbDb *list, char *name)
 /* Find database of given name in list or die trying. */
@@ -85,12 +85,12 @@ cgiTableField(fromDb->description);
 /* Destination organism. */
 cgiSimpleTableFieldStart();
 dbList = hGetLiftOverToDatabases(liftOver->fromDb);
-printSomeGenomeListHtmlNamed(HGLFT_TOORG_VAR, liftOver->toDb, dbList, onChangeToOrg);
+printSomeGenomeListHtmlNamed(HGLFT_TOORG_VAR, liftOver->toDb, dbList, "change", onChangeToOrg);
 cgiTableFieldEnd();
 
 /* Destination assembly */
 cgiSimpleTableFieldStart();
-printAllAssemblyListHtmlParm(liftOver->toDb, dbList, HGLFT_TODB_VAR, TRUE, "");
+printAllAssemblyListHtmlParm(liftOver->toDb, dbList, HGLFT_TODB_VAR, TRUE, NULL, NULL);
 cgiTableFieldEnd();
 
 cgiSimpleTableFieldStart();
@@ -375,7 +375,6 @@ int main(int argc, char *argv[])
 long enteredMainTime = clock1000();
 oldVars = hashNew(10);
 cgiSpoof(&argc, argv);
-setUdcCacheDir();
 cartEmptyShell(doMiddle, hUserCookie(), excludeVars, oldVars);
 cgiExitTime("hgConvert", enteredMainTime);
 return 0;

@@ -70,6 +70,10 @@ char *excludeVars[] = {"Submit", "submit", "hgva_startQuery", NULL,};
 #define hgvaUseVariantIds "hgva_useVariantIds"
 #define hgvaVariantIdsLabel "Variant Identifiers"
 #define hgvaVariantIds "hgva_variantIds"
+#define hgvaUseVariantFileOrUrl "hgva_useVariantFileOrUrl"
+#define hgvaVariantFileOrUrlLabel "from file"
+#define hgvaVariantFileOrUrl "hgva_variantFileOrUrl"
+#define hgvaVariantFileOrUrlType "hgva_variantFileOrUrlType"
 #define hgvaVariantPasteContainer "variantPasteContainer"
 
 void addSomeCss()
@@ -154,8 +158,8 @@ void printRegionListHtml(char *db)
  * Unlike hgTables, don't bother with ENCODE pilot regions -- unless someone misses it.
  * Return the selected region type. */
 {
-printf("<SELECT ID='"hgvaRegionType"' NAME='"hgvaRegionType"' "
-       "onchange=\"hgva.changeRegion();\">\n");
+printf("<SELECT ID='"hgvaRegionType"' NAME='"hgvaRegionType"'>\n");
+jsOnEventById("change", hgvaRegionType, "hgva.changeRegion();");
 printOption(hgvaRegionTypeGenome, regionType, "genome");
 printOption(hgvaRegionTypeRange, regionType, "position or search term");
 printf("</SELECT>");
@@ -187,11 +191,11 @@ void printCtAndHubButtons()
 {
 boolean hasCustomTracks = customTracksExist(cart, NULL);
 puts("<div style='padding-top: 5px; padding-bottom: 5px'>");
-hOnClickButton("document.customTrackForm.submit(); return false;",
+hOnClickButton("prtCtHub_CtBut", "document.customTrackForm.submit(); return false;",
 	       hasCustomTracks ? CT_MANAGE_BUTTON_LABEL : CT_ADD_BUTTON_LABEL);
 printf(" ");
 if (hubConnectTableExists())
-    hOnClickButton("document.trackHubForm.submit(); return false;", "track hubs");
+    hOnClickButton("prtCtHub_TrkHub", "document.trackHubForm.submit(); return false;", "track hubs");
 nbSpaces(3);
 printf("To reset <B>all</B> user cart settings (including custom tracks), \n"
        "<A HREF=\"cartReset?destination=%s\">click here</A>.\n",
@@ -206,17 +210,17 @@ boolean gotClade = hGotClade();
 if (gotClade)
     {
     topLabelSpansStart("clade");
-    printCladeListHtml(genome, onChangeClade());
+    printCladeListHtml(genome, "change", onChangeClade());
     topLabelSpansEnd();
     }
 topLabelSpansStart("genome");
 if (gotClade)
-    printGenomeListForCladeHtml(database, onChangeOrg());
+    printGenomeListForCladeHtml(database, "change", onChangeOrg());
 else
-    printGenomeListHtml(database, onChangeOrg());
+    printGenomeListHtml(database, "change", onChangeOrg());
 topLabelSpansEnd();
 topLabelSpansStart("assembly");
-printAssemblyListHtml(database, onChangeDb());
+printAssemblyListHtml(database, "change", onChangeDb());
 topLabelSpansEnd();
 puts("<BR>");
 topLabelSpansStart("region to annotate");
@@ -323,7 +327,11 @@ printf("</select>\n");
 char shadowVar[1024];
 safef(shadowVar, sizeof(shadowVar), "%s%s", cgiMultListShadowPrefix(), cartVar);
 cgiMakeHiddenVar(shadowVar, "1");
-//printf("<script>$(document).ready(function(){ ddcl.setup($('#%s')[0]); });</script>\n", cartVar);
+//
+char javascript[1024];
+safef(javascript, sizeof javascript,
+    "$(document).ready(function(){ ddcl.setup($('#%s')[0]); });\n", cartVar);
+jsInline(javascript);
 }
 
 void printFilterOptions(struct trackDb *tdb)
@@ -349,16 +357,18 @@ if (sameString(tdb->type, "factorSource"))
 	   cartVar, defaultScore);
     // The dimensions of ui-dropdownchecklist multiselects are not correct when
     // the item is hidden.  So, when this filter section is made visible, reinit them.
-    printf("<script>\n"
-	   "$(function(){"
-	   "$('tr[id^=\"%s-\"]').bind('show',"
+    char javascript[1024];
+    safef(javascript, sizeof javascript,
+	   "$(function(){\n"
+	   "$('tr[id^=\"%s-\"]').bind('show',\n"
 	   "  function(jqev) { \n"
 	   "    var $multisels = $(jqev.target).find('.filterBy');\n"
 	   "    var multiselElList = $multisels.each(function(ix, el){ return el; });\n"
 	   "    ddcl.reinit(multiselElList);"
 	   "  });\n"
-	   "});"
-	   "</script>\n", sectionName);
+	   "});\n"
+	   , sectionName);
+    jsInline(javascript);
     puts("</TABLE>");
     endCollapsibleSection();
     }
@@ -454,12 +464,12 @@ if (varTrackList == NULL)
     {
     printf("Your session doesn't have any custom tracks or hub tracks in " PGSNP_OR_VCF
            " format.\n");
-    hOnClickButton("return hgva.goToAddCustomTrack();",
+    hOnClickButton("selVar_AddPgpVcfCt", "return hgva.goToAddCustomTrack();",
                    "add pgSnp or VCF custom track");
     if (hubConnectTableExists())
         {
         nbSpaces(2);
-        hOnClickButton("document.trackHubForm.submit(); return false;", "add track hub");
+        hOnClickButton("selVar_AddTrkHub", "document.trackHubForm.submit(); return false;", "add track hub");
         }
     puts("<BR>");
     }
@@ -469,8 +479,8 @@ else if (slCount(varTrackList) > 1)
            PGSNP_OR_VCF " format, please select the one you wish to annotate:<BR>\n");
     }
 printf("<B>variants: </B>");
-printf("<SELECT ID='hgva_variantTrack' NAME='hgva_variantTrack' "
-       "onchange=\"hgva.changeVariantSource();\">\n");
+printf("<SELECT ID='hgva_variantTrack' NAME='hgva_variantTrack'>\n");
+jsOnEventById("change", "hgva_variantTrack", "hgva.changeVariantSource();");
 char *selected = cartUsualString(cart, "hgva_variantTrack", "");
 struct slRef *ref;
 for (ref = varTrackList;  ref != NULL;  ref = ref->next)
@@ -539,8 +549,8 @@ char *selected = cartUsualString(cart, "hgva_geneTrack", firstTrack);
 
 if (gotGP)
     {
-    printf("<SELECT ID='hgva_geneTrack' NAME='hgva_geneTrack' "
-           "onchange=\"hgva.changeGeneSource();\">\n");
+    printf("<SELECT ID='hgva_geneTrack' NAME='hgva_geneTrack'>\n");
+    jsOnEventById("change", "hgva_geneTrack", "hgva.changeGeneSource();");
     struct slRef *ref;
     for (ref = trackRefList;  ref != NULL;  ref = ref->next)
 	{
@@ -1209,9 +1219,9 @@ else
 	{
 	printf("<TR><TD></TD><TD>");
 	struct trackDb *tdb = ref->val;
-	cgiMakeOnClickRadioButton("hgva_require_consEl_track", tdb->track,
+	cgiMakeOnEventRadioButtonWithClass("hgva_require_consEl_track", tdb->track,
 				  sameString(tdb->track, selected),
-	  "onclick=\"setCheckboxList('hgva_require_consEl', true);\"");
+	  NULL, "click", "setCheckboxList('hgva_require_consEl', true);");
 	printf("%s</TD></TR>\n", tdb->longLabel);
 	}
     puts("</TABLE>");
@@ -1268,7 +1278,7 @@ puts("This tool is for research use only. While this tool is open to the "
 puts("</div><BR>");
 printf("<div><img id='loadingImg' src='../images/loading.gif' />\n");
 printf("<span id='loadingMsg'></span></div>\n");
-cgiMakeOnClickButton("hgva.submitQueryIfDisclaimerAgreed();", "Get results");
+cgiMakeOnClickButton("subDisclmAgrd","hgva.submitQueryIfDisclaimerAgreed();", "Get results");
 puts("<BR><BR>");
 }
 
@@ -1299,9 +1309,11 @@ jsInit();
 webIncludeResourceFile("jquery-ui.css");
 webIncludeResourceFile("ui.dropdownchecklist.css");
 boolean alreadyAgreed = cartUsualBoolean(cart, "hgva_agreedToDisclaimer", FALSE);
-printf("<script>\n"
-       "$(document).ready(function() { hgva.disclaimer.init(%s, hgva.userClickedAgree); });\n"
-       "</script>\n", alreadyAgreed ? "true" : "false");
+char javascript[1024];
+safef(javascript, sizeof javascript,
+    "$(document).ready(function() { hgva.disclaimer.init(%s, hgva.userClickedAgree); });\n"
+    , alreadyAgreed ? "true" : "false");
+jsInline(javascript);
 addSomeCss();
 printAssemblySection();
 
@@ -1376,7 +1388,7 @@ void setGpVarFuncFilter(struct annoGrator *gpVarGrator)
 {
 struct annoGratorGpVarFuncFilter aggvFuncFilter;
 ZeroVar(&aggvFuncFilter);
-aggvFuncFilter.intergenic = cartUsualBoolean(cart, "hgva_include_intergenic", FALSE);
+aggvFuncFilter.intergenic = cartUsualBoolean(cart, "hgva_include_intergenic", TRUE);
 aggvFuncFilter.upDownstream = cartUsualBoolean(cart, "hgva_include_upDownstream", TRUE);
 aggvFuncFilter.nmdTranscript = cartUsualBoolean(cart, "hgva_include_nmdTranscript", TRUE);
 aggvFuncFilter.exonLoss = cartUsualBoolean(cart, "hgva_include_exonLoss", TRUE);
@@ -1417,7 +1429,7 @@ if (grator != NULL)
     }
 // If not in gratorsByName, then attempt to construct it here:
 if (fileName != NULL)
-    grator = hAnnoGratorFromBigFileUrl(fileName, assembly, ANNO_NO_LIMIT, overlapRule);
+    grator = hAnnoGratorFromBigFileUrl(fileName, NULL, assembly, ANNO_NO_LIMIT, overlapRule);
 else
     grator = hAnnoGratorFromTrackDb(assembly, tdb->table, tdb, chrom, ANNO_NO_LIMIT,
                                     NULL, overlapRule, NULL);
@@ -1541,7 +1553,7 @@ if (hashFindVal(gratorsByName, seqChangeTable) == NULL)
     if (fileName == NULL)
 	errAbort("'%s' requested, but I can't find fileName for %s",
 		 trackName, seqChangeTable);
-    struct annoGrator *grator = hAnnoGratorFromBigFileUrl(fileName, assembly, ANNO_NO_LIMIT,
+    struct annoGrator *grator = hAnnoGratorFromBigFileUrl(fileName, NULL, assembly, ANNO_NO_LIMIT,
                                                           agoNoConstraint);
     updateGratorList(grator, pGratorList);
     hashAdd(gratorsByName, seqChangeTable, grator);
@@ -1673,7 +1685,7 @@ for (trackVar = trackVars;  trackVar != NULL;  trackVar = trackVar->next)
 	addDbNsfpSeqChange(trackName, assembly, gratorsByName, pGratorList);
 	char *fileName = fileNameFromTable(trackName);
 	if (fileName != NULL)
-	    grator = hAnnoGratorFromBigFileUrl(fileName, assembly, ANNO_NO_LIMIT, agoNoConstraint);
+	    grator = hAnnoGratorFromBigFileUrl(fileName, NULL, assembly, ANNO_NO_LIMIT, agoNoConstraint);
 	}
     else
 	{
@@ -2027,7 +2039,7 @@ if (! fileExists(sampleFile) || forceRebuild)
     geneStream->close(&geneStream);
     carefulClose(&f);
     }
-return annoStreamVcfNew(sampleFile, FALSE, assembly, maxOutRows);
+return annoStreamVcfNew(sampleFile, NULL, FALSE, assembly, maxOutRows);
 }
 
 static char *variantIdPath(struct annoAssembly *assembly, char *variantIds)
@@ -2359,7 +2371,7 @@ if (! fileExists(varFile) || forceRebuild)
 	writeMinimalVcfRow(f, var);
     carefulClose(&f);
     }
-return annoStreamVcfNew(varFile, FALSE, assembly, maxOutRows);
+return annoStreamVcfNew(varFile, NULL, FALSE, assembly, maxOutRows);
 }
 
 static struct trackDb *getVariantTrackDb(char *variantTrack)
@@ -2575,13 +2587,15 @@ uint start = 0, end = 0;
 if (sameString(regionType, hgvaRegionTypeRange))
     getCartPosOrDie(&chrom, &start, &end);
 struct annoAssembly *assembly = hAnnoGetAssembly(database);
+boolean isCommandLine = (cgiOptionalString("cgiSpoof") != NULL);
 
 char *geneTrack = cartString(cart, "hgva_geneTrack");
 struct trackDb *geneTdb = tdbForTrack(database, geneTrack, &fullTrackList);
 if (geneTdb == NULL)
     {
     warn("Can't find tdb for gene track %s", geneTrack);
-    doUi();
+    if (! isCommandLine)
+        doUi();
     return;
     }
 
@@ -2606,12 +2620,20 @@ else if (sameString(variantTrack, hgvaUseVariantIds))
     primary = makeVariantIdStreamer(assembly, maxVarRows, &chrom, &start, &end, &commentList);
     primaryLongLabel = hgvaVariantIdsLabel;
     }
+else if (sameString(variantTrack, hgvaUseVariantFileOrUrl))
+    {
+    char *fileOrUrl = cartString(cart, hgvaVariantFileOrUrl);
+    char *type = cartOptionalString(cart, hgvaVariantFileOrUrlType);
+    primary = hAnnoStreamerFromBigFileUrl(fileOrUrl, NULL, assembly, maxVarRows, type);
+    primaryLongLabel = hgvaVariantFileOrUrlLabel;
+    }
 else
     {
     struct trackDb *varTdb = getVariantTrackDb(variantTrack);
     if (varTdb == NULL)
 	{
-	doUi();
+        if (! isCommandLine)
+            doUi();
 	return;
 	}
     primary = hAnnoStreamerFromTrackDb(assembly, varTdb->table, varTdb, chrom, maxVarRows, NULL);
@@ -2666,7 +2688,7 @@ if (doHtml)
     {
     webStart(cart, database, "Annotated Variants in VEP/HTML format");
     }
-else
+else if (! isCommandLine)
     {
     // Undo the htmlPushEarlyHandlers() because after this point they make ugly text:
     popWarnHandler();
@@ -2687,7 +2709,7 @@ annoGratorQueryFree(&query);
 
 if (doHtml)
     webEnd();
-else
+else if (! isCommandLine)
     textOutClose(&compressPipeline, NULL);
 }
 
@@ -2697,14 +2719,21 @@ int main(int argc, char *argv[])
 long enteredMainTime = clock1000();
 if (hIsPrivateHost())
     pushCarefulMemHandler(LIMIT_2or6GB);
-htmlPushEarlyHandlers(); /* Make errors legible during initialization. */
 
 cgiSpoof(&argc, argv);
+boolean isCommandLine = (cgiOptionalString("cgiSpoof") != NULL);
+if (!isCommandLine)
+    htmlPushEarlyHandlers(); /* Make errors legible during initialization. */
 oldVars = hashNew(10);
-setUdcCacheDir();
 boolean startQuery = (cgiUsualString("hgva_startQuery", NULL) != NULL);
 if (startQuery)
-    cart = cartAndCookieNoContent(hUserCookie(), excludeVars, oldVars);
+    {
+    if (isCommandLine)
+        // No HTTP header for command-line use.
+        cart = cartForSession(hUserCookie(), excludeVars, oldVars);
+    else
+        cart = cartAndCookieNoContent(hUserCookie(), excludeVars, oldVars);
+    }
 else
     cart = cartAndCookie(hUserCookie(), excludeVars, oldVars);
 
@@ -2729,7 +2758,7 @@ if (lookupPosition(cart, hgvaRange))
     {
     if (startQuery)
 	doQuery();
-    else
+    else if (! isCommandLine)
 	doUi();
     }
 else
@@ -2749,6 +2778,7 @@ else
     }
 
 cartCheckout(&cart);
-cgiExitTime("hgVai", enteredMainTime);
+if (! isCommandLine)
+    cgiExitTime("hgVai", enteredMainTime);
 return 0;
 }

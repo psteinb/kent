@@ -8,20 +8,25 @@
 #include "bamFile.h"
 #include "htmshell.h"
 #include "udc.h"
+#include "psl.h"
 
 // If KNETFILE_HOOKS is used (as recommended!), then we can simply call bam_index_load
 // without worrying about the samtools lib creating local cache files in cgi-bin:
 
-static bam_index_t *bamOpenIdx(samfile_t *sam, char *fileOrUrl)
+static bam_index_t *bamOpenIndexGivenUrl(samfile_t *sam, char *fileOrUrl, char *baiFileOrUrl)
 /* If fileOrUrl has a valid accompanying .bai file, parse and return the index;
- * otherwise return NULL. */
+ * otherwise return NULL. baiFileOrUrl can be NULL. 
+ * The difference to bamOpenIndex is that the URL/filename of the bai file can be specified. */
 {
 if (sam->format.format == cram) 
     return sam_index_load(sam, fileOrUrl);
 
 // assume that index is a .bai file 
 char indexName[4096];
-safef(indexName, sizeof indexName, "%s.bai", fileOrUrl);
+if (baiFileOrUrl==NULL)
+    safef(indexName, sizeof indexName, "%s.bai", fileOrUrl);
+else
+    safef(indexName, sizeof indexName, "%s", baiFileOrUrl);
 return sam_index_load2(sam, fileOrUrl, indexName);
 }
 
@@ -34,6 +39,13 @@ if (pIdx != NULL && *pIdx != NULL)
     free(*pIdx); // Not freeMem, freez etc -- sam just uses malloc/calloc.
     *pIdx = NULL;
     }
+}
+
+static bam_index_t *bamOpenIdx(samfile_t *sam, char *fileOrUrl)
+/* If fileOrUrl has a valid accompanying .bai file, parse and return the index;
+ * otherwise return NULL. baiFileOrUrl can be NULL. */
+{
+return bamOpenIndexGivenUrl(sam, fileOrUrl, NULL);
 }
 
 boolean bamFileExists(char *fileOrUrl)
@@ -117,12 +129,12 @@ if (pSamFile != NULL)
     }
 }
 
-void bamFileAndIndexMustExist(char *fileOrUrl)
+void bamFileAndIndexMustExist(char *fileOrUrl, char *baiFileOrUrl)
 /* Open both a bam file and its accompanying index or errAbort; this is what it
  * takes for diagnostic info to propagate up through errCatches in calling code. */
 {
 samfile_t *bamF = bamOpen(fileOrUrl, NULL);
-bam_index_t *idx = bamOpenIdx(bamF, fileOrUrl);
+bam_index_t *idx = bamOpenIndexGivenUrl(bamF, fileOrUrl, baiFileOrUrl);
 if (idx == NULL)
     errAbort("failed to read index file (.bai) corresponding to %s", fileOrUrl);
 bamCloseIdx(&idx);
@@ -187,9 +199,11 @@ if (samfile->format.format == cram)
     }
 }
 
-void bamFetchPlus(char *fileOrUrl, char *position, bam_fetch_f callbackFunc, void *callbackData,
+void bamAndIndexFetchPlus(char *fileOrUrl, char *baiFileOrUrl, char *position, bam_fetch_f callbackFunc, void *callbackData,
 		 samfile_t **pSamFile, char *refUrl, char *cacheDir)
-/* Open the .bam file, fetch items in the seq:start-end position range,
+/* Open the .bam file with the .bai index specified by baiFileOrUrl.
+ * baiFileOrUrl can be NULL and defaults to <fileOrUrl>.bai.
+ * Fetch items in the seq:start-end position range,
  * and call callbackFunc on each bam item retrieved from the file plus callbackData.
  * This handles BAM files with "chr"-less sequence names, e.g. from Ensembl. 
  * The pSamFile parameter is optional.  If non-NULL it will be filled in, just for
@@ -206,7 +220,7 @@ if (fh->format.format == cram)
 bam_hdr_t *header = sam_hdr_read(fh);
 if (pSamFile != NULL)
     *pSamFile = fh;
-bam_index_t *idx = bamOpenIdx(fh, bamFileName);
+bam_index_t *idx = bamOpenIndexGivenUrl(fh, bamFileName, baiFileOrUrl);
 if (idx == NULL)
     warn("bam_index_load(%s) failed.", bamFileName);
 else
@@ -215,6 +229,12 @@ else
     bamCloseIdx(&idx);
     }
 bamClose(&fh);
+}
+
+void bamFetchPlus(char *fileOrUrl, char *position, bam_fetch_f callbackFunc, void *callbackData,
+		 samfile_t **pSamFile, char *refUrl, char *cacheDir)
+{
+bamAndIndexFetchPlus(fileOrUrl, NULL, position, callbackFunc, callbackData, pSamFile, refUrl, cacheDir);
 }
 
 void bamFetch(char *fileOrUrl, char *position, bam_fetch_f callbackFunc, void *callbackData,
@@ -564,29 +584,85 @@ while (s < bam->data + bam->data_len)
     }
 }
 
-
-
-static void bamChromInfoFree(struct bamChromInfo **pInfo)
-/* Free up one chromInfo */
+struct psl *bamToPslUnscored(const bam1_t *bam, const bam_hdr_t *hdr)
+/* Translate BAM's numeric CIGAR encoding into PSL sufficient for cds.c (just coords,
+ * no scoring info) */
 {
-struct bamChromInfo *info = *pInfo;
-if (info != NULL)
+const bam1_core_t *core = &bam->core;
+struct psl *psl;
+AllocVar(psl);
+boolean isRc = (core->flag & BAM_FREVERSE);
+psl->strand[0] = isRc ? '-' : '+';
+psl->qName = cloneString(bam1_qname(bam));
+psl->tName = cloneString(hdr->target_name[core->tid]);
+unsigned blockCount = 0;
+unsigned *blockSizes, *qStarts, *tStarts;
+AllocArray(blockSizes, core->n_cigar);
+AllocArray(qStarts, core->n_cigar);
+AllocArray(tStarts, core->n_cigar);
+int tPos = core->pos, qPos = 0, qLength = 0;
+unsigned int *cigar = bam1_cigar(bam);
+int i;
+for (i = 0;  i < core->n_cigar;  i++)
     {
-    freeMem(info->name);
-    freez(pInfo);
+    char op;
+    int n = bamUnpackCigarElement(cigar[i], &op);
+    switch (op)
+	{
+	case 'X': // mismatch (gapless aligned block)
+	case '=': // match (gapless aligned block)
+	case 'M': // match or mismatch (gapless aligned block)
+	    blockSizes[blockCount] = n;
+	    qStarts[blockCount] = qPos;
+	    tStarts[blockCount] = tPos;
+	    blockCount++;
+	    tPos += n;
+	    qPos += n;
+	    qLength += n;
+            if (op == 'X')
+               psl->misMatch += n;
+            else
+               psl->match += n;
+	    break;
+	case 'I': // inserted in query
+	    qPos += n;
+	    qLength += n;
+	    break;
+	case 'D': // deleted from query
+	case 'N': // long deletion from query (intron as opposed to small del)
+	    tPos += n;
+	    break;
+	case 'S': // skipped query bases at beginning or end ("soft clipping")
+	    qPos += n;
+	    qLength += n;
+	    break;
+	case 'H': // skipped query bases not stored in record's query sequence ("hard clipping")
+	case 'P': // P="silent deletion from padded reference sequence" -- ignore these.
+	    break;
+	default:
+	    errAbort("bamToPsl: unrecognized CIGAR op %c -- update me", op);
+	}
     }
-}
 
-void bamChromInfoFreeList(struct bamChromInfo **pList)
-/* Free a list of dynamically allocated bamChromInfo's */
-{
-struct bamChromInfo *el, *next;
-
-for (el = *pList; el != NULL; el = next)
+if (blockCount == 0)
     {
-    next = el->next;
-    bamChromInfoFree(&el);
+    pslFree(&psl);
+    return NULL;
     }
-*pList = NULL;
+
+psl->tSize = hdr->target_len[core->tid];
+psl->tStart = tStarts[0];
+psl->tEnd = tStarts[blockCount-1] + blockSizes[blockCount-1];
+psl->qSize = qLength;
+psl->qStart = qStarts[0];
+psl->qEnd = qStarts[blockCount-1] + blockSizes[blockCount-1];
+if (isRc)
+    reverseIntRange(&psl->qStart, &psl->qEnd, psl->qSize);
+psl->blockCount = blockCount;
+psl->blockSizes = blockSizes;
+psl->qStarts = qStarts;
+psl->tStarts = tStarts;
+pslComputeInsertCounts(psl);
+return psl;
 }
 
