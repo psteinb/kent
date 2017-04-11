@@ -47,6 +47,7 @@
 #include "htmlPage.h"
 #include "longRange.h"
 #include "tagRepo.h"
+#include "fieldedTable.h"
 
 #define SMALLBUF 256
 #define MAX_SUBGROUP 9
@@ -61,21 +62,18 @@
 #define DEFAULT_BUTTON(nameOrId,anc,beg,contains) \
     printf(DEF_BUTTON,(anc),"defaults_sm.png","default"); \
     safef(id, sizeof id, "btn_%s", (anc)); \
-    safef(javascript, sizeof javascript, DEF_BUTTON_JS,(nameOrId),(beg),(contains),(nameOrId),(beg),(contains)); \
-    jsOnEventById("click", id, javascript);
+    jsOnEventByIdF("click", id, DEF_BUTTON_JS,(nameOrId),(beg),(contains),(nameOrId),(beg),(contains)); 
 
 #define PM_BUTTON  "<IMG height=18 width=18 id=\"btn_%s\" src=\"../images/%s\" alt=\"%s\">\n"
 #define PM_BUTTON_JS  "setCheckBoxesThatContain('%s',%s,true,'%s','','%s');"
 #define PLUS_BUTTON(nameOrId,anc,beg,contains) \
     printf(PM_BUTTON, (anc), "add_sm.gif",   "+"); \
     safef(id, sizeof id, "btn_%s", (anc)); \
-    safef(javascript, sizeof javascript, PM_BUTTON_JS, (nameOrId),"true", (beg),(contains)); \
-    jsOnEventById("click", id, javascript);
+    jsOnEventByIdF("click", id, PM_BUTTON_JS, (nameOrId),"true", (beg),(contains)); 
 #define MINUS_BUTTON(nameOrId,anc,beg,contains) \
     printf(PM_BUTTON, (anc), "remove_sm.gif", "-"); \
     safef(id, sizeof id, "btn_%s", (anc)); \
-    safef(javascript, sizeof javascript, PM_BUTTON_JS, (nameOrId),"false", (beg),(contains)); \
-    jsOnEventById("click", id, javascript);
+    jsOnEventByIdF("click", id, PM_BUTTON_JS, (nameOrId),"false", (beg),(contains)); 
 
 boolean isEncode2(char *database)
 // Return true for ENCODE2 assemblies
@@ -195,6 +193,56 @@ freeMem(encValue);
 return dyStringCannibalize(&dyLink);
 }
 
+char *tabSepMetaAsHtmlTable(char *tabSepMeta, struct trackDb *tdb,boolean showLongLabel,boolean showShortLabel)
+/* Return a string which is an HTML table of the tags for this track which are stored as a fielded table. */
+{
+// If there's no file, there's no data.
+if (tabSepMeta == NULL)
+    return "";
+
+// If the trackDb entry doesn't have a foreign key, there's no data.
+char *metaTag = trackDbSetting(tdb, "meta");
+if (metaTag == NULL)
+    return "";
+
+static char *cachedTableName = NULL;
+static struct hash *cachedHash = NULL;
+static struct fieldedTable *cachedTable = NULL;
+
+// Cache this table because there's a good chance we'll get called again with it.
+if ((cachedTableName == NULL) || differentString(tabSepMeta, cachedTableName))
+    {
+    char *requiredFields[] = {"meta"};
+    cachedTable = fieldedTableFromTabFile(tabSepMeta, NULL, requiredFields, sizeof requiredFields / sizeof (char *));
+    cachedHash = fieldedTableUniqueIndex(cachedTable, requiredFields[0]);
+    cachedTableName = cloneString(tabSepMeta);
+    }
+
+// Look for this tag in the metadata.
+struct fieldedRow *fr = hashFindVal(cachedHash, metaTag);
+if (fr == NULL)
+    return "";
+
+struct dyString *dyTable = dyStringCreate("<table style='display:inline-table;'>");
+if (showLongLabel)
+    dyStringPrintf(dyTable,"<tr valign='bottom'><td colspan=2 nowrap>%s</td></tr>",tdb->longLabel);
+if (showShortLabel)
+    dyStringPrintf(dyTable,"<tr valign='bottom'><td align='right' nowrap><i>shortLabel:</i></td>"
+			   "<td nowrap>%s</td></tr>",tdb->shortLabel);
+
+int ii;
+for(ii=0; ii < cachedTable->fieldCount; ii++)
+    {
+    char *fieldName = cachedTable->fields[ii];
+    char *fieldVal = fr->row[ii];
+    if (!sameString(fieldName, "meta")  && !isEmpty(fieldVal))
+        dyStringPrintf(dyTable,"<tr valign='bottom'><td align='right' nowrap><i>%s:</i></td>"
+                           "<td nowrap>%s</td></tr>",fieldName, fieldVal);
+    }
+dyStringAppend(dyTable,"</table>");
+return dyStringCannibalize(&dyTable);
+}
+
 char *tagStormAsHtmlTable(char *tagStormFile, struct trackDb *tdb,boolean showLongLabel,boolean showShortLabel)
 /* Return a string which is an HTML table of the tags for this track. */
 {
@@ -227,6 +275,11 @@ return dyStringCannibalize(&dyTable);
 char *metadataAsHtmlTable(char *db,struct trackDb *tdb,boolean showLongLabel,boolean showShortLabel)
 // If metadata from metaDb exists, return string of html with table definition
 {
+char *tabSepMeta = trackDbSetting(tdb, "metaTab");
+
+if (tabSepMeta)
+    return tabSepMetaAsHtmlTable(tabSepMeta, tdb, showLongLabel, showShortLabel);
+
 char *tagStormFile = trackDbSetting(tdb, "metaDb");
 
 if (tagStormFile)
@@ -317,8 +370,8 @@ boolean compositeMetadataToggle(char *db,struct trackDb *tdb,char *title,
     boolean embeddedInText,boolean showLongLabel)
 // If metadata from metaTbl exists, create a link that will allow toggling it's display
 {
-char *tagStormFile = trackDbSetting(tdb, "metaDb");
-if (tagStormFile == NULL)
+boolean hasMetaInHub = (trackDbSetting(tdb, "metaDb") != NULL) ||  (trackDbSetting(tdb, "metaTab") != NULL);
+if (!hasMetaInHub)
     {
     const struct mdbObj *safeObj = metadataForTable(db,tdb,NULL);
     if (safeObj == NULL || safeObj->vars == NULL)
@@ -330,10 +383,8 @@ safef(id, sizeof id, "div_%s_link", tdb->track);
 printf("%s<A id='%s' HREF='#a_meta_%s' "
    "title='Show metadata details...'>%s<img src='../images/downBlue.png'/></A>",
    (embeddedInText?"&nbsp;":"<P>"),id,tdb->track, (title?title:""));
-char javascript[1024];
-safef(javascript, sizeof javascript, "return metadataShowHide(\"%s\",%s,true);", 
+jsOnEventByIdF("click", id, "return metadataShowHide(\"%s\",%s,true);", 
     tdb->track, showLongLabel?"true":"false");
-jsOnEventById("click", id, javascript);
 printf("<DIV id='div_%s_meta' style='display:none;'>%s</div>",tdb->track, metadataAsHtmlTable(db,tdb,showLongLabel,FALSE));
 return TRUE;
 }
@@ -342,7 +393,8 @@ void extraUiLinks(char *db,struct trackDb *tdb)
 // Show metadata, and downloads, schema links where appropriate
 {
 char *tagStormFile = trackDbSetting(tdb, "metaDb");
-boolean hasMetadata = (tagStormFile != NULL) || (!tdbIsComposite(tdb) && !trackHubDatabase(db)
+char *tabSepFile = trackDbSetting(tdb, "metaTab");
+boolean hasMetadata = (tagStormFile != NULL) || (tabSepFile != NULL) || (!tdbIsComposite(tdb) && !trackHubDatabase(db)
                         && metadataForTable(db, tdb, NULL) != NULL);
 if (hasMetadata)
     printf("<b>Metadata:</b><br>%s\n", metadataAsHtmlTable(db, tdb, FALSE, FALSE));
@@ -619,7 +671,7 @@ char *hStringFromTv(enum trackVisibility vis)
 return hTvStrings[vis];
 }
 
-void hTvDropDownClassWithJavascript(char *varName, enum trackVisibility vis, boolean canPack,
+void hTvDropDownClassWithJavascript(char *varName, char *id, enum trackVisibility vis, boolean canPack,
 				char *class, struct slPair *events)
 // Make track visibility drop down for varName with style class
 {
@@ -639,11 +691,11 @@ static char *pack[] =
     };
 static int packIx[] = {tvHide,tvDense,tvSquish,tvPack,tvFull};
 if (canPack)
-    cgiMakeDropListClassWithStyleAndJavascript(varName, pack, ArraySize(pack),
+    cgiMakeDropListClassWithIdStyleAndJavascript(varName, id, pack, ArraySize(pack),
 					   pack[packIx[vis]], class, TV_DROPDOWN_STYLE,
 					   events);
 else
-    cgiMakeDropListClassWithStyleAndJavascript(varName, noPack, ArraySize(noPack),
+    cgiMakeDropListClassWithIdStyleAndJavascript(varName, id, noPack, ArraySize(noPack),
 					   noPack[vis], class, TV_DROPDOWN_STYLE, events);
 }
 
@@ -717,7 +769,7 @@ else
     }
 }
 
-void hideShowDropDownWithClassAndExtra(char *varName, boolean show, char *class, struct slPair *events)
+void hideShowDropDownWithClassAndExtra(char *varName, char * id, boolean show, char *class, struct slPair *events)
 // Make hide/show dropdown for varName
 {
 static char *hideShow[] =
@@ -725,7 +777,7 @@ static char *hideShow[] =
     "hide",
     "show"
     };
-cgiMakeDropListClassWithStyleAndJavascript(varName, hideShow, ArraySize(hideShow),
+cgiMakeDropListClassWithIdStyleAndJavascript(varName, id, hideShow, ArraySize(hideShow),
 				       hideShow[show], class, TV_DROPDOWN_STYLE, events);
 }
 
@@ -1178,7 +1230,7 @@ else if (gotCds)
         disabled = "disabled";
     printf("<br /><b><span id='%sCodonNumberingLabel' %s>Show codon numbering</b>:</span>\n", 
                 name, curOpt == baseColorDrawOff ? "class='disabled'" : "");
-    cgiMakeCheckBoxJS(buf, cartUsualBooleanClosestToHome(cart, tdb, FALSE, CODON_NUMBERING_SUFFIX, TRUE), disabled);
+    cgiMakeCheckBoxMore(buf, cartUsualBooleanClosestToHome(cart, tdb, FALSE, CODON_NUMBERING_SUFFIX, TRUE), disabled);
     }
 else if (gotSeq)
     {
@@ -4561,9 +4613,7 @@ for (subtrackRef = subtrackRefList; subtrackRef != NULL; subtrackRef = subtrackR
 	printf(SUBTRACK_CFG_VIS,subtrack->track,classList,hStringFromTv(vis));
 	char id[256];
 	safef(id, sizeof id, "%s_faux", subtrack->track);
-	char javascript[1024];
-	safef(javascript, sizeof javascript, "return subCfg.replaceWithVis(this,\"%s\",true);", subtrack->track);
-	jsOnEventById("click", id, javascript);
+	jsOnEventByIdF("click", id, "return subCfg.replaceWithVis(this,\"%s\",true);", subtrack->track);
 	
 	if (cType != cfgNone)  // make a wrench
 	    {
@@ -4571,8 +4621,7 @@ for (subtrackRef = subtrackRefList; subtrackRef != NULL; subtrackRef = subtrackR
 	    #define SUBTRACK_CFG_WRENCH "<span id='%s' class='clickable%s' " \
 					"title='Configure this subtrack'><img src='../images/wrench.png'></span>\n"
 	    printf(SUBTRACK_CFG_WRENCH,id,(visibleCB ? "":" disabled"));
-	    safef(javascript, sizeof javascript, "return subCfg.cfgToggle(this,\"%s\");", subtrack->track);
-	    jsOnEventById("click", id, javascript);
+	    jsOnEventByIdF("click", id, "return subCfg.cfgToggle(this,\"%s\");", subtrack->track);
 	    }
 	}
     printf("</TD>");
@@ -4961,10 +5010,8 @@ if (hashFindVal(tdb->settingsHash, WINDOWINGFUNCTION) == NULL)
 wigCfgUi(cart,tdb,name,title,TRUE);
 tdb->type = origType;
 printf("</DIV>\n\n");
-char javascript[1024];
-safef(javascript, sizeof javascript, "$(\"input[name='%s']\").click( function() { $('#densGraphOptions').toggle();} );\n"
+jsInlineF("$(\"input[name='%s']\").click( function() { $('#densGraphOptions').toggle();} );\n"
     , varName); // XSS FILTER?
-jsInline(javascript);
 }
 
 void wiggleScaleDropDownJavascript(char *name)
@@ -5148,10 +5195,8 @@ else
 
 // add a little javascript call to make sure we don't get whiskers with stacks in multiwigs
 
-char javascript[1024];
-safef(javascript, sizeof javascript, "$(function () { multiWigSetupOnChange('%s'); });\n", name);
 if (didAggregate)
-    jsInline(javascript);
+    jsInlineF("$(function () { multiWigSetupOnChange('%s'); });\n", name);
 
 cfgEndBox(boxed);
 }
@@ -5862,6 +5907,8 @@ if (trackDbSettingClosestToHomeOn(tdb, "linkIdInName"))
     return;
 
 struct asObject *as = asForDb(tdb, db);  
+if (as == NULL)
+    return;
 struct slPair *labelList = buildFieldList(tdb, "labelFields",  as);
 struct slPair *defaultLabelList = buildFieldList(tdb, "defaultLabelFields",  as);
 char varName[1024];
@@ -6459,7 +6506,6 @@ puts("\n<P><B>Species selection:</B>&nbsp;");
 
 cgiContinueHiddenVar("g");
 char id[256];
-char javascript[1024];
 PLUS_BUTTON( "id", "plus_pw","cb_maf_","_maf_")
 MINUS_BUTTON("id","minus_pw","cb_maf_","_maf_")
 
@@ -7032,7 +7078,7 @@ for (ix = 0; ix < membersOfView->count; ix++)
 
         printf("<TD>");
         safef(classes, sizeof(classes), "viewDD normalText %s", membersOfView->tags[ix]);
-        hTvDropDownClassWithJavascript(varName, tv, parentTdb->canPack, classes, events);
+        hTvDropDownClassWithJavascript(varName, NULL, tv, parentTdb->canPack, classes, events);
         puts(" &nbsp; &nbsp; &nbsp;</TD>");
         }
     }
@@ -7395,17 +7441,15 @@ for (ix=dimA;ix<membersForAll->dimMax;ix++)
             assert(membersForAll->members[ix]->subtrackList[aIx]->val != NULL);
             printf("<TH align=left nowrap>");
             char objName[SMALLBUF];
-            char javascript[JBUFSIZE];
             char other[JBUFSIZE];
             boolean alreadySet=FALSE;
             if (membersForAll->members[ix]->selected != NULL)
                 alreadySet = membersForAll->members[ix]->selected[aIx];
             safef(objName, sizeof(objName), "%s.mat_%s_dim%c_cb",parentTdb->track,
                   membersForAll->members[ix]->tags[aIx],membersForAll->letters[ix]);
-            safef(javascript,sizeof(javascript), "matCbClick(this);");
 	    safef(other, sizeof other, "class='matCB abc %s'", membersForAll->members[ix]->tags[aIx]);
             cgiMakeCheckBoxIdAndMore(objName,alreadySet,objName,other);
-	    jsOnEventById("click", objName, javascript);
+	    jsOnEventById("click", objName, "matCbClick(this);");
             printf("%s",compositeLabelWithVocabLink(db,parentTdb,
                    membersForAll->members[ix]->subtrackList[aIx]->val,
                    membersForAll->members[ix]->groupTag,
@@ -7546,15 +7590,14 @@ for (dimIx=dimA;dimIx<membersForAll->dimMax;dimIx++)
     printf("<TD align='left'><B>%s:</B><BR>\n",
            labelWithVocabLinkForMultiples(db,parentTdb,membersForAll->members[dimIx]));
 
-    #define FILTER_COMPOSITE_FORMAT "<SELECT id='%s' name='%s.filterComp.%s' %s " \
-                                    "style='display: none; font-size:.8em;' " \
-                                    "class='filterComp'><BR>\n"
-    #define FILTER_COMPOSITE_FORMAT_JS "filterCompositeSelectionChanged(this);"
     safef(id, sizeof id, "fc%d",dimIx); 
-    printf(FILTER_COMPOSITE_FORMAT,id,parentTdb->track,membersForAll->members[dimIx]->groupTag,
-           "multiple");
-    safef(javascript, sizeof javascript, FILTER_COMPOSITE_FORMAT_JS);
-    jsOnEventById("change", id, javascript);
+    printf(
+      "<SELECT id='%s' name='%s.filterComp.%s' %s " 
+      "style='display: none; font-size:.8em;' " 
+      "class='filterComp'><BR>\n" 
+	,id,parentTdb->track,membersForAll->members[dimIx]->groupTag,
+       "multiple");
+    jsOnEventById("change", id, "filterCompositeSelectionChanged(this);");
 
 
     // DO we support anything besides multi?
@@ -7823,16 +7866,13 @@ if (dimensionsExist(parentTdb))
 #define PM_BUTTON_GLOBAL "<IMG height=18 width=18 id='%s' src='../images/%s'>"
 #define PM_BUTTON_GLOBAL_JS "matSubCBsCheck(%s);"
 char id[256];
-char javascript[1024];
 safef(id, sizeof id, "btn_plus_all"); 
-safef(javascript, sizeof javascript, PM_BUTTON_GLOBAL_JS, "true");
 printf(PM_BUTTON_GLOBAL, id, "add_sm.gif");
-jsOnEventById("click", id, javascript);
+jsOnEventByIdF("click", id, PM_BUTTON_GLOBAL_JS, "true");
 
 safef(id, sizeof id, "btn_minus_all"); 
-safef(javascript, sizeof javascript, PM_BUTTON_GLOBAL_JS, "false");
 printf(PM_BUTTON_GLOBAL, id, "remove_sm.gif");
-jsOnEventById("click", id, javascript);
+jsOnEventByIdF("click", id, PM_BUTTON_GLOBAL_JS, "false");
 
 puts("&nbsp;<B>Select all subtracks</B><BR>");
 return TRUE;
@@ -8075,7 +8115,7 @@ if (show && (visibleChild == -1))
             visibleChild = 1;
         }
     }
-hideShowDropDownWithClassAndExtra(tdb->track, show, (show && visibleChild) ?
+hideShowDropDownWithClassAndExtra(tdb->track, NULL, show, (show && visibleChild) ?
                                   "normalText visDD" : "hiddenText visDD", events);
 return TRUE;
 }
@@ -8641,6 +8681,8 @@ struct asObject *asObj = NULL;
 if (tdbIsBigBed(tdb))
     {
     char *fileName = hReplaceGbdb(tdbBigFileName(conn, tdb));
+    if (fileName == NULL)
+        return NULL;
     asObj = bigBedFileAsObjOrDefault(fileName);
     freeMem(fileName);
     }

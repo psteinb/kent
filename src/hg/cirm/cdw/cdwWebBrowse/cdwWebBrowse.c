@@ -837,7 +837,7 @@ if (!sqlTableExists(conn, "cdwDownloadToken"))
 	 "userId int NOT NULL, createTime datetime DEFAULT NOW())");
      sqlUpdate(conn, query);
      }
-char *token = cartDbMakeRandomKey(80);
+char *token = makeRandomKey(80);
 sqlSafef(query, sizeof(query), "INSERT INTO cdwDownloadToken (token, userId) VALUES ('%s', %d)", token, user->id);
 sqlUpdate(conn, query);
 hDisconnectCentral(&conn);
@@ -886,13 +886,11 @@ printf("Search <input name=\"%s\" type=\"text\" id=\"%s\" value=\"%s\" size=60>"
     varName, varName, varVal);
 printf("&nbsp;");
 printf("<img src=\"../images/magnify.png\">\n");
-char javascript[1024];
-safef(javascript, sizeof javascript,
+jsInlineF(
     "$(function () {\n"
     "  $('#%s').watermark(\"type in words or starts of words to find specific %s\");\n" 
     "});\n",
     varName, itemPlural);
-jsInline(javascript);
 return varVal;
 }
 
@@ -1162,7 +1160,10 @@ printf(", <A HREF=\"cdwServeTagStorm?format=text&cdwDataSet=%s&%s\"",
 printf(">text</A>");
 printf(", <A HREF=\"cdwServeTagStorm?format=tsv&cdwDataSet=%s&%s\"",
 	dataSet, cartSidUrlString(cart)); 
-printf(">tsv</A>)");
+printf(">tsv</A>");
+printf(", <A HREF=\"cdwServeTagStorm?format=csv&cdwDataSet=%s&%s\"",
+	dataSet, cartSidUrlString(cart)); 
+printf(">csv</A>)"); 
 }
 
 void doBrowseDatasets(struct sqlConnection *conn)

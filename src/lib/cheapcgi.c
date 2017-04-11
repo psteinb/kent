@@ -25,28 +25,6 @@
 // can be either added back to the end of the html page with a nonce or sha hashid,
 // or it can be saved to a temp file in trash and then included as a non-inline, off-page .js.
 
-// TODO make other versions that capture the output to a temp file.
-
-/* OBSOLETE
-// Auto-increment. This helps create unique ids for easily connecting inline js with the html element.
-
-int autoInc = 0;
-int getAutoInc()
-// Get auto-incrementing value.
-{
-return autoInc++;
-}
-
-char *getAutoIncId()
-// Generate an automatically incrementing html id attribute value.
-// For cases where the element is not given any id, generate a unique id automatically. 
-{
-char autoId[32];
-safef(autoId, sizeof autoId, "auto%d", getAutoInc());
-return cloneString(autoId);
-}
-END OBSOLETE */
-
 struct dyString *jsInlineLines = NULL;
 
 void jsInlineInit()
@@ -83,7 +61,7 @@ void jsInlineFinish()
 if (jsInlineFinishCalled)
     {
     // jsInlineFinish can be called multiple times when generating framesets or genomeSpace.
-    warn("jsInlineFinish() called already.");  // TODO GALT
+    warn("jsInlineFinish() called already.");
     }
 jsInlineInit(); // init if needed
 printf("<script type='text/javascript' nonce='%s'>\n%s</script>\n", getNonce(), jsInlineLines->string);
@@ -218,14 +196,14 @@ void jsOnEventById(char *eventName, char *idText, char *jsText)
 /* Add js mapping for inline event */
 {
 checkValidEvent(eventName);
-jsInlineF("document.getElementById('%s').on%s = function(event) {%s};\n", idText, eventName, jsText);
+jsInlineF("document.getElementById('%s').on%s = function(event) {if (!event) {event=window.event}; %s};\n", idText, eventName, jsText);
 }
 
 void jsOnEventByIdF(char *eventName, char *idText, char *format, ...)
 /* Add js mapping for inline event */
 {
 checkValidEvent(eventName);
-jsInlineF("document.getElementById('%s').on%s = function(event) {", idText, eventName);
+jsInlineF("document.getElementById('%s').on%s = function(event) {if (!event) {event=window.event}; ", idText, eventName);
 va_list args;
 va_start(args, format);
 dyStringVaPrintf(jsInlineLines, format, args);
@@ -1741,18 +1719,10 @@ void cgiMakeCheckBoxEnabled(char *name, boolean checked, boolean enabled)
 cgiMakeCheckBox2Bool(name, checked, enabled, NULL, NULL);
 }
 
-// TODO hopefully make this OBSOLETE
-void cgiMakeCheckBoxJS(char *name, boolean checked, char *javascript)
-/* Make check box with javascript. */
+void cgiMakeCheckBoxMore(char *name, boolean checked, char *moreHtml)
+/* Make check box with moreHtml. */
 {
-cgiMakeCheckBox2Bool(name,checked,TRUE,NULL,javascript);
-}
-
-// TODO hopefully make this OBSOLETE
-void cgiMakeCheckBoxIdAndJS(char *name, boolean checked, char *id, char *javascript)
-/* Make check box with ID and javascript. */
-{
-cgiMakeCheckBox2Bool(name,checked,TRUE,id,javascript);
+cgiMakeCheckBox2Bool(name,checked,TRUE,NULL,moreHtml);
 }
 
 void cgiMakeCheckBoxIdAndMore(char *name, boolean checked, char *id, char *moreHtml)
@@ -1903,10 +1873,8 @@ if (width < 65)
 
 printf("<INPUT TYPE=TEXT class='inputBox' name='%s' id='%s' style='width: %dpx' value=%d",
        varName,varName,width,initialVal);
-char javascript[1024];
-safef(javascript, sizeof javascript, "return validateInt(this,%s,%s);",
+jsOnEventByIdF("change", varName, "return validateInt(this,%s,%s);",
        (min ? min : "\"null\""),(max ? max : "\"null\""));
-jsOnEventById("change", varName, javascript);
 if (title)
     printf(" title='%s'",title);
 printf(">\n");
@@ -1981,10 +1949,8 @@ if (width < 65)
 
 printf("<INPUT TYPE=TEXT class='inputBox' name='%s' id='%s' style='width: %dpx' value=%g",
        varName,varName,width,initialVal);
-char javascript[1024];
-safef(javascript, sizeof javascript, "return validateFloat(this,%s,%s);",
+jsOnEventByIdF("change", varName, "return validateFloat(this,%s,%s);",
        (min ? min : "\"null\""),(max ? max : "\"null\""));
-jsOnEventById("change", varName, javascript);
 if (title)
     printf(" title='%s'",title);
 printf(">\n");
@@ -2034,9 +2000,9 @@ if ((int)max != NO_VALUE)
 cgiMakeDoubleVarInRange(varName,initialVal,title,width,NULL,maxStr);
 }
 
-void cgiMakeDropListClassWithStyleAndJavascript(char *name, char *menu[],
+void cgiMakeDropListClassWithIdStyleAndJavascript(char *name, char *id, char *menu[],
         int menuSize, char *checked, char *class, char *style, struct slPair *events)
-/* Make a drop-down list with names, text class, style and javascript. */
+/* Make a drop-down list with name, id, text class, style and javascript. */
 {
 int i;
 char *selString;
@@ -2044,15 +2010,18 @@ if (checked == NULL) checked = menu[0];
 printf("<SELECT");
 if (name)
     printf(" NAME='%s'", name);
+if (events && !id)  // use name as id
+    id = name;
+if (id)
+    printf(" id='%s'", id);
 if (class)
     printf(" class='%s'", class);
 if (events)
     {
-    printf(" id='%s'", name);
     struct slPair *e;
     for(e = events; e; e = e->next)
 	{
-	jsOnEventById(e->name, name, e->val);
+	jsOnEventById(e->name, id, e->val);
 	}    
     }
 if (style)
@@ -2067,6 +2036,13 @@ for (i=0; i<menuSize; ++i)
     printf("<OPTION%s>%s</OPTION>\n", selString, menu[i]);
     }
 printf("</SELECT>\n");
+}
+
+void cgiMakeDropListClassWithStyleAndJavascript(char *name, char *menu[],
+        int menuSize, char *checked, char *class, char *style, struct slPair *events)
+/* Make a drop-down list with names, text class, style and javascript. */
+{
+cgiMakeDropListClassWithIdStyleAndJavascript(name,NULL,menu,menuSize,checked,class,style,events);
 }
 
 void cgiMakeDropListClassWithStyle(char *name, char *menu[],

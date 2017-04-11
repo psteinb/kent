@@ -166,7 +166,8 @@ SCRIPT_FILES = \
 	pslSameGene \
 	tabRepl \
 	uniprotLift \
-	uniprotToTab 
+	uniprotToTab \
+	bedJoinTabOffset
 
 
 

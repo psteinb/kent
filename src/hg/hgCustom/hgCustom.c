@@ -574,10 +574,8 @@ for (ct = ctList; ct != NULL; ct = ct->next)
 	    char id[256];
 	    safef(id, sizeof id, "_%d", butCount);
 	    printf("\n<TD><A href='#' id='%s'>Show</A></TD>\n", id);
-	    char javascript[1024];
-	    safef(javascript, sizeof javascript, "alert('%s');return false;",
+	    jsOnEventByIdF("click", id, "alert('%s');return false;",
 		javaScriptLiteralEncode(ct->networkErrMsg));
-	    jsOnEventById("click", id, javascript);
 	    }
 	else
 	    puts("<TD>&nbsp;</TD>");
@@ -586,7 +584,7 @@ for (ct = ctList; ct != NULL; ct = ct->next)
     printf("<TD COLSPAN=%d ALIGN=CENTER>", showAllButtons ? 2 : 1);
     safef(buf, sizeof(buf), "%s_%s", hgCtDeletePrefix,
             ct->tdb->track);
-    cgiMakeCheckBoxJS(buf, setAllDelete, "class='deleteCheckbox'");
+    cgiMakeCheckBoxMore(buf, setAllDelete, "class='deleteCheckbox'");
     puts("</TD>");
 
     /* Update checkboxes */
@@ -597,9 +595,9 @@ for (ct = ctList; ct != NULL; ct = ct->next)
                 ct->tdb->track);
         if ((dataUrl = ctDataUrl(ct)) != NULL)
             {
-            char js[2048];
-            safef(js, sizeof(js), "class='updateCheckbox' title='refresh data from: %s'", dataUrl);
-            cgiMakeCheckBoxJS(buf, setAllUpdate, js);
+            char more[2048];
+            safef(more, sizeof(more), "class='updateCheckbox' title='refresh data from: %s'", dataUrl);
+            cgiMakeCheckBoxMore(buf, setAllUpdate, more);
             }
         else
             puts("&nbsp;");
@@ -793,15 +791,13 @@ puts("<TR><TD>");
 printf("<INPUT TYPE=SUBMIT NAME=\"addTracksButton\" ID=\"addTracksButton\" VALUE=\"%s\" "
        "STYLE=\"margin-top: 5px\" >\n",
        "add custom tracks");
-char javascript[1024];
-safef(javascript, sizeof javascript,
+// This submits mainForm with a hidden input that tells hgCustom to show add tracks page:
+jsOnEventByIdF("click", "addTracksButton", 
 	"var $form = $(\"form[name='mainForm']\"); "
 	"$form.append(\"<input name='%s' type='hidden'>\"); "
 	"$form.submit();"
 	, hgCtDoAdd);
 
-// This submits mainForm with a hidden input that tells hgCustom to show add tracks page:
-jsOnEventById("click", "addTracksButton", javascript);
 puts("</TD></TR>");
 
 puts("</TABLE>");
