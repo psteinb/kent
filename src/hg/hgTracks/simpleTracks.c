@@ -7845,7 +7845,6 @@ void bedLoadItem(struct track *tg, char *table, ItemLoader loader)
 bedLoadItemByQuery(tg, table, NULL, loader);
 }
 
-
 void atomDrawSimpleAt(struct track *tg, void *item,
                       struct hvGfx *hvg, int xOff, int y,
                       double scale, MgFont *font, Color color, enum trackVisibility vis)
@@ -13927,6 +13926,12 @@ else if (sameWord(type, "bigMaf"))
     if (trackShouldUseAjaxRetrieval(track))
         track->loadItems = dontLoadItems;
     }
+else if (sameWord(type, "bigBarChart"))
+    {
+    tdb->canPack = TRUE;
+    track->isBigBed = TRUE;
+    barChartMethods(track);
+    }
 else if (sameWord(type, "bigPsl"))
     {
     tdb->canPack = TRUE;
@@ -14146,6 +14151,10 @@ else if (sameWord(type, "interaction"))
 else if (sameWord(type, "gvf"))
     {
     gvfMethods(track);
+    }
+else if (sameWord(type, "barChart"))
+    {
+    barChartMethods(track);
     }
 /* add handlers for wildcard */
 if (startsWith("peptideAtlas", track->track))

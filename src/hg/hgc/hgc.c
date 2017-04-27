@@ -26866,6 +26866,11 @@ else if (tdb != NULL && startsWithWord("vcf", tdb->type))
     {
     doVcfDetails(tdb, item);
     }
+else if (tdb != NULL && 
+        (startsWithWord("barChart", tdb->type) || startsWithWord("bigBarChart", tdb->type)))
+    {
+    doBarChartDetails(tdb, item);
+    }
 else if (tdb != NULL)
     {
     genericClickHandler(tdb, item, NULL);
