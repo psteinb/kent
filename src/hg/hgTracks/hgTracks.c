@@ -70,7 +70,9 @@
 #include "bigWarn.h"
 #include "wigCommon.h"
 #include "knetUdc.h"
-#include "rSha1.h"
+#include "hex.h"
+#include <openssl/sha.h>
+#include "customComposite.h"
 
 #include "hgMarkRegion.h"
 #include "hillerLabView.h"
@@ -93,6 +95,7 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
             "hgt.trackImgOnly", "hgt.ideogramToo", "hgt.trackNameFilter", "hgt.imageV1", "hgt.suggestTrack", "hgt.setWidth",
              TRACK_SEARCH,         TRACK_SEARCH_ADD_ROW,     TRACK_SEARCH_DEL_ROW, TRACK_SEARCH_PAGER,
             "hgt.contentType", "hgt.positionInput", "hgt.internal",
+            "sortExp", "sortSim",
             // stanford additions
             "hgt.out4",  "hgt.to1", "hgt.to2", "hgt.to3", "hgt.to4", "hgt.to5", "hgt.to6", "hgt.to7",
 				/* markRegion functionality */
@@ -463,6 +466,38 @@ return (theImgBox && !trackImgOnly && trackUsesRemoteData(track));
 }
 #endif///def REMOTE_TRACK_AJAX_CALLBACK
 
+static boolean isCompositeInAggregate(struct track *track)
+// Check to see if this is a custom composite in aggregate mode.
+{
+if (!isCustomComposite(track->tdb))
+    return FALSE;
+
+char *aggregateVal = cartOrTdbString(cart, track->tdb, "aggregate", NULL);
+if ((aggregateVal == NULL) || sameString(aggregateVal, "none"))
+    return FALSE;
+
+struct track *subtrack = NULL;
+for (subtrack = track->subtracks; subtrack != NULL; subtrack = subtrack->next)
+    {
+    if (isSubtrackVisible(subtrack))
+        break;
+    }
+if (subtrack == NULL)
+    return FALSE;
+
+multiWigContainerMethods(track);
+//struct wigCartOptions *wigCart = wigCartOptionsNew(cart, track->tdb, 0, NULL);
+//track->wigCartData = (void *) wigCart;
+//track->lineHeight = wigCart->defaultHeight;
+//wigCart->isMultiWig = TRUE;
+//wigCart->autoScale = wiggleScaleAuto;
+//wigCart->defaultHeight = track->lineHeight;
+//struct wigGraphOutput *wgo = setUpWgo(xOff, yOff, width, tg->height, numTracks, wigCart, hvg);
+//tg->wigGraphOutput = wgo;
+
+return TRUE;
+}
+
 static int trackPlusLabelHeight(struct track *track, int fontHeight)
 /* Return the sum of heights of items in this track (or subtrack as it may be)
  * and the center label(s) above the items (if any). */
@@ -473,7 +508,7 @@ if (trackShouldUseAjaxRetrieval(track))
 int y = track->totalHeight(track, limitVisibility(track));
 if (isCenterLabelIncluded(track))
     y += fontHeight;
-if (tdbIsComposite(track->tdb))
+if (tdbIsComposite(track->tdb) && !isCompositeInAggregate(track))
     {
     struct track *subtrack;
     for (subtrack = track->subtracks;  subtrack != NULL; subtrack = subtrack->next)
@@ -4007,11 +4042,13 @@ if (newType != url)
 	newType = trashFile;
     }
 
-char *newSha1 = NULL;
+char newSha1[(SHA_DIGEST_LENGTH + 1) * 2];
 if (newType==trashFile)
     {
     // calculate sha1 checksum on new input.
-    newSha1 = rSha1HexForString(dyInput->string);
+    unsigned char hash[SHA_DIGEST_LENGTH];
+    SHA1((const unsigned char *)dyInput->string, dyInput->stringSize, hash);
+    hexBinaryString(hash, SHA_DIGEST_LENGTH, newSha1, (SHA_DIGEST_LENGTH + 1) * 2);
     }
 
 // compare input sha1 to trashFile sha1 to see if same
@@ -4145,7 +4182,19 @@ while (lineFileNext(lf, &line, &lineSize))
     AllocVar(bed);
     // All fields are standard BED fields, no bedplus fields supported at this time.
     // note: this function does not validate chrom name or end beyond chrom size
-    loadAndValidateBed(row, numFields, numFields+0, lf, bed, NULL, TRUE);
+    struct errCatch *errCatch = errCatchNew();
+    if (errCatchStart(errCatch))
+	{
+	loadAndValidateBed(row, numFields, numFields+0, lf, bed, NULL, TRUE); // can errAbort
+	}
+    errCatchEnd(errCatch);
+    if (errCatch->gotError)
+	{
+	warn("%s", errCatch->message->string);
+	return FALSE;
+	}
+    errCatchFree(&errCatch);
+
     bed->chrom=cloneString(bed->chrom);  // loadAndValidateBed does not do it for speed. but bedFree needs it.
 
     struct chromInfo *ci = hGetChromInfo(database, bed->chrom);
@@ -4532,6 +4581,7 @@ setGlobalsFromWindow(windows); // first window
 flatTrack->maxHeight = maxHeight;
 }
 
+
 void makeActiveImage(struct track *trackList, char *psOutput)
 /* Make image and image map. */
 {
@@ -4722,14 +4772,19 @@ for (track = trackList; track != NULL; track = track->next)
     if (tdbIsComposite(track->tdb))
         {
         struct track *subtrack;
-        for (subtrack = track->subtracks; subtrack != NULL; subtrack = subtrack->next)
+        if (isCompositeInAggregate(track))
+            flatTracksAdd(&flatTracks,track,cart);
+        else
             {
-            if (!isSubtrackVisible(subtrack))
-                continue;
-
-	    if (!isLimitedVisHiddenForAllWindows(subtrack))
+            for (subtrack = track->subtracks; subtrack != NULL; subtrack = subtrack->next)
                 {
-                flatTracksAdd(&flatTracks,subtrack,cart);
+                if (!isSubtrackVisible(subtrack))
+                    continue;
+
+                if (!isLimitedVisHiddenForAllWindows(subtrack))
+                    {
+                    flatTracksAdd(&flatTracks,subtrack,cart);
+                    }
                 }
             }
         }
@@ -6177,6 +6232,12 @@ else if (sameString(type, "pgSnp"))
     tg = trackFromTrackDb(tdb);
     pgSnpCtMethods(tg);
     //tg->mapItemName = ctMapItemName;
+    tg->customPt = ct;
+    }
+else if (sameString(type, "barChart"))
+    {
+    tg = trackFromTrackDb(tdb);
+    barChartCtMethods(tg);
     tg->customPt = ct;
     }
 else
@@ -8288,6 +8349,18 @@ if (!hideControls)
                     idText, indicatorImg, indicator,isOpen?"Collapse":"Expand");
 	    jsOnEventByIdF("click", idText, "return vis.toggleForGroup(this, '%s');", group->name);
 
+            if (isHubTrack(group->name))
+		{
+                if (strstr(group->label, "Composite"))
+                    {
+                    safef(idText, sizeof idText, "%s_edit", group->name);
+                    hPrintf("<input name=\"hubEditButton\" id='%s'"
+                        " type=\"button\" value=\"edit\">\n", idText);
+                    jsOnEventByIdF("click", idText,
+                        "document.editHubForm.submit();return true;");
+                    }
+                }
+
             hPrintf("</td><td style='text-align:center; width:90%%;'>\n<B>%s</B>", group->label);
             hPrintf("</td><td style='text-align:right;'>\n");
             if (isHubTrack(group->name))
@@ -8423,6 +8496,11 @@ hPrintf("</FORM>\n");
 
 /* hidden form for custom tracks CGI */
 hPrintf("<FORM ACTION='%s' NAME='customTrackForm'>", hgCustomName());
+cartSaveSession(cart);
+hPrintf("</FORM>\n");
+
+/* hidden form for composite builder CGI */
+hPrintf("<FORM ACTION='%s' NAME='editHubForm'>", hgCompositeName());
 cartSaveSession(cart);
 hPrintf("</FORM>\n");
 
@@ -9814,6 +9892,19 @@ char *configPageCall = cartCgiUsualString(cart, "hgTracksConfigPage", "notSet");
 char *configMultiRegionPageCall = cartCgiUsualString(cart, "hgTracksConfigMultiRegionPage", "notSet");
 
 /* Do main display. */
+
+char *sortTrack;
+if ((sortTrack = cgiOptionalString( "sortSim")) != NULL)
+    {
+    printf("sort track by similarity %s\n", sortTrack);
+    //sortTrackByExpression(cart);
+    }
+
+if ((sortTrack = cgiOptionalString( "sortExp")) != NULL)
+    {
+    printf("sort track by expression %s\n", sortTrack);
+    //sortTrackByExpression(cart);
+    }
 
 if (cartUsualBoolean(cart, "hgt.trackImgOnly", FALSE))
     {

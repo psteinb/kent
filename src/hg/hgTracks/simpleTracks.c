@@ -4390,19 +4390,43 @@ struct slList *items = track->items;
 struct slList *item;
 unsigned size = winEnd - winStart;
 unsigned *counts = needHugeZeroedMem(size * sizeof(unsigned));
+extern int linkedFeaturesItemStart(struct track *tg, void *item);
+boolean isLinkedFeature = ( track->itemStart == linkedFeaturesItemStart);
 
 for (item = items; item; item = item->next)
     {
-    unsigned start = track->itemStart(track, item);
-    unsigned end = track->itemEnd(track, item);
-    if (positiveRangeIntersection(start, end, winStart, winEnd) <= 0)
-	continue;
+    if (isLinkedFeature)
+        {
+        struct linkedFeatures *lf = (struct linkedFeatures *)item;
+        struct simpleFeature *sf;
 
-    int x1 = max((int)start - (int)winStart, 0);
-    int x2 = min((int)end - (int)winStart, size);
+        for (sf = lf->components; sf != NULL; sf = sf->next)
+            {
+            unsigned start = sf->start;
+            unsigned end = sf->end;
+            if (positiveRangeIntersection(start, end, winStart, winEnd) <= 0)
+                continue;
 
-    for(; x1 < x2; x1++)
-	counts[x1]++;
+            int x1 = max((int)start - (int)winStart, 0);
+            int x2 = min((int)end - (int)winStart, size);
+
+            for(; x1 < x2; x1++)
+                counts[x1]++;
+            }
+        }
+    else
+        {
+        unsigned start = track->itemStart(track, item);
+        unsigned end = track->itemEnd(track, item);
+        if (positiveRangeIntersection(start, end, winStart, winEnd) <= 0)
+            continue;
+
+        int x1 = max((int)start - (int)winStart, 0);
+        int x2 = min((int)end - (int)winStart, size);
+
+        for(; x1 < x2; x1++)
+            counts[x1]++;
+        }
     }
 
 return counts;
@@ -6149,7 +6173,7 @@ if (hTableExists(database, "kgXref"))
             }
         /* should this be a hash instead? */
         kgE->name = dyStringCannibalize(&name);
-        kgE->hgg_prot = lf->extra;
+        kgE->hgg_prot = gp->name2;
         lf->extra = kgE;
         lf->label = kgE->name;
 	}
@@ -6215,6 +6239,9 @@ tg->parallelLoading = TRUE;  // set so bigBed code will look at bigDataUrl
 bigBedAddLinkedFeaturesFromExt(tg, chromName, winStart, winEnd,
       scoreMin, scoreMax, TRUE, 12, &lfList, BIGBEDMAXIMUMITEMS);
 slReverse(&lfList);
+struct linkedFeatures *lf = lfList;
+for(;lf;lf = lf->next)
+    lf->isBigGenePred = TRUE;
 struct linkedFeatures *newList = lfList;
 
 if (isGencode)
@@ -13957,8 +13984,6 @@ else if (sameWord(type, "bigGenePred"))
     wordCount++;
     words[1] = "12";
     bigBedMethods(track, tdb, wordCount, words);
-    track->itemColor   = bigGenePredColor;
-    track->itemNameColor = bigGenePredColor;
     if (trackShouldUseAjaxRetrieval(track))
         track->loadItems = dontLoadItems;
     }

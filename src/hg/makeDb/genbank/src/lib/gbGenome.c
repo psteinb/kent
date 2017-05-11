@@ -64,7 +64,7 @@ static char *echTelNames[] = {"Echinops telfairi", NULL};
 static char *oryCunNames[] = {"Oryctolagus cuniculus", NULL};
 static char *cavPorNames[] = {"Cavia porcellus", NULL};
 static char *loxAfrNames[] = {"Loxodonta africana", NULL};
-static char *macEugNames[] = {"Macropus eugenii", NULL};
+static char *macEugNames[] = {"Macropus eugenii", "Notamacropus eugenii", NULL};
 static char *triManNames[] = {"Trichechus manatus",
 				"Trichechus manatus latirostris", NULL};
 static char *dasNovNames[] = {"Dasypus novemcinctus", NULL};
@@ -156,6 +156,7 @@ static char *galVarNames[] = {"Galeopterus variegatus", NULL};
 static char *rouAegNames[] = {"Rousettus aegyptiacus", NULL};
 static char *orcOrcNames[] = {"Orcinus orca", NULL};
 static char *colAngNames[] = {"Colobus angolensis", "Colobus angolensis palliatus", "Colobus guereza", "Colobus guereza kikuyuensis", NULL};
+static char *hpvNames[] = {"Human papillomavirus", "Human papillomavirus type 16", "Human papillomavirus type 18", "Human papillomavirus type 197", "Human papillomavirus type 38", "Human papillomavirus type 45", "Human papillomavirus type 58", "Human papillomavirus type 68", "Human papillomavirus type 6b", NULL};
 
 static char *endNames[] = {NULL};
 
@@ -286,6 +287,7 @@ static struct dbToSpecies dbToSpeciesMap[] = {
     {"rouAeg", rouAegNames},
     {"orcOrc", orcOrcNames},
     {"colAng", colAngNames},
+    {"hpv", hpvNames},
     {"CHM", hgNames},
     {"braNey", hgNames},
     {NULL, endNames}

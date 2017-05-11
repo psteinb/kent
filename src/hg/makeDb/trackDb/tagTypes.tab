@@ -26,8 +26,12 @@ bamGrayMode bam
 bamSkipPrintQualScore bam
 barChartBars barChart bigBarChart
 barChartColors barChart bigBarChart
+barChartMatrixUrl barChart bigBarChart
+# below for backwards compatibility during QA. 
 barChartDataUrl barChart bigBarChart
+#
 barChartLabel barChart bigBarChart
+barChartMetric barChart bigBarChart
 barChartSampleUrl barChart bigBarChart
 barChartUnit barChart bigBarChart
 baseColorDefault *
@@ -36,7 +40,7 @@ baseColorUseCds bed psl genePred bigPsl
 baseColorUseSequence *
 baseQualRange bam
 bedFilter bed
-bedNameLabel bed
+bedNameLabel bed barChart bigBarChart
 bigDataUrl customTracks bigBed bigWig bam vcfTabix bigPsl halSnake bigBarChart
 bigGeneDataUrl genePred
 blastRef psl bigPsl

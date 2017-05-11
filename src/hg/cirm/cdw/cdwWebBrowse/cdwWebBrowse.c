@@ -1228,7 +1228,7 @@ printf("<H2>Metadata tree for %s</H2>\n", dataSet);
 char *path = cdwPathForFileId(conn, fileId);
 char command[3*PATH_LEN];
 fflush(stdout);
-safef(command, sizeof(command), "./tagStormToHtml -embed %s stdout", path);
+safef(command, sizeof(command), "./tagStormToHtml -embed %s -nonce=%s stdout", path, getNonce());
 mustSystem(command);
 }
 
@@ -1779,7 +1779,8 @@ void localWebStartWrapper(char *titleString)
     jsIncludeFile("ajax.js", NULL);
     jsIncludeFile("d3pie.min.js", NULL);
     printf("<script src=\"//cdnjs.cloudflare.com/ajax/libs/d3/3.4.4/d3.min.js\"></script>");
-    printf("<script src=\"http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.js\"></script>\n");
+    // http://cpettitt.github.io/project/dagre-d3/latest/dagre-d3.js redirects to:
+    printf("<script src='http://www.samsarin.com/project/dagre-d3/latest/dagre-d3.js'></script>\n");
     printf("</HEAD>\n");
     printBodyTag(stdout);
     }
