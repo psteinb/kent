@@ -1860,7 +1860,7 @@ sub dumpDownloadReadme {
       $abridging = "
 All repetitive sequences identified by RepeatMasker were removed from the
 assembly before alignment using the fasta-subseq and strip_rpts programs
-from Penn State.  The abbreviated genome was aligned with blastz, and the
+from Penn State.  The abbreviated genome was aligned with lastz, and the
 transposons were then added back in (i.e. the alignment coordinates were
 adjusted) using the restore_rpts program from Penn State.";
     } else {
@@ -1868,7 +1868,7 @@ adjusted) using the restore_rpts program from Penn State.";
 Transposons that have been inserted since the $qGenome/$tGenome split were
 removed from the assemblies before alignment using the fasta-subseq and
 strip_rpts programs from Penn State.  The abbreviated genomes were aligned
-with blastz, and the transposons were then added back in (i.e. the
+with lastz, and the transposons were then added back in (i.e. the
 alignment coordinates were adjusted) using the restore_rpts program from
 Penn State.";
     }
@@ -1893,7 +1893,7 @@ Files included in this directory:
 
   - md5sum.txt: md5sum checksums for the files in this directory
 
-  - $tDb.$qDb.all.chain.gz: chained blastz alignments. The chain format is
+  - $tDb.$qDb.all.chain.gz: chained lastz alignments. The chain format is
     described in http://genome.ucsc.edu/goldenPath/help/chain.html .
 
 ";
@@ -1919,10 +1919,10 @@ Files included in this directory:
   if ($opt_swap) {
     my $TDb = ucfirst($tDb);
     print $fh
-"The chainSwap program was used to translate $qDb-referenced chained blastz
+"The chainSwap program was used to translate $qDb-referenced chained lastz
 alignments to $tDb into $tDb-referenced chains aligned to $qDb.  See
 the download directory goldenPath/$qDb/vs$TDb/README.txt for more
-information about the $qDb-referenced blastz and chaining process.
+information about the $qDb-referenced lastz and chaining process.
 ";
   } else {
     print $fh ($isSelf ?
@@ -1932,11 +1932,11 @@ information about the $qDb-referenced blastz and chaining process.
 	$defaultChainMinScore;
   my $chainLinearGap = $opt_chainLinearGap ? "$opt_chainLinearGap" :
 	$defaultChainLinearGap;
-    print $fh " by the blastz alignment
+    print $fh " by the lastz alignment
 program, which is available from Webb Miller's lab at Penn State
 University (http://www.bx.psu.edu/miller_lab/).  $lap $abridging
 
-The blastz scoring matrix (Q parameter) used was$defaultMatrix:
+The lastz scoring matrix (Q parameter) used was$defaultMatrix:
 
 $matrix
 
@@ -1946,7 +1946,7 @@ and L=$l for the second pass, which restricted the search space to the
 regions between two alignments found in the first pass.  The minimum
 score for alignments to be interpolated between was H=$h.  $blastzOther
 
-The .lav format blastz output was translated to the .psl format with
+The .lav format lastz output was translated to the .psl format with
 lavToPsl, then chained by the axtChain program.\n
 Chain minimum score: $chainMinScore, and linearGap matrix of ";
     if ($chainLinearGap =~ m/loose/) {
@@ -1978,7 +1978,7 @@ and netClass programs.
 Best-chain alignments in axt format were extracted by the netToAxt program.";
   }
   print $fh "
-All programs run after blastz were written by Jim Kent at UCSC.
+All programs run after lastz were written by Jim Kent at UCSC.
 
 ----------------------------------------------------------------
 If you plan to download a large file or multiple files from this directory,
