@@ -1637,5 +1637,8 @@ void labelTrackAsFiltered(struct track *tg);
 
 void setupHotkeys(boolean gotExtTools);
 /* setup keyboard shortcuts and a help dialog for it */
+
+void calcWiggleOrdering(struct cart *cart, struct flatTracks *flatTracks);
+
 #endif /* HGTRACKS_H */
 

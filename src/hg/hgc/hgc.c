@@ -26824,7 +26824,7 @@ else if (startsWith("numtS", table))
     {
     doNumtS(tdb, item);
     }
-else if (startsWith("cosmic", table))
+else if (sameString("cosmic", table))
     {
     doCosmic(tdb, item);
     }
