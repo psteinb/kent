@@ -9418,7 +9418,7 @@ else
 boolean gotExtTools = extToolsEnabled();
 setupHotkeys(gotExtTools);
 if (gotExtTools)
-    printExtMenuData();
+    printExtMenuData(chromName);
 
 }
 
