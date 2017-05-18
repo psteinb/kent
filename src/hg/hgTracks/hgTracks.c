@@ -9419,7 +9419,6 @@ boolean gotExtTools = extToolsEnabled();
 setupHotkeys(gotExtTools);
 if (gotExtTools)
     printExtMenuData(chromName);
-
 }
 
 void chromInfoTotalRow(int count, long long total)
