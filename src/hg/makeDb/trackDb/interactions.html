@@ -13,6 +13,14 @@ Clicking an item will take you a
 <a href="../../goldenPath/help/hgGeneGraph.html" target="_blank">gene interaction graph</a>
 that includes detailed information on the support for the various interactions.</p>
 
+<p>
+Items are colored based on the number of documents supporting the interactions of a
+particular gene. Genes with &gt;100 supporting documents are colored
+<strong><font color="#000000">black</font></strong>, genes with &gt;10 but &lt;100
+supporting documents are colored <strong><font color="#000080">dark blue</font></strong>, and
+those with &gt;10 supporting documents are colored
+<strong><font color="#add8e6">light blue</font></strong>.</p>
+
 <h3>Pathway and Gene Interaction Display</h3>
 <p>
 See the
@@ -31,7 +39,7 @@ section of the help page for the gene interaction graph.</p>
 <p>
 The underlying data for this track can be accessed interactively through the
 <a href="hgTables" target="_blank">Table Browser</a> or
-<a href="hgIntergrator" target="_blank">Data Integrator</a>.
+<a href="hgIntegrator" target="_blank">Data Integrator</a>.
 For automated analysis, the genome annotation is stored in a bigBed file that can be obtained
 from the
 <a href="http://hgdownload.cse.ucsc.edu/gbdb/$db/bbi/" target="_blank">download server</a>.
@@ -47,7 +55,6 @@ be used to obtain only features within a given range, for example:
 <tt>bigBedToBed http://hgdownload.cse.ucsc.edu/gbdb/$db/bbi/interactions.bb
 -chrom=chr6 -start=0 -end=1000000 stdout</tt>
 </p>
-
 
 <h2>Credits</h2>
 <p>
