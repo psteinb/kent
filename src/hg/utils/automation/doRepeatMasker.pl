@@ -289,9 +289,9 @@ _EOF_
 my $myParaRun = $HgAutomate::paraRun;
   if ($clusterType eq "falcon1") {
 	$myParaRun = "
-para.pl make rmsk_$db jobList -q medium\n
-para.pl check rmsk_$db\n
-para.pl time rmsk_$db > run.time\n
+para make rmsk_$db jobList -q medium\n
+para check rmsk_$db\n
+para time rmsk_$db > run.time\n
 cat run.time\n";
 }
 
@@ -307,10 +307,10 @@ chmod a+x RMRun.csh
 #./dummyRun.csh		# do not run a dummy script
 
 # Record RM version used:
-ls -ld $RepeatMaskerPath $RepeatMasker
+#ls -ld $RepeatMaskerPath $RepeatMasker
 # MH: lets not grep for the version. This does not return something with RM version 4. 
 #grep 'version of RepeatMasker\$' $RepeatMasker
-grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
+#grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
 echo "# RepeatMasker engine: $RepeatMaskerEngine"
 _EOF_
   );
