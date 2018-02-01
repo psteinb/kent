@@ -25,6 +25,9 @@
 #include "versionInfo.h"
 #include "mailViaPipe.h"
 #include "dystring.h"
+#include "autoUpgrade.h"
+
+#define EMAILSEP ";"
 
 /* ---- Global variables. ---- */
 char msg[4096] = "";
@@ -300,10 +303,9 @@ char *getReturnToURL()
 {
 char *returnURL = cartUsualString(cart, "returnto", "");
 char returnTo[2048];
-
+  
 if (!returnURL || sameString(returnURL,""))
-   safef(returnTo, sizeof(returnTo), "%shgSession?hgS_doMainPage=1",
-    wikiServerAndCgiDir());
+   safef(returnTo, sizeof(returnTo), "%shgSession?hgS_doMainPage=1", hLoginHostCgiBinUrl());
 else
    safecpy(returnTo, sizeof(returnTo), returnURL);
 return cloneString(returnTo);
@@ -347,6 +349,7 @@ void sendActMailOut(char *email, char *subject, char *msg)
 /* send mail to email address */
 {
 int result;
+
 result = mailViaPipe(email, subject, msg, returnAddr);
 
 if (result == -1)
@@ -460,9 +463,9 @@ struct sqlResult *sr;
 char **row;
 char query[256];
 
-/* find all the user names assocaited with this email address */
+/* find all the user names associated with this email address */
 char userList[512]="";
-sqlSafef(query,sizeof(query),"SELECT * FROM gbMembers WHERE email='%s'", email);
+sqlSafef(query,sizeof(query),"SELECT * FROM gbMembers WHERE email='%s' or recovEmail='%s'", email, email);
 sr = sqlGetResult(conn, query);
 int numUser = 0;
 while ((row = sqlNextRow(sr)) != NULL)
@@ -477,12 +480,16 @@ sqlFreeResult(&sr);
 mailUsername(email, userList);
 }
 
-void sendPwdMailOut(char *email, char *subject, char *msg, char *username)
+void sendPwdMailOut(char *email, char *recovEmail, char *subject, char *msg, char *username)
 /* send password reset mail to user at registered email address */
 {
 char *obj = cartUsualString(cart, "hgLogin_helpWith", "");
 int result;
+
 result = mailViaPipe(email, subject, msg, returnAddr);
+if ((result != -1) && !isEmpty(recovEmail))
+    result = mailViaPipe(recovEmail, subject, msg, returnAddr);
+
 if (result == -1)
     {
     hPrintf(
@@ -502,7 +509,7 @@ else
     }
 }
 
-void sendNewPwdMail(char *username, char *email, char *password)
+void sendNewPwdMail(char *username, char *email, char *recovEmail, char *password)
 /* send user new password */
 {
 char subject[256];
@@ -513,7 +520,7 @@ safef(subject, sizeof(subject),"New temporary password for your account at the %
 safef(msg, sizeof(msg),
     "  Someone (probably you, from IP address %s) requested a new password for the %s (%s). A temporary password for user \"%s\" has been created and was set to \"%s\". If this was your intent, you will need to log in and choose a new password now. Your temporary password will expire in 7 days.\n\n  If someone else made this request, or if you have remembered your password, and you no longer wish to change it, you may ignore this message and continue using your old password.\n\n%s\n%s",
     remoteAddr, brwName, brwAddr, username, password, signature, returnAddr);
-sendPwdMailOut(email, subject, msg, username);
+sendPwdMailOut(email, recovEmail, subject, msg, username);
 }
 
 void displayAccHelpPage(struct sqlConnection *conn)
@@ -579,6 +586,7 @@ char query[256];
 /* find email address associated with this username */
 sqlSafef(query,sizeof(query),"SELECT email FROM gbMembers WHERE userName='%s'", username);
 char *email = sqlQuickString(conn, query);
+
 if (!email || sameString(email,""))
     {
     freez(&errMsg);
@@ -586,7 +594,11 @@ if (!email || sameString(email,""))
     displayAccHelpPage(conn);
     return;
     }
-sendNewPwdMail(username, email, password);
+
+sqlSafef(query,sizeof(query),"SELECT recovEmail FROM gbMembers WHERE userName='%s'", username);
+char *recovEmail = sqlQuickString(conn, query);
+
+sendNewPwdMail(username, email, recovEmail, password);
 }
 
 void lostPassword(struct sqlConnection *conn, char *username)
@@ -892,9 +904,17 @@ hPrintf("<div class=\"inputGroup\">"
     "<div class=\"inputGroup\">"
     "<label for=\"reenterEmail\">Re-enter Email address</label>"
     "<input type=text name=\"hgLogin_email2\" value=\"%s\" size=\"30\" id=\"emailCheck\">"
-    "</div>"
-    "\n", cartUsualString(cart, "hgLogin_userName", ""), cartUsualString(cart, "hgLogin_email", ""),
+    "</div>\n",
+    cartUsualString(cart, "hgLogin_userName", ""), cartUsualString(cart, "hgLogin_email", ""),
     cartUsualString(cart, "hgLogin_email2", ""));
+
+if (sqlFieldIndex(conn, "gbMembers", "recovEmail") != -1)
+    hPrintf("<div class=\"inputGroup\">"
+        "<label for=\"recovEmail\">Recovery Email address e.g. personal email</label>"
+        "<input type=text name=\"hgLogin_recovEmail\" size=\"30\" id=\"recovEmail\">"
+        "</div>"
+        "\n");
+
 hPrintf("<div class=\"inputGroup\">"
     "<label for=\"password\">Password <small>(must be at least 5 characters)</small></label>"
     "<input type=password name=\"hgLogin_password\" value=\"%s\" size=\"30\" id=\"password\">"
@@ -985,6 +1005,15 @@ if (email && email2 && !sameString(email, email2))
     return;
     }
 
+char *recovEmail = cartUsualString(cart, "hgLogin_recovEmail", "");
+if (!isEmpty(recovEmail) && spc_email_isvalid(recovEmail) == 0)
+    {
+    freez(&errMsg);
+    errMsg = cloneString("Invalid format of the recovery email address.");
+    signupPage(conn);
+    return;
+    }
+
 password = cartUsualString(cart, "hgLogin_password", "");
 if (!password || sameString(password,"") || (strlen(password)<5))
     {
@@ -1019,9 +1048,13 @@ if (sameWord(returnAddr, "NOEMAIL"))
     accActStatus = "Y";
 
 sqlSafef(query,sizeof(query), "INSERT INTO gbMembers SET "
-    "userName='%s',realName='%s',password='%s',email='%s', "
+    "userName='%s',realName='%s',password='%s',email='%s',"
     "lastUse=NOW(),accountActivated='%s'",
     user,user,encPwd,email,accActStatus);
+// set the recov email only if we got one (and we only got one if the table has this field)
+if (!isEmpty(recovEmail))
+    sqlSafefAppend(query, sizeof(query), ",recovEmail='%s'", recovEmail);
+
 sqlUpdate(conn, query);
 
 if (sameWord(returnAddr, "NOEMAIL"))
@@ -1240,6 +1273,12 @@ void doMiddle(struct cart *theCart)
  * dispatches to the appropriate page-maker. */
 {
 struct sqlConnection *conn = hConnectCentral();
+
+// on mirrors, try to add the field 'recovEmail' to gbMembers. This may or may not work, depending on their config
+if (sqlFieldIndex(conn, "gbMembers", "recovEmail") == -1) {
+    autoUpgradeTableAddColumn(conn, "gbMembers", "recovEmail", "varchar(255)", FALSE, "''");
+}
+
 cart = theCart;
 safecpy(brwName,sizeof(brwName), browserName());
 safecpy(brwAddr,sizeof(brwAddr), browserAddr());
@@ -1290,6 +1329,7 @@ errAbort(
 int main(int argc, char *argv[])
 /* Process command line. */
 {
+
 long enteredMainTime = clock1000();
 pushCarefulMemHandler(100000000);
 cgiSpoof(&argc, argv);
@@ -1298,14 +1338,10 @@ htmlSetStyle(htmlStyleUndecoratedLink);
 htmlSetBgColor(HG_CL_OUTSIDE);
 htmlSetFormClass("accountScreen");
 
-boolean relativeLink = cfgOptionBooleanDefault("login.relativeLink", FALSE);
 struct dyString *dy;
-if (relativeLink) // normal relative links are better for reverse proxyies or all-https sites
-    dy = dyStringCreate("%s", cgiScriptName());
-else 
-    dy = dyStringCreate("http%s://%s%shgLogin",
-                                     loginUseHttps() ? "s" : "", wikiLinkHost(), cgiScriptDirUrl());
+dy = dyStringCreate("%shgLogin", hLoginHostCgiBinUrl());
 hgLoginUrl = dyStringCannibalize(&dy);
+
 oldCart = hashNew(10);
 cartHtmlShell("Login - UCSC Genome Browser", doMiddle, hUserCookie(), excludeVars, oldCart);
 cgiExitTime("hgLogin", enteredMainTime);

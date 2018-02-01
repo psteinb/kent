@@ -40,7 +40,9 @@
 # v = verbose
 # h = human readable
 # u = skip if file is newer on receiver
-RSYNCOPTS="-ltrzvh"
+# We are not using the -z option anymore because it may cause
+# CPU overload on hgdownload
+RSYNCOPTS="-ltrvh"
 # rsync server for CGIs and html files
 RSYNCSRC="rsync://hgdownload.cse.ucsc.edu"
 RSYNCCGIBIN=cgi-bin
@@ -234,6 +236,24 @@ if apt-cache policy imagemagick | grep "Installed: .none." > /dev/null; then
    apt-get -y autoremove
 fi
 
+# install mysql-python for hgGeneGraph, actually cgi-bin/pyLib/hgLib.py
+if apt-cache policy python-mysqldb | grep "Installed: .none." > /dev/null; then
+   echo - Installing mysql-python
+   apt-get update
+   apt-get --no-install-recommends install -y python-mysqldb
+   apt-get -y autoremove
+fi
+
+# install curl for checking if we are closer to European or US mirror
+if apt-cache policy curl | grep "Installed: .none." > /dev/null; then
+   echo - Installing curl
+   apt-get update
+   apt-get --no-install-recommends install -y curl
+   apt-get -y autoremove
+   # make sure that the mysql server is re-configured now
+   rm -f /usr/local/apache/trash/registration.txt
+fi
+
 echo
 echo - Updating the genome browser software via rsync:
 
@@ -244,7 +264,7 @@ if [ "$1" == "hgwdev" ] ; then
     # On a development machine, the developer might have touched a file
     # for testing. We want to make sure that all local files are overwritten by the 
     # files on hgwdev
-    RSYNCOPTS="-ltrzvh"
+    RSYNCOPTS="-ltrvh"
     user=$2
     dirExt=$3
 
@@ -301,6 +321,33 @@ chown -R www-data.www-data /usr/local/apache/cgi-bin/*
 chown -R www-data.www-data /usr/local/apache/htdocs/
 chmod -R a+r /usr/local/apache/htdocs
 
+# June 2017: add a basic set of hg38 files to the GBIB
+# This will add 1.2 GB to the size of the virtual disc but hg38
+# is the default genome so probably should be included
+# Touching the files once is enough. Rsync will download them.
+mkdir -p /data/gbdb/hg38
+mkdir -p /data/gbdb/hg38/targetDb/
+mkdir -p /data/gbdb/hg38/html/
+mkdir -p /data/mysql/hg38
+
+# GBDB files
+for i in hg38.2bit html/description.html knownGene.ix knownGene.ixx knownGene.bb targetDb/kgTargetSeq10.2bit targetDb/kgTargetSeq8.2bit targetDb/kgTargetSeq9.2bit trackDb.ix trackDb.ixx; do
+   touch /data/gbdb/hg38/$i;
+done
+
+# MySQL tables
+for i in chromInfo cytoBand cytoBandIdeo ensemblLift extFile grp gtexGene gtexGeneModel hgFindSpec kgColor kgXref knownCanonical knownGene knownToTag ncbiRefSeq ncbiRefSeqCurated ncbiRefSeqLink ncbiRefSeqOther ncbiRefSeqPredicted ncbiRefSeqPsl refGene tableList trackDb ucscToEnsembl ucscToINSDC xenoRefGene; do
+   touch /data/mysql/hg38/$i.MYD;
+   touch /data/mysql/hg38/$i.MYI;
+   touch /data/mysql/hg38/$i.frm;
+done
+
+# adding tables that are required for gtex, which is now a default track, #19587
+touch /data/mysql/hgFixed/gtexInfo.{MYI,MYD,frm}
+touch /data/mysql/hgFixed/gtexTissue.{MYI,MYD,frm}
+
+# -- END JUNE 2017
+
 if [ "$1" != "hgwdev" ] ; then
   echo - Updating GBDB files...
   rsync $RSYNCOPTS --existing rsync://hgdownload.cse.ucsc.edu/gbdb/ /data/gbdb/
@@ -333,7 +380,17 @@ touch /data/mysql/hgFixed/refLink.MYI /data/mysql/hgFixed/refLink.MYD /data/mysq
 
 # Jan 2017: hgVai does not work if /data/mysql/hg19/wgEncodeRegTfbsClusteredInputsV3 is not present, so force this 
 # table into the rsync, refs #18778
-touch /data/mysql/hg19/wgEncodeRegTfbsClusteredInputsV3.{frm,MRI,MYD}
+touch /data/mysql/hg19/wgEncodeRegTfbsClusteredInputsV3.{frm,MYI,MYD}
+
+# Jun 2017: An Ubuntu security update in early 2017 deactivated LOAD DATA in Mysql
+# so we are switching it back on
+if grep -q secure-file-priv /etc/mysql/my.cnf; then
+    true
+else
+    echo Allowing LOAD DATA in MySQL and restart MySQL
+    sed -i '/\[mysqld\]/a secure-file-priv = ""' /etc/mysql/my.cnf
+    service mysql restart
+fi
 
 # we can now remove the old tables
 rm -f /data/mysql/hg19/refSeqStatus*
@@ -416,6 +473,21 @@ mysqlcheck --all-databases --auto-repair --quick --fast --silent
 if [ ! -f /usr/local/apache/cgi-bin/hg.conf.local ] ; then
    echo Creating /usr/local/apache/cgi-bin/hg.conf.local
    echo allowHgMirror=true > /usr/local/apache/cgi-bin/hg.conf.local
+fi
+
+# Sept 2017: check if genome-euro mysql server is closer
+if [ ! -f /usr/local/apache/trash/registration.txt ]; then
+   echo comparing latency: genome.ucsc.edu Vs. genome-euro.ucsc.edu
+   euroSpeed=$( (time -p (for i in `seq 10`; do curl -sSI genome-euro.ucsc.edu > /dev/null; done )) 2>&1 | grep real | cut -d' ' -f2 )
+   ucscSpeed=$( (time -p (for i in `seq 10`; do curl -sSI genome.ucsc.edu /dev/null; done )) 2>&1 | grep real | cut -d' ' -f2 )
+   if [[ $(awk '{if ($1 <= $2) print 1;}' <<< "$euroSpeed $ucscSpeed") -eq 1 ]]; then
+      echo genome-euro seems to be closer
+      echo modifying gbib to pull data from genome-euro instead of genome
+      sed -i s/slow-db.host=genome-mysql.cse.ucsc.edu/slow-db.host=genome-euro-mysql.soe.ucsc.edu/ /usr/local/apache/cgi-bin/hg.conf
+   else
+      echo genome.ucsc.edu seems to be closer
+      echo not modifying /usr/local/apache/cgi-bin/hg.conf
+   fi
 fi
 
 touch /root/lastUpdateTime.flag

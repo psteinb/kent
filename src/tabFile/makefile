@@ -11,7 +11,10 @@ include ${kentSrc}/inc/common.mk
 # List of all directories to build
 
 ALL_APPS = \
-	tabQuery 
+	tabInfo \
+	tabQuery \
+	tabRepeatedFieldsToArrayField \
+	tabToHtml
 
 all: $(ALL_APPS:%=%.all)
 

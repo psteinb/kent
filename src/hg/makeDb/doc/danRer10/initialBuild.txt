@@ -461,8 +461,20 @@ searchPriority 8
      #	test it with some sequence
 
 ############################################################################
+# LIFTOVER TO danRer11 (DONE - 2015-01-29 - Hiram)
+    ssh hgwdev
+    mkdir /hive/data/genomes/danRer10/bed/blat.danRer11.2017-10-20
+    cd /hive/data/genomes/danRer10/bed/blat.danRer11.2017-10-20
+    time (doSameSpeciesLiftOver.pl -verbose=2 -buildDir=`pwd` \
+	-ooc=/hive/data/genomes/danRer10/jkStuff/danRer10.11.ooc \
+        -bigClusterHub=ku -dbHost=hgwdev -workhorse=hgwdev \
+         danRer10 danRer11) > do.log 2>&1
+    # real    194m46.839s
 
-#########################################################################
+    # verify the convert link on the test browser is now active from danRer10 to
+    # danRer11
+
+############################################################################
 # LIFTOVER TO danRer7 (DONE - 2015-01-29 - Hiram)
     ssh hgwdev
     mkdir /hive/data/genomes/danRer10/bed/blat.danRer7.2015-01-29
@@ -548,5 +560,44 @@ searchPriority 8
     # should cover %100 all bases:
     featureBits -countGaps danRer10 ucscToRefSeq
     # 2730871774 bases of 2730871774 (100.000%) in intersection
+
+#########################################################################
+# add chromAlias table (DONE - 2017-06-22 - Hiram)
+
+    mkdir /hive/data/genomes/danRer10/bed/chromAlias
+    cd /hive/data/genomes/danRer10/bed/chromAlias
+
+    mkdir genbank
+    cd genbank
+    cp -p /hive/data/inside/ncbi/genomes/genbank/vertebrate_other/Danio_rerio/latest_assembly_versions/GCA_000002035.3_GRCz10/GCA_000002035.3_GRCz10.ncbi.2bit .
+    time (doIdKeys.pl GCF_000002035.3_GRCz10 \
+      -twoBit=`pwd`/GCF_000002035.3_GRCz10.ncbi.2bit \
+         -buildDir=`pwd`) > do.log 2>&1
+    # real    0m52.374s
+
+    cd /hive/data/genomes/danRer10/bed/chromAlias
+    join ../idKeys/danRer10.idKeys.txt \
+ genbank/GCA_000002035.3_GRCz10.idKeys.txt \
+    | awk '{printf "%s\t%s\n", $2,$3}' | sort > ucsc.genbank.tab
+
+    cd /hive/data/genomes/danRer10/bed/chromAlias
+    mkdir refseq
+    cd refseq
+    cp -p /hive/data/inside/ncbi/genomes/refseq/vertebrate_other/Danio_rerio/latest_assembly_versions/GCF_000002035.5_GRCz10/GCF_000002035.5_GRCz10.ncbi.2bit .
+    time (doIdKeys.pl GCF_000002035.5_GRCz10 \
+      -twoBit=`pwd`/GCF_000002035.5_GRCz10.ncbi.2bit \
+         -buildDir=`pwd`) > do.log 2>&1
+    # real    0m47.365s
+
+    cd /hive/data/genomes/danRer10/bed/chromAlias
+
+    join ../idKeys/danRer10.idKeys.txt \
+  /hive/users/hiram/idKeys/ensembl/release-85/danio_rerio/Danio_rerio.GRCz10.idKeys.txt \
+    | awk '{printf "%s\t%s\n", $2,$3}' | sort > ucsc.ensembl1.tab
+
+    ~/kent/src/hg/utils/automation/chromAlias.pl
+
+    hgLoadSqlTab danRer10 chromAlias ~/kent/src/hg/lib/chromAlias.sql \
+        danRer10.chromAlias.tab
 
 #########################################################################

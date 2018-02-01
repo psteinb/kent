@@ -80,13 +80,13 @@ shortLabel AceView
 tables jaxOrtholog
 idSql select geneSymbol from kgXref where kgID = '%s'
 priority 10
-url http://www.ncbi.nlm.nih.gov/IEB/Research/Acembly/av.cgi?db=human&l=%s
+url https://www.ncbi.nlm.nih.gov/IEB/Research/Acembly/av.cgi?db=human&l=%s
 
 name jaxOrtholog
 shortLabel MGI
 tables kgXref
 idSql select geneSymbol from kgXref x, knownGene k where kgID = '%s' and name= kgID and cdsStart <> cdsEnd
-url http://www.informatics.jax.org/javawi2/servlet/WIFetch?page=searchTool&query=%s&selectedQuery=Genes+and+Markers
+url http://www.informatics.jax.org/searchtool/Search.do?query=%s
 priority 10
 
 name HInv
@@ -130,3 +130,11 @@ tables knownToMalacards
 idSql select knownToMalacards.value from kgXref, knownToMalacards where kgID = '%s' and kgXref.geneSymbol = knownToMalacards.value
 url http://malacards.org/search/results/%s
 priority 10
+
+name hgGeneGraph
+shortLabel Gene interactions
+tables hgFixed.ggSymbol kgXref
+idSql SELECT ggSymbol.geneSymbol FROM hgFixed.ggSymbol, kgXref where (kgXref.geneSymbol = ggSymbol.geneSymbol) and kgId='%s'
+url hgGeneGraph?gene=%s
+hgsid on
+priority 2

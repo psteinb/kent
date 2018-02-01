@@ -313,9 +313,13 @@ var genomePos = {
             // http://www.ensembl.org/Homo_sapiens/contigview?chr=21&start=33031934&end=33041241
             genomePos.linkFixup(pos, "ensemblLink", new RegExp("(.+start=)[0-9]+"), "end");
 
-            // Example NCBI link:
-            // http://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=9606&CHR=21&BEG=33031934&END=33041241
+            // Example NCBI Map Viewer link (obsolete):
+            // https://www.ncbi.nlm.nih.gov/mapview/maps.cgi?taxid=9606&CHR=21&BEG=33031934&END=33041241
             genomePos.linkFixup(pos, "ncbiLink", new RegExp("(.+BEG=)[0-9]+"), "END");
+
+            // Example NCBI Genome Data Viewer link
+            // https://www.ncbi.nlm.nih.gov/genome/gdv/browser/?id=GCF_000001405.37&chr=4&from=45985744&to=45991655&context=genome
+            genomePos.linkFixup(pos, "ncbiLink", new RegExp("(.+from=)[0-9]+"), "to");
 
             // Example medaka link: 
             // http://utgenome.org/medakabrowser_ens_jump.php?revision=version1.0&chr=chromosome18&start=14435198&end=14444829
@@ -378,6 +382,14 @@ var genomePos = {
         var mult = width / imgWidth;   // mult is bp/pixel multiplier
         var startDelta;   // startDelta is how many bp's to the right/left
         var x1;
+
+        // The magic number three appear at another place in the code 
+        // as LEFTADD. It was originally annotated as "borders or cgi item calc
+        // ?" by Larry. It has to be used when going any time when converting 
+        // between pixels and coordinates.
+        selStart -= 3;
+        selEnd -= 3;
+
         if (hgTracks.revCmplDisp) {
             x1 = Math.min(imgWidth, selStart);
             startDelta = Math.floor(mult * (imgWidth - x1));
@@ -2167,11 +2179,15 @@ jQuery.fn.panImages = function(){
                 } else if (newX >= rightLimit && newX < leftLimit)
                     beyondImage = false; // could have scrolled back without mouse up
 
-                newX = panUpdatePosition(newX,true);
+                posStatus = panUpdatePosition(newX,true);
+                newX = posStatus.newX;
+                // do not update highlights if we are at the end of a chromsome
+                if (!posStatus.isOutsideChrom)
+                    scrollHighlight(relativeX);
+
                 var nowPos = newX.toString() + "px";
                 $(".panImg").css( {'left': nowPos });
                 $('.tdData').css( {'backgroundPosition': nowPos } );
-                scrollHighlight(relativeX);
                 if (!only1xScrolling)
                     panAdjustHeight(newX);  // Will dynamically resize image while scrolling.
             }
@@ -2267,7 +2283,11 @@ jQuery.fn.panImages = function(){
             portalScrolledX = (closedPortalStart - newPortalStart) / hgTracks.imgBoxBasesPerPixel;
             newOffsetX = portalScrolledX - (hgTracks.imgBoxPortalOffsetX+hgTracks.imgBoxLeftLabel);
         }
-        return newOffsetX;
+
+        ret = {};
+        ret.newX = newOffsetX;
+        ret.isOutsideChrom = recalculate;
+        return ret;
     }
     function mapTopAndBottom(mapName,east,west)
     {
@@ -2526,6 +2546,7 @@ var rightClick = {
         var row = null;
         var rows = null;
         var selectUpdated = null;
+                function mySuccess() {}
         if (menuObject.shown) {
             // warn("Spinning: menu is still shown");
             setTimeout(function() { rightClick.hitFinish(menuItemClicked, menuObject, cmd); }, 10);
@@ -2686,8 +2707,41 @@ var rightClick = {
             }
             location.assign(url);
 
-        } else if ((cmd === 'sortExp') || (cmd === 'sortSim')) {
+        } else if (cmd === 'newCollection') {
+            $.ajax({
+                type: "PUT",
+                async: false,
+                url: "../cgi-bin/hgCollection",
+                data:  "cmd=newCollection&track=" + id + "&hgsid=" + getHgsid(),
+                trueSuccess: mySuccess,
+                success: catchErrorOrDispatch,
+                error: errorHandler,
+            });
 
+            imageV2.fullReload();
+        } else if (cmd === 'addCollection') {
+            var shortLabel = $(menuItemClicked).text().substring(9).slice(0,-1); 
+            var ii;
+            var collectionName;
+            for(ii=0; ii < hgTracks.collections.length; ii++) {
+                if ( hgTracks.collections[ii].shortLabel === shortLabel) {
+                    collectionName = hgTracks.collections[ii].track;
+                    break;
+                }
+            }
+
+            $.ajax({
+                type: "PUT",
+                async: false,
+                url: "../cgi-bin/hgCollection",
+                data: "cmd=addTrack&track=" + id + "&collection=" + collectionName + "&hgsid=" + getHgsid(),
+                trueSuccess: mySuccess,
+                success: catchErrorOrDispatch,
+                error: errorHandler,
+            });
+
+            imageV2.fullReload();
+        } else if ((cmd === 'sortExp') || (cmd === 'sortSim')) {
             url = "hgTracks?hgsid=" + getHgsid() + "&" + cmd + "=";
             rec = hgTracks.trackDb[id];
             if (tdbHasParent(rec) && tdbIsLeaf(rec))
@@ -3214,6 +3268,11 @@ var rightClick = {
                     menu.push(o);
                 }
             }
+
+            if (rec.isCustomComposite)
+                {
+                // add delete from composite
+                }
 
             // add sort options if this is a custom composite
             if (rec.isCustomComposite) {
@@ -3775,8 +3834,12 @@ var popUp = {
             buttons: uiDialogButtons,
 
             // popup.ready() doesn't seem to work in open.
-            
-            open: function () {
+            open: function(event) {
+                // fix popup to a location -- near the top and somewhat centered on the browser image
+                $(event.target).parent().css('position', 'fixed');
+                $(event.target).parent().css('top', '18%');
+                $(event.target).parent().css('left', '30%');
+
                 if (!popUp.trackDescriptionOnly) {
                     $('#hgTrackUiDialog').find('.filterBy,.filterComp').each(
                         function(i) {

@@ -482,7 +482,7 @@ else if (b->orderKey < a->orderKey) return 1;
 else return 0;
 }
 
-static struct trackHubGenome *trackHubGenomeReadRa(char *url, struct trackHub *hub)
+static struct trackHubGenome *trackHubGenomeReadRa(char *url, struct trackHub *hub, char *singleFile)
 /* Read in a genome.ra format url and return it as a list of trackHubGenomes. 
  * Also add it to hash, which is keyed by genome. */
 {
@@ -500,7 +500,7 @@ while ((ra = raNextRecord(lf)) != NULL)
         break;
 
     char *twoBitPath = hashFindVal(ra, "twoBitPath");
-    char *genome;
+    char *genome, *trackDb;
     if (twoBitPath != NULL)
 	genome = addHubName(hashFindVal(ra, "genome"), hub->name);
     else
@@ -512,9 +512,14 @@ while ((ra = raNextRecord(lf)) != NULL)
     if (hashLookup(hash, genome) != NULL)
         errAbort("Duplicate genome %s in stanza ending line %d of %s",
 		genome, lf->lineIx, lf->fileName);
-    char *trackDb = hashFindVal(ra, "trackDb");
-    if (trackDb == NULL)
-        badGenomeStanza(lf);
+    if (singleFile == NULL)
+        {
+        trackDb = hashFindVal(ra, "trackDb");
+        if (trackDb == NULL)
+            badGenomeStanza(lf);
+        }
+    else
+        trackDb = singleFile;
     AllocVar(el);
     el->name = cloneString(genome);
     el->trackDbFile = trackHubRelativeUrl(url, trackDb);
@@ -628,7 +633,21 @@ trackHubRequiredSetting(hub, "hub");
 trackHubRequiredSetting(hub, "email");
 hub->shortLabel = trackHubRequiredSetting(hub, "shortLabel");
 hub->longLabel = trackHubRequiredSetting(hub, "longLabel");
-hub->genomesFile = trackHubRequiredSetting(hub, "genomesFile");
+
+boolean isOneFile = (trackHubSetting(hub, "useOneFile") != NULL);
+char *ourFile = NULL;
+
+if (isOneFile)
+    {
+    ourFile = url;
+    char *root = strrchr(url, '/');
+    if (root)
+        ourFile = root + 1;
+    hub->genomesFile = cloneString(ourFile);
+    }
+else
+    hub->genomesFile = trackHubRequiredSetting(hub, "genomesFile");
+
 hub->email =  trackHubSetting(hub, "email");
 hub->version = trackHubSetting(hub, "version"); // default to current version
 hub->level = trackHubSetting(hub, "level");     // "core" or "all"
@@ -640,7 +659,7 @@ lineFileClose(&lf);
 char *genomesUrl = trackHubRelativeUrl(hub->url, hub->genomesFile);
 
 hub->genomeHash = hashNew(8);
-hub->genomeList = trackHubGenomeReadRa(genomesUrl, hub);
+hub->genomeList = trackHubGenomeReadRa(genomesUrl, hub, ourFile);
 freez(&genomesUrl);
 
 cacheHub(hub);
@@ -781,7 +800,7 @@ else
     {
     /* Check type field. */
     char *type = requiredSetting(hub, genome, tdb, "type");
-    if (!( isCustomComposite(tdb) && startsWithWord("wig", type)))
+    if (! isCustomComposite(tdb))
         {
         if (startsWithWord("mathWig", type) )
             {
@@ -789,25 +808,29 @@ else
             }
         else 
             {
-            if (!(startsWithWord("bigWig", type) ||
-              startsWithWord("bigBed", type) ||
-#ifdef USE_HAL
-              startsWithWord("pslSnake", type) ||
-              startsWithWord("halSnake", type) ||
-#endif
-              startsWithWord("vcfTabix", type) ||
-              startsWithWord("bigPsl", type) ||
-              startsWithWord("bigMaf", type) ||
-              startsWithWord("longTabix", type) ||
-              startsWithWord("bigGenePred", type) ||
-              startsWithWord("bigChain", type) ||
-              startsWithWord("bigBarChart", type) ||
-              startsWithWord("bam", type)))
+            if (!(startsWithWord("wig", type)||  startsWithWord("bedGraph", type)))
                 {
-                errAbort("Unsupported type '%s' in hub %s genome %s track %s", type,
-                    hub->url, genome->name, tdb->track);
+                if (!(startsWithWord("bigWig", type) ||
+                  startsWithWord("bigBed", type) ||
+#ifdef USE_HAL
+                  startsWithWord("pslSnake", type) ||
+                  startsWithWord("halSnake", type) ||
+#endif
+                  startsWithWord("vcfTabix", type) ||
+                  startsWithWord("bigPsl", type) ||
+                  startsWithWord("bigMaf", type) ||
+                  startsWithWord("longTabix", type) ||
+                  startsWithWord("bigGenePred", type) ||
+                  startsWithWord("bigNarrowPeak", type) ||
+                  startsWithWord("bigChain", type) ||
+                  startsWithWord("bigBarChart", type) ||
+                  startsWithWord("bam", type)))
+                    {
+                    errAbort("Unsupported type '%s' in hub %s genome %s track %s", type,
+                        hub->url, genome->name, tdb->track);
+                    }
+                requiredSetting(hub, genome, tdb, "bigDataUrl");
                 }
-            requiredSetting(hub, genome, tdb, "bigDataUrl");
             }
 
         if (sameString("barChart", type) || sameString("bigBarChart", type))
@@ -987,7 +1010,7 @@ for (tdb = tdbList; tdb != NULL; tdb = tdb->next)
     }
 }
 
-static void addOneDescription(char *trackDbFile, struct trackDb *tdb)
+void trackHubAddOneDescription(char *trackDbFile, struct trackDb *tdb)
 /* Fetch tdb->track's html description and store in tdb->html. */
 {
 /* html setting should always be set because we set it at load time */
@@ -1012,13 +1035,13 @@ void trackHubAddDescription(char *trackDbFile, struct trackDb *tdb)
 /* Fetch tdb->track's html description (or nearest ancestor's non-empty description)
  * and store in tdb->html. */
 {
-addOneDescription(trackDbFile, tdb);
+trackHubAddOneDescription(trackDbFile, tdb);
 if (isEmpty(tdb->html))
     {
     struct trackDb *parent;
     for (parent = tdb->parent;  isEmpty(tdb->html) && parent != NULL;  parent = parent->parent)
 	{
-	addOneDescription(trackDbFile, parent);
+	trackHubAddOneDescription(trackDbFile, parent);
 	if (isNotEmpty(parent->html))
 	    tdb->html = cloneString(parent->html);
 	}

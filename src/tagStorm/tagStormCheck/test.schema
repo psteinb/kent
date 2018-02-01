@@ -1,8 +1,11 @@
 !access $ *
 age # 1 10
-age_units $ *
+age_units $ weeks days
 assay $ *
 biosample_date $ *
+!contributor.[].name $ *
+contributor.[].id # 
+!i.[].core.[].id $
 donor # 0 0
 ^file $ *
 !format $ bam fastq "tag storm"
@@ -13,5 +16,7 @@ map_ratio % 0 1
 organ $ brain liver
 part # 1 10
 q # -1 10
-sex $ *
+sex $ male female
 user_* $ *
+![].id #
+[].title $

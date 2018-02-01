@@ -136,6 +136,7 @@ sub doKmers {
   my $bossScript = newBash HgRemoteScript("$runDir/runKmers.bash",
 		$paraHub, $runDir, $whatItDoes);
 
+  my $paraRun = &HgAutomate::paraRun();
   $bossScript->add(<<_EOF_
 twoBitInfo $twoBit stdout | cut -f1 > part.list
 printf '#!/bin/bash
@@ -148,12 +149,11 @@ export result=\$2
 mkdir -p tmp
 
 twoBitToFa ${twoBit}:\$fa stdout \\
-  | $Bin/kmerPrint.pl \\
-    $kmersMinus1 /dev/stdin | gzip -c > \$result
+  | $Bin/kmerPrint.pl $kmersMinus1 stdin | gzip -c > \$result
 ' > runOne
 chmod +x runOne
 gensub2 part.list single gsub jobList
-$HgAutomate::paraRun
+$paraRun
 _EOF_
   );
   $bossScript->execute();
@@ -187,6 +187,7 @@ sub doPairedEnds {
   my $bossScript = newBash HgRemoteScript("$runDir/runPairedEnds.bash",
 		$paraHub, $runDir, $whatItDoes);
 
+  my $paraRun = &HgAutomate::paraRun();
   $bossScript->add(<<_EOF_
 ln -s $prevRunDir/part.list .
 printf '#!/bin/bash
@@ -204,7 +205,7 @@ $Bin/kmerPairs.pl \$kmerSize \$gapSize \$chrName \$result
 ' > runOne
 chmod +x runOne
 gensub2 part.list single gsub jobList
-$HgAutomate::paraRun
+$paraRun
 _EOF_
   );
   $bossScript->execute();
@@ -238,6 +239,7 @@ sub doCollapsePairedEnds {
   my $bossScript = newBash HgRemoteScript("$runDir/runCollapsePairedEnds.bash",
 		$paraHub, $runDir, $whatItDoes);
 
+  my $paraRun = &HgAutomate::paraRun();
   $bossScript->add(<<_EOF_
 ln -s $prevRunDir/part.list .
 printf '#!/bin/bash

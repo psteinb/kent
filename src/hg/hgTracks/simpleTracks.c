@@ -3535,6 +3535,12 @@ itemRgb.b = lf->filterColor & 0xff;
 return hvGfxFindColorIx(hvg, itemRgb.r, itemRgb.g, itemRgb.b);
 }
 
+Color blackItemNameColor(struct track *tg, void *item, struct hvGfx *hvg)
+/* Force item name (label) color to black */
+{
+return hvGfxFindColorIx(hvg, 0, 0, 0);
+}
+
 Color linkedFeaturesNameColor(struct track *tg, void *item, struct hvGfx *hvg)
 /* Determine the color of the name for the linked feature. */
 {
@@ -5424,7 +5430,7 @@ slSort(&itemList, bedCmp);
 tg->items = itemList;
 }
 
-static void bedPlusLabelDrawAt(struct track *tg, void *item, struct hvGfx *hvg, int xOff, int y,
+void bedPlusLabelDrawAt(struct track *tg, void *item, struct hvGfx *hvg, int xOff, int y,
 			       double scale, MgFont *font, Color color, enum trackVisibility vis)
 /* Draw a single bed item at position.  If vis is full, draw the associated label to the left
  * of the item. */
@@ -13909,6 +13915,10 @@ if (sameWord(type, "bed"))
         pubsMarkerMethods(track);
     if (startsWith("pubs", track->track) && stringIn("Blat", track->track))
         pubsBlatMethods(track);
+    if (startsWith("gtexEqtlCluster", track->track))
+        gtexEqtlClusterMethods(track);
+    if (startsWith("gtexEqtlTissue", track->track))
+        gtexEqtlTissueMethods(track);
     }
 /*
 else if (sameWord(type, "bedLogR"))
@@ -13932,6 +13942,7 @@ else if (sameWord(type, "longTabix"))
     char *words[2];
     words[0] = type;
     words[1] = "5";
+    knetUdcInstall();
     complexBedMethods(track, tdb, FALSE, 2, words);
     longRangeMethods(track, tdb);
     if (trackShouldUseAjaxRetrieval(tg))
@@ -13948,6 +13959,8 @@ else if (sameWord(type, "bigBed"))
     bigBedMethods(track, tdb, wordCount, words);
     if (trackShouldUseAjaxRetrieval(track))
         track->loadItems = dontLoadItems;
+    if (startsWith("gtexEqtlTissue", track->track))
+        gtexEqtlTissueMethods(track);
     }
 else if (sameWord(type, "bigMaf"))
     {
@@ -13964,6 +13977,15 @@ else if (sameWord(type, "bigBarChart"))
     tdb->canPack = TRUE;
     track->isBigBed = TRUE;
     barChartMethods(track);
+    }
+else if (sameWord(type, "bigNarrowPeak"))
+    {
+    tdb->canPack = TRUE;
+    track->isBigBed = TRUE;
+    encodePeakMethods(track);
+    track->loadItems = bigNarrowPeakLoadItems;
+    if (trackShouldUseAjaxRetrieval(track))
+        track->loadItems = dontLoadItems;
     }
 else if (sameWord(type, "bigPsl"))
     {
@@ -14259,10 +14281,63 @@ const struct track *b = *((struct track **)vb);
 return (a->priority - b->priority);
 }
 
+void buildMathWig(struct trackDb *tdb)
+/* Turn a mathWig composite into a mathWig track. */
+{
+char *aggregateFunc = cartOrTdbString(cart, tdb, "aggregate" , FALSE);
+
+if ((aggregateFunc == NULL) || !(sameString("add", aggregateFunc) || sameString("subtract", aggregateFunc)))
+    return;
+
+struct trackDb *subTracks = tdb->subtracks;
+
+tdb->subtracks = NULL;
+tdb->type = "mathWig";
+
+struct dyString *dy = newDyString(1024);
+
+if (sameString("add", aggregateFunc))
+    dyStringPrintf(dy, "+ ");
+else // subtract
+    dyStringPrintf(dy, "- ");
+struct trackDb *subTdb;
+for (subTdb=subTracks; subTdb; subTdb = subTdb->next)
+    {
+    char *bigDataUrl = trackDbSetting(subTdb, "bigDataUrl");
+    if (bigDataUrl != NULL)
+        dyStringPrintf(dy, "%s ",bigDataUrl);
+    else // native tracks are prepended with '$'
+        dyStringPrintf(dy, "$%s ",trackDbSetting(subTdb, "table"));
+    }
+
+hashAdd(tdb->settingsHash, "mathDataUrl", dy->string);
+}
+
+#ifdef NOTNOW   /// for the moment, mathWigs are made at the composite level.  Since we may go back to having them at the view level I'm leaving this in
+void fixupMathWigs(struct trackDb *tdb)
+/* Look through a container to see if it has a mathWig view and convert it. */
+{
+struct trackDb *subTdb;
+
+for(subTdb = tdb->subtracks; subTdb; subTdb = subTdb->next)
+    {
+    char *type;
+    if ((type = trackDbSetting(subTdb, "container")) != NULL)
+        {
+        if (sameString(type, "mathWig"))
+            {
+            buildMathWig(subTdb);
+            }
+        }
+    }
+}
+#endif
+
 void makeCompositeTrack(struct track *track, struct trackDb *tdb)
 /* Construct track subtrack list from trackDb entry.
  * Sets up color gradient in subtracks if requested */
 {
+buildMathWig(tdb);
 unsigned char finalR = track->color.r, finalG = track->color.g,
                             finalB = track->color.b;
 unsigned char altR = track->altColor.r, altG = track->altColor.g,

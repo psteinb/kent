@@ -65,7 +65,7 @@ __attribute__((format(printf, 1, 2)))
 void webNewEmptySection();
 /* create a new section on the web page to maintain table layout */
 
-void webNewSectionHeaderStart(boolean hasTitle);
+void webNewSectionHeaderStart();
 /* Start a new collapsible section on the web page, with +- control.
    Allows use of jsBeginCollapsibleSection() */
 
@@ -99,6 +99,13 @@ void webVaWarn(char *format, va_list args);
 
 boolean webGotWarnings();
 /* Return TRUE if webVaWarn has been called. */
+
+void webAbortNoHttpHeader(char* title, char* format, ...)
+/* an abort function that outputs a error page. No http header output. */
+#if defined(__GNUC__)
+__attribute__((format(printf, 2, 3)))
+#endif
+;
 
 void webAbort(char* title, char* format, ...)
 /* an abort function that outputs a error page */

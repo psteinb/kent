@@ -27,12 +27,18 @@ use vars @HgAutomate::commonOptionVars;
 use vars @HgStepManager::optionVars;
 use vars qw/
     $opt_buildDir
+    $opt_load
+    $opt_target2Bit
+    $opt_query2Bit
+    $opt_targetSizes
+    $opt_querySizes
     /;
 
 # Specify the steps supported with -continue / -stop:
 my $stepper = new HgStepManager(
     [ { name => 'recipBest',   func => \&doRecipBest },
 #      { name => 'download', func => \&doDownload },
+#      { name => 'load',       func => \&loadRBest },
     ]
 				);
 
@@ -63,6 +69,11 @@ options:
   print STDERR <<_EOF_
     -buildDir dir         Use dir instead of default
                           $HgAutomate::clusterData/\$tDb/$HgAutomate::trackBuild/blastz.\$qDb
+    -load                 load the resulting chainNet into database
+    -target2Bit path      path to target.2bit file
+    -query2Bit path       path to query.2bit file
+    -targetSizes path     path to target chrom.sizes file
+    -querySizes path      path to query chrom.sizes file
 _EOF_
   ;
   print STDERR &HgAutomate::getCommonOptionHelp('dbHost' => $dbHost,
@@ -72,6 +83,7 @@ Automates addition of reciprocal best chains/nets to regular chains/nets which
 have already been created using doBlastzChainNet.pl.  Steps:
     recipBest: Net in both directions to get reciprocal best.
     download: Make a reciprocalBest subdir of the existing download dir.
+    load:     load reciprocal best chain/net tables.
 All work is done in the axtChain subdir of the build directory:
 $HgAutomate::clusterData/\$tDb/$HgAutomate::trackBuild/blastz.\$qDb unless -buildDir is given.
 ";
@@ -94,14 +106,17 @@ my %defVars = ();
 # Command line args: tDb qDb
 my ($tDb, $qDb);
 # Other:
-my ($QDb);
-my ($buildDir);
-my ($splitRef);
+my ($QDb, $buildDir, $splitRef, $target2Bit, $query2Bit, $targetSizes, $querySizes);
 
 sub checkOptions {
   # Make sure command line options are valid/supported.
   my $ok = GetOptions(@HgStepManager::optionSpec,
 		      'buildDir=s',
+		      'load',
+		      'target2Bit=s',
+		      'query2Bit=s',
+		      'targetSizes=s',
+		      'querySizes=s',
 		      @HgAutomate::commonOptionSpec,
 		      );
   &usage(1) if (!$ok);
@@ -127,8 +142,6 @@ sub doRecipBest {
   my $bossScript = new HgRemoteScript("$runDir/doRecipBest.csh", $workhorse,
 				      $runDir, $whatItDoes);
 
-  my $t2bit = "$HgAutomate::clusterData/$tDb/$tDb.2bit";
-  my $q2bit = "$HgAutomate::clusterData/$qDb/$qDb.2bit";
   $bossScript->add(<<_EOF_
 # Swap $tDb-best chains to be $qDb-referenced:
 chainStitchId $tDb.$qDb.over.chain.gz stdout \\
@@ -137,9 +150,9 @@ chainStitchId $tDb.$qDb.over.chain.gz stdout \\
 
 # Net those on $qDb to get $qDb-ref'd reciprocal best net:
 chainPreNet $qDb.$tDb.tBest.chain \\
-  $HgAutomate::clusterData/{$qDb,$tDb}/chrom.sizes stdout \\
+  $querySizes $targetSizes stdout \\
 | chainNet -minSpace=1 -minScore=0 \\
-  stdin $HgAutomate::clusterData/{$qDb,$tDb}/chrom.sizes stdout /dev/null \\
+  stdin $querySizes $targetSizes stdout /dev/null \\
 | netSyntenic stdin stdout \\
 | gzip -c > $qDb.$tDb.rbest.net.gz
 
@@ -155,9 +168,9 @@ chainSwap $qDb.$tDb.rbest.chain.gz stdout \\
 
 # Net those on $tDb to get $tDb-ref'd reciprocal best net:
 chainPreNet $tDb.$qDb.rbest.chain.gz \\
-  $HgAutomate::clusterData/{$tDb,$qDb}/chrom.sizes stdout \\
+  $targetSizes $querySizes stdout \\
 | chainNet -minSpace=1 -minScore=0 \\
-  stdin $HgAutomate::clusterData/{$tDb,$qDb}/chrom.sizes stdout /dev/null \\
+  stdin $targetSizes $querySizes stdout /dev/null \\
 | netSyntenic stdin stdout \\
 | gzip -c > $tDb.$qDb.rbest.net.gz
 
@@ -169,12 +182,12 @@ md5sum *.rbest.*.gz > md5sum.rbest.txt
 netToBed -maxGap=1 $qDb.$tDb.rbest.net.gz $qDb.$tDb.rbest.net.bed
 netToBed -maxGap=1 $tDb.$qDb.rbest.net.gz $tDb.$qDb.rbest.net.bed
 chainToPsl $qDb.$tDb.rbest.chain.gz \\
-  $HgAutomate::clusterData/{$qDb,$tDb}/chrom.sizes \\
-  $q2bit $t2bit \\
+  $querySizes $targetSizes \\
+  $query2Bit $target2Bit \\
   $qDb.$tDb.rbest.chain.psl
 chainToPsl $tDb.$qDb.rbest.chain.gz \\
-  $HgAutomate::clusterData/{$tDb,$qDb}/chrom.sizes \\
-  $t2bit $q2bit \\
+  $targetSizes $querySizes \\
+  $target2Bit $query2Bit \\
   $tDb.$qDb.rbest.chain.psl
 
 # Verify that all coverage figures are equal:
@@ -207,7 +220,7 @@ cd ..
 mkdir axtRBestNet
 foreach f (axtChain/rBestNet/*.net)
     netToAxt \$f axtChain/rBestChain/\$f:t:r.chain \\
-    $t2bit $q2bit stdout \\
+    $target2Bit $query2Bit stdout \\
     | axtSort stdin stdout \\
     | gzip -c > axtRBestNet/\$f:t:r.$tDb.$qDb.net.axt.gz
   end
@@ -219,7 +232,7 @@ cd ..
 mkdir mafRBestNet
 foreach f (axtRBestNet/*.$tDb.$qDb.net.axt.gz)
     axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. \$f \\
-        $HgAutomate::clusterData/{$tDb,$qDb}/chrom.sizes \\
+        $targetSizes $querySizes \\
             stdout \\
       | gzip -c > mafRBestNet/\$f:t:r:r:r:r:r.maf.gz
 end
@@ -230,13 +243,13 @@ _EOF_
 # Make rbest net axt's download
 mkdir ../axtRBestNet
 netToAxt $tDb.$qDb.rbest.net.gz $tDb.$qDb.rbest.chain.gz \\
-    $t2bit $q2bit stdout \\
+    $target2Bit $query2Bit stdout \\
     | axtSort stdin stdout \\
     | gzip -c > ../axtRBestNet/$tDb.$qDb.rbest.axt.gz
 # Make rbest mafNet for multiz
 mkdir ../mafRBestNet
 axtToMaf -tPrefix=$tDb. -qPrefix=$qDb. ../axtRBestNet/$tDb.$qDb.rbest.axt.gz \\
-        $HgAutomate::clusterData/{$tDb,$qDb}/chrom.sizes  \\
+        $targetSizes $querySizes  \\
                 stdout \\
       | gzip -c > ../mafRBestNet/$tDb.$qDb.rbest.maf.gz
 cd ../mafRBestNet
@@ -316,6 +329,60 @@ _EOF_
 #  $bossScript->execute();
 } # doDownload
 
+sub loadRBest {
+  if (! $opt_load) {
+    &HgAutomate::verbose(1, "# specify -load to perform load step\n");
+    return;
+  }
+  # Load chains; add repeat/gap stats to net; load nets.
+  my $runDir = "$buildDir/axtChain";
+  my $QDbLink = "chainRBest$QDb" . "Link";
+  # First, make sure we're starting clean.
+  if (-e "$buildDir/fb.$tDb.$QDbLink.txt") {
+    die "loadRBest looks like this was run successfully already " .
+      "(fb.$tDb.$QDbLink.txt exists).\n";
+  }
+  # Make sure previous stage was successful.
+  my $successDir = "$runDir/$tDb.$qDb.rbest.net.gz";
+  if (! -e $successDir && ! $opt_debug) {
+    die "loadRBest looks like previous stage was not successful " .
+      "(can't find $successDir).\n";
+  }
+  my $whatItDoes =
+"It loads the recip best chain tables into $tDb, adds gap/repeat stats to the recip best .net file,
+and loads the recip net table.";
+  my $bossScript = new HgRemoteScript("$runDir/loadRBest.csh", $dbHost,
+				      $runDir, $whatItDoes);
+  $bossScript->add(<<_EOF_
+# Load reciprocal best chains:
+_EOF_
+  );
+  $bossScript->add(<<_EOF_
+cd $runDir
+hgLoadChain -tIndex $tDb chainRBest$QDb $tDb.$qDb.rbest.chain.gz
+_EOF_
+  );
+
+    $bossScript->add(<<_EOF_
+
+# Add gap/repeat stats to the net file using database tables:
+cd $runDir
+netClass -verbose=0 -noAr $tDb.$qDb.rbest.net.gz $tDb $qDb stdout \\
+    | gzip -c > $tDb.$qDb.rbest.classed.net.gz
+
+# Load nets:
+netFilter -minGap=10 $tDb.$qDb.rbest.classed.net.gz \\
+| hgLoadNet -verbose=0 $tDb netRBest$QDb stdin
+
+cd $buildDir
+featureBits $tDb $QDbLink >&fb.$tDb.$QDbLink.txt
+cat fb.$tDb.$QDbLink.txt
+_EOF_
+      );
+
+  $bossScript->execute();
+}	#	sub loadRBest {}
+
 #########################################################################
 # main
 
@@ -330,8 +397,17 @@ _EOF_
 ($tDb, $qDb) = @ARGV;
 
 $QDb = ucfirst($qDb);
-$splitRef =  (`wc -l < $HgAutomate::clusterData/$tDb/chrom.sizes`
-                        <= $HgAutomate::splitThreshold);
+
+$target2Bit = "$HgAutomate::clusterData/$tDb/$tDb.2bit";
+$query2Bit = "$HgAutomate::clusterData/$qDb/$qDb.2bit";
+$target2Bit = $opt_target2Bit if ($opt_target2Bit);
+$query2Bit = $opt_query2Bit if ($opt_query2Bit);
+$targetSizes = "$HgAutomate::clusterData/$tDb/chrom.sizes";
+$querySizes = "$HgAutomate::clusterData/$qDb/chrom.sizes";
+$targetSizes = $opt_targetSizes if ($opt_targetSizes);
+$querySizes = $opt_querySizes if ($opt_querySizes);
+
+$splitRef =  (`wc -l < $targetSizes` <= $HgAutomate::splitThreshold);
 
 # Establish what directory we will work in.
 if ($opt_buildDir) {

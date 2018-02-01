@@ -39,8 +39,17 @@ static void showTableFilterInstructionsEtc(struct fieldedTable *table,
 int matchCount = slCount(table->rowList);
 if (largerContext != NULL)  // Need to page?
      matchCount = largerContext->tableSize;
+
 cgiMakeButton("submit", "search");
-printf("&nbsp;&nbsp;&nbsp&nbsp;");
+
+printf("&nbsp&nbsp;");
+cgiMakeOnClickButton("clearButton",
+"$(':input').not(':button, :submit, :reset, :hidden, :checkbox, :radio').val('');\n"
+"$('[name=cdwBrowseFiles_page]').val('1');\n"
+"$('#submit').click();\n"
+, "clear search");
+printf("<br>");
+
 printf("%d&nbsp;%s&nbsp;found. ", matchCount, itemPlural);
 
 if (addFunc)
@@ -50,14 +59,6 @@ printf("<BR>\n");
 printf("You can further filter search results field by field below. ");    
 printf("Wildcard * and ? characters are allowed in text fields. ");
 printf("&GT;min or &LT;max are allowed in numerical fields.<BR>\n");
-printf("<a id='resetLink' href='#' >Reset all filters</a>\n");
-jsInlineF(
-"$(function() {\n"
-"  $('#resetLink').click( function() { "
-"     $(':input').not(':button, :submit, :reset, :hidden, :checkbox, :radio').val('');\n"
-"     $('#submit').click();\n"
-"  });"
-"});\n");
 }
 
 static void printSuggestScript(char *id, struct slName *suggestList)
@@ -91,6 +92,19 @@ jsInlineF(
 "  $('#%s').watermark(\"%s\");\n"
 "});\n", id, watermark);
 }
+
+static void resetPageNumberOnChange(char *id)
+/* On change, reset page number to 1. */
+{
+jsInlineF(
+"$(function() {\n"
+" $('form').delegate('#%s','change keyup paste',function(e){\n"
+"  $('[name=cdwBrowseFiles_page]').val('1');\n"
+" });\n"
+"});\n"
+, id);
+}
+
 
 static void showTableFilterControlRow(struct fieldedTable *table, struct cart *cart, 
     char *varPrefix, int maxLenField, struct hash *suggestHash)
@@ -142,6 +156,10 @@ for (i=0; i<table->fieldCount; ++i)
 
     /* Write out javascript to initialize autosuggest on control */
     printWatermark(varName, " filter ");
+
+    /* Write out javascript to reset page number to 1 if filter changes */
+    resetPageNumberOnChange(varName);
+
     if (suggestHash != NULL)
         {
 	struct slName *suggestList = hashFindVal(suggestHash, field);
@@ -285,6 +303,30 @@ if (largerContext != NULL)  // Need to page?
 	int curPage = largerContext->tableOffset/pageSize;
 	int totalPages = (largerContext->tableSize + pageSize - 1)/pageSize;
 
+
+	char id[256];
+	if ((curPage + 1) > 1)
+	    {
+	    // first page
+	    safef(id, sizeof id, "%s_first", varPrefix);
+	    printf("<a href='#' id='%s' style='font-size: 150%%;'>&#9198;</a>", id);
+	    jsOnEventByIdF("click", id, 
+		"$('[name=%s_page]').val('1');\n"
+		"$('#submit').click();\n"
+		, varPrefix);
+	    printf("&nbsp;&nbsp;&nbsp;");
+
+	    // prev page
+	    safef(id, sizeof id, "%s_prev", varPrefix);
+	    printf("<a href='#' id='%s' style='font-size: 150%%;'>&#9194;</a>", id);
+	    jsOnEventByIdF("click", id, 
+		"$('[name=%s_page]').val('%d');\n"
+		"$('#submit').click();\n"
+		, varPrefix, (curPage+1)-1);
+	    printf("&nbsp;&nbsp;&nbsp;");
+	    }
+
+
 	printf("Displaying page ");
 
 	char pageVar[64];
@@ -292,6 +334,28 @@ if (largerContext != NULL)  // Need to page?
 	cgiMakeIntVar(pageVar, curPage+1, 3);
 
 	printf(" of %d", totalPages);
+
+	if ((curPage + 1) < totalPages)
+	    {
+	    // next page
+	    printf("&nbsp;&nbsp;&nbsp;");
+	    safef(id, sizeof id, "%s_next", varPrefix);
+	    printf("<a href='#' id='%s' style='font-size: 150%%;' >&#9193;</a>", id);
+	    jsOnEventByIdF("click", id, 
+		"$('[name=%s_page]').val('%d');\n"
+		"$('#submit').click();\n"
+		, varPrefix, (curPage+1)+1);
+
+	    // last page
+	    printf("&nbsp;&nbsp;&nbsp;");
+	    safef(id, sizeof id, "%s_last", varPrefix);
+	    printf("<a href='#' id='%s' style='font-size: 150%%;' >&#9197;</a>", id);
+	    jsOnEventByIdF("click", id, 
+		"$('[name=%s_page]').val('%d');\n"
+		"$('#submit').click();\n"
+		, varPrefix, totalPages);
+
+	    }
 	}
      }
 }
@@ -310,7 +374,6 @@ void webFilteredFieldedTable(struct cart *cart, struct fieldedTable *table,
 {
 if (strchr(returnUrl, '?') == NULL)
      errAbort("Expecting returnUrl to include ? in showFieldedTable\nIt's %s", returnUrl);
-
 
 if (withFilters)
     showTableFilterInstructionsEtc(table, itemPlural, largerContext, addFunc);
@@ -356,11 +419,10 @@ struct dyString *query = dyStringNew(0);
 struct dyString *where = dyStringNew(0);
 struct slName *field, *fieldList = commaSepToSlNames(fields);
 boolean gotWhere = FALSE;
-sqlDyStringPrintf(query, "%s", ""); // TODO check with Galt on how to get reasonable checking back.
-dyStringPrintf(query, "select %s from %s", fields, from);
+sqlDyStringPrintf(query, "select %-s from %s", sqlCkIl(fields), from);
 if (!isEmpty(initialWhere))
     {
-    dyStringPrintf(where, " where ");
+    sqlDyStringPrintfFrag(where, " where ");
     sqlSanityCheckWhere(initialWhere, where);
     gotWhere = TRUE;
     }
@@ -376,44 +438,51 @@ if (withFilters)
 	if (!isEmpty(val))
 	    {
 	    if (gotWhere)
-		dyStringPrintf(where, " and ");
+		sqlDyStringPrintf(where, " and ");
 	    else
 		{
-	        dyStringPrintf(where, " where ");
+	        sqlDyStringPrintf(where, " where ");
 		gotWhere = TRUE;
 		}
 	    if (anyWild(val))
-	         {
-		 char *converted = sqlLikeFromWild(val);
-		 char *escaped = makeEscapedString(converted, '"');
-		 dyStringPrintf(where, "%s like \"%s\"", field->name, escaped);
-		 freez(&escaped);
-		 freez(&converted);
-		 }
+		{
+		char *converted = sqlLikeFromWild(val);
+		sqlDyStringPrintf(where, "%s like '%s'", field->name, converted);
+		freez(&converted);
+		}
 	    else if (val[0] == '>' || val[0] == '<')
-	         {
-		 char *remaining = val+1;
-		 if (remaining[0] == '=')
-		     remaining += 1;
-		 remaining = skipLeadingSpaces(remaining);
-		 if (isNumericString(remaining))
-		     dyStringPrintf(where, "%s %s", field->name, val);
-		 else
-		     {
-		     warn("Filter for %s doesn't parse:  %s", field->name, val);
-		     dyStringPrintf(where, "%s is not null", field->name); // Let query continue
-		     }
-		 }
+		{
+		char *remaining = val+1;
+		if (remaining[0] == '=')
+		    {
+		    remaining += 1;
+		    }
+		remaining = skipLeadingSpaces(remaining);
+		if (isNumericString(remaining))
+		    {
+		    sqlDyStringPrintf(where, "%s ", field->name);
+		    if (val[0] == '>')
+			sqlDyStringPrintf(where, ">");
+		    if (val[0] == '<')
+			sqlDyStringPrintf(where, "<");
+		    if (val[1] == '=')
+			sqlDyStringPrintf(where, "=");
+		    sqlDyStringPrintf(where, "%s", remaining);
+		    }
+		else
+		    {
+		    warn("Filter for %s doesn't parse:  %s", field->name, val);
+		    sqlDyStringPrintf(where, "%s is not null", field->name); // Let query continue
+		    }
+		}
 	    else
-	         {
-		 char *escaped = makeEscapedString(val, '"');
-		 dyStringPrintf(where, "%s = \"%s\"", field->name, escaped);
-		 freez(&escaped);
-		 }
+		{
+		sqlDyStringPrintf(where, "%s = '%s'", field->name, val);
+		}
 	    }
 	}
     }
-dyStringAppend(query, where->string);
+sqlDyStringPrintf(query, "%-s", where->string);  // trust
 
 /* We do order here so as to keep order when working with tables bigger than a page. */
 char orderVar[256];
@@ -422,9 +491,9 @@ char *orderFields = cartUsualString(cart, orderVar, "");
 if (!isEmpty(orderFields))
     {
     if (orderFields[0] == '-')
-	dyStringPrintf(query, " order by %s desc", orderFields+1);
+	sqlDyStringPrintf(query, " order by %s desc", orderFields+1);
     else
-	dyStringPrintf(query, " order by %s", orderFields);
+	sqlDyStringPrintf(query, " order by %s", orderFields);
     }
 
 // return query and where expression
@@ -451,10 +520,8 @@ struct dyString *where;
 webTableBuildQuery(cart, from, initialWhere, varPrefix, fields, withFilters, &query, &where);
 
 /* Figure out size of query result */
-struct dyString *countQuery = dyStringNew(0);
-sqlDyStringPrintf(countQuery, "%s", ""); // TODO check with Galt on how to get reasonable checking back.
-dyStringPrintf(countQuery, "select count(*) from %s", from);
-dyStringAppend(countQuery, where->string);
+struct dyString *countQuery = sqlDyStringCreate("select count(*) from %s", from);
+sqlDyStringPrintf(countQuery, "%-s", where->string);   // trust
 int resultsSize = sqlQuickNum(conn, countQuery->string);
 dyStringFree(&countQuery);
 
@@ -471,7 +538,7 @@ if (resultsSize > pageSize)
     if (page > lastPage)
         page = lastPage;
     context.tableOffset = page * pageSize;
-    dyStringPrintf(query, " limit %d offset %d", pageSize, context.tableOffset);
+    sqlDyStringPrintf(query, " limit %d offset %d", pageSize, context.tableOffset);
     }
 
 struct fieldedTable *table = fieldedTableFromDbQuery(conn, query->string);

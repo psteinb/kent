@@ -187,6 +187,52 @@ while (*from!='\0')
 return scrubbed;
 }
 
+char *htmlTextStripJavascriptCssAndTags(char *s)
+/* Returns a cloned string with all inline javascript, css, and html tags stripped out */
+{
+if (s == NULL)
+    return NULL;
+char *scrubbed = needMem(strlen(s));
+char *from=s;
+char *to=scrubbed;
+while (*from!='\0')
+    {
+    if (startsWithNoCase("<script", from))
+        {
+        from++;
+        while (*from!='\0' && !startsWithNoCase("</script>", from))
+            from++;
+        if (*from == '\0')  // The last open tag was never closed!
+            break;
+        from += strlen("</script>");
+        *to++ = ' ';
+        }
+    else if (startsWithNoCase("<style", from))
+        {
+        from++;
+        while (*from!='\0' && !startsWithNoCase("</style>", from))
+            from++;
+        if (*from == '\0')  // The last open tag was never closed!
+            break;
+        from += strlen("</style>");
+        *to++ = ' ';
+        }
+    else if (*from == '<')
+        {
+        from++;
+        while (*from!='\0' && *from != '>')
+            from++;
+        if (*from == '\0')  // The last open tag was never closed!
+            break;
+        from++;
+        *to++ = ' ';
+        }
+    else
+        *to++ = *from++;
+    }
+return scrubbed;
+}
+
 char *htmlTextReplaceTagsWithChar(char *s, char ch)
 /* Returns a cloned string with all html tags replaced with given char (useful for tokenizing) */
 {
@@ -691,7 +737,6 @@ if (!initted && !errorsNoHeader)
     initted = TRUE;
     }
 printf("%s", htmlWarnStartPattern());
-// old way htmlVaParagraph(format,args); cannot use without XSS-protections
 fputs("<P>", stdout);
 htmlVaEncodeErrorText(format,args);
 fputs("</P>\n", stdout);
@@ -920,6 +965,7 @@ dyStringAppend(policy, " cdnjs.cloudflare.com/ajax/libs/d3/3.4.4/d3.min.js");
 dyStringAppend(policy, " cdnjs.cloudflare.com/ajax/libs/jquery/1.12.1/jquery.min.js");
 dyStringAppend(policy, " cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js");
 dyStringAppend(policy, " cdnjs.cloudflare.com/ajax/libs/bowser/1.6.1/bowser.min.js");
+dyStringAppend(policy, " cdnjs.cloudflare.com/ajax/libs/jstree/3.3.4/jstree.min.js");
 dyStringAppend(policy, " login.persona.org/include.js");
 // expMatrix
 dyStringAppend(policy, " ajax.googleapis.com/ajax");
@@ -1032,7 +1078,7 @@ fputs("<HEAD>\n", f);
 // CSP header
 generateCspMetaHeader(f);
 
-fputs(head, f); // TODO "head" var. not XSS safe
+fputs(head, f);
 htmlFprintf(f,"<TITLE>%s</TITLE>\n", title); 
 if (endsWith(title,"Login - UCSC Genome Browser")) 
     fprintf(f,"\t<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html;CHARSET=iso-8859-1\">\n");

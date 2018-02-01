@@ -167,14 +167,13 @@ while ((chain = chainRead(lf)) != NULL)
     qChrom = hashMustFindVal(qHash, chain->qName);
     tChrom = hashMustFindVal(tHash, chain->tName);
 
-    /* MH: small bugfix. If we do not consider the chain because it is a haplotype alignment, 
-	        then we should not call chainUsed, which sets the bits for the aligning part
-    */
-    if (inclQuery(chain)) { 
-        if (chainUsed(chain, qChrom, tChrom)) { 
+    /* If we do not consider the chain because it is a haplotype alignment,
+     * then we should not call chainUsed, which sets the bits for the aligning part */
+    if (inclQuery(chain))
+        {
+        if (chainUsed(chain, qChrom, tChrom))
             chainWrite(chain, f);
-        }
-    }
+	}
     chainFree(&chain);
     }
 }

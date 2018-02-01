@@ -7,10 +7,18 @@
 #include "linefile.h"
 #include "hash.h"
 #include "options.h"
+#include "dystring.h"
 #include "cheapcgi.h"
 #include "jksql.h"
 #include "portable.h"
 #include "obscure.h"
+#include "jsonWrite.h"
+#include "tagSchema.h"
+
+/* Command line validation table. */
+static struct optionSpec options[] = {
+   {NULL, 0},
+};
 
 void usage()
 {
@@ -18,85 +26,133 @@ errAbort("freen - test some hairbrained thing.\n"
          "usage:  freen input\n");
 }
 
-static struct optionSpec options[] = {
-   {NULL, 0},
-};
-
-char *sqlReservedWords[] =
-    {
-    "ACCESSIBLE", "ADD", "ALL", "ALTER", "ANALYZE", "AND", "AS", "ASC",
-    "ASENSITIVE", "BEFORE", "BETWEEN", "BIGINT", "BINARY", "BLOB", "BOTH", "BY",
-    "CALL", "CASCADE", "CASE", "CHANGE", "CHAR", "CHARACTER", "CHECK", "COLLATE",
-    "COLUMN", "CONDITION", "CONSTRAINT", "CONTINUE", "CONVERT", "CREATE", "CROSS", "CURRENT_DATE",
-    "CURRENT_TIME", "CURRENT_TIMESTAMP", "CURRENT_USER", "CURSOR", "DATABASE", "DATABASES", 
-    "DAY_HOUR", "DAY_MICROSECOND", "DAY_MINUTE", "DAY_SECOND", "DEC", "DECIMAL",
-    "DECLARE", "DEFAULT", "DELAYED", "DELETE", "DESC", "DESCRIBE", "DETERMINISTIC", "DISTINCT",
-    "DISTINCTROW", "DIV", "DOUBLE", "DROP", "DUAL", "EACH", "ELSE", "ELSEIF",
-    "ENCLOSED", "ESCAPED", "EXISTS", "EXIT", "EXPLAIN", "FALSE", "FETCH", "FLOAT",
-    "FLOAT4", "FLOAT8", "FOR", "FORCE", "FOREIGN", "FROM", "FULLTEXT", "GRANT",
-    "GROUP", "HAVING", "HIGH_PRIORITY", "HOUR_MICROSECOND", "HOUR_MINUTE", "HOUR_SECOND", "IF", 
-    "IGNORE", "IN", "INDEX", "INFILE", "INNER", "INOUT", "INSENSITIVE", "INSERT",
-    "INT", "INT1", "INT2", "INT3", "INT4", "INT8", "INTEGER", "INTERVAL",
-    "INTO", "IS", "ITERATE", "JOIN", "KEY", "KEYS", "KILL", "LEADING",
-    "LEAVE", "LEFT", "LIKE", "LIMIT", "LINEAR", "LINES", "LOAD", "LOCALTIME",
-    "LOCALTIMESTAMP", "LOCK", "LONG", "LONGBLOB", "LONGTEXT", "LOOP", "LOW_PRIORITY", 
-    "MASTER_SSL_VERIFY_SERVER_CERT", "MATCH", "MAXVALUE", "MEDIUMBLOB", "MEDIUMINT",
-    "MEDIUMTEXT", "MIDDLEINT", "MINUTE_MICROSECOND", "MINUTE_SECOND", "MOD", "MODIFIES", "NATURAL",
-    "NOT", "NO_WRITE_TO_BINLOG", "NULL", "NUMERIC", "ON", "OPTIMIZE", "OPTION",
-    "OPTIONALLY", "OR", "ORDER", "OUT", "OUTER", "OUTFILE", "PRECISION", "PRIMARY",
-    "PROCEDURE", "PURGE", "RANGE", "READ", "READS", "READ_WRITE", "REAL", "REFERENCES",
-    "REGEXP", "RELEASE", "RENAME", "REPEAT", "REPLACE", "REQUIRE", "RESIGNAL", "RESTRICT",
-    "RETURN", "REVOKE", "RIGHT", "RLIKE", "SCHEMA", "SCHEMAS", "SECOND_MICROSECOND", "SELECT",
-    "SENSITIVE", "SEPARATOR", "SET", "SHOW", "SIGNAL", "SMALLINT", "SPATIAL", "SPECIFIC",
-    "SQL", "SQLEXCEPTION", "SQLSTATE", "SQLWARNING", "SQL_BIG_RESULT", "SQL_CALC_FOUND_ROWS",
-    "SQL_SMALL_RESULT", "SSL", "STARTING", "STRAIGHT_JOIN", "TABLE", "TERMINATED",
-    "THEN", "TINYBLOB", "TINYINT", "TINYTEXT", "TO", "TRAILING", "TRIGGER", "TRUE",
-    "UNDO", "UNION", "UNIQUE", "UNLOCK", "UNSIGNED", "UPDATE", "USAGE", "USE", "USING", 
-    "UTC_DATE", "UTC_TIME", "UTC_TIMESTAMP", "VALUES", "VARBINARY", "VARCHAR", "VARCHARACTER",
-    "VARYING", "WHEN", "WHERE", "WHILE", "WITH", "WRITE", "XOR", "YEAR_MONTH", "ZEROFILL"
-    };
-
-struct hash *makeSqlReservedHash()
-/* Make up a hash of all mySQL reserved words in upper case.  Use with
- * isSqlReserved.  Free with hashFree() */
+static int nonDotSize(char *s)
+/* Return number of chars up to next dot or end of string */
 {
-int i;
-struct hash *hash = hashNew(0);
-int count = ArraySize(sqlReservedWords);
-for (i=0; i<count; ++i)
-    hashAdd(hash, sqlReservedWords[i], NULL);
-return hash;
+char c;
+int size = 0;
+for (;;)
+    {
+    c = *s++;
+    if (c == '.' || c == 0)
+       return size;
+    ++size;
+    }
 }
 
-boolean isSqlReserved(struct hash *sqlReservedHash, char *s)
-/* Return TRUE if s is a reserved symbol for mySQL.*/
+int tagSchemaParseIndexes(char *input, int indexes[], int maxIndexCount)
+/* This will parse out something that looks like:
+ *     this.array.2.subfield.subarray.3.name
+ * into
+ *     2,3   
+ * Where input is what we parse,   indexes is an array maxIndexCount long
+ * where we put the numbers. */
 {
-return hashLookupUpperCase(sqlReservedHash, s) != NULL;
-}
-
-
-void freen(char *inFile)
-/* Test something */
-{
-int wordCount = 0;
-char *wordBuf;
-char **words;
-readAllWords(inFile, &words, &wordCount, &wordBuf);
-
-struct hash *sqlReservedHash = makeSqlReservedHash();
-int is = 0, isNot = 0;
-int i;
-for (i=0; i<wordCount; ++i)
+char dot = '.';
+char *s = input;
+int indexCount = 0;
+int maxMinusOne = maxIndexCount - 1;
+for (;;)
     {
-    if (isSqlReserved(sqlReservedHash, words[i]))
-	{
-	uglyf("%s is reserved\n", words[i]);
-        ++is;
+    /* Check for end of string */
+    char firstChar = *s;
+    if (firstChar == 0)
+        break;
+
+    /* If leading char is a dot and if so skip it. */
+    boolean startsWithDot = (firstChar == dot);
+    if (startsWithDot)
+       ++s;
+
+    int numSize = tagSchemaDigitsUpToDot(s);
+    if (numSize > 0)
+        {
+	if (indexCount > maxMinusOne)
+	    errAbort("Too many array indexes in %s, maxIndexCount is %d",
+		input, maxIndexCount);
+	indexes[indexCount] = atoi(s);
+	indexCount += 1;
+	s += numSize;
 	}
     else
-        ++isNot;
+        {
+	int partSize = nonDotSize(s);
+	s += partSize;
+	}
     }
-printf("%d reserved, %d not\n", is, isNot);
+return indexCount;
+}
+
+char *tagSchemaInsertIndexes(char *bracketed, int indexes[], int indexCount,
+    struct dyString *scratch)
+/* Convert something that looks like:
+ *     this.array.[].subfield.subarray.[].name and 2,3
+ * into
+ *     this.array.2.subfield.subarray.3.name
+ * The scratch string holds the return value. */
+{
+char *pos = bracketed;
+int indexPos = 0;
+dyStringClear(scratch);
+
+/* Handle special case of leading "[]" */
+if (startsWith("[]", pos))
+     {
+     dyStringPrintf(scratch, "%d", indexes[indexPos]);
+     ++indexPos;
+     pos += 2;
+     }
+
+char *aStart;
+for (;;)
+    {
+    aStart = strchr(pos, '[');
+    if (aStart == NULL)
+        {
+	dyStringAppend(scratch, pos);
+	break;
+	}
+    else
+        {
+	if (indexPos >= indexCount)
+	    errAbort("Expecting %d '[]' in %s, got more.", indexCount, bracketed);
+	dyStringAppendN(scratch, pos, aStart-pos);
+	dyStringPrintf(scratch, "%d", indexes[indexPos]);
+	++indexPos;
+	pos = aStart + 2;
+	}
+    }
+return scratch->string;
+}
+
+void freen(char *input)
+/* Test something */
+{
+struct dyString *withBrackets = dyStringNew(0);
+tagSchemaFigureArrayName(input, withBrackets);
+int maxIndexCount = 10;
+int indexes[maxIndexCount];
+int indexCount = tagSchemaParseIndexes(input, indexes, maxIndexCount);
+{
+uglyf("Got index count of %d, values:", indexCount);
+int i;
+for (i=0; i<indexCount; ++i)
+    uglyf(" %d", indexes[i]);
+uglyf("\n");
+}
+
+if (indexCount > 0)
+    {
+    int i;
+    for (i=0; i<indexCount; ++i)
+	indexes[i] += 1;
+    struct dyString *withIncs = dyStringNew(0);
+    char *incString = tagSchemaInsertIndexes(withBrackets->string, 
+	indexes, indexCount, withIncs);
+    printf("%s -> %s\n", input, incString);
+    }
+else
+    printf("%s has no array index subfields\n", input);
 }
 
 int main(int argc, char *argv[])

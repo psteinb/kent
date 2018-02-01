@@ -114,14 +114,14 @@ assemblies.
         </tr>
 </table>
 <p>
-This table describes which training species was used for a partiuclar group of assemblies.
+This table describes which training species was used for a particular group of assemblies.
 When available, the closest related training species was used.
 </p>
 
 <h2>Credits</h2>
 
 Thanks to the
-<a href="http://www.math-inf.uni-greifswald.de/index.php?option=com_content&view=article&id=382%253Aprof-dr-mario-stanke&catid=135&Itemid=63"
+<a href="https://math-inf.uni-greifswald.de/en/department/about-us/employees/prof-dr-mario-stanke-english/"
 target="_blank">Stanke lab</a>
 for providing the AUGUSTUS program.  The training for the <tt>chicken</tt> version was
 done by Stefanie K&ouml;nig and the training for the
@@ -135,7 +135,7 @@ Stanke M, Diekhans M, Baertsch R, Haussler D.
 target="_blank">
 Using native and syntenically mapped cDNA alignments to improve de novo gene finding</a>.
 <em>Bioinformatics</em>. 2008 Mar 1;24(5):637-44.
-PMID: <a href="http://www.ncbi.nlm.nih.gov/pubmed/18218656" target="_blank">18218656</a>
+PMID: <a href="https://www.ncbi.nlm.nih.gov/pubmed/18218656" target="_blank">18218656</a>
 </p>
 
 <p>
@@ -144,7 +144,7 @@ Stanke M, Waack S.
 target="_blank">
 Gene prediction with a hidden Markov model and a new intron submodel</a>.
 <em>Bioinformatics</em>. 2003 Oct;19 Suppl 2:ii215-25.
-PMID: <a href="http://www.ncbi.nlm.nih.gov/pubmed/14534192" target="_blank">14534192</a>
+PMID: <a href="https://www.ncbi.nlm.nih.gov/pubmed/14534192" target="_blank">14534192</a>
 </p>
 _EOF_
    ;

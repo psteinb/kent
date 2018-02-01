@@ -28,8 +28,10 @@
 #include "cdw.h"
 #include "cdwLib.h"
 #include "fa.h"
+#include "filePath.h"
 #include "cdwValid.h"
 #include "vcf.h"
+#include "csv.h"
 
 int maxErrCount = 1;	/* Set from command line. */
 int errCount;		/* Set as we run. */
@@ -528,6 +530,59 @@ char *labels[] = { "target_id",       "length",  "eff_length",      "est_counts"
 makeValidTabSepFile(conn, path, ef, vf, labels, ArraySize(labels));
 }
 
+void makeValidTsv( struct sqlConnection *conn, char *path, struct cdwFile *ef, 
+    struct cdwValidFile *vf)
+/* Make sure a tsv tab-separated values file looks all good */
+{
+struct lineFile *lf = lineFileOpen(path, TRUE);
+// get fieldCount from first line
+int fieldCount = 0;
+int lineSize;
+char *line;
+while (lineFileNext(lf, &line, &lineSize))
+    {
+    if (line[0] == '#')
+        continue;
+    fieldCount = chopByChar(line, '\t', NULL, 0);
+    }
+lineFileClose(&lf);
+if (fieldCount == 0)
+    errAbort("0 columns in tsv %s", ef->submitFileName);
+makeValidTabSepFile(conn, path, ef, vf, NULL, fieldCount);
+}
+
+void makeValidCsv( struct sqlConnection *conn, char *path, struct cdwFile *ef, 
+    struct cdwValidFile *vf)
+/* Make sure a csv comma-separated values file looks all good */
+{
+struct lineFile *lf = lineFileOpen(path, TRUE);
+// get fieldCount from first line
+int fieldCount = 0;
+int lineSize;
+char *line;
+int lineNumber = 0;
+while (lineFileNext(lf, &line, &lineSize))
+    {
+    ++lineNumber;
+    struct slName *list = csvParse(line);
+    int thisCount = slCount(list);
+    if (fieldCount == 0)
+	{
+	fieldCount = thisCount;
+	}
+    else
+	{
+	if (thisCount != fieldCount)
+	    errAbort("Line #%d of csv %s has %d columns. Previous rows had %d columns.", 
+		lineNumber, ef->submitFileName, thisCount, fieldCount);
+	}
+    slFreeList(list);
+    }
+lineFileClose(&lf);
+if (fieldCount == 0)
+    errAbort("0 columns in csv %s", ef->submitFileName);
+}
+
 void makeValidHtml(struct sqlConnection *conn, char *path, struct cdwFile *ef, 
     struct cdwValidFile *vf)
 /* Fill in info about html file */
@@ -830,6 +885,14 @@ if (vf->format)	// We only can validate if we have something for format
 	{
         makeValidKallistoAbundance(conn, path, ef, vf);
 	}
+    else if (sameString(format, "tsv"))
+	{
+        makeValidTsv(conn, path, ef, vf);
+	}
+    else if (sameString(format, "csv"))
+	{
+        makeValidCsv(conn, path, ef, vf);
+	}
     else if (sameString(format, "html"))
         {
 	makeValidHtml(conn, path, ef, vf);
@@ -871,12 +934,34 @@ if (vf->format)	// We only can validate if we have something for format
 	    char oldPath[PATH_LEN], newPath[PATH_LEN];
 	    safef(oldPath, sizeof(oldPath), "%s%s", cdwRootDir, fileName);
 	    safef(newPath, sizeof(newPath), "%s%s", cdwRootDir, newName->string);
+
+	    char query[PATH_LEN+256];
+
+	    // rename symlink to it in submitDir
+	    sqlSafef(query, sizeof(query), "select url from cdwSubmitDir where id='%d'", ef->submitDirId);
+	    char *submitDir = sqlQuickString(conn, query);
+	    if (!submitDir)
+		errAbort("submitDir not found for id %d", ef->submitDirId);
+
+	    char *lastPath = findSubmitSymlink(ef->submitFileName, submitDir, oldPath);
+	    freeMem(submitDir);
+	    if (!lastPath)
+		noWarnAbort();
+
+	    verbose(3, "lastPath=%s newPath=%s\n", lastPath, newPath);
+	    if (unlink(lastPath) == -1)  // drop about to be invalid symlink
+		errnoAbort("unlink failure %s", lastPath);
+
 	    mustRename(oldPath, newPath);
+
+	    if (symlink(newPath, lastPath) == -1)  // replace with symlink
+		errnoAbort("symlink failure from %s to %s", lastPath, newPath);
+	    freeMem(lastPath);
+
 	    verbose(2, "Renamed %s to %s\n", oldPath, newPath);
 
 	    /* Update database with new name - small window of vulnerability here sadly 
 	     * two makeValidates running at same time stepping on each other. */
-	    char query[PATH_LEN+256];
 	    sqlSafef(query, sizeof(query), "update cdwFile set cdwFileName='%s' where id=%lld",
 		newName->string, (long long)ef->id);
 	    sqlUpdate(conn, query);

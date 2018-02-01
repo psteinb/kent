@@ -50,6 +50,8 @@
 #include "fieldedTable.h"
 #include "barChartUi.h"
 #include "customComposite.h"
+#include "trackVersion.h"
+#include "hubConnect.h"
 
 #define SMALLBUF 256
 #define MAX_SUBGROUP 9
@@ -154,7 +156,9 @@ boolean makeSchemaLink(char *db,struct trackDb *tdb,char *label)
 #define SCHEMA_LINKED "<A HREF=\"../cgi-bin/hgTables?db=%s&hgta_group=%s&hgta_track=%s" \
 		  "&hgta_table=%s&hgta_doSchema=describe+table+schema\" " \
 		  "TARGET=ucscSchema%s>%s</A>"
-if (!trackHubDatabase(db) && hTableOrSplitExists(db, tdb->table))
+if (trackDataAccessible(db, tdb) && differentString("longTabix", tdb->type))
+    // FIXME: hgTables.showSchmaLongTabix is a currently a dummy routine, so let's not got here
+    // until it's implemented
     {
     char *tbOff = trackDbSetting(tdb, "tableBrowser");
     if (isNotEmpty(tbOff) && sameString(nextWord(&tbOff), "off"))
@@ -401,9 +405,7 @@ boolean hasMetadata = (tagStormFile != NULL) || (tabSepFile != NULL) || (!tdbIsC
 if (hasMetadata)
     printf("<b>Metadata:</b><br>%s\n", metadataAsHtmlTable(db, tdb, FALSE, FALSE));
 
-boolean schemaLink = (!tdbIsDownloadsOnly(tdb) && !trackHubDatabase(db)
-	      && isCustomTrack(tdb->table) == FALSE)
-	      && (hTableOrSplitExists(db, tdb->table));
+boolean schemaLink = trackDataAccessible(db, tdb);
 boolean downloadLink = (trackDbSetting(tdb, "wgEncode") != NULL && !tdbIsSuperTrack(tdb));
 int links = 0;
 if (schemaLink)
@@ -416,7 +418,9 @@ if (links > 0)
 if (links > 1)
     printf("<table><tr><td nowrap>View table: ");
 
-if (schemaLink)
+if (schemaLink && differentString("longTabix", tdb->type))
+    // FIXME: hgTables.showSchmaLongTabix is a currently a dummy routine, so let's not got here
+    // until it's implemented
     {
     makeSchemaLink(db,tdb,(links > 1 ? "schema":"View table schema"));
     if (downloadLink)
@@ -566,7 +570,9 @@ char *hTrackUiForTrack(char *trackName)
 if (trackName == NULL)
     return hgTrackUiName();
 if (gtexIsGeneTrack(trackName))
-    return gtexGeneTrackUiName();
+    return gtexTrackUiName();
+if (gtexIsEqtlTrack(trackName))
+    return gtexTrackUiName();
 return hgTrackUiName();
 }
 
@@ -1828,6 +1834,42 @@ void aggregateDropDown(char *var, char *curVal)
 {
 cgiMakeDropListFull(var, aggregateLabels, aggregateValues,
     ArraySize(aggregateValues), curVal, NULL, NULL);
+}
+
+static char *viewFuncLabels[] =
+{
+"show all",
+"add all",
+"subtract from the first",
+};
+
+static char *viewFuncValues[] =
+{
+WIG_VIEWFUNC_SHOW_ALL,
+WIG_VIEWFUNC_ADD_ALL,
+WIG_VIEWFUNC_SUBTRACT_ALL,
+};
+
+char *wiggleViewFuncEnumToString(enum wiggleViewFuncEnum x)
+/* Convert from enum to string representation. */
+{
+return viewFuncLabels[x];
+}
+
+enum wiggleViewFuncEnum wiggleViewFuncStringToEnum(char *string)
+/* Convert from string to enum representation. */
+{
+int x = stringIx(string, viewFuncValues);
+if (x < 0)
+    errAbort("hui::wiggleViewFuncStringToEnum() - Unknown option %s", string);
+return x;
+}
+
+void viewFuncDropDown(char *var, char *curVal)
+/* Make drop down of options. */
+{
+cgiMakeDropListFull(var, viewFuncLabels, viewFuncValues,
+ArraySize(viewFuncValues), curVal, NULL, NULL);
 }
 
 static char *wiggleTransformFuncOptions[] = 
@@ -3564,7 +3606,7 @@ if (colonPairToStrings(colonPair,&a,&b))
 return FALSE;
 }
 
-static boolean colonPairToDoubles(char * colonPair,double *first,double *second)
+boolean colonPairToDoubles(char * colonPair,double *first,double *second)
 { // Non-destructive. Only sets values if found. No colon: value goes to *first
 char *a=NULL;
 char *b=NULL;
@@ -5091,7 +5133,6 @@ double minY;        /*  from trackDb or cart    */
 double maxY;        /*  from trackDb or cart    */
 double tDbMinY;     /*  data range limits from trackDb type line */
 double tDbMaxY;     /*  data range limits from trackDb type line */
-int defaultHeight;  /*  pixels per item */
 char *horizontalGrid = NULL;    /*  Grid lines, off by default */
 char *transformFunc = NULL;    /* function to transform data points */
 char *alwaysZero = NULL;    /* Always include 0 in range */
@@ -5103,6 +5144,7 @@ char *yLineMarkOnOff;   /*  user defined Y marker line to draw */
 double yLineMark;       /*  from trackDb or cart    */
 int maxHeightPixels = atoi(DEFAULT_HEIGHT_PER);
 int minHeightPixels = MIN_HEIGHT_PER;
+int defaultHeight = maxHeightPixels;  /*  pixels per item */
 
 boxed = cfgBeginBoxAndTitle(tdb, boxed, title);
 
@@ -5135,12 +5177,17 @@ if (parentLevel)
     if (aggregate != NULL && parentLevel)
         {
         char *aggregateVal = cartOrTdbString(cart, tdb->parent, "aggregate", NULL);
-        printf("<TR valign=center><th align=right>Overlay method:</th><td align=left>");
         safef(option, sizeof(option), "%s.%s", name, AGGREGATE);
         if (isCustomComposite(tdb))
+            {
+            printf("<TR valign=center><th align=right>Merge method:</th><td align=left>");
             aggregateExtraDropDown(option, aggregateVal);
+            }
         else
+            {
+            printf("<TR valign=center><th align=right>Overlay method:</th><td align=left>");
             aggregateDropDown(option, aggregateVal);
+            }
         puts("</td></TR>");
 
 	if (sameString(aggregateVal, WIG_AGGREGATE_STACKED)  &&
@@ -5150,6 +5197,26 @@ if (parentLevel)
 	    }
 
 	didAggregate = TRUE;
+        }
+    if (isCustomComposite(tdb))
+        {
+        /*
+        char *viewFuncVal = cartOrTdbString(cart, tdb->parent, "viewFunc", NULL);
+        printf("<TR valign=center><th align=right>Math method:</th><td align=left>");
+        safef(option, sizeof(option), "%s.%s", name, VIEWFUNC);
+        viewFuncDropDown(option, viewFuncVal);
+        */
+
+        printf("<TR valign=center><th align=right>Missing data treatment:</th><td align=left>");
+        char *missingMethodVal = cartOrTdbString(cart, tdb->parent, "missingMethod", NULL);
+        boolean missingIsZero = (missingMethodVal == NULL) ||  differentString(missingMethodVal, "missing");
+        char buffer[1024];
+        safef(buffer, sizeof buffer, "%s.missingMethod",name);
+
+        cgiMakeOnEventRadioButtonWithClass(buffer, "zero", missingIsZero, "allOrOnly", "click", NULL);
+        puts("missing is zero&nbsp;&nbsp;");
+        cgiMakeOnEventRadioButtonWithClass(buffer, "missing", !missingIsZero, "allOrOnly", "click", NULL);
+        printf("math with missing values is missing</B>");
         }
     }
 
@@ -5502,7 +5569,7 @@ if (max && limitMin
 && *limitMin != NO_VALUE &&                      *max < *limitMin)  *max = *limitMin;
 }
 
-static void getScoreFloatRangeFromCart(struct cart *cart, struct trackDb *tdb, boolean parentLevel,
+void getScoreFloatRangeFromCart(struct cart *cart, struct trackDb *tdb, boolean parentLevel,
                          char *scoreName, double *limitMin,double *limitMax,double*min,double*max)
 // gets an double score range from the cart, but the limits from trackDb
 // for any of the pointers provided, will return a value found, if found, else it's contents
@@ -5826,7 +5893,8 @@ if (scoreFilterOk)
         }
     else
         {
-        printf("<b>Show only items with score at or above:</b> ");
+        char* scoreLabel = trackDbSettingClosestToHomeOrDefault(tdb, SCORE_LABEL, "score");
+        printf("<b>Show only items with %s at or above:</b> ", scoreLabel);
         safef(option, sizeof(option), "%s.%s", name,SCORE_FILTER);
         cgiMakeIntVarWithLimits(option, minVal, "Minimum score",0, minLimit,maxLimit);
         printf("&nbsp;&nbsp;(range: %d to %d)\n", minLimit, maxLimit);
@@ -6279,6 +6347,7 @@ boolean encodePeakHasCfgUi(struct trackDb *tdb)
 {
 if (sameWord("narrowPeak",tdb->type)
 ||  sameWord("broadPeak", tdb->type)
+||  sameWord("bigNarrowPeak", tdb->type)
 ||  sameWord("encodePeak",tdb->type)
 ||  sameWord("gappedPeak",tdb->type))
     {
@@ -7607,8 +7676,8 @@ if (membersForAll->members[dimX] == NULL && membersForAll->members[dimY] == NULL
     #define PM_BUTTON_FILTER_COMP "<input type='button' class='inOutButton' id='%s' value='%c'>"
     #define PM_BUTTON_FILTER_COMP_JS "waitOnFunction(filterCompositeSet,this,%s);return false;"
     #define MAKE_PM_BUTTON_FILTER_COMP(tf,fc,plmi) \
+    safef(id, sizeof id, "btn_%s", (fc)); \
     printf(PM_BUTTON_FILTER_COMP, id, (plmi)); \
-    safef(id, sizeof id, "'btn_%s", (fc)); \
     safef(javascript, sizeof javascript, PM_BUTTON_FILTER_COMP_JS, (tf)); \
     jsOnEventById("click", id, javascript);
 
@@ -7994,7 +8063,7 @@ for (i = 0; i < MAX_SUBGROUP; i++)
         if (formName)
             {
 	    char id[256];
-	    safef(id, sizeof id, "cpmUiNoMtx_but_%d", i);
+	    safef(id, sizeof id, "cpmUiNoMtx_but_%d_%d", i, j);
             makeAddClearButtonPair(id, name,"</TD><TD>");
             }
         else
@@ -8394,109 +8463,105 @@ webPrintLinkTableEnd();
 printf("Total: %d\n", count);
 }
 
-boolean printPennantIconNote(struct trackDb *tdb)
-// Returns TRUE and prints out the "pennantIcon" and note when found.
-//This is used by hgTrackUi and hgc before printing out trackDb "html"
+static char *makePennantIcon(struct trackDb *tdb, char **hintRet)
+// Builds a string with pennantIcon HTML and returns it. Also returns hint. */
 {
-char * setting = trackDbSetting(tdb, "pennantIcon");
-if (setting != NULL)
+char *setting = trackDbSetting(tdb, "pennantIcon");
+if (setting == NULL)
+    return FALSE;
+
+setting = cloneString(setting);
+char *icon = nextWord(&setting);
+char buffer[4096];
+char *src = NULL;
+char *url = NULL, *hint = NULL, *color = NULL;
+
+boolean isTextIcon = FALSE;
+if (!(endsWith(icon, ".jpg") || endsWith(icon, ".png")))
     {
-    setting = cloneString(setting);
-    char *icon = nextWord(&setting);
-    char buffer[4096];
-    char *src = NULL;
-    
-    if (startsWith("http://", icon) || startsWith("ftp://", icon) ||
-        startsWith("https://", icon))
-        src = htmlEncode(icon);
-    else
-        {
-        safef(buffer, sizeof buffer, "../images/%s", icon);
-        src = htmlEncode(buffer);
-        }
-
-    char *url = NULL;
-    if (setting != NULL)
-	url = nextWord(&setting);
-    char *hint = NULL;
-    if (setting != NULL)
-	hint = htmlEncode(stripEnclosingDoubleQuotes(setting));
-
-    if (!isEmpty(url))
-        {
-	if (isEmpty(hint))
-	    printf("<P><a href='%s' TARGET=ucscHelp><img height='16' width='16' "
-		   "src='%s'></a>",url,src);
-	else
-	    {
-	    printf("<P><a title='%s' href='%s' TARGET=ucscHelp><img height='16' width='16' "
-		   "src='%s'></a>",hint,url,src);
-
-	    // Special case for liftOver from hg17 or hg18, but this should probably be generalized.
-	    if (sameString(icon,"18.jpg") && startsWithWord("lifted",hint))
-		printf("&nbsp;Note: these data have been converted via liftOver from the Mar. 2006 "
-		       "(NCBI36/hg18) version of the track.");
-	    else if (sameString(icon,"17.jpg") && startsWithWord("lifted",hint))
-		printf("&nbsp;Note: these data have been converted via liftOver from the May 2004 "
-		       "(NCBI35/hg17) version of the track.");
-	    else 
-		printf("&nbsp;Note: %s.",hint);
-	    printf("</P>\n");
-	    }
-	}
-    else
-        printf("<BR><img height='16' width='16' src='%s'>\n",src);
-    return TRUE;
+    isTextIcon = TRUE;
+    color = nextWord(&setting);
+    src = strLower(icon);
     }
-return FALSE;
+else if (startsWith("http://", icon) || startsWith("https://", icon) ||
+        startsWith("ftp://", icon))
+            src = htmlEncode(icon);
+else
+    {
+    safef(buffer, sizeof buffer, "../images/%s", icon);
+    src = htmlEncode(buffer);
+    }
+
+if (setting)
+    {
+    url = nextWord(&setting);
+    if (setting)
+        {
+        hint = htmlEncode(stripEnclosingDoubleQuotes(setting));
+        }
+    }
+struct dyString *ds = dyStringNew(0);
+
+// generate markup
+if (url)
+    dyStringPrintf(ds, "<a class='pennantIconText' href='%s' target='ucscHelp' ", url);
+else if (isTextIcon)
+    dyStringAppend(ds, "<span class='pennantIconText' ");
+if (isTextIcon)
+    dyStringPrintf(ds, "style='color: %s;' ", color);
+if (hint)
+    dyStringPrintf(ds, "title='%s' ", hint);
+if (url || isTextIcon)
+    dyStringAppend(ds, ">");
+
+// add text or image
+if (isTextIcon) 
+    dyStringPrintf(ds, "%s", src);
+else
+    dyStringPrintf(ds, "<img height='16' width='16' src='%s'>", src);
+
+// close tags
+if (url)
+   dyStringAppend(ds, "</a>");
+else if (isTextIcon)
+    dyStringAppend(ds, "</span>");
+dyStringAppend(ds, "\n");
+
+if (hint && hintRet)
+    *hintRet = cloneString(hint);
+return dyStringCannibalize(&ds);
 }
+
 
 boolean hPrintPennantIcon(struct trackDb *tdb)
 // Returns TRUE and prints out the "pennantIcon" when found.
 // Example: ENCODE tracks in hgTracks config list.
 {
-char *setting = trackDbSetting(tdb, "pennantIcon");
-if (setting != NULL)
-    {
-    setting = cloneString(setting);
-    char buffer[4096];
-    char *src = NULL;
-    char *icon = nextWord(&setting);
-    if (startsWith("http://", icon) || startsWith("ftp://", icon) ||
-        startsWith("https://", icon))
-        src = htmlEncode(icon);
-    else
-        {
-        safef(buffer, sizeof buffer, "../images/%s", icon);
-        src = htmlEncode(buffer);
-        }
-
-    if (setting)
-        {
-        char *url = nextWord(&setting);
-        if (setting)
-            {
-            char *hint = htmlEncode(stripEnclosingDoubleQuotes(setting));
-            hPrintf("<a title='%s' href='%s' TARGET=ucscHelp><img height='16' width='16' "
-                    "src='%s'></a>\n",hint,url,src);
-            freeMem(hint);
-            }
-        else
-            hPrintf("<a href='%s' TARGET=ucscHelp><img height='16' width='16' "
-                    "src='%s'></a>\n",url,src);
-        }
-    else
-        hPrintf("<img height='16' width='16' src='%s'>\n",icon);
-    freeMem(icon);
-    return TRUE;
-    }
-else if (trackDbSetting(tdb, "wgEncode") != NULL)
+if (trackDbSetting(tdb, "wgEncode") != NULL)
     {
     hPrintf("<a title='encode project' href='../ENCODE'><img height='16' width='16' "
             "src='../images/encodeThumbnail.jpg'></a>\n");
     return TRUE;
     }
-return FALSE;
+char *pennantIcon = makePennantIcon(tdb, NULL);
+if (!pennantIcon)
+    return FALSE;
+hPrintf("%s\n", pennantIcon);
+return TRUE;
+}
+
+boolean printPennantIconNote(struct trackDb *tdb)
+// Returns TRUE and prints out the "pennantIcon" and note when found.
+//This is used by hgTrackUi and hgc before printing out trackDb "html"
+{
+char *hintRet;
+char *pennantIcon = makePennantIcon(tdb, &hintRet);
+if (!pennantIcon)
+    return FALSE;
+printf("<br>%s\n", pennantIcon);
+if (hintRet)
+    printf("<b>Note:</b> %s\n", hintRet);
+return TRUE;
 }
 
 void printUpdateTime(char *database, struct trackDb *tdb,
@@ -8525,7 +8590,9 @@ else if (startsWith("big", tdb->type))
     char *bbiFileName = bbiNameFromSettingOrTable(tdb, conn, tableName);
     hFreeConn(&conn);
     struct bbiFile *bbi = NULL;
-    if (startsWith("bigBed", tdb->type) || sameString("bigBarChart", tdb->type))
+    if (startsWith("bigBed", tdb->type) || sameString("bigBarChart", tdb->type) 
+        || sameString("bigMaf", tdb->type) || sameString("bigPsl", tdb->type)
+        || sameString("bigChain", tdb->type) || sameString("bigGenePred", tdb->type) )
 	bbi = bigBedFileOpen(bbiFileName);
     else if (startsWith("bigWig", tdb->type))
 	bbi = bigWigFileOpen(bbiFileName);
@@ -8890,7 +8957,7 @@ if (stringIn(":", idInUrl)) {
 // URL may now contain item boundaries
 ins[9] = "${";
 ins[10] = "$}";
-if (cartOptionalString(cart, "o") && cartOptionalString(cart, "t"))
+if (cart!=NULL && cartOptionalString(cart, "o") && cartOptionalString(cart, "t"))
     {
     char *itemBeg = cartString(cart, "o"); // unexpected commas?
     char *itemEnd = cartString(cart, "t");
@@ -8916,5 +8983,46 @@ freeDyString(&uUrl);
 freeMem(eItem);
 freeMem(scName);
 return eUrl->string;
+}
+
+void printDataVersion(char *database, struct trackDb *tdb)
+/* If this annotation has a dataVersion setting, print it.
+ * check hgFixed.trackVersion, meta data and trackDb 'dataVersion'. */
+{
+// try the metadata
+metadataForTable(database, tdb, NULL);
+char *version = (char *)metadataFindValue(tdb, "dataVersion");
+
+// try trackDb itself, this automatically will go up the hierarchy
+if (version == NULL)
+    version = trackDbSetting(tdb, "dataVersion");
+
+if (version != NULL)
+    {
+    // dataVersion can also be the path to a local file, for otto tracks
+    if (!trackHubDatabase(database) && !isHubTrack(tdb->table) && startsWith("/", version))
+        {
+        char *path = replaceInUrl(version, "", NULL, database, "", 0, 0, tdb->track, FALSE);
+        struct lineFile* lf = lineFileMayOpen(path, TRUE);
+        if (lf)
+            version = lineFileReadAll(lf);
+        else
+            version = NULL;
+        lineFileClose(&lf);
+        }
+    }
+if (version == NULL)
+    {
+    // try the hgFixed.trackVersion table
+    struct trackVersion *trackVersion = getTrackVersion(database, tdb->track);
+    // try trackVersion table with parent, for composites/superTracks
+    if (trackVersion == NULL && tdb->parent != NULL)
+        trackVersion = getTrackVersion(database, tdb->parent->track);
+    if (trackVersion != NULL)
+        version = trackVersion->version;
+    }
+
+if (isNotEmpty(version))
+    printf("<B>Data version:</B> %s <BR>\n", version);
 }
 

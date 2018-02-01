@@ -1,0 +1,161 @@
+<style>
+  #CustomTrackOptions {margin:12px}
+  #collectionList .ui-selecting { background: #FECA40; }
+  #collectionList .ui-selected { background: #B0E6FF; color: black; }
+  #collectionList { list-style-type: none; margin: 12px; padding: 0;  }
+.collectionList-menu li:hover {
+    background-color: #DEF;
+}
+.collectionList-menu {
+    display: none;
+    z-index: 1000;
+    position: absolute;
+    overflow: hidden;
+    border: 1px solid #CCC;
+    white-space: nowrap;
+    font-family: sans-serif;
+    background: #FFF;
+    color: #333;
+    border-radius: 5px;
+    padding: 0;
+}
+.mygbSectionBanner {
+    padding: 3px;
+    margin-top: 6px;  
+    margin-left: 0px;  
+    margin-right: 0px;  
+    background-color: #4c759c;  /* light blue */  
+    color: white;  
+    font-weight: bold;  
+    font-size: 15px;  
+}  
+
+.modal {
+    display:    none;
+    position:   fixed;
+    z-index:    10000;
+    top:        0;
+    left:       0;
+    height:     100%;
+    width:      100%;
+    background: rgba( 255, 255, 255, .0 ) 
+                url('http://i.stack.imgur.com/FhHRx.gif') 
+                50% 50% 
+                no-repeat;
+}
+
+.myTitleClass .ui-dialog-titlebar {
+    color: white;
+    background: #4c759c;
+}
+
+/* When the body has the loading class, we turn
+   the scrollbar off with overflow:hidden */
+body.loading {
+    overflow: hidden;   
+}
+
+/* Anytime the body has the loading class, our
+   modal element will be visible */
+body.loading .modal {
+    display: block;
+}
+
+.fa-minus-square:before {
+    color:      #f00;
+    }
+
+.fa-plus:before {
+    color:      #0f0;
+    }
+</style>
+
+<form id='redirectForm' action='../cgi-bin/hgTracks'></form>
+
+<div class='row gbTrackTitleBanner'>
+    <div class='col-md-4'>
+        <span id='assembly' class='gbTrackName'></span>
+    </div>
+    <div class='col-md-5'>
+        <span class='gbTrackTitle'>Track Group Collections</span>
+        <a href='#INFO_SECTION' title='Jump to the track description'>
+            <span class='gbIconSmall fa-stack'>
+                <i class='gbBlueDarkColor fa fa-circle fa-stack-2x'></i>
+                <i class='gbWhiteColor fa fa-info fa-stack-1x'></i>
+            </span>
+        </a>
+    </div>
+    <div style='font-size:12px' class='col-md-3 text-right'>
+        <div style='font-size:10px' class='gbButtonGo' id='discardChanges'>Discard Changes</div>
+        <div class='gbButtonGoContainer text-right' title='Save and Go To Browser'>
+            <div class='gbButtonGo' id='goButton'>GO</div><i class='gbIconGo fa fa-play fa-2x'></i> 
+        </div>
+    </div>
+</div>
+
+<div class='row'>
+    <div class='col-md-6'>
+        <div class='row mygbSectionBanner'>
+            <div class='col-md-8'>Available Tracks</div>
+        </div>
+        <div>
+        <div > Below are tracks are available to add to collections. To add new tracks from hubs or custom tracks, load the hub or custom track into the browser and then return to this list. </div>
+        </div>
+        <div id='tracks' style='overflow:auto'>
+        </div>
+    </div>
+
+    <div class='col-md-6'>
+        <div class='row mygbSectionBanner'>
+            <div class='col-md-3'>Collected Tracks</div>
+                <div class='col-md-7' id='newCollectionHint'>Press this button to make a new collection --></div>
+                <div class='' style='float:right' title='New Collection'>
+                    <div style='font-size:13px' id='newCollection' class='gbButton'>New Collection</div>
+                </div>
+        </div>
+        <div id='currentCollection' style='overflow:auto' >
+        </div>
+    </div>
+</div>
+
+<ul class='collectionList-menu' style='display:none'>
+    <li data-action="delete">Delete</li>
+</ul>
+
+<div class='modal'></div>
+
+<div id='newCollectionDialog' class='myTitleClass' title='Create Collection' style='background:white; width:512px; display:none'>
+    <p>
+    <label style='display:none' id='trackDialogHelp'>
+    Enter the name and description of the copied track.
+    </label>
+    <label style='display:none' id='collectionDialogHelp'>
+    Enter the name and description of the collection.
+    </label>
+    </p>
+
+    <div id='CustomTrackOptions' >
+        <div>
+            <label class='gbInputLabel'  for='name'>Name:</label>
+            <input type='text' name='customName' id='customName' value='' class='text ui-widget-content ui-corner-all'>
+        </div>
+        <div>
+            <br><label class='gbInputLabel'  for='description'>Description:</label>
+            <input type='text' name='customDescription' id='customDescription' value='' class='text ui-widget-content ui-corner-all' style='width:80%'>
+        </div>
+
+        <div>
+            <br> <p><span class='gbInputLabel'> Color:</span> <input type='text' id='customColorInput' value='0xffffff'>&nbsp;&nbsp;
+            <input id='customColorPicker'>           
+        </div>
+
+    </div>
+
+    <div>
+        <input class='gbButton'  id="doNewCollection" type="submit" value="Save"   >
+    </div>
+</div>
+
+<label style='display:none' id='emptyCollectionText'>Empty Collection. To add tracks select in Available Tracks window</label>
+<label style='display:none' id='addWithoutCollectionText'>You have no collections. Press 'New Collection' button in 'Collected Tracks' pane</label>
+

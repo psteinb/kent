@@ -53,6 +53,14 @@ void copyOpenFile(FILE *inFh, FILE *outFh);
 void cpFile(int s, int d);
 /* Copy from source file to dest until reach end of file. */
 
+void *charToPt(char c);
+/* Convert char to pointer. Use when really want to store
+ * a char in a pointer field. */
+
+char ptToChar(void *pt);
+/* Convert pointer to char.  Use when really want to store a
+ * pointer in a char. */
+
 void *intToPt(int i);
 /* Convert integer to pointer. Use when really want to store an
  * int in a pointer field. */
@@ -186,6 +194,9 @@ void rangeFromMinMaxMeanStd(double minVal, double maxVal, double mean, double st
 	double *retStart, double *retEnd);
 /* Given some basic statistical properties, set a range that will be good on a wide
  * range of biological data. */
+
+long long currentVmPeak();
+/* return value of peak Vm memory usage (if /proc/ business exists) */
 
 void printVmPeak();
 /* print to stderr peak Vm memory usage (if /proc/ business exists) */

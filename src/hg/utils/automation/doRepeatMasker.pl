@@ -359,10 +359,15 @@ ln -s $partDir $buildDir/RMPart
 _EOF_
     );
   }
+  my $binPara = "/parasol/bin/para";
+  if ( ! -s "$binPara" ) {
+    # allow PATH to find the para command
+    $binPara = "para";
+  }
+  my $gensub2 = &HgAutomate::gensub2();
   $bossScript->add(<<_EOF_
 
 $HgAutomate::gensub2 $partDir/partitions.lst single gsub jobList
-
 $myParaRun
 
 _EOF_

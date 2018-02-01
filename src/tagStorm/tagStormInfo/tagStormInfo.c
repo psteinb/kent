@@ -4,8 +4,10 @@
 #include "hash.h"
 #include "obscure.h"
 #include "options.h"
+#include "tagSchema.h"
 #include "tagStorm.h"
 #include "tagToSql.h"
+#include "csv.h"
 
 /* Global vars. */
 boolean anySchema;
@@ -16,6 +18,7 @@ int clVals = 0;
 boolean clSchema = FALSE;
 boolean clLooseSchema = FALSE;
 boolean clTightSchema = FALSE;
+char *clTag = NULL;
 
 void usage()
 /* Explain usage and exit. */
@@ -27,6 +30,7 @@ errAbort(
   "options:\n"
   "   -counts - if set output names, use counts, and value counts of each tag\n"
   "   -vals=N - display tags and the top N values for them\n"
+  "   -tag=tagName - restrict info to just the one tag, often used with vals option\n"
   "   -schema - put a schema that will fit this tag storm in output.txt\n"
   "   -looseSchema - put a less fussy schema instead\n"
   "   -tightSchema - put a more fussy schema instead\n"
@@ -40,6 +44,7 @@ static struct optionSpec options[] = {
    {"schema", OPTION_BOOLEAN},
    {"tightSchema", OPTION_BOOLEAN},
    {"looseSchema", OPTION_BOOLEAN},
+   {"tag", OPTION_STRING},
    {NULL, 0},
 };
 
@@ -52,11 +57,14 @@ struct tagInfo
     struct hash *tagVals;   /* Hash of tag values, integer valued */
     };
 
-void tagInfoAdd(struct tagInfo *tagInfo, char *tagVal)
+void tagInfoAdd(struct tagInfo *tagInfo, char *tagVal, struct dyString *scratch)
 /* Add information about tag to tagInfo */
 {
 tagInfo->useCount += 1;
-hashIncInt(tagInfo->tagVals, tagVal);
+char *pos = tagVal;
+char *val;
+while ((val = csvParseNext(&pos, scratch)) != NULL)
+    hashIncInt(tagInfo->tagVals, val);
 }
 
 struct tagInfo *tagInfoNew(char *tagName)
@@ -69,8 +77,8 @@ tagInfo->tagVals = hashNew(0);
 return tagInfo;
 }
 
-void rFillInStats(struct tagStanza *list, int expansion, struct hash *tagHash,
-    long *retStanzaCount, long *retTagCount, long *retExpandedCount, 
+void rFillInStats(struct tagStanza *list, int expansion, struct hash *tagHash, 
+    struct dyString *scratch, long *retStanzaCount, long *retTagCount, long *retExpandedCount, 
     int depth, int *retMaxDepth)
 /* Recursively traverse stanza tree filling in values */
 {
@@ -84,20 +92,23 @@ for (stanza = list; stanza != NULL; stanza = stanza->next)
     int stanzaSize = 0;
     for (pair = stanza->tagList; pair != NULL; pair = pair->next)
         {
-	char *tagName = pair->name;
-	stanzaSize += 1;
-	*retExpandedCount += 1 + expansion;
-	struct tagInfo *tagInfo = hashFindVal(tagHash, tagName);
-	if (tagInfo == NULL)
-	     {
-	     tagInfo = tagInfoNew(tagName);
-	     hashAdd(tagHash, tagName, tagInfo);
-	     }
-	tagInfoAdd(tagInfo, pair->val);
+	char *tagName = tagSchemaFigureArrayName(pair->name, scratch);
+	if (clTag == NULL || sameString(tagName, clTag))
+	    {
+	    stanzaSize += 1;
+	    *retExpandedCount += 1 + expansion;
+	    struct tagInfo *tagInfo = hashFindVal(tagHash, tagName);
+	    if (tagInfo == NULL)
+		 {
+		 tagInfo = tagInfoNew(tagName);
+		 hashAdd(tagHash, tagName, tagInfo);
+		 }
+	    tagInfoAdd(tagInfo, pair->val, scratch);
+	    }
 	}
     *retTagCount += stanzaSize;
     if (stanza->children != NULL)
-	rFillInStats(stanza->children, expansion + stanzaSize, tagHash,
+	rFillInStats(stanza->children, expansion + stanzaSize, tagHash, scratch,
 	    retStanzaCount, retTagCount, retExpandedCount, depth, retMaxDepth);
     }
 }
@@ -109,7 +120,8 @@ struct tagStorm *tags = tagStormFromFile(inputTags);
 struct hash *tagHash = hashNew(0);
 long stanzaCount = 0, tagCount = 0, expandedTagCount = 0;
 int maxDepth = 0;
-rFillInStats(tags->forest, 0, tagHash, &stanzaCount, &tagCount, &expandedTagCount, 0, &maxDepth);
+struct dyString *scratch = dyStringNew(0);
+rFillInStats(tags->forest, 0, tagHash, scratch, &stanzaCount, &tagCount, &expandedTagCount, 0, &maxDepth);
 
 /* Do we do something fancy? */
 if (clCounts || clVals > 0 || anySchema)
@@ -187,6 +199,7 @@ clVals = optionInt("vals", clVals);
 clSchema = optionExists("schema");
 clLooseSchema = optionExists("looseSchema");
 clTightSchema = optionExists("tightSchema");
+clTag = optionVal("tag", clTag);
 anySchema = (clSchema || clLooseSchema || clTightSchema);
 tagStormInfo(argv[1]);
 return 0;

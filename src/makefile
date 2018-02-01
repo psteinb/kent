@@ -34,17 +34,17 @@ hgLib:
 	@./hg/sqlEnvTest.sh
 	cd hg/lib && ${MAKE}
 
-libs: topLibs hgLib
+libs: topLibs hgLib optLib
 
-cgi: libs optLib
+cgi: libs
 	cd hg && ${MAKE} cgi
 	cd utils/bedToBigBed && ${MAKE} cgi
 
-cgi-alpha: libs optLib
+cgi-alpha: libs
 	cd hg && ${MAKE} alpha
 	cd utils/bedToBigBed && ${MAKE} alpha
 
-cgi-beta: check-beta libs optLib
+cgi-beta: check-beta libs
 	cd hg && ${MAKE} beta
 	cd utils/bedToBigBed && ${MAKE} beta
 
@@ -76,6 +76,7 @@ BLAT_APPLIST = blat gfClient gfServer
 userApps: topLibs hgLib destBin
 	cd utils/stringify && echo utils/stringify && ${MAKE}
 	cd utils && echo utils && ${MAKE} userAppsB
+	cd parasol && echo parasol && ${MAKE} userApps
 	cd hg && echo hg && ${MAKE} userApps
 	cd hg/utils && echo hg/utils && ${MAKE} userApps
 	cd hg/makeDb && echo hg/makeDb && ${MAKE} userApps
@@ -91,7 +92,7 @@ destBin:
 
 clean:
 	@for D in ${DIRS} x; do \
-            if test "$$D" != "x" ; then \
+            if test "$$D" != "x" && test -d "$$D" ; then \
                 ( cd $$D && echo $$D && ${MAKE} clean ) ;\
                 x=$$? ; if [ $$x -ne 0 ]; then exit $$x ; fi \
             fi ;\
@@ -103,8 +104,8 @@ clean:
 	cd jkOwnLib && ${MAKE} clean
 	cd htslib && ${MAKE} clean
 	cd utils && ${MAKE} clean
-	cd webBlat && ${MAKE} clean
-	cd isPcr && ${MAKE} clean
+	if test -d webBlat ; then cd webBlat && ${MAKE} clean ; fi
+	if test -d isPcr ; then cd isPcr && ${MAKE} clean ; fi
 	touch non-empty-rm.o
 	- find . -name \*.o -print | xargs rm
 	rm -f tags TAGS

@@ -43,7 +43,7 @@ MYSQL=mysql
 SET_MYSQL_ROOT="0"
 
 # default download server, can be changed with -a
-HGDOWNLOAD='hgdownload.cse.ucsc.edu'
+HGDOWNLOAD='hgdownload.soe.ucsc.edu'
 
 # default GBDB dir
 GBDBDIR=/gbdb
@@ -201,7 +201,7 @@ gbdbLoc2=http://hgdownload.soe.ucsc.edu/gbdb/
 # The location of the mysql server that is used if data cannot be found locally
 # (e.g. chromosome annotations, alignment summaries, etc)
 # To disable on-the-fly loading of mysql data, comment out these lines. 
-slow-db.host=genome-mysql.cse.ucsc.edu
+slow-db.host=genome-mysql.soe.ucsc.edu
 slow-db.user=genomep
 slow-db.password=password
 
@@ -576,7 +576,7 @@ function setupCgiOsx ()
     # get samtools patched for UCSC and compile it
     cd kent
     if [ ! -d samtabix ]; then
-       git clone http://genome-source.cse.ucsc.edu/samtabix.git
+       git clone http://genome-source.soe.ucsc.edu/samtabix.git
     else
        cd samtabix
        git pull
@@ -605,8 +605,9 @@ function installRedhat () {
     waitKey
     # make sure we have and EPEL and ghostscript and rsync (not installed on vagrant boxes)
     # imagemagick is required for the session gallery
+    # MySQL-python is required for hgGeneGraph
     yum -y install epel-release
-    yum -y install ghostscript rsync ImageMagick R-core
+    yum -y install ghostscript rsync ImageMagick R-core MySQL-python curl
 
     # centos 7 and fedora 20 do not provide libpng by default
     if ldconfig -p | grep libpng12.so > /dev/null; then
@@ -842,7 +843,8 @@ function installDebian ()
     # ghostscript for PDF export
     # imagemagick for the session gallery
     # r-base-core for the gtex tracks
-    apt-get --no-install-recommends --assume-yes install ghostscript imagemagick wget rsync r-base-core
+    # python-mysqldb for hgGeneGraph
+    apt-get --no-install-recommends --assume-yes install ghostscript imagemagick wget rsync r-base-core python-mysqldb curl
 
     if [ ! -f $APACHECONF ]; then
         echo2
@@ -1127,7 +1129,7 @@ function mysqlDbSetup ()
     $MYSQL -e 'CREATE DATABASE IF NOT EXISTS hgFixed;' # empty db needed for gencode tracks
     downloadFile http://$HGDOWNLOAD/admin/hgcentral.sql | $MYSQL hgcentral
     # the blat servers don't have fully qualified dom names in the download data
-    $MYSQL hgcentral -e 'UPDATE blatServers SET host=CONCAT(host,".cse.ucsc.edu");'
+    $MYSQL hgcentral -e 'UPDATE blatServers SET host=CONCAT(host,".soe.ucsc.edu");'
     
     echo2
     echo2 "Will now grant permissions to browser database access users:"
@@ -1290,6 +1292,21 @@ function installBrowser ()
        $SEDINPLACE "s|^#?db.socket.*|db.socket=$sockFile|" $CGIBINDIR/hg.conf
        $SEDINPLACE "s|^#?central.socket.*|central.socket=$sockFile|" $CGIBINDIR/hg.conf
     fi
+    # check if UCSC or genome-euro MySQL server is closer
+    echo comparing latency: genome.ucsc.edu Vs. genome-euro.ucsc.edu
+    eurospeed=$( (time -p (for i in `seq 10`; do curl -sSI genome-euro.ucsc.edu > /dev/null; done )) 2>&1 | grep real | cut -d' ' -f2 )
+    ucscspeed=$( (time -p (for i in `seq 10`; do curl -sSI genome.ucsc.edu > /dev/null; done )) 2>&1 | grep real | cut -d' ' -f2 )
+    if [[ $(awk '{if ($1 <= $2) print 1;}' <<< "$eurospeed $ucscspeed") -eq 1 ]]; then
+       echo genome-euro seems to be closer
+       echo modifying mirror to pull data from genome-euro instead of genome
+       sed -i s/slow-db.host=genome-mysql.soe.ucsc.edu/slow-db.host=genome-euro-mysql.soe.ucsc.edu/ $CGIBINDIR/hg.conf
+       sed -i "s#gbdbLoc2=http://hgdownload.soe.ucsc.edu/gbdb/#gbdbLoc2=http://hgdownload-euro.soe.ucsc.edu/gbdb/#" $CGIBINDIR/hg.conf
+       HGDOWNLOAD=hgdownload-euro.soe.ucsc.edu
+    else
+       echo genome.ucsc.edu seems to be closer
+       echo not modifying $CGIBINDIR/hg.conf
+    fi
+
 
     # download the CGIs
     if [[ "$OS" == "OSX" ]]; then
@@ -1320,8 +1337,8 @@ function installBrowser ()
     echo2
     echo2 Notice that this mirror is still configured to use Mysql and data files loaded
     echo2 through the internet from UCSC. From most locations on the world, this is very slow.
-    echo2 It also requires an open outgoing TCP port 3306 for Mysql to genome-mysql.cse.ucsc.edu
-    echo2 and open TCP port 80 to hgdownload.soe.ucsc.edu.
+    echo2 It also requires an open outgoing TCP port 3306 for Mysql to genome-mysql.soe.ucsc.edu/genome-euro-mysql.soe.ucsc.edu,
+    echo2 and open TCP port 80 to hgdownload.soe.ucsc.edu/hgdownload-euro.soe.ucsc.edu.
     echo2
     echo2 To speed up the installation, you need to download genome data to the local
     echo2 disk. To download a genome assembly and all its files now, call this script again with
@@ -1405,27 +1422,27 @@ function downloadGenomes
     # now do the actual download of mysql files
     for db in $MYSQLDBS; do
        echo2 Downloading Mysql files for mysql database $db
-       $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/ 
+       $RSYNC --progress -avp $RSYNCOPTS $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/ 
        chown -R $MYSQLUSER:$MYSQLUSER $MYSQLDIR/$db
     done
 
     if [ ! -z "$GENBANKTBLS" ]; then
         echo2 Downloading hgFixed tables
         for tbl in $GENBANKTBLS; do
-            $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/${tbl}.* $MYSQLDIR/hgFixed/
+            $RSYNC --progress -avp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/${tbl}.* $MYSQLDIR/hgFixed/
         done
         chown -R $MYSQLUSER:$MYSQLUSER $MYSQLDIR/hgFixed
     fi
 
     echo2 Downloading hgFixed.refLink, required for all RefSeq tracks
-    $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/refLink.* $MYSQLDIR/hgFixed/ 
+    $RSYNC --progress -avp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/refLink.* $MYSQLDIR/hgFixed/ 
     chown -R $MYSQLUSER:$MYSQLUSER $MYSQLDIR/hgFixed
 
     # download /gbdb files
     for db in $DBS; do
        echo2 Downloading $GBDBDIR files for assembly $db
        mkdir -p $GBDBDIR
-       $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::gbdb/$db/ $GBDBDIR/$db/
+       $RSYNC --progress -avp $RSYNCOPTS $HGDOWNLOAD::gbdb/$db/ $GBDBDIR/$db/
        chown -R $APACHEUSER:$APACHEUSER $GBDBDIR/$db
     done
 
@@ -1522,14 +1539,14 @@ function downloadMinimal
 
     for db in $DBS; do
        echo2 Downloading Mysql files for mysql database $db
-       $RSYNC $minRsyncOpt --exclude=* --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/ 
+       $RSYNC $minRsyncOpt --exclude=* --progress -avp $RSYNCOPTS $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/ 
        chown -R $MYSQLUSER:$MYSQLUSER $MYSQLDIR/$db
     done
 
     echo2 Copying hgFixed.trackVersion, required for most tracks
-    $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/trackVersion.* $MYSQLDIR/hgFixed/ 
+    $RSYNC --progress -avp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/trackVersion.* $MYSQLDIR/hgFixed/ 
     echo2 Copying hgFixed.refLink, required for RefSeq tracks across all species
-    $RSYNC --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/refLink.* $MYSQLDIR/hgFixed/ 
+    $RSYNC --progress -avp $RSYNCOPTS $HGDOWNLOAD::mysql/hgFixed/refLink.* $MYSQLDIR/hgFixed/ 
 
     startMysql
 
@@ -1550,6 +1567,8 @@ function downloadMinimal
     echo2 two open ports, outgoing, TCP, from this machine:
     echo2 - to genome-mysql.soe.ucsc.edu, port 3306, to load MySQL tables
     echo2 - to hgdownload.soe.ucsc.edu, port 80, to download non-MySQL data files
+    echo2 - or the above two servers European counterparts:
+    echo2   genome-euro-mysql.soe.ucsc.edu and hgdownload-euro.soe.ucsc.edu
     echo2
     showMyAddress
     goOnline
@@ -1594,7 +1613,7 @@ function updateBrowser {
    echo updating GBDB: $DBS
    for db in $DBS; do 
        echo2 syncing gbdb: $db
-       rsync -avzp $RSYNCOPTS $HGDOWNLOAD::gbdb/$db/ $GBDBDIR/$db/ 
+       rsync -avp $RSYNCOPTS $HGDOWNLOAD::gbdb/$db/ $GBDBDIR/$db/ 
    done
 
    # update the mysql DBs
@@ -1602,7 +1621,7 @@ function updateBrowser {
    DBS=`ls /var/lib/mysql/ | egrep -v '(Trash$)|(hgTemp)|(^ib_)|(^ibdata)|(^aria)|(^mysql)|(performance)|(.flag$)|(hgcentral)'`
    for db in $DBS; do 
        echo2 syncing full mysql database: $db
-       $RSYNC --update --progress -avzp $RSYNCOPTS $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/
+       $RSYNC --update --progress -avp $RSYNCOPTS $HGDOWNLOAD::mysql/$db/ $MYSQLDIR/$db/
    done
    startMysql
 
@@ -1610,11 +1629,11 @@ function updateBrowser {
 }
 
 function addTools {
-   rsync -avP hgdownload.cse.ucsc.edu::genome/admin/exe/linux.x86_64/ /usr/local/bin/
+   rsync -avP hgdownload.soe.ucsc.edu::genome/admin/exe/linux.x86_64/ /usr/local/bin/
    echo2 The UCSC User Tools were copied to /usr/local/bin
    echo2 Please note that most of the tools require an .hg.conf file in the users
    echo2 home directory. A very minimal .hg.conf file can be found here:
-   echo2 "http://genome-source.cse.ucsc.edu/gitweb/?p=kent.git;a=blob;f=src/product/minimal.hg.conf"
+   echo2 "http://genome-source.soe.ucsc.edu/gitweb/?p=kent.git;a=blob;f=src/product/minimal.hg.conf"
 }
 
 # ------------ end of utility functions ----------------
@@ -1636,7 +1655,7 @@ if [[ $# -eq 0 ]] ; then
    exit 0
 fi
 
-while getopts ":baut:hof" opt; do
+while getopts ":baeut:hof" opt; do
   case $opt in
     h)
       echo "$HELP_STR"
@@ -1649,6 +1668,9 @@ while getopts ":baut:hof" opt; do
       ;;
     a)
       HGDOWNLOAD=hgdownload-sd.sdsc.edu
+      ;;
+    e)
+      HGDOWNLOAD=hgdownload-euro.soe.ucsc.edu
       ;;
     t)
       val=${OPTARG}
@@ -1765,6 +1787,12 @@ if [[ "$#" -gt "1" && ( "${2:0:1}" == "-" ) || ( "${lastArg:0:1}" == "-" )  ]]; 
   echo "Error: The options have to be specified before the command, not after it."
   echo
   echo "$HELP_STR"
+  exit 1
+fi
+
+if uname -m | grep -vq _64; then
+  echo "Your machine does not seem to be a 64bit system"
+  echo "Sorry, the Genome Browser requires a 64bit linux."
   exit 1
 fi
 

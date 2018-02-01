@@ -18,11 +18,13 @@
       <li><a href="#format1">BED format</a></li>
       <li><a href="#format1.7">BED detail format</a></li>
       <li><a href="#format1.8">bedGraph format</a></li>
+      <li><a href="#format21">barChart and bigBarChart format</a></li>
       <li><a href="#format1.5">bigBed format</a></li>
       <li><a href="#format9.1">bigGenePred table format</a></li>
       <li><a href="#format9.2">bigPsl table format</a></li>
       <li><a href="#format9.3">bigMaf table format</a></li>
       <li><a href="#format9.4">bigChain table format</a></li>
+      <li><a href="#format9.5">bigNarrowPeak table format</a></li>
       <li><a href="#format6.1">bigWig format</a></li>
       <li><a href="../goldenPath/help/chain.html">Chain format</a></li>
     </ul>
@@ -314,7 +316,7 @@ within a PSL file:</p>
   <li>
   <strong>qName</strong> - Query sequence name</li>
   <li>
-  <strong>qSize</strong> - Query sequence size</li>
+  <strong>qSize</strong> - Query sequence size.</li>
   <li>
   <strong>qStart</strong> - Alignment start position in query</li>
   <li>
@@ -330,7 +332,7 @@ within a PSL file:</p>
   <li>
   <strong>blockCount</strong> - Number of blocks in the alignment (a block contains no gaps)</li>
   <li>
-  <strong>blockSizes</strong> - Comma-separated list of sizes of each block</li>
+  <strong>blockSizes</strong> - Comma-separated list of sizes of each block. If the query is a protein and the target the genome, blockSizes are in amino acids. See below for more information on protein query PSLs.</li>
   <li>
   <strong>qStarts</strong> - Comma-separated list of starting positions of each block in query</li>
   <li>
@@ -986,7 +988,7 @@ The index is followed by the sequence records, which contain nine fields:</p>
 </ul>
 <p>
 For a complete definition of all fields in the twoBit format, see 
-<a href="http://genome-source.cse.ucsc.edu/gitweb/?p=kent.git;a=blob_plain;f=src/inc/twoBit.h;hb=HEAD">this</a> 
+<a href="http://genome-source.soe.ucsc.edu/gitweb/?p=kent.git;a=blob_plain;f=src/inc/twoBit.h;hb=HEAD">this</a> 
 description in the source code.</p>
 
 <a name="format8"></a>
@@ -1102,6 +1104,18 @@ efficiently accessed over a network. </p>
 Click <a href="../goldenPath/help/bigGenePred.html">here</a> for more information on the 
 bigGenePred format.</p>
 
+<a name="format21"></a>
+<h2>barChart table format</h2>
+<p>
+The barChart (and bigBarChart) track format displays a graph of category-specific values over genomic
+regions, similar to the 
+<a href="../../cgi-bin/hgTracks?db=hg38&hideTracks=1&gtexGene=pack">GTEx Gene</a> track. This
+format is useful for displaying gene expression and other datasets where it is desirable to compare
+a set of variables over genomic regions.</p>
+<p>
+Click <a href="../goldenPath/help/barChart.html">here</a> for more information on the barChart and
+bigBarChart formats.</p>
+
 <a name="format9.2"></a>
 <h2>bigPsl table format</h2>
 <p>
@@ -1133,6 +1147,18 @@ format supported using the <a href="FAQformat.html#format1.5">bigBed</a> format,
 efficiently accessed over a network.</p> 
 <p>
 Click <a href="../goldenPath/help/bigChain.html">here</a> for more information on the bigChain 
+format.</p>
+
+<a name="format9.5"></a>
+<h2>bigNarrowPeak format</h2>
+<p>
+bigNarrowPeak is a format used to provide called peaks of signal enrichment based on pooled, normalized 
+(interpreted) data. It is a BED6+4 format.
+bigNarrowPeak format is equivalent to the <a href="FAQformat.html#format12">narrowPeak</a> text-based 
+format supported using the <a href="FAQformat.html#format1.5">bigBed</a> format, so it can be 
+efficiently accessed over a network.</p> 
+<p>
+Click <a href="../goldenPath/help/bigNarrowPeak.html">here</a> for more information on the bigNarrowPeak
 format.</p>
 
 <a name="format10"></a>

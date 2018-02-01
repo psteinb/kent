@@ -1,13 +1,16 @@
 /* tagStormCheck - Check that a tagStorm conforms to a schema.. */
 #include "common.h"
 #include "linefile.h"
+#include "localmem.h"
 #include "hash.h"
 #include "options.h"
 #include "sqlNum.h"
 #include "sqlReserved.h"
 #include "tagStorm.h"
+#include "tagSchema.h"
 #include "errAbort.h"
 #include "obscure.h"
+#include "csv.h"
 
 int clMaxErr = 10;
 boolean clSqlSymbols = FALSE;
@@ -45,93 +48,6 @@ static struct optionSpec options[] = {
    {NULL, 0},
 };
 
-struct tagSchema
-/* Represents schema for a single tag */
-    {
-    struct tagSchema *next;
-    char *name;   // Name of tag
-    char required; // ! for required, ^ for required unique at each leaf, 0 for whatever
-    char type;   // # for integer, % for floating point, $ for string
-    double minVal, maxVal;  // Bounds for numerical types
-    struct slName *allowedVals;  // Allowed values for string types
-    struct hash *uniqHash;   // Help make sure that all values are unique
-    };
-
-struct tagSchema *tagSchemaFromFile(char *fileName)
-/* Read in a tagSchema file */
-{
-struct lineFile *lf = lineFileOpen(fileName, TRUE);
-char *line;
-struct tagSchema *schema, *list = NULL;
-while (lineFileNextReal(lf, &line))
-    {
-    /* Parse out name field and optional requirement field */
-    char *name = nextWord(&line);
-    char required = name[0];
-    if (required == '!' || required == '^')
-        {
-	/* Allow req char to be either next to name, or separated  by space */
-	if (name[1] != 0)
-	    name = name+1;
-	else
-	    name = nextWord(&line);
-	}
-    else
-        required = 0;
-
-    /* Parse out type field */
-    char *typeString = nextWord(&line);
-    if (typeString == NULL)
-        errAbort("truncated line %d of %s", lf->lineIx, lf->fileName);
-    char type = typeString[0];
-
-    /* Allocate schema struct and fill in several fields. */
-    AllocVar(schema);
-    schema->name = cloneString(name);
-    schema->required = required;
-    schema->type = type;
-    if (required == '^')
-        schema->uniqHash = hashNew(0);
-
-    /* Parse out rest of it depending on field type */
-    if (type == '#' || type == '%') // numeric
-        {
-	char *minString = nextWord(&line);
-	char *maxString = nextWord(&line);
-	if (maxString == NULL)
-	    {
-	    schema->minVal = -BIGDOUBLE;
-	    schema->maxVal = BIGDOUBLE;
-	    }
-	else
-	    {
-	    schema->minVal = sqlDouble(minString);
-	    schema->maxVal = sqlDouble(maxString);
-	    }
-	}
-    else if (type == '$')
-        {
-	char *val;
-
-	while ((val = nextQuotedWord(&line)) != NULL)
-	    {
-	    slNameAddHead(&schema->allowedVals, val);
-	    }
-	slReverse(&schema->allowedVals);
-	if (schema->allowedVals == NULL)
-	    schema->allowedVals = slNameNew("*");
-	}
-    else
-	{
-        errAbort("Unrecognized type character %s line %d of %s", 
-	    typeString, lf->lineIx, lf->fileName);
-	}
-    slAddHead(&list, schema);
-    }
-slReverse(&list);
-return list;
-}
-
 void reportError(char *fileName, int startLine, char *format, ...)
 /* Report error and abort if there are too many errors. */
 {
@@ -143,18 +59,127 @@ vaWarn(format, args);
 warn(" in stanza starting line %d of %s", startLine, fileName);
 }
 
+static boolean matchAndExtractIndexes(char *dottedName, struct tagSchema *schema,
+    struct dyString *scratch, char **retIndexes, boolean *retMatchEnd)
+/* Dotted name is something like this.that.12.more.2.ok
+ * The objArrayPieces is something like "this.that." ".more." ".notOk"
+ * Crucially it holds at least two elements, some of which may be ""
+ * This function will return TRUE if all but maybe the last of the objArrayPieces is
+ * found in the dottedName.  If this is the case it will put something like .12.2 in
+ * scratch and *retIndexes.  If the last one matches it will set *retMatchEnd.
+ * Sort of a complex routine but it plays a key piece in checking required array
+ * elements */
+{
+struct slName *objArrayPieces = schema->objArrayPieces;
+dyStringClear(scratch);
+struct slName *piece = objArrayPieces;
+char *pos = dottedName;
+boolean gotNum = FALSE;
+for (;;)
+    {
+    /* Check to see if we match next piece, and return FALSE if not */
+    char *pieceString = piece->name;
+    int pieceLen = strlen(pieceString);
+    if (pieceLen != 0 && memcmp(pieceString, pos, pieceLen) != 0)
+        return FALSE;
+    pos += pieceLen;
+
+    /* Put the number into scratch with a leading dot separator. */
+    int digits = tagSchemaDigitsUpToDot(pos);
+    if (digits == 0)
+        return FALSE;
+    dyStringAppendC(scratch, '.');
+    dyStringAppendN(scratch, pos, digits);
+    pos += digits;
+    gotNum = TRUE;
+
+    /* Go to next piece,saving last piece for outside of the loop. */
+    piece = piece->next;
+    if (piece->next == NULL)
+        break;
+    }
+
+/* One more special case, where last piece needs to agree on emptiness at least in
+ * terms of matching */
+if (isEmpty(piece->name) != isEmpty(pos))
+    return FALSE;
+
+/* Otherwise both have something.  We return true/false depending on whether it matches */
+*retMatchEnd = (strcmp(piece->name, pos) == 0);
+*retIndexes = scratch->string;
+return gotNum;
+}
+
+
+struct arrayCheckHelper
+/* An object to help check required items in an array. */
+    {
+    struct arrayCheckHelper *next;
+    char *indexSig;   // Not allocated here.  This will be something like .1.2.1, a dot separated list of index vals
+    char *prefix;   // Everything but last field
+    boolean gotRequired;  // If true we got our required field
+    };
+
+
+void checkInAllArrayItems(char *fileName, struct tagStanza *stanza, struct tagSchema *schema,
+    struct dyString *scratch)
+/* Given a schema that is an array, make sure all items in array have the required value */
+{
+struct hash *hash = hashNew(4);
+struct lm *lm = hash->lm;   // Memory short cut
+struct arrayCheckHelper *helperList = NULL, *helper;
+struct slPair *pair;
+struct tagStanza *ancestor;
+for (ancestor = stanza; ancestor != NULL; ancestor = ancestor->parent)
+    {
+    for (pair = ancestor->tagList; pair != NULL; pair = pair->next)
+	{
+	boolean fullMatch;
+	char *indexes;
+	if (matchAndExtractIndexes(pair->name, schema, scratch, &indexes, &fullMatch))
+	    {
+	    helper = hashFindVal(hash, indexes);
+	    if (helper == NULL)
+		{
+		lmAllocVar(lm, helper);
+		hashAddSaveName(hash, indexes, helper, &helper->indexSig);
+		helper->prefix = lmCloneString(lm, pair->name);
+		chopSuffix(helper->prefix);
+		slAddHead(&helperList, helper);
+		}
+	    if (fullMatch)
+		helper->gotRequired = TRUE;
+	    }
+	}
+    }
+if (helperList == NULL)
+    reportError(fileName, stanza->startLineIx, "Missing required '%s' tag", schema->name);
+else
+    {
+    for (helper = helperList; helper != NULL; helper = helper->next)
+        {
+	if (!helper->gotRequired)
+	    reportError(fileName, stanza->startLineIx, 
+		"Missing required '%s' tag for element %s", schema->name, helper->prefix);
+	}
+    }
+hashFree(&hash);
+}
+
 static void rCheck(struct tagStanza *stanzaList, char *fileName, 
-    struct slRef *wildList, struct hash *hash, struct slRef *requiredList)
+    struct slRef *wildList, struct hash *hash, struct slRef *requiredList,
+    struct dyString *scratch)
 /* Recurse through tagStorm */
 {
 struct tagStanza *stanza;
+struct dyString *csvScratch = dyStringNew(0);
 for (stanza = stanzaList; stanza != NULL; stanza = stanza->next)
     {
     struct slPair *pair;
     for (pair = stanza->tagList; pair != NULL; pair = pair->next)
 	{
 	/* Break out tag and value */
-	char *tag = pair->name;
+	char *tag = tagSchemaFigureArrayName(pair->name, scratch);
 	char *val = pair->val;
 
 	/* Make sure val exists and is non-empty */
@@ -198,65 +223,70 @@ for (stanza = stanzaList; stanza != NULL; stanza = stanza->next)
 	else
 	    {
 	    char type = schema->type;
-	    if (type == '#')
+	    char *pos = val;
+	    char *oneVal;
+	    while ((oneVal =csvParseNext(&pos, csvScratch)) != NULL)
 		{
-		char *end;
-		long long v = strtoll(val, &end, 10);
-		if (end == val || *end != 0)	// val is not integer
-		    reportError(fileName, stanza->startLineIx, 
-			"Non-integer value %s for %s", val, tag);
-		else if (v < schema->minVal)
-		    reportError(fileName, stanza->startLineIx, 
-			"Value %s too low for %s", val, tag);
-		else if (v > schema->maxVal)
-		     reportError(fileName, stanza->startLineIx, 
-			"Value %s too high for %s", val, tag);
-		}
-	    else if (type == '%')
-		{
-		char *end;
-		double v = strtod(val, &end);
-		if (end == val || *end != 0)	// val is not just a floating point number
-		    reportError(fileName, stanza->startLineIx, 
-			"Non-numerical value %s for %s", val, tag);
-		else if (v < schema->minVal)
-		    reportError(fileName, stanza->startLineIx, 
-			"Value %s too low for %s", val, tag);
-		else if (v > schema->maxVal)
-		    reportError(fileName, stanza->startLineIx, 
-			"Value %s too high for %s", val, tag);
-		}
-	    else
-		{
-		boolean gotMatch = FALSE;
-		struct slName *okVal;
-		for (okVal = schema->allowedVals; okVal != NULL; okVal = okVal->next)
+		if (type == '#')
 		    {
-		    if (wildMatch(okVal->name, val))
-			{
-			gotMatch = TRUE;
-			break;
-			}
+		    char *end;
+		    long long v = strtoll(oneVal, &end, 10);
+		    if (end == oneVal || *end != 0)	// oneVal is not integer
+			reportError(fileName, stanza->startLineIx, 
+			    "Non-integer value %s for %s", oneVal, tag);
+		    else if (v < schema->minVal)
+			reportError(fileName, stanza->startLineIx, 
+			    "Value %s too low for %s", oneVal, tag);
+		    else if (v > schema->maxVal)
+			 reportError(fileName, stanza->startLineIx, 
+			    "Value %s too high for %s", oneVal, tag);
 		    }
-		if (!gotMatch)
-		    reportError(fileName, stanza->startLineIx, 
-			"Unrecognized value '%s' for tag %s", val, tag);
-		}
-
-	    struct hash *uniqHash = schema->uniqHash;
-	    if (uniqHash != NULL)
-		{
-		if (hashLookup(uniqHash, val))
-		    reportError(fileName, stanza->startLineIx, 
-			"Non-unique value '%s' for tag %s", val, tag);
+		else if (type == '%')
+		    {
+		    char *end;
+		    double v = strtod(oneVal, &end);
+		    if (end == oneVal || *end != 0)	// val is not just a floating point number
+			reportError(fileName, stanza->startLineIx, 
+			    "Non-numerical value %s for %s", oneVal, tag);
+		    else if (v < schema->minVal)
+			reportError(fileName, stanza->startLineIx, 
+			    "Value %s too low for %s", oneVal, tag);
+		    else if (v > schema->maxVal)
+			reportError(fileName, stanza->startLineIx, 
+			    "Value %s too high for %s", oneVal, tag);
+		    }
 		else
-		    hashAdd(uniqHash, val, NULL);
+		    {
+		    boolean gotMatch = FALSE;
+		    struct slName *okVal;
+		    for (okVal = schema->allowedVals; okVal != NULL; okVal = okVal->next)
+			{
+			if (wildMatch(okVal->name, oneVal))
+			    {
+			    gotMatch = TRUE;
+			    break;
+			    }
+			}
+		    if (!gotMatch)
+			reportError(fileName, stanza->startLineIx, 
+			    "Unrecognized value '%s' for tag %s", oneVal, tag);
+		    }
+
+		struct hash *uniqHash = schema->uniqHash;
+		if (uniqHash != NULL)
+		    {
+		    if (hashLookup(uniqHash, oneVal))
+			reportError(fileName, stanza->startLineIx, 
+			    "Non-unique value '%s' for tag %s", oneVal, tag);
+		    else
+			hashAdd(uniqHash, oneVal, NULL);
+		    }
 		}
 	    }
 	}
     if (stanza->children)
 	{
-	rCheck(stanza->children, fileName, wildList, hash, requiredList);
+	rCheck(stanza->children, fileName, wildList, hash, requiredList, scratch);
 	}
     else
 	{
@@ -264,12 +294,20 @@ for (stanza = stanzaList; stanza != NULL; stanza = stanza->next)
 	for (ref = requiredList; ref != NULL; ref = ref->next)
 	    {
 	    struct tagSchema *schema = ref->val;
-	    if (tagFindVal(stanza, schema->name) == NULL)
-	        reportError(fileName, stanza->startLineIx, 
-		    "Missing required '%s' tag", schema->name);
+	    if (schema->objArrayPieces != NULL)  // It's an array, complex to handle, needs own routine
+	        {
+		checkInAllArrayItems(fileName, stanza, schema, scratch);
+		}
+	    else
+		{
+		if (tagFindVal(stanza, schema->name) == NULL)
+		    reportError(fileName, stanza->startLineIx, 
+			"Missing required '%s' tag", schema->name);
+		}
 	    }
 	}
     }
+dyStringFree(&csvScratch);
 }
 
 void tagStormCheck(char *schemaFile, char *tagStormFile)
@@ -299,7 +337,8 @@ slReverse(&wildSchemaList);
 schemaList = NULL;
 
 struct tagStorm *tagStorm = tagStormFromFile(tagStormFile);
-rCheck(tagStorm->forest, tagStormFile, wildSchemaList, hash, requiredSchemaList);
+struct dyString *scratch = dyStringNew(0);
+rCheck(tagStorm->forest, tagStormFile, wildSchemaList, hash, requiredSchemaList, scratch);
 
 if (gErrCount > 0)
     noWarnAbort();
