@@ -65,7 +65,7 @@ use vars qw( %cluster %clusterFilesystem $defaultDbHost );
 #      'kk9' => # Guessing here since the machines are down:
 #        { 'enabled' => 0, 'gigaHz' => 1.5, 'ram' => 2,
 #	  'hostCount' => 100, },
-
+	);
 
 my %obsoleteCluster =
     ( 'swarm' => ,
@@ -76,7 +76,7 @@ my %obsoleteCluster =
 	  'hostCount' => 32, },
       'encodek' =>
         { 'enabled' => 1, 'gigaHz' => 2.0, 'ram' => 16,
-	  'hostCount' => 48, },
+	  'hostCount' => 48, }
     );
 
 my @allClusters = (keys %cluster);
@@ -524,7 +524,7 @@ sub processCommonOptions {
 #	These items should come from a configuration file so this
 #	business can be easily set up in other environments.
 # Hardcoded paths/command sequences:
-use vars qw( 	$centralDbSql $git
+use vars qw( $gensub2 $para $paraRun $centralDbSql $git
 		$clusterData $trackBuild $goldenPath $images $gbdb
 		$splitThreshold $runSSH $setMachtype
 	   );
