@@ -347,7 +347,7 @@ _EOF_
   if ($opt_unmaskedSeq) {
     $bossScript->add(<<_EOF_
 rm -rf $partDir
-$Bin/simplePartition.pl $clusterSeq 500000 $partDir
+$Bin/simplePartition.pl $clusterSeq 4000000 $partDir
 _EOF_
     );
   } else {
