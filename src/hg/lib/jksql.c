@@ -901,7 +901,7 @@ if (likeExpr==NULL)
     sqlSafef(query, sizeof(query), "SELECT DISTINCT tableName FROM %s ORDER BY tableName", tableList);
 else
     sqlSafef(query, sizeof(query), 
-        "SELECT DISTINCT tableName FROM %s WHERE tableName %s ORDER BY tableName", tableList, likeExpr);
+        "SELECT DISTINCT tableName FROM %s WHERE tableName LIKE '%s' ORDER BY tableName", tableList, likeExpr);
 
 struct sqlResult *sr = sqlGetResult(conn, query);
 char **row;
@@ -923,7 +923,7 @@ char query[256];
 if (likeExpr == NULL)
     safef(query, sizeof(query), NOSQLINJ "SHOW TABLES");
 else
-    safef(query, sizeof(query), NOSQLINJ "SHOW TABLES %s", likeExpr);
+    safef(query, sizeof(query), NOSQLINJ "SHOW TABLES LIKE '%s'", likeExpr);
 
 struct slName *list = NULL, *el;
 
@@ -1732,7 +1732,7 @@ if ((sr = sqlGetResultExt(sc, query, &errNo, &err)) == NULL)
         return FALSE;
     if (sc->failoverConn)
 	{
-	// if not found but we have a main connection, check the main connection, too
+	// if not found but we have a failover connection, check on it, too
 	if ((sr = sqlGetResultExt(sc->failoverConn, query, &errNo, &err)) == NULL)
 	    {
 	    if (errNo == tableNotFoundCode)
@@ -3552,18 +3552,10 @@ while((c = *s++) != 0)
     {
     if (disAllowed[c])
 	{
-	// DEBUG REMOVE Temporary for trying to track down some weird error 
-	//  because the stackdump should appear but does not.
-	//if (sameOk(cfgOption("noSqlInj.dumpStack"), "on"))
-	//    dumpStack("character %c disallowed in sql string part %s\n", c, sOriginal);  // DEBUG REMOVE GALT 
-
-	// TODO for some reason the warn stack is messed up sometimes very eary. -- happening in hgTables position search on brca
-	//warn("character %c disallowed in sql string part %s", c, sOriginal);
-
 	// just using this as a work-around
 	// until the problem with early errors and warn/abort stacks has been fixed.
-	char *noSqlInjLevel = cfgOption("noSqlInj.level");
-	if (noSqlInjLevel && !sameString(noSqlInjLevel, "ignore"))
+	char *noSqlInjLevel = cfgOptionDefault("noSqlInj.level", "abort");
+	if (!sameString(noSqlInjLevel, "ignore"))
 	    {
     	    fprintf(stderr, "character %c disallowed in sql string part %s\n", c, sOriginal);  
 	    fflush(stderr);
@@ -4213,48 +4205,32 @@ void sqlCheckError(char *format, ...)
 va_list args;
 va_start(args, format);
 
-char *noSqlInjLevel = cfgOption("noSqlInj.level");
+char *noSqlInjLevel = cfgOptionDefault("noSqlInj.level", "abort");
 char *noSqlInjDumpStack = cfgOption("noSqlInj.dumpStack");
-// I tried to incorporate this setting so as to avoid duplicate dumpStacks
-// but it is not working that well, and I would rather have two than zero dumps.
-//char *browserDumpStack = cfgOption("browser.dumpStack");
-//char *scriptName = cgiScriptName();
 
-if (noSqlInjLevel)
-    { 
-    // don't dump if if we are going to do it during errAbort anyway
-    if (sameOk(noSqlInjDumpStack, "on"))
-	/* && (!(sameString(noSqlInjLevel, "abort") 
-	      && cgiIsOnWeb() 
-	      && sameOk(browserDumpStack, "on"))
-	    || endsWith(scriptName, "hgSuggest")
-           ) // note: this doesn't work for hgSuggest because it doesn't set the dumpStack handler.
-               // TODO find or add a better method to tell if it would already dumpStack on abort.
-       )
-        */
-	{
-	va_list dump_args;
-    	va_copy(dump_args, args);
-	vaDumpStack(format, dump_args);
-	va_end(dump_args);
-	}
+if (sameOk(noSqlInjDumpStack, "on"))
+    {
+    va_list dump_args;
+    va_copy(dump_args, args);
+    vaDumpStack(format, dump_args);
+    va_end(dump_args);
+    }
 
-    if (sameString(noSqlInjLevel, "logOnly"))
-	{
-	vfprintf(stderr, format, args);
-	fprintf(stderr, "\n");
-	fflush(stderr);
-	}
+if (sameString(noSqlInjLevel, "logOnly"))
+    {
+    vfprintf(stderr, format, args);
+    fprintf(stderr, "\n");
+    fflush(stderr);
+    }
 
-    if (sameString(noSqlInjLevel, "warn"))
-	{
-	vaWarn(format, args);
-	}
+if (sameString(noSqlInjLevel, "warn"))
+    {
+    vaWarn(format, args);
+    }
 
-    if (sameString(noSqlInjLevel, "abort"))
-	{
-	vaErrAbort(format, args);
-	}
+if (sameString(noSqlInjLevel, "abort"))
+    {
+    vaErrAbort(format, args);
     }
 
 va_end(args);

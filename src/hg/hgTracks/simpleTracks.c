@@ -146,6 +146,7 @@
 #include "bedTabix.h"
 #include "knetUdc.h"
 #include "trackHub.h"
+#include "hubConnect.h"
 
 #define CHROM_COLORS 26
 
@@ -9255,92 +9256,6 @@ struct linkedFeatures *lf = item;
 return getSeqColorDefault(lf->name, hvg, tg->ixColor);
 }
 
-Color interactionColor(struct track *tg, void *item, struct hvGfx *hvg)
-{
-struct linkedFeatures *lf = item;
-return  tg->colorShades[lf->grayIx];
-
-#ifdef NOTNOW  // leaving this in the code in case we want chrom color again
-
-char *name = tg->itemName(tg, item);
-struct linkedFeatures *lf = item;
-if (slCount(lf->components) == 2)
-    return MG_BLACK;
-return getSeqColorDefault(name, hvg, tg->ixColor);
-#endif
-}
-
-void interactionLeftLabels(struct track *tg, int seqStart, int seqEnd,
-	struct hvGfx *hvg, int xOff, int yOff, int width, int height,
-	boolean withCenterLabels, MgFont *font, Color color,
-	enum trackVisibility vis)
-{
-/*
-struct linkedFeatures *lf, *lfList = track->items;
-for (lf = lfList; lf != NULL; lf = lf->next)
-    {
-    if (tg->itemLabelColor != NULL)
-	color = tg->itemLabelColor(track, lf, hvg);
-    int itemHeight = tg->itemHeight(track, lf);
-    hvGfxTextRight(hvg, xOff, y, width - 1,
-	itemHeight, color, font, tg->itemName(tg, lf));
-    }
-    track->bigBedraLeftLabels = bigBedLeftLabels;
-    */
-}
-
-void interactionLoad(struct track *tg)
-{
-loadGappedBed(tg);
-}
-
-char *interactionName(struct track *tg, void *item)
-{
-struct linkedFeatures *lf = item;
-if (slCount(lf->components) == 2)
-    return "";
-
-char buffer[10 * 1024], *name = buffer;
-safef(buffer, sizeof buffer, "%s", lf->name);
-char *ptr;
-
-if (startsWith(chromName, buffer))
-    {
-    name = strchr(buffer,'-');
-    name++;
-    ptr = strchr(name,':');
-    *ptr = 0;
-    }
-else
-    {
-    ptr = strchr(buffer,':');
-    *ptr = 0;
-    }
-
-return cloneString(name);
-}
-
-void interactionMethods(struct track *tg)
-{
-tg->freeItems = linkedFeaturesFreeItems;
-tg->drawItems = linkedFeaturesDraw;
-tg->drawItemAt = linkedFeaturesDrawAt;
-tg->mapItemName = linkedFeaturesName;
-tg->totalHeight = tgFixedTotalHeightNoOverflow;
-tg->itemHeight = tgFixedItemHeight;
-tg->itemStart = linkedFeaturesItemStart;
-tg->itemEnd = linkedFeaturesItemEnd;
-tg->itemNameColor = linkedFeaturesNameColor;
-tg->nextPrevExon = linkedFeaturesNextPrevItem;
-tg->nextPrevItem = linkedFeaturesLabelNextPrevItem;
-tg->loadItems = interactionLoad;
-tg->itemName = interactionName;
-tg->itemColor = interactionColor;
-tg->itemNameColor = linkedFeaturesNameColor;
-//tg->drawLeftLabels = interactionLeftLabels;
-tg->canPack = TRUE;
-}
-
 #ifndef GBROWSE
 void loadRnaGene(struct track *tg)
 /* Load up rnaGene from database table to track items. */
@@ -13978,6 +13893,11 @@ else if (sameWord(type, "bigBarChart"))
     track->isBigBed = TRUE;
     barChartMethods(track);
     }
+else if (sameWord(type, "bigInteract"))
+    {
+    track->isBigBed = TRUE;
+    interactMethods(track);
+    }
 else if (sameWord(type, "bigNarrowPeak"))
     {
     tdb->canPack = TRUE;
@@ -14197,10 +14117,6 @@ else if (sameWord(type, "bamWig"))
     {
     bamWigMethods(track, tdb, wordCount, words);
     }
-else if (sameWord(type, "interaction"))
-    {
-    interactionMethods(track);
-    }
 else if (sameWord(type, "gvf"))
     {
     gvfMethods(track);
@@ -14208,6 +14124,10 @@ else if (sameWord(type, "gvf"))
 else if (sameWord(type, "barChart"))
     {
     barChartMethods(track);
+    }
+else if (sameWord(type, "interact"))
+    {
+    interactMethods(track);
     }
 /* add handlers for wildcard */
 if (startsWith("peptideAtlas", track->track))
@@ -14281,6 +14201,21 @@ const struct track *b = *((struct track **)vb);
 return (a->priority - b->priority);
 }
 
+
+static bool isSubtrackVisibleTdb(struct cart *cart, struct trackDb *tdb)
+/* Has this subtrack not been deselected in hgTrackUi or declared with
+ *  * "subTrack ... off"?  -- assumes composite track is visible. */
+{
+boolean overrideComposite = (NULL != cartOptionalString(cart, tdb->track));
+bool enabledInTdb = TRUE; // assume that this track is enabled in tdb
+char option[1024];
+safef(option, sizeof(option), "%s_sel", tdb->track);
+boolean enabled = cartUsualBoolean(cart, option, enabledInTdb);
+if (overrideComposite)
+    enabled = TRUE;
+return enabled;
+}
+
 void buildMathWig(struct trackDb *tdb)
 /* Turn a mathWig composite into a mathWig track. */
 {
@@ -14303,6 +14238,9 @@ else // subtract
 struct trackDb *subTdb;
 for (subTdb=subTracks; subTdb; subTdb = subTdb->next)
     {
+    if (!isSubtrackVisibleTdb(cart, subTdb) )
+        continue;
+
     char *bigDataUrl = trackDbSetting(subTdb, "bigDataUrl");
     char *useDb;
     char *table;
@@ -14478,11 +14416,21 @@ if (sameWord(tdb->track, "ensGene"))
     }
 else if (startsWith("ncbiRef", tdb->track))
     {
-    struct trackVersion *trackVersion = getTrackVersion(database, "ncbiRefSeq");
-    if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
+    char *version = checkDataVersion(database, tdb);
+
+    // if not in that file, check the trackVersion table
+    if (version == NULL)
+	{
+	struct trackVersion *trackVersion = getTrackVersion(database, "ncbiRefSeq");
+	if ((trackVersion != NULL) && !isEmpty(trackVersion->version))
+	    {
+	    version = cloneString(trackVersion->version);
+	    }
+	}
+    if (version)
 	{
 	char longLabel[1024];
-	safef(longLabel, sizeof(longLabel), "%s - Annotation Release %s", tdb->longLabel, trackVersion->version);
+	safef(longLabel, sizeof(longLabel), "%s - Annotation Release %s", tdb->longLabel, version);
 	track->longLabel = cloneString(longLabel);
 	tdb->longLabel = cloneString(longLabel);
 	}

@@ -32,6 +32,7 @@ caeRem3
 calJac3
 calMil1
 canFam3
+casCan1
 cavApe1
 cavPor3
 cb3
@@ -69,7 +70,7 @@ equCab2
 eriEur2
 eulFla1
 eulMac1
-felCat8
+felCat9
 ficAlb1
 fr3
 fukDam1
@@ -106,15 +107,15 @@ ornAna2
 oryCun2
 oryLat2
 otoGar3
-oviAri3
+oviAri4
 oxyTri2
 panPan2
-panTro5
+panTro6
 papAnu4
 papHam1
 petMar3
 poeRet1
-ponAbe2
+ponAbe3
 priPac3
 proCap1
 proCoq1
@@ -134,6 +135,7 @@ susScr11
 taeGut2
 tarSyr2
 tetNig2
+thaSir1
 triMan1
 tupBel1
 tupChi1
@@ -182,6 +184,7 @@ droYak1
 echTel1
 equCab1
 eriEur1
+felCat8
 felCat5
 felCat4
 felCat3
@@ -213,8 +216,10 @@ ornAna1
 ochPri2
 oryCun1
 oryLat1
+oviAri3
 oviAri1
 panPan1
+panTro5
 panTro4
 panTro3
 panTro2
@@ -223,6 +228,7 @@ papAnu3
 papAnu2
 petMar2
 petMar1
+ponAbe2
 priPac1
 rheMac3
 rheMac2
@@ -245,3 +251,4 @@ xenTro7
 xenTro3
 xenTro2
 xenTro1
+grcHhh38

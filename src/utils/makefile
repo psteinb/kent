@@ -43,6 +43,7 @@ UTILS_APPLIST = \
 	chopFaLines \
 	colTransform \
 	countChars \
+	endsInLf \
 	faAlign \
 	fastqToFa \
 	fastqStatsAndSubsample \
@@ -111,7 +112,6 @@ UCSC_APPS = \
 	ccCp \
 	convolve \
 	detab \
-	endsInLf \
 	faFlyBaseToUcsc \
 	faGapLocs \
 	faGapSizes \
@@ -182,6 +182,7 @@ SCRIPT_FILES = \
 	bedBestTranscript \
 	genePredToBed \
 	cgiSmokeTest \
+	phegenToBed \
 	${USER_APP_SCRIPTS}
 
 # List of all directories to build

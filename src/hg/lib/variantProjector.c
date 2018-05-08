@@ -62,16 +62,16 @@ txPos->intron3Distance = intronEnd - gOffset;
 }
 
 static boolean genomeHasDeletion(struct psl *txAli, int ix)
-/* Return TRUE if block ix has a gap to the right that skips 0 bases on target (reference genome)
- * and >0 bases on query (transcript) -- i.e. not an intron, but rather some missing base(s)
+/* Return TRUE if block ix has a gap to the right that skips fewer bases on target (genome)
+ * than on query (transcript) -- i.e. not an intron, but rather some missing base(s)
  * in the reference genome. */
 {
 if (ix < 0 || ix >= txAli->blockCount - 1)
     return FALSE;
 int blockSize = txAli->blockSizes[ix];
-return (txAli->tStarts[ix+1] == txAli->tStarts[ix] + blockSize &&
-        txAli->qStarts[ix+1] > txAli->qStarts[ix] + blockSize);
-
+int tGapSize = txAli->tStarts[ix+1] - txAli->tStarts[ix] - blockSize;
+int qGapSize = txAli->qStarts[ix+1] - txAli->qStarts[ix] - blockSize;
+return (tGapSize < qGapSize);
 }
 
 // Google search on "minimal intron size" turned up a study of shortest known introns, ~48-50 in
@@ -83,7 +83,9 @@ static boolean pslIntronTooShort(struct psl *psl, int blkIx, int minIntronSize)
 {
 if (blkIx >= psl->blockCount - 1 || blkIx < 0)
     errAbort("pslIntronTooShort: blkIx %d is out of range [0, %d]", blkIx, psl->blockCount - 1);
-int intronLen = psl->tStarts[blkIx+1] - (psl->tStarts[blkIx] + psl->blockSizes[blkIx]);
+int tGapLen = psl->tStarts[blkIx+1] - psl->tStarts[blkIx] - psl->blockSizes[blkIx];
+int qGapLen = psl->qStarts[blkIx+1] - psl->qStarts[blkIx] - psl->blockSizes[blkIx];
+int intronLen = tGapLen - qGapLen;
 return (intronLen < minIntronSize);
 }
 
@@ -333,13 +335,13 @@ static boolean genomeTxMismatch(char *txRef, struct seqWindow *gSeqWin,
  * and vpTxSetTxAlt to detect indel mismatches. */
 {
 boolean mismatch = FALSE;
-if (txRef != NULL)
+if (isNotEmpty(txRef))
     {
     int bufLen = gEnd - gStart + 1;
     char splicedGSeq[bufLen];
     splicedGSeq[0] = '\0';
     spliceGenomicInRange(gSeqWin, gStart, gEnd, txAli, FALSE, splicedGSeq, sizeof(splicedGSeq));
-    if (differentString(splicedGSeq, txRef))
+    if (isNotEmpty(splicedGSeq) && differentString(splicedGSeq, txRef))
         mismatch = TRUE;
     }
 return mismatch;
@@ -463,7 +465,9 @@ if ((ambigStart < blkEnd && ambigEnd > blkStart) ||
     // Add in blk's sequence between ambigStart and varStart, if any
     appendOverlap(gSeqWin, blkStart, blkEnd, ambigStart, varStart, txAlt, txAltSize, pSplicedLen);
     // If gAlt hasn't already been added, and blk overlaps [varStart,varEnd), add gAlt
-    if (varStart >= blkStart && varEnd <= blkEnd && !*pAddedGAlt)
+    if (!*pAddedGAlt &&
+        ((varStart < blkEnd && varEnd > blkStart) ||
+         (varStart == varEnd && varStart <= blkEnd && varEnd >= blkStart)))
         {
         safecpy(txAlt+*pSplicedLen, txAltSize-*pSplicedLen, gAlt);
         *pSplicedLen += strlen(gAlt);
@@ -645,21 +649,72 @@ else if (hasAnomalousGaps(txAli, gStart, gEnd))
     }
 }
 
+void vpExpandIndelGaps(struct psl *txAli, struct seqWindow *gSeqWin, struct dnaSeq *txSeq)
+/* If txAli has any gaps that are too short to be introns, they are often indels that could be
+ * shifted left and/or right.  If so, turn those gaps into double-sided gaps that span the
+ * ambiguous region. This may change gSeqWin's range. */
+{
+int ix;
+for (ix = 0;  ix < txAli->blockCount - 1;  ix++)
+    {
+    if (pslIntronTooShort(txAli, ix, MIN_INTRON))
+        {
+        gSeqWin->fetch(gSeqWin, txAli->tName, txAli->tStart, txAli->tEnd);
+        // See if it is possible to shift the gap left and/or right on the genome.
+        uint gStartL = txAli->tStarts[ix] + txAli->blockSizes[ix];
+        uint gEndL = txAli->tStarts[ix+1];
+        uint gStartR = gStartL, gEndR = gEndL;
+        uint qLen = txAli->qStarts[ix+1] - txAli->qStarts[ix] - txAli->blockSizes[ix];
+        char txCpyL[qLen+1], txCpyR[qLen+1];
+        if (pslQStrand(txAli) == '-')
+            {
+            // Change query sequence to genome + strand
+            uint qGapStart = txAli->qSize - txAli->qStarts[ix+1];
+            safencpy(txCpyL, sizeof(txCpyL), txSeq->dna+qGapStart, qLen);
+            reverseComplement(txCpyL, qLen);
+            }
+        else
+            safencpy(txCpyL, sizeof(txCpyL), txSeq->dna+txAli->qStarts[ix+1]-qLen, qLen);
+        safencpy(txCpyR, sizeof(txCpyR), txCpyL, qLen);
+        uint shiftL = indelShift(gSeqWin, &gStartL, &gEndL, txCpyL, INDEL_SHIFT_NO_MAX, isdLeft);
+        uint shiftR = indelShift(gSeqWin, &gStartR, &gEndR, txCpyR, INDEL_SHIFT_NO_MAX, isdRight);
+        if (shiftL)
+            {
+            // Expand gap to the left -- decrease blockSizes[ix].
+            if (txAli->blockSizes[ix] < shiftL)
+                errAbort("vpExpandIndelGaps: support for deleting/merging blocks not implemented");
+            txAli->blockSizes[ix] -= shiftL;
+            }
+        if (shiftR)
+            {
+            // Expand gap to the right -- increase {t,q}Starts[ix+1], decrease blockSizes[ix+1]
+            if (txAli->blockSizes[ix+1] < shiftR)
+                errAbort("vpExpandIndelGaps: support for deleting/merging blocks not implemented");
+            txAli->tStarts[ix+1] += shiftR;
+            txAli->qStarts[ix+1] += shiftR;
+            txAli->blockSizes[ix+1] -= shiftR;
+            }
+        }
+    }
+}
+
 struct vpTx *vpGenomicToTranscript(struct seqWindow *gSeqWin, struct bed3 *gBed3, char *gAlt,
                                    struct psl *txAli, struct dnaSeq *txSeq)
 /* Project a genomic variant onto a transcript, trimming identical bases at the beginning and/or
  * end of ref and alt alleles and shifting ambiguous indel placements in the direction of
  * transcription except across an exon-intron boundary.
- * Both ref and alt must be [ACGTN]-only (no symbolic alleles like "." or "-" or "<DEL>").
+ * Both ref and alt must be [ACGTN]-only (no symbolic alleles like "." or "-" or "<DUP>"
+ * but "<DEL>" is OK).
+ * Calling vpExpandIndelGaps on txAli before calling this will improve detection of variants
+ * near ambiguously placed indels between genome and transcript.
  * This may change gSeqWin's range. */
 {
 if (sameString(gAlt, "<DEL>"))
     gAlt[0] = '\0';
 int altLen = strlen(gAlt);
-if (!isAllNt(gAlt, altLen
-             +1)) //#*** FIXME isAllNt ignores last base in string!!! always TRUE for len=1
+if (!isAllNt(gAlt, altLen))
     errAbort("vpGenomicToTranscript: alternate allele must be sequence of IUPAC DNA characters "
-             "but is '%s'", gAlt);
+             "or '<DEL>' but is '%s'", gAlt);
 gSeqWin->fetch(gSeqWin, gBed3->chrom, gBed3->chromStart, gBed3->chromEnd);
 struct vpTx *vpTx;
 AllocVar(vpTx);
@@ -709,6 +764,20 @@ if (pVpTx)
     }
 }
 
+void vpTxFreeList(struct vpTx **pList)
+/* Free up memory associated with list of vpTxs. */
+{
+if (pList == NULL)
+    return;
+struct vpTx *el, *next;
+for (el = *pList; el != NULL; el = next)
+    {
+    next = el->next;
+    vpTxFree(&el);
+    }
+*pList = NULL;
+}
+
 char *translateString(char *codons)
 /* Translate a string of codon DNA into a string of peptide bases.  stop codon is 'X'. */
 {
@@ -741,7 +810,9 @@ if (txStart >= cds->start && txStart < cds->end && txEnd > cds->start &&
      // Insertion at exon boundary -- it doesn't disrupt the splice site so assume its effect
      // is on the exon, in the spirit of HGVS's 3' exception rule
      (vpTxPosIsInsertion(&vpTx->start, &vpTx->end) &&
-      (vpTx->start.region == vpExon || vpTx->end.region == vpExon))))
+      (vpTx->start.region == vpExon || vpTx->end.region == vpExon)) ||
+     (vpTx->start.region == vpUpstream && vpTx->end.region == vpDownstream && isEmpty(vpTx->txAlt))
+     ))
     {
     uint startInCds = max(txStart, cds->start) - cds->start;
     uint endInCds = min(txEnd, cds->end) - cds->start;
@@ -776,26 +847,30 @@ if (txStart >= cds->start && txStart < cds->end && txEnd > cds->start &&
                  txSeq->dna + cds->start + codonStartInCds, startPadding);
     int txRefLen = txEnd - txStart;
     uint utr5Bases = (cds->start > txStart) ? cds->start - txStart : 0;
-    if (txAltLen > utr5Bases)
+    uint utr3Bases = (txEnd > cds->end) ? txEnd - cds->end : 0;
+    int cdsRefLen = txRefLen - utr5Bases - utr3Bases;
+    int cdsAltLen = txAltLen - utr5Bases - utr3Bases;
+    if (cdsAltLen < 0)
+        cdsAltLen = 0;
+    if (cdsAltLen > 0)
         // Copy in the alternate allele
         safencpy(altCodons+startPadding, sizeof(altCodons)-startPadding,
-                 vpTx->txAlt + utr5Bases, txAltLen - utr5Bases);
-    if ((txRefLen - txAltLen) % 3 != 0)
+                 vpTx->txAlt + utr5Bases, cdsAltLen);
+    int altCodonsEnd = strlen(altCodons);
+    if ((cdsRefLen - cdsAltLen) % 3 != 0)
         {
         vpPep->frameshift = TRUE;
         // Extend ref to the end of the protein.
         vpPep->ref = cloneString(pSeq+vpPep->start);
         // Copy in all remaining tx sequence to see how soon we would hit a stop codon
-        safecpy(altCodons+startPadding+txAltLen, sizeof(altCodons)-startPadding-txAltLen,
-                txSeq->dna + txEnd);
+        safecpy(altCodons+altCodonsEnd, sizeof(altCodons)-altCodonsEnd, txSeq->dna + txEnd);
         }
     else
         {
         vpPep->ref = cloneStringZ(pSeq+vpPep->start, vpPep->end - vpPep->start);
         if (endPadding > 0)
             // Copy the unchanged last base or two of ref codons
-            safencpy(altCodons+startPadding+txAltLen,
-                     sizeof(altCodons)-startPadding-txAltLen,
+            safencpy(altCodons+altCodonsEnd, sizeof(altCodons)-altCodonsEnd,
                      txSeq->dna + cds->start + endInCds, endPadding);
         }
     char *alt = translateString(altCodons);
@@ -803,8 +878,7 @@ if (txStart >= cds->start && txStart < cds->end && txEnd > cds->start &&
         {
         // Stop loss -- recompute alt
         freeMem(alt);
-        safecpy(altCodons+startPadding+txAltLen, sizeof(altCodons)-startPadding-txAltLen,
-                txSeq->dna + txEnd);
+        safecpy(altCodons+altCodonsEnd, sizeof(altCodons)-altCodonsEnd, txSeq->dna + txEnd);
         alt = translateString(altCodons);
         }
     vpPep->alt = alt;
@@ -824,6 +898,8 @@ if (txStart >= cds->start && txStart < cds->end && txEnd > cds->start &&
         struct seqWindow *pSeqWin = memSeqWindowNew(vpPep->name, pSeq);
         vpPep->rightShiftedBases = indelShift(pSeqWin, &vpPep->start, &vpPep->end,
                                               vpPep->alt, INDEL_SHIFT_NO_MAX, isdRight);
+        freeMem(vpPep->ref);
+        vpPep->ref = cloneStringZ(pSeq+vpPep->start, vpPep->end - vpPep->start);
         memSeqWindowFree(&pSeqWin);
         }
     dnaSeqFree((struct dnaSeq **)&txTrans);
@@ -925,31 +1001,68 @@ if (pslQStrand(psl) == '-')
 return dy->string;
 }
 
+static void truncateAtStopCodon(char *codingSeq)
+/* If codingSeq contains a stop codon, truncate any sequence past that. */
+{
+if (codingSeq == NULL)
+    errAbort("truncateAtStopCodon: null input");
+char *p = codingSeq;
+while (p[0] != '\0' && p[1] != '\0' && p[2] != '\0')
+    {
+    if (isStopCodon(p))
+	{
+	p[3] = '\0';
+	break;
+	}
+    p += 3;
+    }
+}
+
 static void getRefAltCodon(struct vpTx *vpTx, struct genbankCds *cds, struct dnaSeq *txSeq,
-                           struct codingChange *cc, struct lm *lm)
+                           struct codingChange *cc, boolean isFrameshift, struct lm *lm)
 /* Make an in-frame representation of modified CDS sequence. */
 {
 char *txCdsSeq = txSeq->dna + cds->start;
-int cdsStart = vpTx->start.txOffset - cds->start;
+uint txStart = vpTx->start.txOffset;
+uint txEnd = vpTx->end.txOffset;
+uint utr5Bases = (cds->start > txStart) ? cds->start - txStart : 0;
+uint utr3Bases = (txEnd > cds->end) ? txEnd - cds->end : 0;
+int txAltLen = strlen(vpTx->txAlt);
+int cdsAltLen = (txAltLen > utr5Bases + utr3Bases) ? txAltLen - utr5Bases - utr3Bases : 0;
+int cdsStart = (txStart > cds->start) ? txStart - cds->start : 0;
 int basesBefore = cdsStart % 3;
 int codonStart = cdsStart - basesBefore;
-int cdsEnd = vpTx->end.txOffset - cds->start;
+int cdsEnd = txEnd - cds->start - utr3Bases;
 int basesAfter = (3 - cdsEnd % 3) % 3;
-int txAltLen = strlen(vpTx->txAlt);
-if (basesBefore + (cdsEnd - cdsStart) + basesAfter == 0 &&
-    txAltLen % 3 != 0)
-    // Frameshift insertion at codon boundary -- show disrupted codon instead of just ""
-    basesAfter = 3;
-int refCodonLen = cdsEnd + basesAfter - codonStart;
-cc->codonOld = lmCloneStringZ(lm, txCdsSeq + codonStart, refCodonLen);
-size_t codonNewSize = basesBefore + txAltLen + basesAfter + 1;
+if (isFrameshift)
+    {
+    // Report the original remainder of CDS
+    int restOfCds = cds->end - cds->start - codonStart;
+    cc->codonOld = lmCloneStringZ(lm, txCdsSeq+codonStart, restOfCds);
+    }
+else
+    {
+    int refCodonLen = cdsEnd + basesAfter - codonStart;
+    cc->codonOld = lmCloneStringZ(lm, txCdsSeq + codonStart, refCodonLen);
+    }
+if (isFrameshift)
+    {
+    // Include the rest of the transcript sequence so we can figure out where the new stop
+    // codon will be.
+    basesAfter = txSeq->size - txEnd;
+    cdsAltLen += utr3Bases;
+    }
+size_t codonNewSize = basesBefore + cdsAltLen + basesAfter + 1;
 char *codonNew = lmAlloc(lm, codonNewSize);
 if (basesBefore > 0)
     safencpy(codonNew, codonNewSize, txCdsSeq + codonStart, basesBefore);
-if (txAltLen > 0)
-    safencpy(codonNew + basesBefore, codonNewSize, vpTx->txAlt, txAltLen);
+if (cdsAltLen > 0)
+    safencpy(codonNew+basesBefore, codonNewSize-basesBefore, vpTx->txAlt + utr5Bases, cdsAltLen);
 if (basesAfter > 0)
-    safencpy(codonNew + basesBefore + txAltLen, codonNewSize, txCdsSeq + cdsEnd, basesAfter);
+    safencpy(codonNew + basesBefore + cdsAltLen, codonNewSize - basesBefore - cdsAltLen,
+             txCdsSeq + cdsEnd, basesAfter);
+if (isFrameshift)
+    truncateAtStopCodon(codonNew);
 cc->codonNew = codonNew;
 }
 
@@ -978,7 +1091,9 @@ for (ix = 0;  ix < psl->blockCount-1;  ix++)
         // t coords are now on the reverse strand and in reverse order; intron size works the same
         int exonTEnd = psl->tStarts[ix] + psl->blockSizes[ix];
         int nextExonTStart = psl->tStarts[ix+1];
-        int intronSize = nextExonTStart - exonTEnd;
+        int tGapLen = nextExonTStart - exonTEnd;
+        int qGapLen = psl->qStarts[ix+1] - exonQEnd;
+        int intronSize = tGapLen - qGapLen;
         if (intronSize > minIntronSize)
             {
             if (numIntronsPastCds == 0)
@@ -1005,22 +1120,32 @@ static void setCodingInfo(struct gpFx *fx, struct vpTx *vpTx, struct psl *psl,
 /* Fill in the values of fx->details.codingChange. */
 {
 struct codingChange *cc = &fx->details.codingChange;
-cc->cDnaPosition = vpTx->start.txOffset;
+uint txStart = vpTx->start.txOffset;
+cc->cDnaPosition = txStart;
 cc->txRef = lmCloneString(lm, vpTx->txRef);
 cc->txAlt = lmCloneString(lm, vpTx->txAlt);
-cc->cdsPosition = vpTx->start.txOffset - cds->start;
+cc->cdsPosition = (txStart > cds->start) ? txStart - cds->start : 0;
 cc->exonNumber = pslBlkIxToExonIx(psl, vpTx->start.aliBlkIx, MIN_INTRON);
 cc->exonCount = pslCountExons(psl, MIN_INTRON);
-getRefAltCodon(vpTx, cds, txSeq, cc, lm);
-cc->pepPosition = vpPep->start;
-uint pepRefLen = strlen(vpPep->ref);
-uint pepAltLen = strlen(vpPep->alt);
-cc->aaOld = lmCloneStringZ(lm, vpPep->ref, pepRefLen);
-if (pepRefLen > 0 && cc->aaOld[pepRefLen-1] == 'X')
-    cc->aaOld[pepRefLen-1] = '*';
-cc->aaNew = lmCloneStringZ(lm, vpPep->alt, pepAltLen);
-if (pepAltLen > 0 && cc->aaNew[pepAltLen-1] == 'X')
-    cc->aaNew[pepAltLen-1] = '*';
+getRefAltCodon(vpTx, cds, txSeq, cc, (fx->soNumber == frameshift_variant), lm);
+if (vpPep->cantPredict)
+    {
+    cc->pepPosition = cc->cdsPosition / 3;
+    cc->aaOld = lmCloneString(lm, "?");
+    cc->aaNew = lmCloneString(lm, "?");
+    }
+else
+    {
+    cc->pepPosition = vpPep->start;
+    uint pepRefLen = strlen(vpPep->ref);
+    uint pepAltLen = strlen(vpPep->alt);
+    cc->aaOld = lmCloneStringZ(lm, vpPep->ref, pepRefLen);
+    if (pepRefLen > 0 && cc->aaOld[pepRefLen-1] == 'X')
+        cc->aaOld[pepRefLen-1] = '*';
+    cc->aaNew = lmCloneStringZ(lm, vpPep->alt, pepAltLen);
+    if (pepAltLen > 0 && cc->aaNew[pepAltLen-1] == 'X')
+        cc->aaNew[pepAltLen-1] = '*';
+    }
 }
 
 static struct gpFx *vpTxToFxCds(struct vpTx *vpTx, struct psl *psl, struct genbankCds *cds,
@@ -1031,37 +1156,40 @@ static struct gpFx *vpTxToFxCds(struct vpTx *vpTx, struct psl *psl, struct genba
 char *txName = txSeq->name;
 char *gAlt = getGAlt(vpTx, psl);
 struct gpFx *fx = gpFxNew(gAlt, txName, coding_sequence_variant, codingChange, lm);
-uint pepRefLen = strlen(vpPep->ref);
-uint pepAltLen = strlen(vpPep->alt);
-char lastPepRef = (pepRefLen > 0) ? vpPep->ref[pepRefLen-1] : '\0';
-// Alt pep base at position of last ref pep base, if applicable:
-char lastPepRefAlt = (pepRefLen > 0 && pepRefLen <= pepAltLen) ? vpPep->alt[pepRefLen-1] : '\0';
-if (vpPep->start == 0 && vpPep->ref[0] == 'M')
-    fx->soNumber = initiator_codon_variant;
-else if (sameString(vpPep->alt, "X") && differentString(vpPep->ref, "X"))
-    fx->soNumber = stop_gained;
-else if (sameString(vpPep->alt, "X") && sameString(vpPep->ref, "X"))
-    fx->soNumber = stop_retained_variant;
-else if (vpPep->frameshift)
-    fx->soNumber = frameshift_variant;
-else if (endsWith(vpPep->alt, "X") && lastPepRef != 'X')
-    fx->soNumber = stop_gained;
-else if (lastPepRef == 'X' && lastPepRefAlt != 0)
+if (! vpPep->cantPredict)
     {
-    // Stop codon variant -- did it actually change?
-    if (lastPepRefAlt != 'X')
-        fx->soNumber = stop_lost;
-    else
+    uint pepRefLen = strlen(vpPep->ref);
+    uint pepAltLen = strlen(vpPep->alt);
+    char lastPepRef = (pepRefLen > 0) ? vpPep->ref[pepRefLen-1] : '\0';
+    // Alt pep base at position of last ref pep base, if applicable:
+    char lastPepRefAlt = (pepRefLen > 0 && pepRefLen <= pepAltLen) ? vpPep->alt[pepRefLen-1] : '\0';
+    if (vpPep->start == 0 && vpPep->ref[0] == 'M')
+        fx->soNumber = initiator_codon_variant;
+    else if (sameString(vpPep->alt, "X") && differentString(vpPep->ref, "X"))
+        fx->soNumber = stop_gained;
+    else if (sameString(vpPep->alt, "X") && sameString(vpPep->ref, "X"))
         fx->soNumber = stop_retained_variant;
+    else if (vpPep->frameshift)
+        fx->soNumber = frameshift_variant;
+    else if (endsWith(vpPep->alt, "X") && lastPepRef != 'X')
+        fx->soNumber = stop_gained;
+    else if (lastPepRef == 'X' && lastPepRefAlt != 0)
+        {
+        // Stop codon variant -- did it actually change?
+        if (lastPepRefAlt != 'X')
+            fx->soNumber = stop_lost;
+        else
+            fx->soNumber = stop_retained_variant;
+        }
+    else if (sameString(vpPep->ref, vpPep->alt))
+        fx->soNumber = synonymous_variant;
+    else if (pepRefLen > pepAltLen)
+        fx->soNumber = inframe_deletion;
+    else if (pepRefLen < pepAltLen)
+        fx->soNumber = inframe_insertion;
+    else
+        fx->soNumber = missense_variant;
     }
-else if (sameString(vpPep->ref, vpPep->alt))
-    fx->soNumber = synonymous_variant;
-else if (pepRefLen > pepAltLen)
-    fx->soNumber = inframe_deletion;
-else if (pepRefLen < pepAltLen)
-    fx->soNumber = inframe_insertion;
-else
-    fx->soNumber = missense_variant;
 setCodingInfo(fx, vpTx, psl, cds, txSeq, vpPep, lm);
 return fx;
 }
@@ -1079,13 +1207,11 @@ int exonCount = pslCountExons(psl, MIN_INTRON);
 if (vpTx->start.txOffset < cds->start)
     {
     // _5_prime_UTR_variant
-    slAddHead(&fxList, gpFxNew(gAlt, txSeq->name, _5_prime_UTR_variant, none, lm));
+    slAddHead(&fxList, gpFxNew(gAlt, txSeq->name, _5_prime_UTR_variant, nonCodingExon, lm));
     gpFxSetNoncodingInfo(fxList, startExonIx, exonCount, vpTx->start.txOffset,
                          vpTx->txRef, vpTx->txAlt, lm);
     // initiator_codon_variant
-    slAddHead(&fxList, gpFxNew(gAlt, txSeq->name, initiator_codon_variant, none, lm));
-    gpFxSetNoncodingInfo(fxList, startExonIx, exonCount, vpTx->start.txOffset,
-                         vpTx->txRef, vpTx->txAlt, lm);
+    slAddHead(&fxList, vpTxToFxCds(vpTx, psl, cds, txSeq, vpPep, protSeq, lm));
     }
 else if (vpTx->end.txOffset > cds->end)
     {
@@ -1124,9 +1250,10 @@ int exonCount = pslCountExons(psl, MIN_INTRON);
 int ix;
 for (ix = startIx;  ix < endIx ;  ix++)
     {
-    struct gpFx *fx = gpFxNew(gAlt, txName, exon_loss_variant, nonCodingExon, lm);
-    // Instead of start.txOffset it would be better to compute the actual exon start coord
-    gpFxSetNoncodingInfo(fx, ix, exonCount, vpTx->start.txOffset, vpTx->txRef, vpTx->txAlt, lm);
+    // It would be better to compute nonCodingExon details: actual tx position and txRef of exon
+    struct gpFx *fx = gpFxNew(gAlt, txName, exon_loss_variant, intron, lm);
+    fx->details.intron.intronNumber = ix;
+    fx->details.intron.intronCount = exonCount - 1;
     slAddHead(&fxList, fx);
     }
 slReverse(&fxList);
@@ -1151,7 +1278,7 @@ return fx;
 
 static struct gpFx *vpTxToFxIntron(struct vpTx *vpTx, struct psl *psl, struct genbankCds *cds,
                                    char *txName, struct lm *lm)
-/* Return a list of gpFx for intronic variant (splice? exon_loss?) */
+/* Return a list of gpFx for intronic variant (could include splice, exon_loss) */
 {
 // Is it also a splice donor/acceptor/region variant?
 uint intronStartDistance = vpTx->start.gDistance;
@@ -1171,19 +1298,62 @@ fxList = slCat(fxList, addLostExons(vpTx, psl, txName, gAlt, lm));
 return fxList;
 }
 
+static boolean txPosIsExonSpliceRegion(struct vpTxPosition *txPos, struct psl *psl, boolean isGEnd)
+/* Return TRUE if vpTxPos falls within 3bp of a true intron boundary.  If isGEnd, this is
+ * the genomic end position (tx end for + strand, tx start for - strand). */
+{
+int leftBlkIx = txPos->aliBlkIx, rightBlkIx = txPos->aliBlkIx;
+while (leftBlkIx > 0 && pslIntronTooShort(psl, leftBlkIx-1, MIN_INTRON))
+    leftBlkIx--;
+while (rightBlkIx < psl->blockCount - 1 && pslIntronTooShort(psl, rightBlkIx, MIN_INTRON))
+    rightBlkIx++;
+if (leftBlkIx > 0)
+    {
+    // Check exon left edge
+    int gLeft = psl->tStarts[leftBlkIx];
+    int distance = txPos->gOffset - gLeft;
+    if (isGEnd)
+        distance--;
+    if (distance < 3)
+        return TRUE;
+    }
+if (rightBlkIx < psl->blockCount - 1)
+    {
+    // Check exon right edge
+    int gRight = psl->tStarts[rightBlkIx] + psl->blockSizes[rightBlkIx];
+    int distance = gRight - txPos->gOffset;
+    if (!isGEnd)
+        distance++;
+    if (distance < 3)
+        return TRUE;
+    }
+return FALSE;
+}
+
+static boolean vpTxIsExonSpliceRegion(struct vpTx *vpTx, struct psl *psl)
+/* Return TRUE if vpTx start or end falls within 3bp of a true intron boundary. */
+{
+boolean isRc = (pslQStrand(psl) == '-');
+return (txPosIsExonSpliceRegion(&vpTx->start, psl, isRc) ||
+        txPosIsExonSpliceRegion(&vpTx->end, psl, !isRc));
+}
+
 static struct gpFx *vpTxToFxExon(struct vpTx *vpTx, struct psl *psl, struct genbankCds *cds,
                                  struct dnaSeq *txSeq, struct vpPep *vpPep,
                                  struct dnaSeq *protSeq, struct lm *lm)
 /* Variant's start and end are both exonic (possibly not the same exon). */
 {
 struct gpFx *fxList = NULL;
-int startExonIx = 0;
-//if (vpTx->start.aliBlkIx >= 0)
-    startExonIx = pslBlkIxToExonIx(psl, vpTx->start.aliBlkIx, MIN_INTRON);
+int startExonIx = pslBlkIxToExonIx(psl, vpTx->start.aliBlkIx, MIN_INTRON);
 int exonCount = pslCountExons(psl, MIN_INTRON);
 char *txName = txSeq->name;
 char *gAlt = getGAlt(vpTx, psl);
-if (cds && cds->end > cds->start)
+if (vpTx->start.gOffset == psl->tStart && vpTx->end.gOffset == psl->tEnd)
+    {
+    // Entire transcript is deleted -- no need to go into details.
+    fxList = gpFxNew(gAlt, txName, transcript_ablation, none, lm);
+    }
+else if (cds && cds->end > cds->start)
     {
     // coding transcript exon -- UTR, CDS or both?
     if (vpTx->start.txOffset < cds->start)
@@ -1222,9 +1392,13 @@ else
     gpFxSetNoncodingInfo(fxList, startExonIx, exonCount, vpTx->start.txOffset,
                          vpTx->txRef, vpTx->txAlt, lm);
     }
-
-//#*** TODO: find exonic splice_region_variant
-
+if (vpTxIsExonSpliceRegion(vpTx, psl))
+    {
+    struct gpFx *fx = gpFxNew(gAlt, txName, splice_region_variant, nonCodingExon, lm);
+    gpFxSetNoncodingInfo(fx, startExonIx, exonCount, vpTx->start.txOffset,
+                         vpTx->txRef, vpTx->txAlt, lm);
+    fxList = slCat(fxList, fx);
+    }
 fxList = slCat(fxList, addLostExons(vpTx, psl, txName, gAlt, lm));
 return fxList;
 }
@@ -1258,6 +1432,367 @@ else
 return fxList;
 }
 
+static struct vpTx *vpTxNewUpstreamPart(struct vpTx *vpTxIn, boolean isRc)
+/* vpTxIn starts upstream and ends in an exon or intron; return a new vpTx that contains
+ * only the upstream portion. */
+{
+if (vpTxIn->start.region != vpUpstream)
+    errAbort("vpTxNewUpstreamPart: vpTx input start is %s, should be vpUpstream",
+             vpTxRegionToString(vpTxIn->start.region));
+if (vpTxIn->end.region != vpExon && vpTxIn->end.region != vpIntron)
+    errAbort("vpTxNewUpstreamPart: unexpected end region %s, should be vpExon or vpIntron",
+             vpTxRegionToString(vpTxIn->end.region));
+struct vpTx *vpTxUp;
+AllocVar(vpTxUp);
+vpTxUp->start = vpTxIn->start;
+// End at last upstream base (to the left of first exon base)
+vpTxUp->end.region = vpUpstream;
+vpTxUp->end.aliBlkIx = vpTxIn->start.aliBlkIx;
+if (isRc)
+    vpTxUp->end.gOffset = vpTxIn->start.gOffset - vpTxIn->start.gDistance;
+else
+    vpTxUp->end.gOffset = vpTxIn->start.gOffset + vpTxIn->start.gDistance;
+// The other fields of vpTxUp->end are all 0.
+vpTxUp->txName = cloneString(vpTxIn->txName);
+// Truncate alleles to just the upstream part.
+int upLen = vpTxIn->start.gDistance;
+vpTxUp->gRef = cloneStringZ(vpTxIn->gRef, upLen);
+vpTxUp->gAlt = cloneStringZ(vpTxIn->gAlt, upLen);
+vpTxUp->txRef = NULL;
+vpTxUp->txAlt = cloneString(vpTxUp->gAlt);
+vpTxUp->basesShifted = vpTxIn->basesShifted;
+vpTxUp->genomeMismatch = vpTxIn->genomeMismatch;
+return vpTxUp;
+}
+
+static char *cloneLastN(char *in, size_t lastN)
+/* Return a clone of only the last N bases of in (or all of in if N >= strlen(in)). */
+{
+if (in == NULL)
+    return NULL;
+size_t inLen = strlen(in);
+if (inLen > lastN)
+    return cloneString(in + inLen - lastN);
+else
+    return cloneString(in);
+}
+
+static struct vpTx *vpTxNewExonPart(struct vpTx *vpTxIn, boolean isRc)
+/* vpTxIn overlaps at least one exon; return a new vpTx that contains only the exonic part. */
+{
+enum vpTxRegion startRegion = vpTxIn->start.region;
+if (startRegion != vpUpstream && startRegion != vpExon && startRegion != vpIntron)
+    errAbort("vpTxNewExonPart: unexpected start region %s, should be upstream/exon/intron",
+             vpTxRegionToString(startRegion));
+enum vpTxRegion endRegion = vpTxIn->end.region;
+if (endRegion != vpExon && endRegion != vpIntron && endRegion != vpDownstream)
+    errAbort("vpTxNewExonPart: unexpected end region %s, should be exon/intron/downstream",
+             vpTxRegionToString(endRegion));
+struct vpTx *vpTxEx;
+AllocVar(vpTxEx);
+vpTxEx->start.region = vpTxEx->end.region = vpExon;
+// Work forward from vpTxIn->start to first exon on or after that point.
+uint gSeqOffset = 0;
+if (startRegion == vpExon)
+    vpTxEx->start = vpTxIn->start;
+else if (startRegion == vpUpstream)
+    {
+    // Starts at txStart; all vpTxEx->start values are 0 except possibly aliBlkIx
+    vpTxEx->start.aliBlkIx = vpTxIn->start.aliBlkIx;
+    if (isRc)
+        vpTxEx->start.gOffset = vpTxIn->start.gOffset - vpTxIn->start.gDistance;
+    else
+        vpTxEx->start.gOffset = vpTxIn->start.gOffset + vpTxIn->start.gDistance;
+    gSeqOffset = vpTxIn->start.gDistance;
+    }
+else if (startRegion == vpIntron)
+    {
+    vpTxEx->start.txOffset = vpTxIn->start.intron3TxOffset;
+    if (isRc)
+        vpTxEx->start.gOffset = vpTxIn->start.gOffset - vpTxIn->start.intron3Distance;
+    else
+        vpTxEx->start.gOffset = vpTxIn->start.gOffset + vpTxIn->start.intron3Distance;
+    vpTxEx->start.aliBlkIx = isRc ? vpTxIn->start.aliBlkIx : vpTxIn->start.aliBlkIx + 1;
+    gSeqOffset = vpTxIn->start.intron3Distance;
+    }
+// Work backward from vpTxIn->end to last exon on or before that point.
+uint gSeqTrim = 0;
+if (endRegion == vpExon)
+    vpTxEx->end = vpTxIn->end;
+else if (endRegion == vpIntron || endRegion == vpDownstream)
+    {
+    vpTxEx->end.txOffset = vpTxIn->end.txOffset;
+    if (isRc)
+        vpTxEx->end.gOffset = vpTxIn->end.gOffset + vpTxIn->end.gDistance;
+    else
+        vpTxEx->end.gOffset = vpTxIn->end.gOffset - vpTxIn->end.gDistance;
+    if (endRegion == vpIntron)
+        vpTxEx->end.aliBlkIx = isRc ? vpTxIn->end.aliBlkIx + 1 : vpTxIn->end.aliBlkIx;
+    else
+        vpTxEx->end.aliBlkIx = vpTxIn->end.aliBlkIx;
+    gSeqTrim = vpTxIn->end.gDistance;
+    }
+vpTxEx->txName = cloneString(vpTxIn->txName);
+// Truncate alleles to just the exon part.
+int gRefLen = strlen(vpTxIn->gRef);
+if (gRefLen <= gSeqOffset)
+    vpTxEx->gRef = cloneString("");
+else
+    vpTxEx->gRef = cloneStringZ(vpTxIn->gRef + gSeqOffset, gRefLen - gSeqOffset - gSeqTrim);
+int gAltLen = strlen(vpTxIn->gAlt);
+if (gAltLen <= gSeqOffset)
+    vpTxEx->gAlt = cloneString("");
+else
+    vpTxEx->gAlt = cloneStringZ(vpTxIn->gAlt + gSeqOffset, gAltLen - gSeqOffset - gSeqTrim);
+vpTxEx->txRef = cloneString(vpTxIn->txRef);
+vpTxEx->txAlt = cloneString(vpTxIn->txAlt);
+vpTxEx->basesShifted = vpTxIn->basesShifted;
+vpTxEx->genomeMismatch = vpTxIn->genomeMismatch;
+return vpTxEx;
+}
+
+static struct vpTx *vpTxNewIntronPart(struct vpTx *vpTxIn, struct psl *psl)
+/* vpTxIn either starts or ends in an intron; return a new vpTx that contains only the
+ * intronic part. */
+{
+enum vpTxRegion startRegion = vpTxIn->start.region;
+enum vpTxRegion endRegion = vpTxIn->end.region;
+if (startRegion != vpIntron && endRegion != vpIntron)
+    errAbort("vpTxNewIntronPart: neither start (%s) nor end (%s) is intron",
+             vpTxRegionToString(startRegion), vpTxRegionToString(endRegion));
+if (startRegion != vpUpstream && startRegion != vpExon && startRegion != vpIntron)
+    errAbort("vpTxNewIntronPart: unexpected start region %s, should be upstream/exon/intron",
+             vpTxRegionToString(startRegion));
+if (endRegion != vpExon && endRegion != vpIntron && endRegion != vpDownstream)
+    errAbort("vpTxNewIntronPart: unexpected end region %s, should be exon/intron/downstream",
+             vpTxRegionToString(endRegion));
+// Use vpTxPosRc for - strand, so we can do all the figuring on the + strand of the genome...
+// too complicated otherwise.
+boolean isRc = (pslQStrand(psl) == '-');
+struct vpTxPosition posLeft = isRc ? vpTxIn->end : vpTxIn->start;
+struct vpTxPosition posRight = isRc ? vpTxIn->start : vpTxIn->end;
+if (isRc)
+    {
+    vpTxPosRc(&posLeft, psl->qSize);
+    vpTxPosRc(&posRight, psl->qSize);
+    }
+uint gSeqOffset = 0, gSeqLen = 0;
+if (posLeft.region == vpIntron)
+    {
+    // posLeft is good to go; posRight needs to be the right edge of this intron, left of next exon
+    int intronBlkIx = posLeft.aliBlkIx;
+    int exonBlkIx = intronBlkIx+1;
+    uint gLeft = psl->tStarts[intronBlkIx] + psl->blockSizes[intronBlkIx];
+    uint gRight = psl->tStarts[exonBlkIx];
+    gSeqOffset = isRc ? (posRight.gOffset - gRight) : 0;
+    gSeqLen = gRight - posLeft.gOffset;
+    posRight.region = vpIntron;
+    posRight.txOffset = psl->qStarts[intronBlkIx] + psl->blockSizes[intronBlkIx];
+    posRight.gDistance = (gRight - gLeft);
+    posRight.intron3TxOffset = psl->qStarts[exonBlkIx];
+    posRight.intron3Distance = 0;
+    posRight.gOffset = gRight;
+    }
+else if (posRight.region == vpIntron)
+    {
+    // posRight is good to go; posLeft needs to be the left edge of this intron, right of prev exon
+    int intronBlkIx = posRight.aliBlkIx;
+    int exonBlkIx = intronBlkIx;
+    uint gLeft = psl->tStarts[exonBlkIx] + psl->blockSizes[exonBlkIx];
+    uint gRight = psl->tStarts[exonBlkIx+1];
+    gSeqOffset = isRc ? 0 : (gLeft - posLeft.gOffset);
+    gSeqLen = posRight.gOffset - gLeft;
+    posLeft.region = vpIntron;
+    posLeft.txOffset = psl->qStarts[exonBlkIx] + psl->blockSizes[exonBlkIx];
+    posLeft.gDistance = 0;
+    posLeft.intron3TxOffset = psl->qStarts[exonBlkIx+1];
+    posLeft.intron3Distance = gRight - gLeft;
+    posLeft.gOffset = gLeft;
+    }
+else
+    errAbort("vpTxNewIntronPart: neither posLeft (%s) nor posRight (%s) is intron.",
+             vpTxRegionToString(posLeft.region), vpTxRegionToString(posRight.region));
+struct vpTx *vpTxIntron;
+AllocVar(vpTxIntron);
+if (isRc)
+    {
+    vpTxPosRc(&posLeft, psl->qSize);
+    vpTxPosRc(&posRight, psl->qSize);
+    vpTxIntron->start = posRight;
+    vpTxIntron->end = posLeft;
+    }
+else
+    {
+    vpTxIntron->start = posLeft;
+    vpTxIntron->end = posRight;
+    }
+vpTxIntron->txName = cloneString(vpTxIn->txName);
+// Truncate alleles to just the exon part.
+int gRefLen = strlen(vpTxIn->gRef);
+if (gRefLen <= gSeqOffset)
+    vpTxIntron->gRef = cloneString("");
+else
+    vpTxIntron->gRef = cloneStringZ(vpTxIn->gRef + gSeqOffset, gSeqLen);
+int gAltLen = strlen(vpTxIn->gAlt);
+if (gAltLen <= gSeqOffset)
+    vpTxIntron->gAlt = cloneString("");
+else
+    vpTxIntron->gAlt = cloneStringZ(vpTxIn->gAlt + gSeqOffset, gSeqLen);
+vpTxIntron->txRef = NULL;
+vpTxIntron->txAlt = cloneString(vpTxIntron->gAlt);
+vpTxIntron->basesShifted = vpTxIn->basesShifted;
+vpTxIntron->genomeMismatch = vpTxIn->genomeMismatch;
+return vpTxIntron;
+}
+
+static struct vpTx *vpTxNewDownstreamPart(struct vpTx *vpTxIn, boolean isRc)
+/* vpTxIn starts in an exon or intron and ends downstream; return a new vpTx that contains
+ * only the downstream portion. */
+{
+if (vpTxIn->start.region != vpExon && vpTxIn->start.region != vpIntron)
+    errAbort("vpTxNewDownstreamPart: unexpected start region %s, should be vpExon or vpIntron",
+             vpTxRegionToString(vpTxIn->start.region));
+if (vpTxIn->end.region != vpDownstream)
+    errAbort("vpTxNewDownstreamPart: vpTx input end is %s, should be vpDownstream",
+             vpTxRegionToString(vpTxIn->end.region));
+struct vpTx *vpTxDown;
+AllocVar(vpTxDown);
+vpTxDown->end = vpTxIn->end;
+// Start at first downstream base (to the right of last exon base)
+vpTxDown->start.region = vpDownstream;
+vpTxDown->start.txOffset = vpTxIn->end.txOffset;
+vpTxDown->start.aliBlkIx = vpTxIn->end.aliBlkIx;
+if (isRc)
+    vpTxDown->start.gOffset = vpTxIn->end.gOffset + vpTxIn->end.gDistance;
+else
+    vpTxDown->start.gOffset = vpTxIn->end.gOffset - vpTxIn->end.gDistance;
+vpTxDown->txName = cloneString(vpTxIn->txName);
+// Truncate alleles to just the downstream part.
+size_t downLen = vpTxIn->end.gDistance;
+vpTxDown->gRef = cloneLastN(vpTxIn->gRef, downLen);
+vpTxDown->gAlt = cloneLastN(vpTxIn->gAlt, downLen);
+vpTxDown->txRef = NULL;
+vpTxDown->txAlt = cloneString(vpTxDown->gAlt);
+vpTxDown->basesShifted = vpTxIn->basesShifted;
+vpTxDown->genomeMismatch = vpTxIn->genomeMismatch;
+return vpTxDown;
+}
+
+static struct vpTx *vpTxSplitByRegion(struct vpTx *vpTx, struct psl *psl,
+                                      struct genbankCds *cds, struct dnaSeq *txSeq,
+                                      struct vpPep *vpPep, struct dnaSeq *protSeq)
+/* If vpTx doesn't delete the whole transcript but spans multiple regions *and* is
+ * either a pure deletion or MNV then return a list of vpTx, one per region type,
+ * so we can report functional effects of complex variants in more detail.
+ * Otherwise return NULL to signify that we could not reliably split it up (e.g. when
+ * nonzero but unequal numbers of bases are deleted and inserted across a boundary,
+ * we don't know how to apportion the inserted bases).
+ * Handle single-region vpTxs, insertions and transcript_ablation cases separately --
+ * those do not need to be split up so don't call this on them. */
+{
+if (vpTx->start.region == vpTx->end.region ||
+    vpTxPosIsInsertion(&vpTx->start, &vpTx->end) ||
+    (vpTx->start.region == vpUpstream && vpTx->end.region == vpDownstream))
+    errAbort("vpTxSplitByRegion: don't call this if start and end region (%s, %s) are the same, "
+             "if vpTx is an insertion, or if vpTx deletes the entire transcript",
+             vpTxRegionToString(vpTx->start.region), vpTxRegionToString(vpTx->end.region));
+// If start region and end region are different then at least one of them should be exon or
+// they should have at least one exon in the middle, so txRef should not be NULL.
+if (vpTx->txRef == NULL)
+    errAbort("vpTxSplitByRegion: program error: how is txRef NULL if start region and end region "
+             "are different (%s, %s)?",
+             vpTxRegionToString(vpTx->start.region), vpTxRegionToString(vpTx->end.region));
+boolean isDeletion = (vpTx->txAlt[0] == '\0' && strlen(vpTx->txRef) > 0);
+boolean isMnv = (strlen(vpTx->txRef) == strlen(vpTx->txAlt));
+if (! (isDeletion || isMnv))
+    return NULL;
+// Step through regions and add one vpTx per region type.
+boolean isRc = pslQStrand(psl) == '-';
+struct vpTx *vpTxList = NULL;
+if (vpTx->start.region == vpUpstream)
+    {
+    slAddHead(&vpTxList, vpTxNewUpstreamPart(vpTx, isRc));
+    if (vpTx->end.region == vpExon)
+        slAddHead(&vpTxList, vpTxNewExonPart(vpTx, isRc));
+    else if (vpTx->end.region == vpIntron)
+        {
+        // At least one exon is deleted
+        slAddHead(&vpTxList, vpTxNewExonPart(vpTx, isRc));
+        slAddHead(&vpTxList, vpTxNewIntronPart(vpTx, psl));
+        }
+    // We won't see downstream here because it's excluded above.
+    else
+        errAbort("vpTxSplitByRegion: unexpected end region type %s after start==vpUpstream",
+                 vpTxRegionToString(vpTx->end.region));
+    }
+else if (vpTx->start.region == vpExon)
+    {
+    slAddHead(&vpTxList, vpTxNewExonPart(vpTx, isRc));
+    if (vpTx->end.region == vpIntron)
+        slAddHead(&vpTxList, vpTxNewIntronPart(vpTx, psl));
+    else if (vpTx->end.region == vpDownstream)
+        slAddHead(&vpTxList, vpTxNewDownstreamPart(vpTx, isRc));
+    else if (vpTx->end.region != vpExon)
+        errAbort("vpTxSplitByRegion: unexpected end region type %s after start==vpExon",
+                 vpTxRegionToString(vpTx->end.region));
+    }
+else if (vpTx->start.region == vpIntron)
+    {
+    slAddHead(&vpTxList, vpTxNewIntronPart(vpTx, psl));
+    if (vpTx->end.region == vpExon)
+        slAddHead(&vpTxList, vpTxNewExonPart(vpTx, isRc));
+    else if (vpTx->end.region == vpIntron || vpTx->end.region == vpDownstream)
+        {
+        // At least one exon is deleted
+        slAddHead(&vpTxList, vpTxNewExonPart(vpTx, isRc));
+        if (vpTx->end.region == vpDownstream)
+            slAddHead(&vpTxList, vpTxNewDownstreamPart(vpTx, isRc));
+        else
+            slAddHead(&vpTxList, vpTxNewIntronPart(vpTx, psl));
+        }
+    else
+        errAbort("vpTxSplitByRegion: unexpected end region type %s after start==vpIntron",
+                 vpTxRegionToString(vpTx->end.region));
+    }
+else
+    errAbort("vpTxSplitByRegion: unexpected start region %s",
+             vpTxRegionToString(vpTx->start.region));
+slReverse(&vpTxList);
+return vpTxList;
+}
+
+static struct gpFx *vpTxToFxComplexIns(struct vpTx *vpTx, struct psl *psl,
+                                       struct genbankCds *cds, struct dnaSeq *txSeq,
+                                       struct vpPep *vpPep, struct dnaSeq *protSeq,
+                                       struct lm *lm)
+/* Return consequence(s) of an insertion at the boundary between regions. */
+{
+// Insertions can have start regions and end regions that would normally be out of order,
+// e.g. start.region == vpExon and end.region == vpUpstream for an insertion before
+// the first tx base, so there's a different ordering to check here.
+struct gpFx *fxList = NULL;
+char *gAlt = getGAlt(vpTx, psl);
+char *txName = txSeq->name;
+if (vpTx->end.region == vpUpstream)
+    fxList = gpFxNew(gAlt, txName, upstream_gene_variant, none, lm);
+if (vpTx->start.region == vpExon || vpTx->end.region == vpExon)
+    fxList = slCat(fxList, vpTxToFxExon(vpTx, psl, cds, txSeq, vpPep, protSeq, lm));
+// Insertions at intron boundaries don't disrupt the splice site sequence.  So in
+// the spirit of HGVS's "3' exception rule", assume the change is to the exon and
+// don't report a splice hit, i.e. ignore vpIntron here and don't consider intron/exon
+// boundary insertions complex.  (Still note if the insertion could also be up/downstream.)
+if (vpTx->start.region == vpDownstream)
+    fxList = slCat(fxList, gpFxNew(gAlt, txName, downstream_gene_variant, none, lm));
+if (vpTx->end.region == vpUpstream || vpTx->start.region == vpDownstream)
+    fxList = slCat(fxList, gpFxNew(gAlt, txName, complex_transcript_variant, none, lm));
+if (vpTx->start.region == vpUpstream || vpTx->end.region == vpDownstream)
+    errAbort("Unexpected combo of start and end region for insertion: "
+             "start==%s, end==%s",
+             vpTxRegionToString(vpTx->start.region), vpTxRegionToString(vpTx->end.region));
+return fxList;
+}
+
+static
 struct gpFx *vpTxToFxComplex(struct vpTx *vpTx, struct psl *psl, struct genbankCds *cds,
                              struct dnaSeq *txSeq, struct vpPep *vpPep, struct dnaSeq *protSeq,
                              struct lm *lm)
@@ -1268,75 +1803,25 @@ struct gpFx *fxList = NULL;
 char *gAlt = getGAlt(vpTx, psl);
 char *txName = txSeq->name;
 if (vpTx->start.region == vpUpstream && vpTx->end.region == vpDownstream)
+    {
+    // Entire transcript is deleted -- no need to go into details.
     fxList = gpFxNew(gAlt, txName, transcript_ablation, none, lm);
+    }
+else if (vpTxPosIsInsertion(&vpTx->start, &vpTx->end))
+    {
+    fxList = vpTxToFxComplexIns(vpTx, psl, cds, txSeq, vpPep, protSeq, lm);
+    }
 else
     {
-    if (vpTxPosIsInsertion(&vpTx->start, &vpTx->end))
-        {
-        // Insertions can have start regions and end regions that would normally be out of order,
-        // e.g. start.region == vpExon and end.region == vpUpstream for an insertion before
-        // the first tx base, so there's a different ordering to check here.
-        // Insertions at intron boundaries don't disrupt the splice site sequence.  So in
-        // the spirit of HGVS's "3' exception rule", assume the change is to the exon and
-        // don't report a splice hit, i.e. ignore vpIntron here and don't consider intron/exon
-        // boundary insertions complex.  (Still note if the insertion could also be up/downstream.)
-        if (vpTx->start.region == vpExon || vpTx->end.region == vpExon)
-            fxList = slCat(fxList, vpTxToFxExon(vpTx, psl, cds, txSeq, vpPep, protSeq, lm));
-        if (vpTx->end.region == vpUpstream)
-            {
-            fxList = slCat(fxList, gpFxNew(gAlt, txName, upstream_gene_variant, none, lm));
-            fxList = slCat(fxList, gpFxNew(gAlt, txSeq->name, complex_transcript_variant,
-                                           none, lm));
-            }
-        if (vpTx->start.region == vpDownstream)
-            {
-            fxList = slCat(fxList, gpFxNew(gAlt, txName, downstream_gene_variant, none, lm));
-            fxList = slCat(fxList, gpFxNew(gAlt, txSeq->name, complex_transcript_variant,
-                                           none, lm));
-            }
-        if (vpTx->start.region == vpUpstream || vpTx->end.region == vpDownstream)
-            errAbort("Unexpected combo of start and end region for insertion: "
-                     "start==%s, end==%s",
-                     vpTxRegionToString(vpTx->start.region), vpTxRegionToString(vpTx->end.region));
-        }
-    else
-        {
-        if (vpTx->start.region == vpUpstream)
-            {
-            fxList = gpFxNew(gAlt, txName, upstream_gene_variant, none, lm);
-            if (vpTx->end.region == vpExon)
-                fxList = slCat(fxList, vpTxToFxExon(vpTx, psl, cds, txSeq, vpPep, protSeq, lm));
-            else if (vpTx->end.region != vpIntron)
-                errAbort("vpTxToFxComplex: unexpected end region type %s after start==vpUpstream",
-                         vpTxRegionToString(vpTx->end.region));
-            }
-        else if (vpTx->start.region == vpExon)
-            {
-            if (vpTx->end.region == vpIntron)
-                fxList = fxIntronFromPsl(psl, vpTx->start.aliBlkIx, txName, gAlt,
-                                         splice_donor_variant, lm);
-            else if (vpTx->end.region == vpDownstream)
-                fxList = vpTxToFxExon(vpTx, psl, cds, txSeq, vpPep, protSeq, lm);
-            else
-                errAbort("vpTxToFxComplex: unexpected end region type %s after start==vpExon",
-                         vpTxRegionToString(vpTx->end.region));
-            }
-        else if (vpTx->start.region == vpIntron)
-            {
-            if (vpTx->end.region != vpExon && vpTx->end.region != vpDownstream)
-                errAbort("vpTxToFxComplex: unexpected end region type %s after start==vpIntron",
-                         vpTxRegionToString(vpTx->end.region));
-            fxList = fxIntronFromPsl(psl, vpTx->start.aliBlkIx, txName, gAlt,
-                                     splice_acceptor_variant, lm);
-            }
-        else
-            errAbort("vpTxToFxComplex: unexpected start region %s",
-                     vpTxRegionToString(vpTx->start.region));
-        fxList = slCat(fxList, addLostExons(vpTx, psl, txName, gAlt, lm));
-        if (vpTx->end.region == vpDownstream)
-            fxList = slCat(fxList, gpFxNew(gAlt, txName, downstream_gene_variant, none, lm));
-        fxList = slCat(fxList, gpFxNew(gAlt, txSeq->name, complex_transcript_variant, none, lm));
-        }
+    struct vpTx *vpTxList = vpTxSplitByRegion(vpTx, psl, cds, txSeq, vpPep, protSeq);
+    struct vpTx *vpTxPart;
+    for (vpTxPart = vpTxList;  vpTxPart != NULL;  vpTxPart = vpTxPart->next)
+        fxList = slCat(fxList, vpTxToFxSingleRegion(vpTxPart, psl, cds, txSeq, vpPep, protSeq, lm));
+//#*** If it's too complicated for vpTxSplitByRegion, should we at least say whether it overlaps
+//#*** UTR/coding region/introns??
+    fxList = slCat(fxList, addLostExons(vpTx, psl, txName, gAlt, lm));
+    fxList = slCat(fxList, gpFxNew(gAlt, txName, complex_transcript_variant, none, lm));
+    vpTxFreeList(&vpTxList);
     }
 return fxList;
 }

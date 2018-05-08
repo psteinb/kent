@@ -257,6 +257,7 @@
 #include "trix.h"
 #include "bPlusTree.h"
 #include "customFactory.h"
+#include "iupac.h"
 
 static char *rootDir = "hgcData";
 
@@ -805,95 +806,6 @@ if (bedSize >= 6)
 printPos(bed->chrom, bed->chromStart, bed->chromEnd, strand, TRUE, bed->name);
 
 }
-
-void interactionPrintPos( struct bed *bed, int bedSize, struct trackDb *tdb)
-/* Print first bedSize fields of a bed type structure in
- * standard format. */
-{
-
-if (bed->blockCount == 2)
-    {
-    printf("<B>Intrachromosomal interaction:</B> <br>\n");
-    printf("<B>Positions:</B><br> ");
-    printf("<A HREF=\"%s&db=%s&position=%s%%3A%d-%d\">",
-           hgTracksPathAndSettings(), database, bed->chrom,
-           bed->chromStarts[0]+bed->chromStart,
-	   bed->chromStarts[0]+bed->chromStart + bed->blockSizes[0]);
-    printf("%s:%d-%d</A>    \n",
-	   bed->chrom,
-           bed->chromStarts[0]+bed->chromStart,
-	   bed->chromStarts[0]+bed->chromStart + bed->blockSizes[0]);
-    printf("Size: %d   \n", bed->blockSizes[0]);
-    printBand( bed->chrom, bed->chromStarts[0]+bed->chromStart,
-	   bed->chromStarts[0]+bed->chromStart + bed->blockSizes[0], FALSE);
-
-    //printf("<BR>\n");
-    printf("<A HREF=\"%s&db=%s&position=%s%%3A%d-%d\">",
-           hgTracksPathAndSettings(), database, bed->chrom,
-           bed->chromStarts[1]+bed->chromStart,
-	   bed->chromStarts[1]+bed->chromStart + bed->blockSizes[1]);
-    printf("%s:%d-%d</A>     \n",
-	   bed->chrom,
-           bed->chromStarts[1]+bed->chromStart,
-	   bed->chromStarts[1]+bed->chromStart + bed->blockSizes[1]);
-    printf("Size: %d   \n", bed->blockSizes[0]);
-    printBand( bed->chrom, bed->chromStarts[0]+bed->chromStart,
-	   bed->chromStarts[1]+bed->chromStart + bed->blockSizes[1], FALSE);
-
-    printf("<BR>\n");
-    printf("<B>Distance apart:</B>\n");
-    printLongWithCommas(stdout,
-	bed->chromStarts[1] - bed->chromStarts[0] + bed->blockSizes[0]);
-
-    printf("bp<BR>\n");
-    }
-else
-    {
-    printf("<B>Interchromosomal interaction:</B> <br>\n");
-    printf("<B>Positions:</B><br> ");
-    printf("<A HREF=\"%s&db=%s&position=%s%%3A%d-%d\">",
-           hgTracksPathAndSettings(), database, bed->chrom,
-           bed->chromStarts[0]+bed->chromStart,
-	   bed->chromStarts[0]+bed->chromStart + bed->blockSizes[0]);
-    printf("%s:%d-%d</A>    \n",
-	   bed->chrom,
-           bed->chromStarts[0]+bed->chromStart,
-	   bed->chromStarts[0]+bed->chromStart + bed->blockSizes[0]);
-    printf("Size: %d   \n", bed->blockSizes[0]);
-    printBand( bed->chrom, bed->chromStarts[0]+bed->chromStart,
-	   bed->chromStarts[0]+bed->chromStart + bed->blockSizes[0], FALSE);
-
-    char buffer[10 * 1024], *otherChrom = buffer;
-    safef(buffer, sizeof buffer, "%s", bed->name);
-    char *ptr;
-    int otherStart, otherEnd;
-
-    if (startsWith(bed->chrom, buffer))
-	{
-	otherChrom = strchr(buffer,'-');
-	otherChrom++;
-	}
-
-    ptr = strchr(otherChrom,':');
-    *ptr++ = 0;
-    otherStart = atoi(ptr);
-    ptr = strchr(ptr,'.');
-    ptr++;
-    ptr++;
-    otherEnd = atoi(ptr);
-    //printf("<BR>\n");
-    printf("<A HREF=\"%s&db=%s&position=%s%%3A%d-%d\">",
-	   hgTracksPathAndSettings(), database, otherChrom,
-	   otherStart, otherEnd);
-    printf("%s:%d-%d</A>     \n",
-	   otherChrom, otherStart, otherEnd);
-    printf("Size: %d   \n", otherEnd - otherStart);
-    printBand( otherChrom, otherStart, otherEnd, FALSE);
-
-    printf("<BR>\n");
-    }
-}
-
 
 void genericHeader(struct trackDb *tdb, char *item)
 /* Put up generic track info. */
@@ -1590,7 +1502,7 @@ if (as == NULL)
 int start = extraFieldsStart(tdb, fieldCount, as);
 
 struct asColumn *col = as->columnList;
-char *urlsStr = trackDbSetting(tdb, "urls");
+char *urlsStr = trackDbSettingClosestToHomeOrDefault(tdb, "urls", NULL);
 struct hash* fieldToUrl = hashFromString(urlsStr);
 boolean skipEmptyFields = trackDbSettingOn(tdb, "skipEmptyFields");
 
@@ -1713,12 +1625,7 @@ while ((row = sqlNextRow(sr)) != NULL)
     else
 	htmlHorizontalLine();
     bed = bedLoadN(row+hasBin, bedSize);
-    if ((tdb->type != NULL) && sameString(tdb->type, "interaction"))
-	{
-	interactionPrintPos( bed, bedSize, tdb);
-        }
-    else
-        bedPrintPos(bed, bedSize, tdb);
+    bedPrintPos(bed, bedSize, tdb);
 
     extraFieldsPrint(tdb,sr,row,sqlCountColumns(sr));
 
@@ -4323,6 +4230,8 @@ else if (wordCount > 0)
 	doBamDetails(tdb, item);
     else if ( startsWith("longTabix", type))
 	doLongTabix(tdb, item);
+    else if (sameWord("interact", type) || sameWord("bigInteract", type))
+	doInteractDetails(tdb, item);
     }
 if (imagePath)
     {
@@ -12195,17 +12104,56 @@ if (differentWord(nrl->protAcc, ""))
     printf("<a href='https://www.ncbi.nlm.nih.gov/protein/%s' target=_blank>", nrl->protAcc);
     printf("%s</a><br>\n", nrl->protAcc);
     }
-if (startsWith("MGI", nrl->hgnc))
-    {
-    printf("<b>MGI:</b> "
+
+if (differentWord(nrl->hgnc, ""))
+    {  /* legacy support of mm10 override of hgnc column until this table
+        * is updated on the RR */
+    if (startsWith("MGI", nrl->hgnc))
+        {
+        printf("<b>MGI:</b> "
            "<a href=\"http://www.informatics.jax.org/marker/%s\" target=_blank>%s</a><br>\n",
            nrl->hgnc, nrl->hgnc);
+        }
+    else
+        {
+         printf("<b>HGNC:</b> ");
+         printf("<a href='http://www.genenames.org/cgi-bin/gene_symbol_report?hgnc_id=HGNC:%s' target=_blank>", nrl->hgnc);
+
+         printf("%s</a><br>\n", nrl->hgnc);
+        }
     }
-else if (differentWord(nrl->hgnc, ""))
+
+if (sqlColumnExists(conn, "ncbiRefSeqLink", "externalId"))
     {
-    printf("<b>HGNC:</b> ");
-    printf("<a href='http://www.genenames.org/cgi-bin/gene_symbol_report?hgnc_id=HGNC:%s' target=_blank>", nrl->hgnc);
-    printf("%s</a><br>\n", nrl->hgnc);
+    if (differentWord(nrl->externalId, ""))
+	{
+	char *urlsStr = trackDbSetting(tdb, "dbPrefixUrls");
+	struct hash* dbToUrl = hashFromString(urlsStr);
+	char *labelsStr = trackDbSetting(tdb, "dbPrefixLabels");
+	struct hash* dbToLabel = hashFromString(labelsStr);
+	if (dbToUrl)
+	    {
+	    if (!dbToLabel)
+	        errAbort("can not find trackDb dbPrefixLabels to correspond with dbPrefixUrls\n");
+	    char *databasePrefix = cloneString(database);
+	    while (strlen(databasePrefix) && isdigit(lastChar(databasePrefix)))
+	        trimLastChar(databasePrefix);
+	    struct hashEl *hel = hashLookup(dbToUrl, databasePrefix);
+	    if (hel)
+		{
+		struct hashEl *label = hashLookup(dbToLabel, databasePrefix);
+		if (!label)
+		    errAbort("missing trackDb dbPrefixLabels for database prefix: '%s'\n", databasePrefix);
+		char *url = (char *)hel->val;
+		char *labelStr = (char *)label->val;
+		char *idUrl = replaceInUrl(url, nrl->externalId, cart, database,
+		    nrl->externalId, winStart, winEnd, tdb->track, TRUE);
+		printf("<b>%s:</b> ", labelStr);
+		printf("<a href='%s' target='_blank'>%s</a><br>\n",
+		    idUrl, nrl->externalId);
+                }
+	    }
+	}
     }
 
 if (differentWord(nrl->locusLinkId, ""))
@@ -16488,12 +16436,10 @@ char *variation = NULL;
 
 char *line;
 struct lineFile *lf = NULL;
-int lineSize;
 static int maxFlank = 1000;
 static int lineWidth = 100;
 
 boolean gotVar = FALSE;
-boolean isNucleotide = TRUE;
 boolean leftFlankTrimmed = FALSE;
 boolean rightFlankTrimmed = FALSE;
 
@@ -16510,7 +16456,6 @@ struct dnaSeq *dnaSeqDbSnp3 = NULL;
 struct dnaSeq *seqDbSnp = NULL;
 struct dnaSeq *seqNib = NULL;
 
-int spaces = 0;
 int len5 = 0;
 int len3 = 0;
 int start = 0;
@@ -16530,31 +16475,26 @@ if (offset == -1)
 lf = lineFileOpen(fileName, TRUE);
 lineFileSeek(lf, offset, SEEK_SET);
 /* skip the header line */
-lineFileNext(lf, &line, &lineSize);
+lineFileNext(lf, &line, NULL);
 if (!startsWith(">rs", line))
     errAbort("Expected FASTA header, got this line:\n%s\nat offset %lld "
 	     "in file %s", line, (long long)offset, fileName);
 
-while (lineFileNext(lf, &line, &lineSize))
+while (lineFileNext(lf, &line, NULL))
     {
-    spaces = countChars(line, ' ');
     stripString(line, " ");
-    lineSize = lineSize - spaces;
-    if (sameString(line, "N"))
-        isNucleotide = FALSE;
-    else
-        isNucleotide = isAllDna(line, lineSize);
-    if (lineSize > 2 && gotVar)
-        dyStringAppend(seqDbSnp3,line);
-    else if (lineSize > 2 && !gotVar)
-        dyStringAppend(seqDbSnp5,line);
-    else if (lineSize == 2 && !isNucleotide)
+    int len = strlen(line);
+    if (len == 0)
+        break;
+    else if (len == 1 && isIupacAmbiguous(line[0]))
         {
 	gotVar = TRUE;
 	variation = cloneString(line);
 	}
-    else if (lineSize == 1)
-        break;
+    else if (gotVar)
+        dyStringAppend(seqDbSnp3, line);
+    else
+        dyStringAppend(seqDbSnp5, line);
     }
 lineFileClose(&lf);
 
@@ -21431,6 +21371,8 @@ else if (sameWord(type, "bigBed") || sameWord(type, "bigGenePred"))
     bigBedCustomClick(ct->tdb);
 else if (sameWord(type, "bigBarChart") || sameWord(type, "barChart"))
     doBarChartDetails(ct->tdb, item);
+else if (sameWord(type, "bigInteract") || sameWord(type, "interact"))
+    doInteractDetails(ct->tdb, item);
 else if (sameWord(type, "bam"))
     doBamDetails(ct->tdb, itemName);
 else if (sameWord(type, "vcfTabix"))

@@ -60,6 +60,7 @@ DBS = \
 	calJac1 calJac3 \
 	calMil1 \
 	canFam1 canFam2 canFamPoodle1 canFam3 \
+	casCan1 \
 	cavApe1 cavPor3 \
 	cb1 cb2 cb3 cb4 \
 	ce2 ce3 ce4 ce5 ce6 ce7 ce8 ce9 ce10 ce11 \
@@ -98,7 +99,7 @@ DBS = \
 	eulFla1 \
 	eulMac1 \
 	falciparum \
-	felCat3 felCat4 felCat5  felCat8 \
+	felCat3 felCat4 felCat5 felCat8 felCat9 \
 	ficAlb1 \
 	fr1 fr2 fr3 \
 	fukDam1 \
@@ -144,16 +145,16 @@ DBS = \
 	oryCun1 oryCun2 \
 	oryLat1 oryLat2 \
 	otoGar1 otoGar3 \
-	oviAri1 oviAri3 \
+	oviAri1 oviAri3 oviAri4 \
 	oxyTri2 \
 	panPan1 panPan2 \
 	panRed1 \
-	panTro1 panTro2 panTro3 panTro4 panTro5 \
+	panTro1 panTro2 panTro3 panTro4 panTro5 panTro6 \
 	papHam1 papAnu2 papAnu3 papAnu4 \
 	petMar1 petMar2 petMar3 \
 	plasFalc3D7V12 \
 	poeRet1 \
-	ponAbe2 \
+	ponAbe2 ponAbe3 \
 	priExs1 \
 	priPac1 priPac2 priPac3 \
 	proCap1 \

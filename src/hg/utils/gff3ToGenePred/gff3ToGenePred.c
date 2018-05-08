@@ -45,6 +45,9 @@ errAbort(
   "   transcripts which contain exons.  If this option is specified, genes with exons\n"
   "   as direct children of genes and stand alone genes with no exon or transcript\n"
   "   children will be converted.\n"
+  "  -refseqHacks - enable various hacks to make RefSeq conversion work:\n"
+  "     This turns on -useName, -allowMinimalGenes, and -processAllGeneChildren.\n"
+  "     It try harder to find an accession in attributes\n"
   "\n"
   "This converts:\n"
   "   - top-level gene records with RNA records\n"
@@ -81,6 +84,7 @@ static struct optionSpec options[] = {
     {"attrsOut", OPTION_STRING},
     {"bad", OPTION_STRING},
     {"processAllGeneChildren", OPTION_BOOLEAN},
+    {"refseqHacks", OPTION_BOOLEAN},
     {"unprocessedRootsOut", OPTION_STRING},
     {NULL, 0},
 };
@@ -92,6 +96,7 @@ static boolean honorStartStopCodons = FALSE;
 static boolean defaultCdsStatusToUnknown = FALSE;
 static boolean allowMinimalGenes = FALSE;
 static boolean processAllGeneChildren = FALSE;
+static boolean refseqHacks = FALSE;
 static int maxParseErrors = 50;  // maximum number of errors during parse
 static int maxConvertErrors = 50;  // maximum number of errors during conversion
 static int convertErrCnt = 0;  // number of convert errors
@@ -101,6 +106,11 @@ static FILE *outBadFp = NULL;
 static FILE *outUnprocessedRootsFp = NULL;
 
 static char **cdsFeatures[] = {
+    &gff3FeatCDS,
+    NULL
+};
+static char **cdsExonFeatures[] = {
+    &gff3FeatExon,
     &gff3FeatCDS,
     NULL
 };
@@ -193,7 +203,7 @@ return feats;
 static boolean featTypeMatch(char *type, char** types[])
 /* check if type is in NULL terminated list of feature type name.
  * This has one extra level of indirection to allow initializing
- * from GFF3 feature definitions. */
+ * from GFF3 feature definitions (gff3FeatCds, etc). */
 {
 int i;
 for (i = 0; types[i] != NULL; i++)
@@ -247,6 +257,29 @@ else
     }
 }
 
+static boolean isGeneWithCdsChildCase(struct gff3Ann* mrna)
+/* is this one of the refseq gene with a direct CDS child? */
+{
+return sameString(mrna->type, gff3FeatGene) && (mrna->children != NULL)
+    && (sameString(mrna->children->ann->type, gff3FeatCDS));
+}
+
+static char* refSeqHacksFindName(struct gff3Ann* mrna)
+/* return the value to use for the genePred name field under refSeqHacks
+ * rules. */
+{
+// if this is a gene with CDS child, the get the id out of the CDS if it looks like
+// a refseq accession
+if (isGeneWithCdsChildCase(mrna))
+    {
+    // is name something like YP_203370.1 (don't try too hard)
+    struct gff3Ann *cds = mrna->children->ann;
+    if ((strlen(cds->name) > 4) && isupper(cds->name[0]) && isupper(cds->name[1])
+        && (cds->name[2] == '_') && isdigit(cds->name[3]))
+        return cds->name;
+    }
+return NULL;
+}
 
 static char* getRnaName(struct gff3Ann* mrna)
 /* return the value to use for the genePred name field */
@@ -258,6 +291,8 @@ if (rnaNameAttr != NULL)
     if (attr != NULL)
         name = attr->vals->name;
     }
+if (isEmpty(name) && refseqHacks)
+    name = refSeqHacksFindName(mrna);
 if (isEmpty(name))
     name = (useName ? mrna->name : mrna->id);
 if (isEmpty(name))
@@ -276,8 +311,10 @@ if (geneNameAttr != NULL)
     if (attr != NULL)
         name2 = attr->vals->name;
     }
+if (isEmpty(name2) && useName)
+    name2 = gene->name;
 if (isEmpty(name2))
-    name2 = (useName ? gene->name : gene->id);
+    name2 = gene->id;
 return name2;
 }
 
@@ -640,7 +677,7 @@ static boolean shouldProcessGeneAsTranscript(struct gff3Ann *gene)
 /* should this gene be processed as a transcripts? */
 {
 // check for any exon children
-return allowMinimalGenes && haveChildFeature(gene, gff3FeatExon);
+return allowMinimalGenes && haveChildTypeMatch(gene, cdsExonFeatures);
 }
 
 static void processTranscript(FILE *gpFh, struct gff3Ann *gene, struct gff3Ann *mrna,
@@ -783,6 +820,13 @@ if (honorStartStopCodons && defaultCdsStatusToUnknown)
     errAbort("can't specify both -honorStartStopCodons and -defaultCdsStatusToUnknown");
 allowMinimalGenes = optionExists("allowMinimalGenes");
 processAllGeneChildren = optionExists("processAllGeneChildren");
+refseqHacks = optionExists("refseqHacks");
+if (refseqHacks)
+    {
+    useName = TRUE;
+    allowMinimalGenes = TRUE;
+    processAllGeneChildren = TRUE;
+    }
 char *bad = optionVal("bad", NULL);
 if (bad != NULL)
     outBadFp = mustOpen(bad, "w");

@@ -1,6 +1,7 @@
 track wgEncodeGencodeSuper
 superTrack on
 group genes
+pennantIcon Updated red ../goldenPath/newsarch.html#050318 "Released May 03, 2018"
 shortLabel GENCODE
 longLabel GENCODE Gene Annotation 
 # doen't set wgEncode attribute here, since newer GENCODEs are not ENCODE
@@ -25,4 +26,5 @@ include wgEncodeGencodeV19.ra
 include wgEncodeGencodeV24lift37.ra
 include wgEncodeGencodeV26lift37.ra
 include wgEncodeGencodeV27lift37.ra
+include wgEncodeGencodeV28lift37.ra
 
