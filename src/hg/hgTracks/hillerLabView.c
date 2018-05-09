@@ -56,7 +56,7 @@ void makeViewDropDown()
 	char query[100];
 	char *tableName = HVIEWTABLE;
 	int i = 1;//initial value is a empty string
-	safef(query, sizeof(query), "select view  from %s",tableName);
+	sqlSafef(query, sizeof(query), "select view  from %s",tableName);
 	SQLResultList = sqlQuickList(conn,query);
 	initializeHviewMenu();
 	sizeofHviewMenu = 8; 
@@ -130,7 +130,7 @@ void loadView(char *viewName)
 	struct slName *SQLResultList;
 
 	/* get the settings from the SQL table. Result is a list */
-	safef(query->string, query->bufSize, "select params from %s where view='%s'",tableName,viewName);
+	sqlSafef(query->string, query->bufSize, "select params from %s where view='%s'",tableName,viewName);
 	SQLResultList = sqlQuickList(conn,query->string);
 
 #if debugHillerLabView
@@ -298,7 +298,7 @@ void saveView()
 	}
 */
 	struct dyString *query = dyStringNew(params->bufSize);
-	safef(query->string, query->bufSize, "INSERT into %s VALUES(\"%s\",\"%s\")", tableName,viewName,params->string );
+	sqlSafef(query->string, query->bufSize, "INSERT into %s VALUES(\"%s\",\"%s\")", tableName,viewName,params->string );
 	sqlUpdate(conn,query->string);
 	freeDyString(&params);
 	freeDyString(&query);
@@ -313,7 +313,7 @@ void deleteView(char *viewName)
 	char *tableName = HVIEWTABLE;
 	viewName = skipLeadingSpaces(viewName);
 	struct sqlConnection *conn = hAllocConn(HVIEWDBNAME);
-	safef(query->string, query->bufSize, "delete from %s where view = '%s' ",tableName,viewName);
+	sqlSafef(query->string, query->bufSize, "delete from %s where view = '%s' ",tableName,viewName);
 	sqlUpdate(conn,query->string);
 	freeDyString(&query);
 	hFreeConn(&conn);
