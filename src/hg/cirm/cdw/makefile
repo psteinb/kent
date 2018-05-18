@@ -22,6 +22,7 @@ UTIL_DIRS = \
     cdwDumpManiFiles \
     cdwFakeManifestFromSubmit \
     cdwFindSymlinkable \
+    cdwGroupFile \
     cdwGroupUser \
     cdwJob \
     cdwMakeContaminationQa \
@@ -54,6 +55,7 @@ UTIL_DIRS = \
 
 CGI_DIRS = \
     cdwGetFile \
+    cdwGetMetadataAsFile \
     cdwServeTagStorm \
     cdwWebBrowse 
 
