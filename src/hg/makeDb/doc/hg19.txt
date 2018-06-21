@@ -28722,9 +28722,9 @@ cp clinvarCnv.bb /hive/data/genomes/hg19/bed/clinvar/
 
 _EOF_
 #########################################################################
-# LOCUS REFERENCE GENOMIC (LRG) REGIONS AND TRANSCRIPTS (DONE 9/9/16 angie)
-# Redmine #13359
-# previously done 7/7/14
+# LOCUS REFERENCE GENOMIC (LRG) REGIONS AND TRANSCRIPTS (DONE 5/30/18 angie)
+# Redmine #13359 -- otto-mate To Do #17877
+# previously done 7/7/14, 9/9/16
     screen -S lrg -t lrg
     set today = `date +%Y_%m_%d`
     mkdir -p /hive/data/genomes/hg19/bed/lrg/$today
@@ -28737,14 +28737,18 @@ _EOF_
     # Run script to convert LRG*.xml files to BED+ for regions and genePredExt+fa for transcripts:
     ~/kent/src/hg/utils/automation/parseLrgXml.pl GRCh37
     genePredCheck lrgTranscriptsUnmapped.gp
-#Error: lrgTranscriptsUnmapped.gp:680: LRG_7t1 no exonFrame on CDS exon 46
-#checked: 805 failed: 1
+#Error: lrgTranscriptsUnmapped.gp:765: LRG_7t1 no exonFrame on CDS exon 46
+#checked: 917 failed: 1
     # If there are complaints e.g. about exonFrame, look for inconsistencies in the
     # affected transcript's coding_region/coordinates vs. exon/intron info in xml.
     # Contact Variation team leader Fiona Cunningham @EBI to resolve in the background
     # (missing exonFrame info doesn't affect our track representation because we end up using
     # psl).  We agreed to disagree about exon 46 of LRG_7t1 because that last coding exon
     # portion is only the stop codon.
+
+    # Filter out alts and patches not (yet) included in hg19:
+    mv lrg.bed lrg.allSeqs.bed
+    cut -f 1 ../../../chrom.sizes | grep -Fwf - lrg.allSeqs.bed > lrg.bed
 
     # Load LRG regions:
     bedToBigBed lrg.bed /hive/data/genomes/hg19/chrom.sizes lrg.bb \
@@ -28756,7 +28760,7 @@ _EOF_
     # Map LRG fixed_annotation transcripts from LRG coords to hg19 coords (HT MarkD):
     lrgToPsl lrg.bed /hive/data/genomes/hg19/chrom.sizes lrg.psl
     pslCheck lrg.psl
-#checked: 666 failed: 0 errors: 0
+#checked: 781 failed: 0 errors: 0
     awk '{print $10 "\t" $11;}' lrg.psl > lrg.sizes
     genePredToFakePsl -chromSize=lrg.sizes placeholder \
       lrgTranscriptsUnmapped.gp lrgTranscriptsFakePsl.psl lrgTranscripts.cds
@@ -28769,12 +28773,6 @@ _EOF_
     grep -l NR_ LRG_163.xml LRG_347.xml
 #LRG_163.xml
 #LRG_347.xml
-    # The resulting genePredExt from that process is missing the name2 column from
-    # the original; add it back:
-    cut -f 1,12 lrgTranscriptsUnmapped.gp > txName2
-    join -j 1 -a 1 -t'	' \
-      -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,1.10,1.11,2.2,1.13,1.14,1.15 \
-      lrgTranscriptsHg19NoName2.gp txName2 > lrgTranscriptsHg19.gp
 
     # Load PSL, CDS and sequences.
     hgLoadPsl hg19 -table=lrgTranscriptAli lrgTranscriptsHg19.psl
@@ -28792,11 +28790,17 @@ _EOF_
     # sophisticated handling of exonFrames and indels.  Also, liftOver carries over exonFrames
     # as-is without regard to strand, so they end up being reversed for LRG's on the - strand.
     # That's why we're using MarkD's method above!
+    # The resulting genePredExt from that process is missing the name2 column from
+    # the original; add it back:
+    cut -f 1,12 lrgTranscriptsUnmapped.gp > txName2
+    join -j 1 -a 1 -t'	' \
+      -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,1.10,1.11,2.2,1.13,1.14,1.15 \
+      lrgTranscriptsHg19NoName2.gp txName2 > lrgTranscriptsHg19.gp
     # Ignore exonFrames and compare:
     awk '$1 != "#" {print $1;}' noMap
-    cut -f 1-14 lrgTranscriptsHg19.gp > t1
+    cut -f 1-14 lrgTranscriptsHg19.gp | sed -re 's/unk/none/g;' > t1
     cut -f 1-14 lrgTLiftOver.gp > t2
-    diff t1 t2 | awk '{print $1, $2;}'
+    diff t1 t2 | awk '{print $1, $2;}' | uniq
     # Hopefully there won't be differences aside from the ones liftOver couldn't map.
     rm t1 t2
 
@@ -29141,6 +29145,13 @@ pubMap bing load
 
     mkdir /hive/data/genomes/hg19/bed/cnvDevDelay
     cd /hive/data/genomes/hg19/bed/cnvDevDelay
+
+# NOTE FOR NEXT TIME: dbVar reorganized their ftp directories.  Should there be a next time,
+# the files are now at
+# ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/gvf/nstd100.GRCh37.variant_call.gvf.gz
+# ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/gvf/nstd100.GRCh37.variant_region.gvf.gz
+# ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/gvf/nstd54.GRCh37.variant_call.gvf.gz
+# ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/gvf/nstd54.GRCh37.variant_region.gvf.gz
 
 wget --timestamping 'ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/nstd100_Coe_et_al_2014/gvf/nstd100_Coe_et_al_2014.GRCh37.remap.all.germline.ucsc.gvf.gz'
 wget --timestamping 'ftp://ftp.ncbi.nlm.nih.gov/pub/dbVar/data/Homo_sapiens/by_study/nstd54_Cooper_et_al_2011/gvf/nstd54_Cooper_et_al_2011.GRCh37.remap.all.germline.ucsc.gvf.gz'
@@ -32893,10 +32904,11 @@ TMPDIR=/dev/shm
 
 ##############################################################################
 # GNOMAD VARIANTS AND COVERAGE PLOTS (DONE - 2018-05-09 - Jonathan)
+# (Amended to add exome parsing 2018-06-18)
 # Redmine #18951
 
 # Fetch supporting files from gnomad.broadinstitute.org/downloads.
-FETCHDIR=/hive/data/outside/gnomad
+FETCHDIR=/hive/data/outside/gnomAD
 mkdir -p $FETCHDIR
 cd $FETCHDIR
 GNOMADVER=2.0.2
@@ -32918,9 +32930,16 @@ for fil in `ls $FETCHDIR/vcf/genomes/gnomad.genomes.r$GNOMADVER.sites.chr*.vcf.b
     do BASE=`basename $fil .bgz`; ln -s $fil $WORKDIR/vcf/$BASE.gz; ln -s $fil.tbi $WORKDIR/vcf/$BASE.gz.tbi;
     ln -s $fil /gbdb/hg19/gnomAD/vcf/$BASE.gz; ln -s $fil.tbi /gbdb/hg19/gnomAD/vcf/$BASE.gz.tbi; done
 
-# Dumping a list of annotated chromosomes for the gnomadVariants table
-ls /gbdb/hg19/gnomAD/vcf/*.sites.chr*.gz | perl -pe 'chomp; s/^.*sites\.(chr\w+)\.vcf.*$/$_\t$1\n/' > $WORKDIR/chrList
-hgLoadSqlTab hg19 gnomadVariants ~/kent/src/hg/lib/bbiChroms.sql $WORKDIR/chrList
+for fil in `ls $FETCHDIR/vcf/exomes/gnomad.exomes.r$GNOMADVER.sites.vcf.bgz`;
+    do BASE=`basename $fil .bgz`; ln -s $fil $WORKDIR/vcf/$BASE.gz; ln -s $fil.tbi $WORKDIR/vcf/$BASE.gz.tbi;
+    ln -s $fil /gbdb/hg19/gnomAD/vcf/$BASE.gz; ln -s $fil.tbi /gbdb/hg19/gnomAD/vcf/$BASE.gz.tbi; done
+
+# Dumping a list of annotated chromosomes for the gnomadGenomeVariants table.  exome variants, all being
+# in a single file, are just handled via a bigDataUrl in trackDb.  We still need an exomesChrList for
+# building the coverage wigs though.
+ls /gbdb/hg19/gnomAD/vcf/*.sites.chr*.gz | perl -pe 'chomp; s/^.*sites\.(chr\w+)\.vcf.*$/$_\t$1\n/' > $WORKDIR/genomesChrList
+hgLoadSqlTab hg19 gnomadGenomesVariants ~/kent/src/hg/lib/bbiChroms.sql $WORKDIR/genomesChrList
+ls $FETCHDIR/coverage/exomes/*.coverage.txt.gz | perl -pe 'chomp; s/^.*\.(chr\w+)\.coverage\.txt\.gz$/$_\t$1\n/' > $WORKDIR/exomesChrList
 
 # Now to make the coverage wig files
 mkdir -p $WORKDIR/coverage
@@ -32940,20 +32959,21 @@ my \$version = shift;
 my \$chrom = shift;
 my \$sourceDir = shift;
 my \$destDir = shift;
+my \$genomesOrExomes = shift;
 
-open IN, "zcat \$sourceDir/gnomad.genomes.r\$version.\$chrom.coverage.txt.gz |" ||
+open IN, "zcat \$sourceDir/gnomad.\$genomesOrExomes.r\$version.\$chrom.coverage.txt.gz |" ||
     die "Could not open coverage file on chromosome \$chrom";
-open (OUTMEAN, ">>", "\$destDir/gnomad.coverage.mean.wig");
-open (OUTMEDIAN, ">>", "\$destDir/gnomad.coverage.median.wig");
-open (OUT1, ">>", "\$destDir/gnomad.coverage.depth1.wig");
-open (OUT5, ">>", "\$destDir/gnomad.coverage.depth5.wig");
-open (OUT10, ">>", "\$destDir/gnomad.coverage.depth10.wig");
-open (OUT15, ">>", "\$destDir/gnomad.coverage.depth15.wig");
-open (OUT20, ">>", "\$destDir/gnomad.coverage.depth20.wig");
-open (OUT25, ">>", "\$destDir/gnomad.coverage.depth25.wig");
-open (OUT30, ">>", "\$destDir/gnomad.coverage.depth30.wig");
-open (OUT50, ">>", "\$destDir/gnomad.coverage.depth50.wig");
-open (OUT100, ">>", "\$destDir/gnomad.coverage.depth100.wig");
+open (OUTMEAN, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.mean.wig");
+open (OUTMEDIAN, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.median.wig");
+open (OUT1, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth1.wig");
+open (OUT5, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth5.wig");
+open (OUT10, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth10.wig");
+open (OUT15, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth15.wig");
+open (OUT20, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth20.wig");
+open (OUT25, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth25.wig");
+open (OUT30, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth30.wig");
+open (OUT50, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth50.wig");
+open (OUT100, ">>", "\$destDir/gnomad.\$genomesOrExomes.coverage.depth100.wig");
 
 my \$skipHeader = <IN>;
 my \$prevPos = -10;
@@ -32992,8 +33012,13 @@ EOF
 
 chmod +x $WORKDIR/coverage/makeWigs.pl
 
-for CHR in `cut -f 2 $WORKDIR/chrList`;
-    do $WORKDIR/coverage/makeWigs.pl $GNOMADVER $CHR `pwd` $WORKDIR/coverage;
+for CHR in `cut -f 2 $WORKDIR/genomesChrList`;
+    do $WORKDIR/coverage/makeWigs.pl $GNOMADVER $CHR `pwd` $WORKDIR/coverage genomes;
+    done
+
+cd $FETCHDIR/coverage/exomes
+for CHR in `cut -f 2 $WORKDIR/exomesChrList`;
+    do $WORKDIR/coverage/makeWigs.pl $GNOMADVER $CHR `pwd` $WORKDIR/coverage exomes;
     done
 
 # Convert to bigWigs

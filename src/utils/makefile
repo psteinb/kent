@@ -44,6 +44,7 @@ UTILS_APPLIST = \
 	colTransform \
 	countChars \
 	endsInLf \
+	cpgIslandExt \
 	faAlign \
 	fastqToFa \
 	fastqStatsAndSubsample \
@@ -183,6 +184,7 @@ SCRIPT_FILES = \
 	genePredToBed \
 	cgiSmokeTest \
 	phegenToBed \
+	doLocusName \
 	${USER_APP_SCRIPTS}
 
 # List of all directories to build

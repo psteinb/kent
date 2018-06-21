@@ -923,7 +923,7 @@ void printCustomUrlWithLabel(struct trackDb *tdb, char *itemName, char *itemLabe
 char urlLabelSetting[32];
 
 // replace the $$ and other wildchards with the url given in tdb 
-char *url = getUrlSetting(tdb, "url");
+char *url = getUrlSetting(tdb, urlSetting);
 //char* eUrl = constructUrl(tdb, url, itemName, encode);
 if (url==NULL || isEmpty(url))
     return;
@@ -1447,7 +1447,7 @@ int extraFieldsStart(struct trackDb *tdb, int fieldCount, struct asObject *as)
 int start = 0;
 char *type = cloneString(tdb->type);
 char *word = nextWord(&type);
-if (word && (sameWord(word,"bed") || sameWord(word,"bigBed") || sameWord(word,"bigGenePred") || sameWord(word,"bigPsl")))
+if (word && (sameWord(word,"bed") || sameWord(word,"bigBed") || sameWord(word,"bigGenePred") || sameWord(word,"bigPsl")  || sameWord(word,"bigBarChart")))
     {
     if (NULL != (word = nextWord(&type)))
         start = sqlUnsigned(word);
