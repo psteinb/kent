@@ -9,6 +9,7 @@
 #include "portable.h"
 #include "linefile.h"
 #include "hash.h"
+#include "dystring.h"
 
 
 void *cloneMem(void *pt, size_t size)
@@ -831,7 +832,6 @@ struct slName *el;
 int elCount = 0;
 int len = 0;
 char del[2];
-char *s;
 
 if (list == NULL)
     return cloneString("");
@@ -843,15 +843,15 @@ for (el = list; el != NULL; el = el->next, elCount++)
 	len += strlen(el->name);
 len += elCount;
 
-AllocArray(s, len);
+struct dyString* dy = newDyString(len);
 
 for (el = list; el != NULL; el = el->next)
 	{
-	strcat(s, el->name);
+	dyStringAppend(dy, el->name);
 	if (el->next != NULL)
-		strcat(s, del);
+		dyStringAppend(dy, del);
 	}
-return s;
+return dyStringCannibalize(&dy);
 }
 
 struct slName *slNameLoadReal(char *fileName)

@@ -49,17 +49,23 @@ use File::Spec;
 
 use vars qw( %cluster %clusterFilesystem $defaultDbHost );
 
-
-sub readMainCluster(); # forward declaration to keep code order
-
-# the name of the cluster is in a separate text file, so it's easier to
-# use from bash scripts
-
-%cluster =
-    ( readMainCluster() =>
-        { 'enabled' => 1, 'gigaHz' => 1.4, 'ram' => 8,
-	  'hostCount' => 512, },
-    );
+%cluster = 
+    ( 'genome' => ,
+        { 'enabled' => 1, 'gigaHz' => 2.33, 'ram' => 4,
+	  'hostCount' => 28, },
+#      'pk' =>
+#        { 'enabled' => 1, 'gigaHz' => 2.0, 'ram' => 4,
+#	  'hostCount' => 394, },
+#      'memk' =>
+#        { 'enabled' => 1, 'gigaHz' => 1.0, 'ram' => 32,
+#	  'hostCount' => 32, },
+#      'encodek' =>
+#        { 'enabled' => 1, 'gigaHz' => 2.0, 'ram' => 16,
+#	  'hostCount' => 48, },
+#      'kk9' => # Guessing here since the machines are down:
+#        { 'enabled' => 0, 'gigaHz' => 1.5, 'ram' => 2,
+#	  'hostCount' => 100, },
+	);
 
 my %obsoleteCluster =
     ( 'swarm' => ,
@@ -70,21 +76,29 @@ my %obsoleteCluster =
 	  'hostCount' => 32, },
       'encodek' =>
         { 'enabled' => 1, 'gigaHz' => 2.0, 'ram' => 16,
-	  'hostCount' => 48, },
+	  'hostCount' => 48, }
     );
 
 my @allClusters = (keys %cluster);
 
 %clusterFilesystem =
     ( 'scratch' =>
-        { root => '/scratch/data', clusterLocality => 1.0,
+        { root => '/scratch/tmp', clusterLocality => 1.0,
 	  distrHost => [], distrCommand => '',
 	  inputFor => \@allClusters, outputFor => [], },
-      'hive' =>
-        { root => '/hive/data/genomes', clusterLocality => 0.3,
-	  distrHost => ['ku'], distrCommand => '',
-	  inputFor => ['ku'],
-	  outputFor => ['ku'], },
+#      'hive' =>
+#        { root => '/hive/data/genomes', clusterLocality => 0.3,
+#	  distrHost => ['swarm'], distrCommand => '',
+#	  inputFor => ['memk', 'encodek', 'swarm'],
+#	  outputFor => ['memk', 'encodek', 'swarm'], },
+#        { root => '/hive/data/genomes', clusterLocality => 0.3,
+#	  distrHost => ['pk', 'swarm'], distrCommand => '',
+#	  inputFor => ['pk', 'memk', 'encodek', 'swarm'],
+#	  outputFor => ['pk', 'memk', 'encodek', 'swarm'], },
+#      'san' =>
+#        { root => '/san/sanvol1/scratch', clusterLocality => 0.5,
+#	  distrHost => ['pk'], distrCommand => '',
+#	  inputFor => ['pk', 'memk'], outputFor => ['pk', 'memk'], },
     );
 
 my %obsoleteClusterFilesystem =
@@ -99,7 +113,7 @@ my %obsoleteClusterFilesystem =
 	  outputFor => ['memk', 'encodek', 'swarm'], },
     );
 
-$defaultDbHost = 'hgwdev';
+$defaultDbHost = 'genome';
 
 sub readMainCluster() {
     # return the first line of the file cluster.txt in same directory as
@@ -132,7 +146,7 @@ sub choosePermanentStorage {
     }
   }
   if (! defined $bestRaid) {
-    $bestRaid = "/hive/data/genomes";
+    $bestRaid = "/scratch/tmp";
   }
   confess "Could not df any /cluster/store's" if (! defined $bestRaid);
   return $bestRaid;
@@ -192,7 +206,7 @@ sub getWarnClusters {
     if ($isInput) {
       return @allClusters;
     } else {
-      return ('encodek');
+      return ('genome');
     }
   }
 }
@@ -243,7 +257,9 @@ sub getWorkhorseLoads {
   # a valid workhorse needs to have access to hive.
   confess "Too many arguments" if (scalar(@_) != 0);
   my %horses = ();
-  foreach my $machLine ('ku', 'kolossus', 'hgwdev') {
+  foreach my $machLine ('genome',
+	`$HgAutomate::runSSH encodek parasol list machines | grep idle`,
+	`$HgAutomate::runSSH genome parasol list machines | grep idle`) {
     my $mach = $machLine;
     $mach =~ s/[\. ].*//;
     chomp $mach;
@@ -399,7 +415,7 @@ sub chooseFilesystemsForCluster {
       push @filesystems, $fsInfo->{'root'} if (-d $fsInfo->{'root'});
     }
   }
-  push @filesystems, '/hive/data/genomes' if (scalar(@filesystems)<1);
+  push @filesystems, '/cluster/tmp' if (scalar(@filesystems)<1);
   return @filesystems;
 }
 
@@ -508,21 +524,28 @@ sub processCommonOptions {
 #	These items should come from a configuration file so this
 #	business can be easily set up in other environments.
 # Hardcoded paths/command sequences:
-use vars qw( 	$centralDbSql $git
+use vars qw( $gensub2 $para $paraRun $centralDbSql $git
 		$clusterData $trackBuild $goldenPath $images $gbdb
 		$splitThreshold $runSSH $setMachtype
 	   );
 use vars qw( $clusterData $trackBuild
 	     $goldenPath $gbdb $centralDbSql $splitThreshold $runSSH );
-$centralDbSql = "hgsql -h localhost -A -N hgcentraltest";
+$gensub2 = 'gensub2';
+$para = 'para';
+$paraRun = ("$para make jobList\n" .
+	    "$para check\n" .
+	    "$para time > run.time\n" .
+	    'cat run.time');
+$centralDbSql = "hgsql -A -N hgcentraltest";
+
 $git = "/usr/bin/git";
 
-$clusterData = '/hive/data/genomes';
+$clusterData = '/genome/gbdb-HL';
 $trackBuild = 'bed';
 my $apacheRoot = '/usr/local/apache';
 $goldenPath = "$apacheRoot/htdocs-hgdownload/goldenPath";
 $images = "$apacheRoot/htdocs/images";
-$gbdb = '/gbdb';
+$gbdb = '/genome/gbdb-HL';
 
 # This is the max number of sequences in an assembly that we will consider
 # "chrom-based" (allow split tables; per-seq files can fit in one directory)

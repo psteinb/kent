@@ -7,6 +7,38 @@
 #include "phyloTree.h"
 
 
+void freePhyloTree(struct phyloTree **pTree)
+/* Free a dynamically allocated phyloTree. */
+{
+struct phyloTree *tree = *pTree;
+
+if (tree == NULL)
+    return;
+
+/* Free all child nodes. */
+int i;
+for (i = 0; i < tree->numEdges; i++)
+    freePhyloTree(&(tree->edges[i]));
+freeMem(tree->edges);
+
+/* Free the phyloName. */
+freePhyloName(&(tree->ident));
+
+/* Free the tree itself. */
+freez(pTree);
+}
+
+void freePhyloName(struct phyloName **pName)
+/* Free a dynamically allocated phyloName. */
+{
+struct phyloName *name = *pName;
+
+if (name == NULL)
+    return;
+freeMem(name->name);
+freez(pName);
+}
+
 struct phyloTree *phyloReadTree(struct lineFile *lf)
 /* reads a phyloTree from lineFile (first line only) */
 {
@@ -429,7 +461,7 @@ nodeNames(tree, ds);
 
 ds->string[ds->stringSize-1]=0;
 
-return ds->string;
+return dyStringCannibalize(&ds);
 }
 
 

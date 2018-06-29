@@ -29,6 +29,7 @@ errAbort(
   "           the reduced species set removed, as well as the lines representing\n"
   "           species not in species.lst removed.\n"
   "options:\n"
+  "   -speciesList=species1,species2,... - list of species to keep. Overrides 'species.lst' (set this to NULL)\n"
   "   -keepFirst - If set, keep the first 'a' line in a maf no matter what\n"
   "                Useful for mafFrag results where we use this for the gene name\n"
   );
@@ -36,8 +37,36 @@ errAbort(
 
 static struct optionSpec options[] = {
    {"keepFirst", OPTION_BOOLEAN},
+   {"speciesList", OPTION_STRING},
    {NULL, 0},
 };
+
+struct hash *hashCommaString(char *s)
+/* Make hash out of comma separated string. */
+{
+char *e;
+struct hash *hash = newHash(8);
+while (s != NULL && s[0] != 0)
+    {
+    e = strchr(s, ',');
+    if (e != NULL)
+        *e = 0;
+    hashAdd(hash, s, NULL);
+    if (e != NULL)
+	e += 1;
+    s = e;
+    }
+return hash;
+}
+
+struct hash *hashCommaOption(char *opt)
+/* Make hash out of optional value. */
+{
+char *s = optionVal(opt, NULL);
+if (s == NULL)
+    return NULL;
+return hashCommaString(s);
+}
 
 boolean prefixInHash(struct hash *hash, char *name)
 /* Return true  if name, or name up to first dot is in hash. */
@@ -58,7 +87,15 @@ else
 void mafSpeciesSubset(char *inMafFile, char *orgFile, char *outMafFile)
 /* mafSpeciesSubset - Extract a maf that just has a subset of species.. */
 {
-struct hash *orgHash = hashWordsInFile(orgFile, 0);
+
+struct hash *orgHash = NULL;
+/* if option -speciesList is given, read the list of species from the comma-separated string. Otherwise, from orgFile */
+if (optionVal("speciesList", NULL) == NULL) {
+   orgHash = hashWordsInFile(orgFile, 0);
+}else{
+   orgHash = hashCommaOption("speciesList");
+}
+
 struct mafFile *mf = mafOpen(inMafFile);
 FILE *f = mustOpen(outMafFile, "w");
 struct mafAli *inMaf;

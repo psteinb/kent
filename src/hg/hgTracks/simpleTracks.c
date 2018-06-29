@@ -34,10 +34,12 @@
 #include "wigCommon.h"
 #include "hui.h"
 #include "imageV2.h"
+#include "jksql.h"
 #include "bigBed.h"
 #include "htmshell.h"
 #include "kxTok.h"
 #include "hash.h"
+
 
 #ifndef GBROWSE
 #include "encode.h"
@@ -11851,6 +11853,97 @@ else
     return tg->ixColor;
 }
 
+
+Color bejEnhancerTrackColor(struct track *tg, void *item, struct hvGfx *hvg)
+{
+
+struct dyString *dy = newDyString(1024);
+struct sqlConnection *conn = hAllocConn(database);
+struct sqlResult *sr;
+char **row;
+boolean isPos;
+
+struct linkedFeatures *lf = item;
+struct psl *pslItem = lf->original;
+char *acc = pslItem->qName;
+int score, rank;
+
+dyStringPrintf(dy,
+			   "select type from bejsaEnhancerNames natural join bejsaEnhancerOrganisms where fullName='%s'",
+			   acc);
+sr = sqlMustGetResult(conn, dy->string);
+row = sqlNextRow(sr);
+
+if (row != NULL)
+{
+	if (sameWord(row[0], "pos"))
+		isPos = TRUE;
+	else
+		isPos = FALSE;
+}
+
+sqlFreeResult(&sr);
+freeDyString(&dy);
+
+
+if (containsStringNoCase(tg->table, "lastz"))
+	{
+	/* First, look up score for this alignment in the database. */
+	dy = newDyString(1024);
+	dyStringAppend(dy,
+				   "select score");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerLastzAlignments"
+				   " where qName='%s' and tName='%s' and tStart=%d and tEnd=%d",
+				   acc, pslItem->tName, pslItem->tStart+1, pslItem->tEnd);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		score=sqlUnsigned(row[0]);
+	sqlFreeResult(&sr);
+	freeDyString(&dy);
+
+	/* Now find rank using score. */
+	dy = newDyString(1024);
+	dyStringPrintf(dy,
+				   "select count(*) from bejsaEnhancerLastzAlignments where qName='%s' and score > %d", acc, score);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		rank=sqlUnsigned(row[0]) + 1;
+	sqlFreeResult(&sr);
+	freeDyString(&dy);
+	hFreeConn(&conn);
+
+	if (rank == 1)	//best hit
+		{
+		if (isPos)
+			return hvGfxFindColorIx(hvg, 255, 0, 0);	//red for positive enhancer
+		else
+			return hvGfxFindColorIx(hvg, 0, 0, 0);	//black for negative
+		}
+	else
+		{
+		if (isPos)
+			return hvGfxFindColorIx(hvg, 218, 165, 32);	//goldenrod for positive enhancer
+		else
+			return hvGfxFindColorIx(hvg, 105, 105, 105);	//gray for negative
+		}
+	}
+
+else
+	{
+	hFreeConn(&conn);
+
+	if (isPos)
+		return hvGfxFindColorIx(hvg, 255, 0, 0);	//red for positive enhancer
+	else
+		return hvGfxFindColorIx(hvg, 0, 0, 0);	//black for negative
+	}
+
+}
+
+
 Color genePredItemClassColor(struct track *tg, void *item, struct hvGfx *hvg)
 /* Return color to draw a genePred based on looking up the gene class */
 /* in an itemClass table. */
@@ -13987,10 +14080,8 @@ else if (sameWord(type, "logo"))
 else if (sameWord(type, "psl"))
     {
     pslMethods(track, tdb, wordCount, words);
-
-    // FIXME: registerTrackHandler doesn't accept wildcards, so this might be the only
-    // way to get this done in a general way. If this was in loaded with registerTrackHandler
-    // pslMethods would need the tdb object, which we don't have for these callbacks
+    if (startsWith(track->table, "bejsaEnhancer"))
+    	track->itemColor = bejEnhancerTrackColor;
     if (startsWith("pubs", track->track))
         pubsBlatPslMethods(track);
     }

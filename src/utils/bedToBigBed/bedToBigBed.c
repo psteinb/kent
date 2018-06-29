@@ -191,7 +191,9 @@ for (;;)
 	    wordCount = chopLine(line, row);
 	lineFileExpectWords(lf, fieldCount, wordCount);
 
-	loadAndValidateBed(row, bedN, fieldCount, lf, bed, as, FALSE);
+/*	loadAndValidateBed(row, bedN, fieldCount, lf, bed, as, FALSE); */
+	/* mafIndex uses the score field as position and does not work if the isCt parameter (which checks for score >0 and <1000 if false) is false */
+	loadAndValidateBed(row, bedN, fieldCount, lf, bed, as, TRUE); 
 
 	chrom = bed->chrom;
 	start = bed->chromStart;

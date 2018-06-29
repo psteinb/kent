@@ -1576,6 +1576,12 @@ int tgCmpPriority(const void *va, const void *vb);
 void printMenuBar();
 /* Put up the menu bar. */
 
+void markUserRegion();
+/* Add new user marked custom  track */
+
+void clearRegion();
+/* Delete user Marked custom track */
+
 void checkIfWiggling(struct cart *cart, struct track *tg);
 /* Check to see if a linkedFeatures track should be drawing as a wiggle. */
 

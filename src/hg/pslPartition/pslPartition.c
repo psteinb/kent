@@ -16,11 +16,13 @@ static struct optionSpec optionSpecs[] =
     {"outLevels", OPTION_INT},
     {"partSize", OPTION_INT},
     {"dropContained", OPTION_BOOLEAN},
+    {"namePrefix", OPTION_STRING},
     {NULL, 0}
 };
 static int gOutLevels = 0;
 static int gPartSize = 20000;
 static boolean gDropContained = FALSE;
+char *namePrefix = NULL;
 
 static void usage(char *msg)
 /* Explain usage and exit. */
@@ -36,6 +38,7 @@ errAbort("Error: %s\n"
   "The pslFile maybe compressed and no ordering is assumed.\n"
   "\n"
   "options:\n"
+  "  -namePrefix=string - prefix to give to each produced file\n"
   "  -outLevels=0 - number of output subdirectory levels.  0 puts all files\n"
   "   directly in outDir, 2, will create files in the form outDir/0/0/00.psl\n"
   "  -partSize=20000 - will combine non-overlapping partitions, while attempting\n"
@@ -208,11 +211,11 @@ static char *getPartPslFile(char *outDir, int partNum)
  * freeMem result */
 {
 struct dyString *partPath = dyStringNew(128);
-char partStr[64];
+char partStr[264];
 int i, partStrLen;
 
 /* part number, with leading zeros */
-safef(partStr, sizeof(partStr), "%0*d", gOutLevels, partNum);
+safef(partStr, sizeof(partStr), "%s%0*d", namePrefix, gOutLevels, partNum);
 partStrLen = strlen(partStr);
 
 dyStringAppend(partPath, outDir);
@@ -291,6 +294,10 @@ if (argc != 3)
 gOutLevels = optionInt("outLevels", gOutLevels);
 gPartSize = optionInt("partSize", gPartSize);
 gDropContained = optionExists("dropContained");
+namePrefix = optionVal("namePrefix", "");
+if (namePrefix == NULL)
+	printf("use namePrefix: %s\n", namePrefix);
+
 pslPartition(argv[1], argv[2]);
 return 0;
 }

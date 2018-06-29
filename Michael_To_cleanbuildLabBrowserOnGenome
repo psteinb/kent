@@ -1,0 +1,3 @@
+sudo chown hiller /var/www/cgi-bin/ /var/www/html -R 
+cleanbuildLabBrowserOnGenome
+sudo chown vsharma /var/www/cgi-bin/ /var/www/html -R 
