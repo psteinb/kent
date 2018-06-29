@@ -1,9 +1,9 @@
 kentSrc = ..
 include ../inc/common.mk
 
-L += -lm $(SOCKETLIB) -lz
+L = $(MYSQLLIBS) -pthread -lm -lz -lc
 MYLIBDIR = ../lib/$(MACHTYPE)
-MYLIBS =  $(MYLIBDIR)/jkOwnLib.a $(MYLIBDIR)/jkweb.a 
+MYLIBS =  $(MYLIBDIR)/jkOwnLib.a $(MYLIBDIR)/jkweb.a $(kentSrc)/htslib/libhts.a
 
 O = blat.o
 
