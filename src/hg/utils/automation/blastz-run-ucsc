@@ -86,9 +86,8 @@ my @potentialPath = ("/cluster/bin/penn/$machType", "/cluster/bin/penn",
 		   "/cluster/bin/scripts", "/cluster/bin/$machType",
 		   "/bin", "/usr/bin");
 # this defaultPath will be cleaned up at start of program
-my $defaultPath = ("/cluster/bin/penn/$machType:/cluster/bin/penn:" .
-		   "/cluster/bin/scripts:/cluster/bin/$machType:" .
-		   '/bin:/usr/bin');
+my $defaultPath = ("$ENV{'PATH'}:/genome/bin/scripts:/genome/bin/$machType:/bin:/usr/bin");
+
 
 # these commands will be filled in with full path names to
 # avoid constant shell searches for commands through PATH
@@ -306,6 +305,7 @@ sub unpackForBlastz {
     # confuses blastz/normalizeLav.  Just extract the whole thing as
     # fa and tell blastz what range we're using:
     &run("$twoBitToFaCmd $fname:$seq $local");
+
     $local .= &blastzRangeSpec($start, $end);
   } elsif ($fname =~ /\.fa(\.gz)?$/) {
     if ($1) {
@@ -601,8 +601,10 @@ my $seq2Len = $defVars{'SEQ2_CTGLEN'} || $defVars{'SEQ2_LEN'};
 # Make a temporary directory for intermediate files:
 if (exists($defVars{'TMPDIR'})) {
   $TMP = `mktemp -d $defVars{'TMPDIR'}/blastz.XXXXXX` || &cleanDie("Can't mktemp");
+} elsif (exists($ENV{'TMPDIR'} )) {
+  $TMP = `mktemp -d $ENV{'TMPDIR'}/blastz.XXXXXX` || &cleanDie("Can't mktemp");
 } else {
-  $TMP = `mktemp -d /tmp/blastz.XXXXXX` || &cleanDie("Can't mktemp");
+  $TMP = `mktemp -d /scratch/tmp/blastz.XXXXXX` || &cleanDie("Can't mktemp");
 }
 chomp $TMP;
 print STDERR "temp files in $TMP -- will attempt cleanup before die-ing.\n";

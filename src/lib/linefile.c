@@ -149,6 +149,7 @@ if (!testName)
 pl = pipelineOpen1(getDecompressor(fileName), pipelineRead|pipelineSigpipe, fileName, NULL);
 lf = lineFileAttach(fileName, zTerm, pipelineFd(pl));
 lf->pl = pl;
+freez(&testName);
 return lf;
 }
 
@@ -176,6 +177,7 @@ if (fileName==NULL)
 pl = pipelineOpenMem1(getDecompressor(fileName), pipelineRead|pipelineSigpipe, mem, size, STDERR_FILENO);
 lf = lineFileAttach(fileName, zTerm, pipelineFd(pl));
 lf->pl = pl;
+freez(&fileName);
 return lf;
 }
 

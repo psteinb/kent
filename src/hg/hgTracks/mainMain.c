@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 long enteredMainTime = clock1000();
 measureTime(NULL);
 browserName = hBrowserName();
-organization = "UCSC";
+organization = "UCSC (Hiller Lab)";
 
 /* Push very early error handling - this is just
  * for the benefit of the cgiVarExists, which

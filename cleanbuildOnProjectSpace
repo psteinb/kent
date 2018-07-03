@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# do not error exit as the chgrp/chown commands likely fail for some not-owned files. \
+# But we catch the compilation errors.
+#set -o errexit
+
+export allOK="succeeded"
+
+NORM="\\033[0;39m" 
+BLUE="\\033[1;34m"
+RED="\\033[1;31m"
+
+
+# update this working copy
+git pull
+if [[ $? != 0 ]]; then	allOK="failed"; fi
+
+path=/projects/hillerlab/genome/src/kent
+cd $path
+source ./ProjectSpaceEnvironment 
+cd $KENTHOME/src
+make alpha
+if [[ $? != 0 ]]; then	allOK="failed"; fi
+
+# we need gensub2 from parasol. Compile and install only that binary. 
+cd $KENTHOME/src/parasol/gensub2
+make clean
+if [[ $? != 0 ]]; then	allOK="failed"; fi
+make
+if [[ $? != 0 ]]; then	allOK="failed"; fi
+cp ../bin/gensub2 ${genomePath}/bin/x86_64/
+if [[ $? != 0 ]]; then	allOK="failed"; fi
+
+# change to hillerlab and g+w unless we are compiling on genome or newton
+if [ $HOSTNAME != "genome" ] && [ $HOSTNAME != "newton" ]; then
+	chgrp hillerlab ${genomePath}/bin/x86_64/* -R
+	chgrp hillerlab ${genomePath}/bin/scripts/* -R
+	chmod g+w ${genomePath}/bin/x86_64/* -R
+	chmod g+w ${genomePath}/bin/scripts/* -R
+fi
+
+
+# old code: Why does that actually work? It should fail because $? refers to the chmod commands, not the make stuff above. 
+#if [ $? != 0 ]; then
+# echo "building kent source on project space failed" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
+#else
+# echo "building kent source on project space succeeded" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
+#fi
+
+
+if [ $allOK == "failed" ]; then 
+	echo -e  "$RED" " Installation FAILED" "$NORM"
+	echo -e  "$RED" " --------------------------" "$NORM"
+	echo "building kent source on project space FAILED" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
+	exit -1;
+else
+	echo -e  "$BLUE" " Installation complete" "$NORM"
+	echo -e  "$BLUE" " --------------------------" "$NORM"
+#	echo "building kent source on project space succeeded" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
+	exit 0;
+fi

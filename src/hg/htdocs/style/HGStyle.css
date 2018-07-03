@@ -1,16 +1,17 @@
 body {
     font-family: Arial, Helvetica, sans-serif;
-    background: #fff9d2;
+    background: #E4FFE4;
 }
 
 body.cgi {
 	margin: 0;
 	padding: 0;
-	background: #FFF9D2;
+	background: #E4FFE4;
 }
 
 body.hgTracks {
-	background: url("../../images/internal_bg1.jpg") repeat-x fixed left bottom #F9F9F7;
+/*	background: url("../../images/internal_bg1.jpg") repeat-x scroll left bottom #E4FFE4;*/
+	background: repeat-x scroll left bottom #E4FFE4;
 }
 
 body.training {

@@ -350,13 +350,27 @@ else
                 browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
                 customText, uiState, unhideTrack);
         else
+            /*	MH: we print the URLs without uiState, which is something like hgsid=2639733_bb8eZdRGuRoiq3CpE7WFG12QKi3D   
+               --> the reason is each hgsid can only have one current_locus --> opening several results in tabs and zooming clobbers the current_locus value
+            */
+            /*
             printf("<A HREF=\"%s?position=%s:%d-%d&db=%s&ss=%s+%s&%s%s\">",
                 browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
                 pslName, faName, uiState, unhideTrack);
+            */
+            printf("<A HREF=\"%s?position=%s:%d-%d&db=%s&ss=%s+%s&%s\">",
+                browserUrl, psl->tName, psl->tStart + 1, psl->tEnd, database, 
+                pslName, faName, unhideTrack);
 	printf("browser</A> ");
+/* MH same here */
+/*
 	printf("<A HREF=\"%s?o=%d&g=htcUserAli&i=%s+%s+%s&c=%s&l=%d&r=%d&db=%s&%s\">", 
 	    hgcUrl, psl->tStart, pslName, cgiEncode(faName), psl->qName,  psl->tName,
 	    psl->tStart, psl->tEnd, database, uiState);
+*/
+	printf("<A HREF=\"%s?o=%d&g=htcUserAli&i=%s+%s+%s&c=%s&l=%d&r=%d&db=%s\">", 
+	    hgcUrl, psl->tStart, pslName, cgiEncode(faName), psl->qName,  psl->tName,
+	    psl->tStart, psl->tEnd, database);
 	printf("details</A> ");
 	printf("%-14s %5d %5d %5d %5d %5.1f%%  %4s  %2s  %9d %9d %6d\n",
 	    psl->qName, pslScore(psl), psl->qStart+1, psl->qEnd, psl->qSize,

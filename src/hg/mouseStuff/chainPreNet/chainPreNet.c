@@ -166,6 +166,7 @@ while ((chain = chainRead(lf)) != NULL)
     /* Output chain if necessary and then free it. */
     qChrom = hashMustFindVal(qHash, chain->qName);
     tChrom = hashMustFindVal(tHash, chain->tName);
+
     /* If we do not consider the chain because it is a haplotype alignment,
      * then we should not call chainUsed, which sets the bits for the aligning part */
     if (inclQuery(chain))

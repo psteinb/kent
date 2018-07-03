@@ -32,6 +32,7 @@ errAbort(
 void showStats(double *array, int count)
 /* Compute stats on sorted array */
 {
+double outlier1=0, outlier2=0;	/* outliers, 1.5 * interquartile distance below Q1 or above Q3 */
 struct aveStats *as = aveStatsCalc(array, count);
 
 if (tableOut)
@@ -42,15 +43,23 @@ if (tableOut)
     }
 else
     {
-    printf("Q1 %f\n", as->q1);
-    printf("median %f\n", as->median);
-    printf("Q3 %f\n", as->q3);
-    printf("average %f\n", as->average);
-    printf("min %f\n", as->minVal);
-    printf("max %f\n", as->maxVal);
-    printf("count %d\n", as->count);
-    printf("total %f\n", as->total);
-    printf("standard deviation %f\n", as->stdDev);
+/* MH default output now is on a single line */
+	 outlier1 = as->q1 - ((as->q3-as->q1)*1.5);
+	 outlier2 = as->q3 + ((as->q3-as->q1)*1.5);
+	 printf("Q1 %.3f\tmedian %.3f\tQ3 %.3f\tave %.3f\tmin-max %.3f - %.3f\tcount %d\tsum %.3f\tsd %.3f\toutlier1: %.2f\toutlier2: %.2f\n", 
+      as->q1,as->median,as->q3,as->average,as->minVal,as->maxVal,as->count,as->total,as->stdDev,outlier1,outlier2);
+
+/*
+    printf("Q1 %f\n", q1);
+    printf("median %f\n", array[count/2]);
+    printf("Q3 %f\n", q3);
+    printf("average %f\n", average);
+    printf("min %f\n", minVal);
+    printf("max %f\n", maxVal);
+    printf("count %d\n", count);
+    printf("total %f\n", total);
+    printf("standard deviation %f\n", stdDev);
+*/
     }
 }
 

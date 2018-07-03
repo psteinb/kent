@@ -6016,6 +6016,305 @@ printTrackHtml(tdb);
 hFreeConn(&conn);
 }
 
+static void printEnhancerInfo(struct trackDb *tdb, char *acc, struct psl *psl, int start)
+{
+struct dyString *dy = newDyString(1024);
+struct sqlConnection *conn = hAllocConn(database);
+struct sqlResult *sr;
+char **row;
+char *type, *source, *sourceTaxId, *humanMRCA, *commonName, *testOrg;
+int rank, numHomologs, score;
+float seqIdent, js, entropy, repeatOverlap;
+
+dyStringAppend(dy,
+			   "select source, sourceTaxId, type, humanMRCA, commonName, testOrganism");
+dyStringPrintf(dy,
+			   " from bejsaEnhancerNames natural join bejsaEnhancerOrganisms"
+			   " where fullName='%s'",
+			   acc);
+sr = sqlMustGetResult(conn, dy->string);
+row = sqlNextRow(sr);
+
+/* Print enhancer info. */
+if (row != NULL)
+	{
+	source=row[0];sourceTaxId=row[1];type=row[2];humanMRCA=row[3];commonName=row[4];testOrg=row[5];
+
+	/* Now we have all the info out of the database and into nicely named
+	 * local variables.  */
+	printf("<H2>Information on %s <A HREF=\"http://dev.stanford.edu/cgi-bin/redirect.py?name=%s\">%s</A></H2>\n", "tested enhancer", acc, acc);
+	printf("<BR><H3>Element information</H3>");
+	printf("<B>Source:</B> %s<BR>\n", source);
+	printf("<B>Source Organism Tax Id:</B> ");
+	printf("<A href=\"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=%s\" TARGET=_blank>",
+	   cgiEncode(sourceTaxId));
+	printf("%s</A><BR>\n", sourceTaxId);
+	printf("<B>Source Organism Common Name:</B> ");
+	printf("<A href=\"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name=%s&lvl=0&srchmode=1\" TARGET=_blank>",
+	   cgiEncode(commonName));
+	printf("%s</A><BR>\n", commonName);
+	printf("<B>Organism/cell line tested in:</B> ");
+
+	printf("<A href=\"http://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name=%s&lvl=0&srchmode=1\" TARGET=_blank>",
+		   cgiEncode(testOrg));
+	printf("%s</A><BR>\n", testOrg);
+
+
+	printf("<B>Nearest clade to human:</B> %s<BR>\n", humanMRCA);
+	printf("<B>Test result for enhancer activity:</B> %s<BR>\n", type);
+	printf("<B>Original enhancer length:</B> %d<BR>\n", psl->qSize);
+	}
+
+sqlFreeResult(&sr);
+freeDyString(&dy);
+
+if (containsStringNoCase(tdb->table, "liftover"))
+{
+	hFreeConn(&conn);
+	return;
+}
+
+
+dy = newDyString(1024);
+
+if (containsStringNoCase(tdb->table, "lastz"))
+	{
+
+	dyStringAppend(dy,
+				   "select score, seqIdent, entropy, js, repeatOverlap");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerLastzAlignments"
+				   " where qName='%s' and tName='%s' and tStart=%d",
+				   acc, seqName, start+1);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		score=sqlUnsigned(row[0]);seqIdent=sqlFloat(row[1]);entropy=sqlFloat(row[2]);js=sqlFloat(row[3]);repeatOverlap=sqlFloat(row[4]);
+		}
+
+
+	sqlFreeResult(&sr);
+	freeDyString(&dy);
+
+	dy = newDyString(1024);
+
+	dyStringAppend(dy,
+				   "select count(*)");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerLastzAlignments where qName='%s'", acc);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		numHomologs=sqlUnsigned(row[0]);
+		}
+
+	sqlFreeResult(&sr);
+	freeDyString(&dy);
+
+	dy = newDyString(1024);
+	dyStringAppend(dy,
+				   "select count(*)");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerLastzAlignments where qName='%s' and score > %d", acc, score);
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		rank=sqlUnsigned(row[0]) + 1;
+		}
+
+	}
+else
+	{
+	dyStringAppend(dy,
+				   "select score, seqIdent");
+	dyStringPrintf(dy,
+				   " from bejsaEnhancerNames natural join bejsaEnhancerBLATAlignments"
+				   " where fullName='%s'",
+				   acc);
+
+	sr = sqlMustGetResult(conn, dy->string);
+	row = sqlNextRow(sr);
+	if (row != NULL)
+		{
+		score=sqlUnsigned(row[0]);seqIdent=sqlFloat(row[1]);
+		}
+
+	}
+
+sqlFreeResult(&sr);
+freeDyString(&dy);
+
+/* Print alignment info. */
+printf("<H3>Alignment information</H3>");
+printf("<B>BLAT/lastz score:</B> %d<BR>\n", score);
+printf("<B>Sequence identity:</B> %0.1f<BR>\n", seqIdent);
+
+
+if (containsStringNoCase(tdb->table, "lastz"))
+	{
+	printf("<B>Entropy:</B> %0.2f<BR>\n", entropy);
+	printf("<B>J-S divergence:</B> %0.4f<BR>\n", js);
+	printf("<B>Percentage of overlap with a single repeat:</B> %0.2f<BR>\n", repeatOverlap);
+	printf("<B>Rank:</B> %d<BR>\n", rank);
+	printf("<B>No. of homologs:</B> %d<BR>\n", numHomologs);
+	}
+
+hFreeConn(&conn);
+}
+
+
+void doEnhancerTrack(struct trackDb *tdb, char *acc)
+/* Click on an individual enhancer. */
+{
+//char *track = tdb->track;
+char *table = tdb->table;
+struct sqlConnection *conn = hAllocConn(database);
+char *type;
+int start = cartInt(cart, "o");
+struct psl *pslList = NULL;
+
+type = "Enhancer";
+
+/* Print non-sequence info. */
+cartWebStart(cart, database, "%s", acc);
+
+/* Get alignment info. */
+pslList = getAlignments(conn, table, acc);
+if (pslList == NULL)
+    {
+    /* this was not actually a click on an aligned item -- we just
+     * want to display RNA info, so leave here */
+    hFreeConn(&conn);
+    htmlHorizontalLine();
+    printf("Enhancer %s alignment does not meet minimum alignment criteria on this assembly.", acc);
+    return;
+    }
+
+/* Print enahncer info */
+printEnhancerInfo(tdb, acc, pslList, start);
+
+
+if (!containsStringNoCase(tdb->table, "liftover"))
+	{
+	htmlHorizontalLine();
+	printf("<H3>%s/Genomic Alignments</H3>", type);
+	slSort(&pslList, pslCmpScoreDesc);
+	printAlignments(pslList, start, "htcCdnaAli", table, acc);
+	}
+
+printTrackHtml(tdb);
+hFreeConn(&conn);
+}
+
+void doValidatedBindingSitesTrack(struct trackDb *tdb, char *acc)
+{
+struct sqlConnection *conn = hAllocConn(database);
+
+//char query[256];
+struct sqlResult *sr;
+char **row;
+//struct agpGap gap;
+
+int start = cartInt(cart, "o");
+int end = cartInt(cart, "t");
+int i;
+struct dyString *dy = newDyString(1024);
+//boolean hasBin;
+//char splitTable[64];
+
+cartWebStart(cart, database, "Validated TF Binding Site");
+//hFindSplitTable(database, seqName, tdb->table, splitTable, &hasBin);
+
+dyStringAppend(dy, "select *");
+dyStringPrintf(dy, " from bejjcValidatedTfbsData where name ='%s' and chrom='%s' and chromStart=%d and chromEnd =%d", acc, seqName, start, end);
+sr = sqlMustGetResult(conn, dy->string);
+row = sqlNextRow(sr);
+
+if (row == NULL)
+    errAbort("Couldn't find binding site at %s:%d-%d", seqName, start, end);
+
+
+/*
+agpGapStaticLoad(row+hasBin, &gap);
+
+printf("<B>Gap Type:</B> %s<BR>\n", gap.type);
+printf("<B>Bridged:</B> %s<BR>\n", gap.bridge);
+printPos(gap.chrom, gap.chromStart, gap.chromEnd, NULL, FALSE, NULL);
+*/
+printf("<b>Name:</b> %s<br>\n", acc);
+
+//print source
+if (sameWord(row[1], "T")) {
+	printf("<b>Source:</b> Transfac (<a href=\"https://portal.biobase-international.com/cgi-bin/build_ghptywl/idb/1.0/pageview.cgi?view=SiteReport&site_acc=%s\">%s</a>)<br>\n", row[2], row[2]);
+	printf("<b>Bound TF(s):</b> %s ", row[8]);
+}
+if (sameWord(row[1], "G")) {
+	printf("<b>Source:</b> Genomatix (%s)<br>\n", row[2]);
+	printf("<b>Bound TF(s):</b> %s family ", row[8]);
+}
+if (sameWord(row[1], "L")) {
+	printf("<b>Source:</b> Literature (<a href=\"http://www.ncbi.nlm.nih.gov/pubmed?term=%s\">%s</a>)<br>\n", row[2], row[2]);
+	printf("<b>Bount TF(s):</b> %s ", row[8]);
+}
+if (sameString("hg18", database)) {
+	//print bound tfs
+	char *tfs[20];
+	int tfCount = chopCommas(row[9], tfs);
+	if (tfCount > 0) {
+		printf("(");
+		for (i = 0; i < tfCount; i++) {
+			if (i == tfCount-1 ) printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Human&db=hg18&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", tfs[i], tfs[i]);
+			else printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Human&db=hg18&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>, ", tfs[i], tfs[i]);
+		}
+	}
+	else printf("<br>\n");
+
+	//print target gene
+	printf("<b>Target Gene:</b> %s (<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Human&db=hg18&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", row[3], row[4], row[4]);
+}
+
+if (sameString("mm9", database)) {
+    //print bound tfs
+    char *tfs[20];
+    int tfCount = chopCommas(row[9], tfs);
+    if (tfCount > 0) {
+        printf("(");
+        for (i = 0; i < tfCount; i++) {
+            if (i == tfCount-1 ) printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Mouse&db=mm9&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", tfs[i], tfs[i]);
+            else printf("<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Mouse&db=mm9&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>, ", tfs[i], tfs[i]);
+        }
+    }
+
+    //print target gene
+    printf("<b>Target Gene:</b> %s (<a href=\"https://dev.stanford.edu/cgi-bin/hgTracks?clade=mammal&org=Mouse&db=mm9&position=canon.%s&hgt.suggest=&pix=1100&Submit=submit&hgsid=1310690\">canon.%s</a>)<br>\n", row[3], row[4], row[4]);
+}
+
+//print score
+if (sameWord(row[1], "T") || sameWord(row[1], "L")) printf("<b>Score:</b> %s<br>\n", row[10]);
+if (sameWord(row[1], "G")) printf("<b>Score:</b> n/a<br>\n");
+
+
+printf("<b>PMID:</b> ");
+char *pmids[20];
+int pmidCount = chopCommas(row[11], pmids);
+for (i=0; i < pmidCount; i++) {
+	if (i == pmidCount-1) printf("<a href=\"http://www.ncbi.nlm.nih.gov/pubmed?term=%s\">%s</a><br>\n", pmids[i], pmids[i]);
+	else printf("<a href=\"http://www.ncbi.nlm.nih.gov/pubmed?term=%s\">%s</a>, ", pmids[i], pmids[i]);
+}
+sqlFreeResult(&sr);
+freeDyString(&dy);
+
+printTrackHtml(tdb);
+hFreeConn(&conn);
+}
+
+
+
+
+
 void printPslFormat(struct sqlConnection *conn, struct trackDb *tdb, char *item, int start,
                     char *subType)
 /* Handles click in affyU95 or affyU133 tracks */
@@ -25480,6 +25779,14 @@ else if (sameWord(table, "mrna") || sameWord(table, "mrna2") ||
     {
     doHgRna(tdb, item);
     }
+else if (startsWith("bejsaEnhancer", table))
+	{
+	doEnhancerTrack(tdb, item);
+	}
+else if (sameWord("bejjcValidatedTfBindingSites", table))
+	{
+	doValidatedBindingSitesTrack(tdb, item);
+	}
 else if (startsWith("pseudoMrna",table ) || startsWith("pseudoGeneLink",table )
         || sameWord("pseudoUcsc",table))
     {

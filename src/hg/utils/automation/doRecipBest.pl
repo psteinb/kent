@@ -8,6 +8,11 @@
 
 # $Id: doRecipBest.pl,v 1.12 2010/02/04 18:33:56 hiram Exp $
 
+# modified by Michael: 
+# no download step is performed
+# call it with parameter -buildDir pointing to the parent directory of your axtChain dir
+# e.g. doRecipBest.pl mm9 gorGor1 -buildDir /genome/gbdb-HL/mm9/lastz/vs_gorGor1
+
 use Getopt::Long;
 use warnings;
 use strict;
@@ -34,14 +39,14 @@ use vars qw/
 # Specify the steps supported with -continue / -stop:
 my $stepper = new HgStepManager(
     [ { name => 'recipBest',  func => \&doRecipBest },
-      { name => 'download',   func => \&doDownload },
-      { name => 'load',       func => \&loadRBest },
-      { name => 'cleanup',    func => \&cleanUp },
+#      { name => 'download',   func => \&doDownload },
+#      { name => 'load',       func => \&loadRBest },
+#      { name => 'cleanup',    func => \&cleanUp },
     ]
 				);
 
 # Option defaults:
-my $dbHost = 'hgwdev';
+my $dbHost = 'genome';
 
 my ($dbExists);
 
@@ -51,6 +56,15 @@ $base =~ s/^(.*\/)?//;
 sub usage {
   # Usage / help / self-documentation:
   my ($status, $detailed) = @_;
+print STDERR "
+####################################################################
+modified by Michael: 
+no download step is performed
+call it with parameter -buildDir pointing to the parent directory of your axtChain dir
+e.g. doRecipBest.pl mm9 gorGor1 -buildDir /genome/gbdb-HL/mm9/lastz/vs_gorGor1
+####################################################################
+";
+
   # Basic help (for incorrect usage):
   print STDERR "
 usage: $base tDb qDb
@@ -133,7 +147,7 @@ sub doRecipBest {
 			       "$runDir/$qDb.$tDb.rbest.net.gz");
   my $whatItDoes =
     "It nets in both directions to get reciprocal best chains and nets.";
-  my $workhorse = &HgAutomate::chooseWorkhorse();
+  my $workhorse = "genome"; #&HgAutomate::chooseWorkhorse();
   my $bossScript = new HgRemoteScript("$runDir/doRecipBest.csh", $workhorse,
 				      $runDir, $whatItDoes);
 
@@ -345,9 +359,9 @@ sub doDownload {
 				      $runDir, $whatItDoes);
 
   my $downloadDir = "$HgAutomate::goldenPath/$tDb/vs$QDb";
-  &HgAutomate::checkExistsUnlessDebug("recipBest", "download",
-				      "$runDir/$tDb.$qDb.rbest.net.gz",
-				      $downloadDir);
+#  &HgAutomate::checkExistsUnlessDebug("recipBest", "download",
+#				      "$runDir/$tDb.$qDb.rbest.net.gz",
+#				      $downloadDir);
   my $readme = "$runDir/README.rbest.txt";
   &makeRbestReadme($readme);
 
@@ -361,7 +375,7 @@ mkdir axtRBestNet
 ln -s $buildDir/axtRBestNet/*.axt.gz $buildDir/axtRBestNet/md5sum.txt axtRBestNet/
 _EOF_
   );
-  $bossScript->execute();
+#  $bossScript->execute();
 } # doDownload
 
 sub loadRBest {

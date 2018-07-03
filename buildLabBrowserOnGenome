@@ -1,0 +1,16 @@
+#!/bin/bash
+set -o errexit
+
+path=/genome/src/kent
+cd $path
+
+# recompile and install the lab-wide genome browser 
+source ./LabBrowserEnvironment 
+cd $KENTHOME/src
+make alphanoclean
+
+if [ $? != 0 ]; then
+ echo "building kent source on lustre failed" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
+else
+ echo "building kent source on lustre succeeded" | /usr/sbin/sendmail ${USER}@mpi-cbg.de
+fi

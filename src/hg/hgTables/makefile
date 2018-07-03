@@ -25,6 +25,7 @@ my::
 	rm -rf ${CGI_BIN}-${USER}/greatData
 	rsync ${rsyncDataOpts} greatData ${CGI_BIN}-${USER}/
 	chmod -R a+rX ${CGI_BIN}-${USER}/greatData
+	chmod -R g+w ${CGI_BIN}-${USER}/greatData
 	chmod a+r ${CGI_BIN}-${USER}/all.joiner
 	chmod g+w ${CGI_BIN}-${USER}/all.joiner
 
@@ -34,6 +35,7 @@ alpha::
 	rm -rf ${CGI_BIN}/greatData
 	rsync ${rsyncDataOpts} greatData ${CGI_BIN}/
 	chmod -R a+rX ${CGI_BIN}/greatData
+	chmod -R g+w ${CGI_BIN}/greatData
 	chmod a+r ${CGI_BIN}/all.joiner
 	chmod g+w ${CGI_BIN}/all.joiner
 
@@ -52,6 +54,7 @@ install::
 	rm -rf ${DESTDIR}${CGI_BIN}/greatData
 	rsync ${rsyncDataOpts} greatData ${DESTDIR}${CGI_BIN}/
 	chmod -R a+rX ${DESTDIR}${CGI_BIN}/greatData
+	chmod -R g+w ${DESTDIR}${CGI_BIN}/greatData
 	chmod a+r ${DESTDIR}${CGI_BIN}/all.joiner
 	chmod g+w ${DESTDIR}${CGI_BIN}/all.joiner
 

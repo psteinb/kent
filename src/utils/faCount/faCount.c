@@ -10,12 +10,14 @@ static struct optionSpec optionSpecs[] =
     {"summary", OPTION_BOOLEAN},
     {"dinuc", OPTION_BOOLEAN},
     {"strands", OPTION_BOOLEAN},
+    {"AT", OPTION_BOOLEAN},
     {NULL, 0},
 };
 
 bool summary = FALSE;
 bool dinuc = FALSE;
 bool strands = FALSE;
+bool AT = FALSE;
 void usage()
 /* Print usage info and exit. */
 {
@@ -25,6 +27,7 @@ errAbort("faCount - count base statistics and CpGs in FA files.\n"
          "     -summary  show only summary statistics\n"
          "     -dinuc    include statistics on dinucletoide frequencies\n"
          "     -strands  count bases on both strands\n"
+         "     -AT       show the AT content calcuated as A+T / A+T+C+G  (this sets summary = TRUE and dinuc = FALSE)\n"
              );
 }
 
@@ -168,6 +171,15 @@ if (summary)
             (float)totalDinucleotideCount[T_BASE_VAL][G_BASE_VAL]/(float)totalLength, (float)totalDinucleotideCount[T_BASE_VAL][T_BASE_VAL]/(float)totalLength);
     printf("\n");
     }
+
+
+if (AT)
+    {
+	 double sum = ((float)totalBaseCount[A_BASE_VAL]) + ((float)totalBaseCount[C_BASE_VAL]) + ((float)totalBaseCount[G_BASE_VAL]) + ((float)totalBaseCount[T_BASE_VAL]);
+	 double ATcontent = (((float)totalBaseCount[A_BASE_VAL]) + ((float)totalBaseCount[T_BASE_VAL])) / sum;
+	 double GCcontent = 1-ATcontent;
+    printf("ATcontent\t%-5.5f\nGCcontent\t%-5.5f\n",ATcontent,GCcontent);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -179,6 +191,11 @@ if (argc < 2)
 summary = optionExists("summary");
 dinuc = optionExists("dinuc");
 strands = optionExists("strands");
+AT = optionExists("AT");
+if (AT) {
+	summary = TRUE;
+	dinuc = FALSE;
+}
 faCount(argv+1, argc-1);
 return 0;
 }

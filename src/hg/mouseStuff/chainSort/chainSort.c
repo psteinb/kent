@@ -66,6 +66,9 @@ while ((chain = chainRead(lf)) != NULL)
     }
 lineFileClose(&lf);
 
+/* MH: reverse the chainList. This has the effect of stable sorting. If two chains A and B have the same score and A was first before, A will also be first after sorting */
+slReverse(&chainList);
+
 /* Sort. */
 if (isTarget)
     slSort(&chainList, chainCmpTarget);

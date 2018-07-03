@@ -18,7 +18,7 @@ use HgStepManager;
 # Hardcoded (for now):
 my $chunkSize = 50000000;
 my $singleRunSize = 200000000;
-my $clusterBin = qw(/cluster/bin/$MACHTYPE);
+my $clusterBin = qw(/genome/bin/$MACHTYPE);
 
 # Option variable names, both common and peculiar to this script:
 use vars @HgAutomate::commonOptionVars;
@@ -41,7 +41,7 @@ my $stepper = new HgStepManager(
 # Option defaults:
 my $defaultSmallClusterHub = 'most available';
 my $defaultWorkhorse = 'least loaded';
-my $dbHost = 'hgwdev';
+my $dbHost = 'genome';
 my $unmaskedSeq = "\$db.unmasked.2bit";
 my $trf409 = "";
 
@@ -132,13 +132,17 @@ sub doCluster {
 
   my $paraHub = $opt_smallClusterHub ? $opt_smallClusterHub :
     &HgAutomate::chooseSmallClusterByBandwidth();
-  my @okIn = grep !/scratch/,
-    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
-  my @okOut =
-    &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
-  if (scalar(@okOut) > 1) {
-    @okOut = grep !/$okIn[0]/, @okOut;
-  }
+#  my @okIn = grep !/scratch/,
+#    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
+#  my @okOut =
+#    &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
+#  if (scalar(@okOut) > 1) {
+#    @okOut = grep !/$okIn[0]/, @okOut;
+#  }
+my @okIn;
+my @okOut;
+push @okIn, $buildDir;
+push @okOut, $buildDir;
   my $inHive = 0;
   $inHive = 1 if ($okIn[0] =~ m#/hive/data/genomes#);
   my $clusterSeqDir = "$okIn[0]/$db";

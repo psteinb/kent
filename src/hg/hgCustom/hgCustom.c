@@ -946,6 +946,7 @@ void doAddCustom(char *err)
 cartWebStart(cart, database, "Add Custom Tracks");
 addCustomForm(NULL, err);
 helpCustom();
+markRegFlag = 0;
 cartWebEnd(cart);
 }
 

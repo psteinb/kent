@@ -14,9 +14,13 @@ use lib "$Bin";
 use HgAutomate;
 use HgRemoteScript;
 use HgStepManager;
+my $genomePath = $ENV{'genomePath'};
+die "ERROR: environment variable genomePath is not set\n" if ($genomePath eq "");
+my $TMPDIR = $ENV{'TMPDIR'};
+die "ERROR: environment variable TMPDIR is not set\n" if ($TMPDIR eq ""); 
 
 # Hardcoded command path:
-my $RepeatMaskerPath = "/scratch/data/RepeatMasker";
+my $RepeatMaskerPath = "${genomePath}/src/RepeatMasker";
 my $RepeatMasker = "$RepeatMaskerPath/RepeatMasker";
 my $RepeatMaskerEngine = "-engine crossmatch -s";
 # Let parasol pick defaults
@@ -34,8 +38,10 @@ use vars qw/
     $opt_useRMBlastn
     $opt_splitTables
     $opt_noSplit
+	 $opt_clusterType
     $opt_updateTable
     /;
+$opt_clusterType = "";
 
 # Specify the steps supported with -continue / -stop:
 my $stepper = new HgStepManager(
@@ -48,7 +54,7 @@ my $stepper = new HgStepManager(
 				);
 
 # Option defaults:
-my $dbHost = 'hgwdev';
+my $dbHost = 'genome.pks.mpg.de';
 my $unmaskedSeq = "\$db.unmasked.2bit";
 my $defaultSpecies = 'scientificName from dbDb';
 
@@ -65,6 +71,8 @@ options:
 ";
   print STDERR $stepper->getOptionHelp();
   print STDERR <<_EOF_
+    -clusterType          MANDATORY: Specify the clusterType as either genome or falcon1
+                          NOTE: Do not use clusterTpye=genome for large genome-alignments. Run it on falcon1 or ask Michael first. 
     -buildDir dir         Use dir instead of default
                           $HgAutomate::clusterData/\$db/$HgAutomate::trackBuild/RepeatMasker.\$date
                           (necessary when continuing at a later date).
@@ -113,6 +121,8 @@ Assumptions:
 my ($db);
 # Other:
 my ($buildDir, $chromBased, $updateTable, $secondsStart, $secondsEnd);
+my $clusterType = "";
+my $workhorse = "";
 
 sub checkOptions {
   # Make sure command line options are valid/supported.
@@ -125,6 +135,7 @@ sub checkOptions {
                       'useHMMER',
 		      'splitTables',
 		      'noSplit',
+		      "clusterType=s",
 		      'updateTable',
 		      @HgAutomate::commonOptionSpec,
 		      );
@@ -142,17 +153,24 @@ sub doCluster {
   my $runDir = "$buildDir/run.cluster";
   &HgAutomate::mustMkdir($runDir);
 
-  my $paraHub = $opt_bigClusterHub ? $opt_bigClusterHub :
-    &HgAutomate::chooseClusterByBandwidth();
+#  my $paraHub = $opt_bigClusterHub ? $opt_bigClusterHub :
+#    &HgAutomate::chooseClusterByBandwidth();
+  # clusterType is a mandatory argument
+  my $paraHub = $clusterType;
+
   if (! -e $unmaskedSeq) {
     die "Error: required file $unmaskedSeq does not exist.";
   }
-  my @okIn = grep !/scratch/,
-    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
-  my @okOut = &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
-  if (scalar(@okOut) > 1) {
-    @okOut = grep !/$okIn[0]/, @okOut;
-  }
+#  my @okIn = grep !/scratch/,
+#    &HgAutomate::chooseFilesystemsForCluster($paraHub, "in");
+#  my @okOut = &HgAutomate::chooseFilesystemsForCluster($paraHub, "out");
+#  if (scalar(@okOut) > 1) {
+#    @okOut = grep !/$okIn[0]/, @okOut;
+#  }
+my @okIn;
+my @okOut;
+push @okIn, $buildDir;
+push @okOut, $buildDir;
   my $inHive = 0;
   $inHive = 1 if ($okIn[0] =~ m#/hive/data/genomes#);
   my $clusterSeqDir = "$okIn[0]/$db";
@@ -215,7 +233,7 @@ set catOut = \$finalOut:r.cat
 
 # Use local disk for output, and move the final result to \$outPsl
 # when done, to minimize I/O.
-set tmpDir = `mktemp -d -p /scratch/tmp doRepeatMasker.cluster.XXXXXX`
+set tmpDir = `mktemp -d -p $TMPDIR doRepeatMasker.cluster.XXXXXX`
 pushd \$tmpDir
 
 # Initialize local library
@@ -258,8 +276,24 @@ _EOF_
   ;
   close($fh);
 
-  &HgAutomate::makeGsub($runDir,
-      "./RMRun.csh {check out line $partDir/\$(path1).out}");
+  # This creates the 'gsub' file listing the template to create cluster jobs (no check out if on falcon1)
+  my $templateCmd ="./RMRun.csh {check out line $partDir/\$(path1).out}";
+  if($clusterType eq "falcon1"){
+	   $templateCmd ="./RMRun.csh $partDir/\$(path1).out";
+  }
+  &HgAutomate::makeGsub($runDir, $templateCmd);
+
+
+
+#customize the $myparaRun variable depending upon the clusterType: 
+my $myParaRun = $HgAutomate::paraRun;
+  if ($clusterType eq "falcon1") {
+	$myParaRun = "
+para make rmsk_$db jobList -q medium\n
+para check rmsk_$db\n
+para time rmsk_$db > run.time\n
+cat run.time\n";
+}
 
   my $whatItDoes =
 "It computes a logical partition of unmasked 2bit into 500k chunks
@@ -270,12 +304,13 @@ and runs it on the cluster with the most available bandwidth.";
   $bossScript->add(<<_EOF_
 chmod a+x dummyRun.csh
 chmod a+x RMRun.csh
-./dummyRun.csh
+#./dummyRun.csh		# do not run a dummy script
 
 # Record RM version used:
-ls -ld $RepeatMaskerPath $RepeatMasker
-grep 'version of RepeatMasker\$' $RepeatMasker
-grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
+#ls -ld $RepeatMaskerPath $RepeatMasker
+# MH: lets not grep for the version. This does not return something with RM version 4. 
+#grep 'version of RepeatMasker\$' $RepeatMasker
+#grep RELEASE $RepeatMaskerPath/Libraries/RepeatMaskerLib.embl
 echo "# RepeatMasker engine: $RepeatMaskerEngine"
 _EOF_
   );
@@ -312,13 +347,13 @@ _EOF_
   if ($opt_unmaskedSeq) {
     $bossScript->add(<<_EOF_
 rm -rf $partDir
-$Bin/simplePartition.pl $clusterSeq 500000 $partDir
+$Bin/simplePartition.pl $clusterSeq 4000000 $partDir
 _EOF_
     );
   } else {
     $bossScript->add(<<_EOF_
 rm -rf $partDir
-$Bin/simplePartition.pl $clusterSeq 500000 $partDir
+$Bin/simplePartition.pl $clusterSeq 4000000 $partDir
 rm -f $buildDir/RMPart
 ln -s $partDir $buildDir/RMPart
 _EOF_
@@ -332,11 +367,8 @@ _EOF_
   my $gensub2 = &HgAutomate::gensub2();
   $bossScript->add(<<_EOF_
 
-$gensub2 $partDir/partitions.lst single gsub jobList
-$binPara $parasolRAM make jobList
-$binPara check
-$binPara time > run.time
-cat run.time
+$HgAutomate::gensub2 $partDir/partitions.lst single gsub jobList
+$myParaRun
 
 _EOF_
   );
@@ -361,7 +393,8 @@ sub doCat {
 "liftUp (with no lift specs) is used to concatenate .out files because it\n" .
 "uniquifies (per input file) the .out IDs which can then be used to join\n" .
 "fragmented repeats in the Nested Repeats track.";
-  my $fileServer = &HgAutomate::chooseFileServer($runDir);
+#  my $fileServer = &HgAutomate::chooseFileServer($runDir);
+  my $fileServer = $clusterType;
   my $bossScript = new HgRemoteScript("$runDir/doCat.csh", $fileServer,
 				      $runDir, $whatItDoes);
 
@@ -421,7 +454,8 @@ sub doMask {
   &HgAutomate::checkExistsUnlessDebug('cat', 'mask', "$buildDir/$db.sorted.fa.out");
 
   my $whatItDoes = "It makes a masked .2bit in this build directory.";
-  my $workhorse = &HgAutomate::chooseWorkhorse();
+# MH: Workhorse is now defined by clusterType
+#  my $workhorse = &HgAutomate::chooseWorkhorse();
   my $bossScript = new HgRemoteScript("$runDir/doMask.csh", $workhorse,
 				      $runDir, $whatItDoes);
 
@@ -466,9 +500,9 @@ do
     fileCount=`(ls rmskClass/\${T}*.tab 2> /dev/null || true) | wc -l`
     if [ "\$fileCount" -gt 0 ]; then
        echo "working: "`ls rmskClass/\${T}*.tab | xargs echo`
-       \$HOME/kent/src/hg/utils/automation/rmskBed6+10.pl rmskClass/\${T}*.tab \\
+       $genomePath/src/kent/src/hg/utils/automation/rmskBed6+10.pl rmskClass/\${T}*.tab \\
         | sort -k1,1 -k2,2n > classBed/\$db.rmsk.\${T}.bed
-       bedToBigBed -tab -type=bed6+10 -as=\$HOME/kent/src/hg/lib/rmskBed6+10.as \\
+       bedToBigBed -tab -type=bed6+10 -as=$genomePath/src/kent/src/hg/lib/rmskBed6+10.as \\
          classBed/\$db.rmsk.\${T}.bed ../../chrom.sizes \\
            classBbi/\$db.rmsk.\${T}.bb
     fi
@@ -476,18 +510,18 @@ done
 fileCount=`(ls rmskClass/*RNA.tab 2> /dev/null || true) | wc -l`
 if [ "\$fileCount" -gt 0 ]; then
   echo "working: "`ls rmskClass/*RNA.tab | xargs echo`
-  \$HOME/kent/src/hg/utils/automation/rmskBed6+10.pl rmskClass/*RNA.tab \\
+  $genomePath/src/kent/src/hg/utils/automation/rmskBed6+10.pl rmskClass/*RNA.tab \\
      | sort -k1,1 -k2,2n > classBed/\$db.rmsk.RNA.bed
-  bedToBigBed -tab -type=bed6+10 -as=\$HOME/kent/src/hg/lib/rmskBed6+10.as \\
+  bedToBigBed -tab -type=bed6+10 -as=$genomePath/src/kent/src/hg/lib/rmskBed6+10.as \\
      classBed/\$db.rmsk.RNA.bed ../../chrom.sizes \\
         classBbi/\$db.rmsk.RNA.bb
 fi
 fileCount=`(ls rmskClass/*.tab | egrep -v "/SIN|/LIN|/LT|/DN|/Simple|/Low_complexity|/Satellit|RNA.tab" 2> /dev/null || true) | wc -l`
 if [ "\$fileCount" -gt 0 ]; then
   echo "working: "`ls rmskClass/*.tab | egrep -v "/SIN|/LIN|/LT|/DN|/Simple|/Low_complexity|/Satellit|RNA.tab" | xargs echo`
-  \$HOME/kent/src/hg/utils/automation/rmskBed6+10.pl `ls rmskClass/*.tab | egrep -v "/SIN|/LIN|/LT|/DN|/Simple|/Low_complexity|/Satellit|RNA.tab"` \\
+  $genomePath/src/kent/src/hg/utils/automation/rmskBed6+10.pl `ls rmskClass/*.tab | egrep -v "/SIN|/LIN|/LT|/DN|/Simple|/Low_complexity|/Satellit|RNA.tab"` \\
         | sort -k1,1 -k2,2n > classBed/\$db.rmsk.Other.bed
-  bedToBigBed -tab -type=bed6+10 -as=\$HOME/kent/src/hg/lib/rmskBed6+10.as \\
+  bedToBigBed -tab -type=bed6+10 -as=$genomePath/src/kent/src/hg/lib/rmskBed6+10.as \\
     classBed/\$db.rmsk.Other.bed ../../chrom.sizes \\
       classBbi/\$db.rmsk.Other.bb
 fi
@@ -518,7 +552,7 @@ _EOF_
   } else {
   $bossScript->add(<<_EOF_
 hgLoadBed \$db nestedRepeats \$db.nestedRepeats.bed \\
-  -sqlTable=\$HOME/kent/src/hg/lib/nestedRepeats.sql
+  -sqlTable=$genomePath/src/kent/src/hg/lib/nestedRepeats.sql
 _EOF_
   );
   }
@@ -539,10 +573,12 @@ _EOF_
     my $bossScript = new HgRemoteScript("$runDir/doSplit.csh", $fileServer,
 					$runDir, $whatItDoes);
     $bossScript->add(<<_EOF_
-head -3 $db.sorted.fa.out > /tmp/rmskHead.txt
+set headTemp = `mktemp -p $TMPDIR makeGenomeDb.rmskHead.XXXXXX`;
+head -3 $db.sorted.fa.out > \$headTemp
+# output to ./rmsk instead of $HgAutomate::gbdb/$db because otherwise splitFileByColumn tries to creates /genome/gbdb-HL and fails because it exists
 tail -n +4 $db.sorted.fa.out \\
-| splitFileByColumn -col=5 stdin /cluster/data/$db -chromDirs \\
-    -ending=.fa.out -head=/tmp/rmskHead.txt
+| splitFileByColumn -col=5 stdin ./rmsk -chromDirs -ending=.fa.out -head=\$headTemp
+rm \$headTemp
 _EOF_
     );
     $bossScript->execute();
@@ -555,17 +591,18 @@ _EOF_
 sub doCleanup {
   my $runDir = "$buildDir";
   my $whatItDoes = "It cleans up or compresses intermediate files.";
-  my $fileServer = &HgAutomate::chooseFileServer($runDir);
+#  my $fileServer = &HgAutomate::chooseFileServer($runDir);
+  my $fileServer = $clusterType;
   my $bossScript = new HgRemoteScript("$runDir/doCleanup.csh", $fileServer,
 				      $runDir, $whatItDoes);
   $bossScript->add(<<_EOF_
 if (-e $db.fa.align) then
   gzip $db.fa.align
 endif
-rm -fr RMPart/*
-rm -fr RMPart
-if ( -d /hive/data/genomes/$db/RMPart ) then
-   rmdir /hive/data/genomes/$db/RMPart
+rm -rf RMPart
+if ( -d $buildDir/$db/RMPart ) then
+   rm -rf $buildDir/$db/RMPart
+	rmdir $buildDir/$db
 endif
 _EOF_
   );
@@ -581,6 +618,24 @@ _EOF_
 
 # Make sure we have valid options and exactly 1 argument:
 &checkOptions();
+
+# initializations depending on the cluster type
+$clusterType = $opt_clusterType;
+# first, check if clusterType is specified
+die "ERROR: you have to specify -clusterType parameter. Should be either genome or falcon1\n" if ($clusterType eq "");
+# second check if clusterType is either genome or falcon1
+die "ERROR: -clusterType must be either genome or falcon1. You specified $clusterType\n" if ( ! (($clusterType eq "genome") || ($clusterType eq "falcon1")) );
+# third check if the script is executed at the given $clusterType
+die "ERROR: you gave clusterType $clusterType but you execute the code on $ENV{'HOSTNAME'}\n" if ($clusterType ne $ENV{'HOSTNAME'});
+
+$workhorse = $clusterType;
+print STDERR "clusterType and workhorse: $workhorse\ndbhost: $dbHost\n";
+
+if ($clusterType eq "falcon1") {
+	die "ERROR: You have to give the full path to the unmaskedSeq (option -unmaskedSeq) if clusterType = falcon1\n" if (! defined $opt_unmaskedSeq);
+}
+die "ERROR: -buildDir parameter is not given\n" if (! defined $opt_buildDir);
+
 &usage(1) if (scalar(@ARGV) != 1);
 $secondsStart = `date "+%s"`;
 chomp $secondsStart;
@@ -591,10 +646,13 @@ my $date = `date +%Y-%m-%d`;
 chomp $date;
 $buildDir = $opt_buildDir ? $opt_buildDir :
   "$HgAutomate::clusterData/$db/$HgAutomate::trackBuild/RepeatMasker.$date";
+print STDERR "buildDir: $buildDir\n";
 $unmaskedSeq = $opt_unmaskedSeq ? $opt_unmaskedSeq :
   "$HgAutomate::clusterData/$db/$db.unmasked.2bit";
 my $seqCount = `twoBitInfo $unmaskedSeq stdout | wc -l`;
+chomp($seqCount);
 $chromBased = ($seqCount <= $HgAutomate::splitThreshold) && $opt_splitTables;
+print STDERR "unmaskedSeq: $unmaskedSeq with $seqCount sequences\n";
 $updateTable = $opt_updateTable ? "Update" : "";
 
 # Do everything.

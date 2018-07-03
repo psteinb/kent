@@ -73,6 +73,9 @@
 #include <openssl/sha.h>
 #include "customComposite.h"
 
+#include "hgMarkRegion.h"
+#include "hillerLabView.h"
+
 /* Other than submit and Submit all these vars should start with hgt.
  * to avoid weeding things out of other program's namespaces.
  * Because the browser is a central program, most of its cart
@@ -92,6 +95,12 @@ char *excludeVars[] = { "submit", "Submit", "dirty", "hgt.reset",
              TRACK_SEARCH,         TRACK_SEARCH_ADD_ROW,     TRACK_SEARCH_DEL_ROW, TRACK_SEARCH_PAGER,
             "hgt.contentType", "hgt.positionInput", "hgt.internal",
             "sortExp", "sortSim",
+            // stanford additions
+            "hgt.out4",  "hgt.to1", "hgt.to2", "hgt.to3", "hgt.to4", "hgt.to5", "hgt.to6", "hgt.to7",
+				/* markRegion functionality */
+				"hgt.mrkReg","hgt.clrReg", 
+				/* Hillerlab View functionality*/
+	    		"hgt.loadView","hgt.deleteView","hgt.saveView",
             NULL };
 
 /* These variables persist from one incarnation of this program to the
@@ -129,8 +138,9 @@ char *rulerMenu[] =
     "full"
     };
 
+
 char *protDbName;               /* Name of proteome database for this genome. */
-#define MAX_CONTROL_COLUMNS 6
+#define MAX_CONTROL_COLUMNS 12
 #define LOW 1
 #define MEDIUM 2
 #define BRIGHT 3
@@ -8116,6 +8126,14 @@ if (!hideControls)
     topButton("hgt.out2", ZOOM_3X);
     topButton("hgt.out3", ZOOM_10X);
     topButton("hgt.out4", ZOOM_100X);
+    hWrites(" zoom to ");
+    topButton("hgt.to1", ZOOM_1K);
+    topButton("hgt.to2", ZOOM_10K);
+    topButton("hgt.to3", ZOOM_100K);
+    topButton("hgt.to4", ZOOM_1M);
+    topButton("hgt.to5", ZOOM_3M);
+    topButton("hgt.to6", ZOOM_5M);
+    topButton("hgt.to7", ZOOM_10M);
     hWrites("<div style='height:0.3em;'></div>\n");
 #endif//ndef USE_NAVIGATION_LINKS
 
@@ -8178,6 +8196,8 @@ if (!hideControls)
 	hPrintf("<input class='positionInput' type='text' name='hgt.positionInput' id='positionInput' size='60'>\n");
 	hWrites(" ");
 	hButton("hgt.jump", "go");
+	hButton("hgt.mrkReg", "mark region");
+	hButton("hgt.clrReg", "clear marked regions");
 	if (!trackHubDatabase(database))
 	    {
             jsonObjectAdd(jsonForClient, "assemblySupportsGeneSuggest", newJsonBoolean(assemblySupportsGeneSuggest(database)));
@@ -8368,6 +8388,22 @@ if (!hideControls)
 
     hButtonWithMsg("hgt.refresh", "refresh","Refresh image");
 
+	 /* Hillerlab views */
+	 hPrintf("&nbsp;");
+    hPrintf("&nbsp;");
+    hPrintf("&nbsp;");
+    hPrintf("&nbsp;");
+    hDropList("hillerLabView", HViewMenu, sizeofHviewMenu/sizeof(char *), HViewMenu[hViewMode]);
+    hPrintf(" ");
+    hButtonWithOnClick("hgt.loadView","load view","load views","loadHillerLabView()");
+    hPrintf(" ");
+    hButtonWithOnClick("hgt.deleteView","delete view","delete views","loadHillerLabView()");
+
+    hPrintf(" ");
+    hButtonWithOnClick("hgt.saveView","save view","save views","saveHillerLabView()");
+    hTextVar("viewName","",10);
+	 /* end of Hillerlab views */
+
     hPrintf("<BR>\n");
 
     if( chromosomeColorsMade )
@@ -8511,7 +8547,12 @@ if (!hideControls)
                     freeMem(url);
                     freeMem(longLabel);
                     }
-		hPrintf(" %s", track->shortLabel);
+	        if (startsWith("Bej ", track->shortLabel))
+                    hPrintf(" <font color=red>Bej </font>%s", track->shortLabel + 4);
+	        else if (startsWith("HL ", track->shortLabel))
+                    hPrintf(" <font color=red>HL </font>%s", track->shortLabel + 3);
+                else
+                    hPrintf(" %s", track->shortLabel);
 		if (tdbIsSuper(track->tdb))
 		    hPrintf("...");
 		hPrintf("<BR> ");
@@ -9294,6 +9335,24 @@ else if (cgiVarExists("hgt.out3"))
     zoomAroundCenter(10.0);
 else if (cgiVarExists("hgt.out4"))
     zoomAroundCenter(100.0);
+else if (cgiVarExists("hgt.to1"))
+    zoomToSize(1000);
+else if (cgiVarExists("hgt.to2"))
+    zoomToSize(10000);
+else if (cgiVarExists("hgt.to3"))
+    zoomToSize(100000);
+else if (cgiVarExists("hgt.to4"))
+    zoomToSize(1000000);
+else if (cgiVarExists("hgt.to5"))
+    zoomToSize(3000000);
+else if (cgiVarExists("hgt.to6"))
+    zoomToSize(5000000);
+else if (cgiVarExists("hgt.to7"))
+    zoomToSize(10000000);
+else if (cgiVarExists("hgt.clrReg"))
+    clearRegion();	
+else if (cgiVarExists("hgt.mrkReg"))
+    markUserRegion();	
 else if (cgiVarExists("hgt.dinkLL"))
     dinkWindow(TRUE, -dinkSize("dinkL"));
 else if (cgiVarExists("hgt.dinkLR"))
@@ -9463,7 +9522,6 @@ boolean gotExtTools = extToolsEnabled();
 setupHotkeys(gotExtTools);
 if (gotExtTools)
     printExtMenuData(chromName);
-
 }
 
 void chromInfoTotalRow(int count, long long total)
@@ -9940,6 +9998,10 @@ char *debugTmp = NULL;
 /* Uncomment this to see parameters for debugging. */
 /* struct dyString *state = NULL; */
 /* Initialize layout and database. */
+
+/* perform view operations if any */
+doHillerLabViewOperations();
+
 if (measureTiming)
     measureTime("Get cart of %d for user:%s session:%s", theCart->hash->elCount,
 	    theCart->userId, theCart->sessionId);
@@ -10145,6 +10207,24 @@ if (cartOptionalString(cart, "udcTimeout"))
     }
 }
 
+void markUserRegion(){
+
+	/*Create a custom track for the user marked region */
+	markRegion(cart);
+	ctList = customTracksParseCart(database, cart, &browserLines, &ctFileName);
+}	
+
+
+void clearRegion()
+{
+	/*Delete a custom track for the user marked region */
+
+	 getCtList();
+	 doDeleteMarkReg();
+	 updateCtList();
+	 ctList = customTracksParseCart(database, cart, &browserLines, &ctFileName);
+} 
+
 void labelTrackAsFiltered(struct track *tg)
 /* add text to track long label to indicate filter is active */
 {
@@ -10152,4 +10232,5 @@ char *oldLabel = tg->longLabel;
 tg->longLabel = catTwoStrings(oldLabel, " (filter activated)");
 freeMem(oldLabel);
 }
+
 

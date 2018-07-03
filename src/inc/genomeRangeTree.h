@@ -84,6 +84,14 @@ int genomeRangeTreeOverlapSize(struct genomeRangeTree *tree, char *chrom, int st
  * from start to end, and items in range tree. Sadly not
  * thread-safe. */
 
+long genomeRangeTreeOverlapTotalSize(struct genomeRangeTree *tree);
+/* Return the total size of all ranges in all range trees.
+ * Sadly not thread-safe. 
+ * On 32 bit machines be careful since each rangeTree returns
+ * its total overlap as an int, so that could be subject to overflow in
+ * its range of end or total size return value. */
+
+
 struct range *genomeRangeTreeFindEnclosing(struct genomeRangeTree *tree, char *chrom, int start, int end);
 /* Find item in range tree that encloses range between start and end 
  * if there is any such item. */
