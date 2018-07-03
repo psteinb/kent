@@ -4,7 +4,7 @@ include ../../inc/common.mk
 L = ../../htslib/libhts.a $(MYSQLLIBS)# -lz -lm
 
 MYLIBDIR = ../../lib/$(MACHTYPE)
-MYLIBS =  $(MYLIBDIR)/jkhgap.a $(MYLIBDIR)/jkweb.a $(L)
+MYLIBS =  $(MYLIBDIR)/jkhgap.a $(MYLIBDIR)/jkweb.a 
 
 O = affyPairsToSample normalizeSampleFile avgTranscriptomeExps maxTranscriptomeExps scaleSampleFiles averageZoomLevels \
 	groupSamples
