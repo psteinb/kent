@@ -14,8 +14,8 @@ export USE_SAMTABIX=1
 #export KNETFILE_HOOKS=1
 
 export MACHTYPE=`uname -m`
-export MYSQLINC=/usr/include/mysql
-export MYSQLLIBS="-L/usr/lib64/mysql -lmysqlclient -lz -lcrypt -lnsl -lm -L/usr/lib -L/usr/lib64 -lssl -lcrypto"
+#export MYSQLINC=/usr/include/mysql
+#export MYSQLLIBS="-L/usr/lib64/mysql -lmysqlclient -lz -lcrypt -lnsl -lm -L/usr/lib -L/usr/lib64 -lssl -lcrypto"
 #export MYSQLDATA="/var/lib/mysql"
 export DOCUMENTROOT="${KENTHOME}/html"
 export WEBROOT=$DOCUMENTROOT

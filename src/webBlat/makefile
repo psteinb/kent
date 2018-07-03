@@ -1,9 +1,9 @@
 kentSrc = ..
 include ../inc/common.mk
 
-L += -lm $(SOCKETLIB)
+L =  ${MYSQLLIBS} -lm
 MYLIBDIR = ../lib/${MACHTYPE}
-MYLIBS =  ${MYLIBDIR}/jkOwnLib.a ${MYLIBDIR}/jkweb.a
+MYLIBS =  ${MYLIBDIR}/jkOwnLib.a ${MYLIBDIR}/jkweb.a ${kentSrc}/htslib/libhts.a
 
 O = webBlat.o
 
